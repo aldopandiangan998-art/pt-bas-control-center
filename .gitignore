@@ -18,4 +18,7 @@ dist-ssr
 .idea
 .DS_Store
 
+# Local SQLite databases
+server/data/*.db*
+
 

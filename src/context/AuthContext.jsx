@@ -35,6 +35,23 @@ export function AuthProvider({ children }) {
     return INITIAL_USER;
   });
 
+  // Sync users from Node.js SQLite Database on mount
+  useEffect(() => {
+    fetch('/api/users')
+      .then((res) => {
+        if (res.ok) return res.json();
+        throw new Error('API offline');
+      })
+      .then((data) => {
+        if (Array.isArray(data) && data.length > 0) {
+          setUsers(data);
+        }
+      })
+      .catch(() => {
+        // Silent fallback to local storage
+      });
+  }, []);
+
   // Persist users list changes
   useEffect(() => {
     try {
@@ -57,7 +74,7 @@ export function AuthProvider({ children }) {
     }
   }, [currentUser]);
 
-  // Normalization helper: normalize 'superadmin' / 'Super Admin' and 'admin' / 'Admin'
+  // Normalization helper: strictly 'superadmin' and 'admin'
   const normalizedRole = currentUser?.role?.toLowerCase().replace(/\s+/g, '') || 'admin';
   const isSuperAdmin = normalizedRole === 'superadmin';
   const isAdmin = normalizedRole === 'admin';
@@ -74,60 +91,108 @@ export function AuthProvider({ children }) {
   };
 
   /**
-   * Login user with email & password
+   * Login user with Node.js SQLite API
    */
-  const login = (email, password) => {
+  const login = async (email, password) => {
     const cleanEmail = email.trim().toLowerCase();
-    const user = users.find(
-      (u) => u.email.toLowerCase() === cleanEmail && u.password === password
-    );
 
-    if (user) {
-      setCurrentUser(user);
-      return { success: true, user };
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: cleanEmail, password }),
+      });
+
+      const data = await res.json();
+
+      if (res.ok && data.success) {
+        setCurrentUser(data.user);
+        return { success: true, user: data.user };
+      }
+
+      return {
+        success: false,
+        message: data.message || 'Email atau kata sandi tidak valid.',
+      };
+    } catch (err) {
+      // Fallback to local DB if backend server is still starting
+      const user = users.find(
+        (u) => u.email.toLowerCase() === cleanEmail && u.password === password
+      );
+
+      if (user) {
+        setCurrentUser(user);
+        return { success: true, user };
+      }
+
+      return {
+        success: false,
+        message: 'Email atau kata sandi tidak valid. Pastikan data akun benar.',
+      };
     }
-
-    return {
-      success: false,
-      message: 'Email atau kata sandi tidak valid. Pastikan data akun benar.',
-    };
   };
 
   /**
-   * Register new user (strictly admin or superadmin)
+   * Register new user with Node.js SQLite API (strictly admin or superadmin)
    */
-  const register = ({ name, email, password, role = 'admin', branch = 'Hub Gresik', phone = '-' }) => {
+  const register = async ({ name, email, password, role = 'admin', branch = 'Hub Gresik', phone = '-' }) => {
     const cleanEmail = email.trim().toLowerCase();
-
-    // Check if email already exists
-    if (users.some((u) => u.email.toLowerCase() === cleanEmail)) {
-      return {
-        success: false,
-        message: `Email ${email} sudah terdaftar dalam sistem PT BAS.`,
-      };
-    }
-
-    // Role validation: only 'admin' or 'superadmin' allowed
     const validRole = role === 'superadmin' ? 'superadmin' : 'admin';
     const roleLabel = validRole === 'superadmin' ? 'Super Admin' : 'Admin';
 
-    const newUser = {
-      id: `usr-${Date.now()}`,
-      name: name.trim(),
-      email: cleanEmail,
-      password,
-      role: validRole,
-      roleLabel,
-      branch: branch || 'Hub Gresik',
-      phone: phone || '-',
-      aktif: true,
-      registeredAt: new Date().toISOString(),
-    };
+    try {
+      const res = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: name.trim(),
+          email: cleanEmail,
+          password,
+          role: validRole,
+          branch,
+          phone,
+        }),
+      });
 
-    setUsers((prev) => [...prev, newUser]);
-    setCurrentUser(newUser);
+      const data = await res.json();
 
-    return { success: true, user: newUser };
+      if (res.ok && data.success) {
+        setUsers((prev) => [...prev, data.user]);
+        setCurrentUser(data.user);
+        return { success: true, user: data.user };
+      }
+
+      return {
+        success: false,
+        message: data.message || 'Pendaftaran gagal.',
+      };
+    } catch (err) {
+      // Fallback
+      if (users.some((u) => u.email.toLowerCase() === cleanEmail)) {
+        return {
+          success: false,
+          message: `Email ${email} sudah terdaftar dalam sistem PT BAS.`,
+        };
+      }
+
+      const newUser = {
+        id: `usr-${Date.now()}`,
+        name: name.trim(),
+        email: cleanEmail,
+        password,
+        role: validRole,
+        roleLabel,
+        branch: branch || 'Hub Gresik',
+        phone: phone || '-',
+        aktif: true,
+        registeredAt: new Date().toISOString(),
+      };
+
+      setUsers((prev) => [...prev, newUser]);
+      setCurrentUser(newUser);
+
+      return { success: true, user: newUser };
+    }
   };
 
   /**

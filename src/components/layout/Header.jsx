@@ -1,9 +1,11 @@
+import { useNavigate } from 'react-router-dom';
 import { Menu, RotateCcw, Settings, ChevronRight } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useApp } from '../../context/AppContext';
 import { APP_CONFIG } from '../../utils/constants';
 
 export default function Header() {
+  const navigate = useNavigate();
   const { currentUser } = useAuth();
   const { toggleMobileSidebar } = useApp();
 
@@ -23,7 +25,10 @@ export default function Header() {
               <Menu className="w-4 h-4" />
             </button>
 
-            <div className="flex items-center gap-2">
+            <div
+              onClick={() => navigate('/')}
+              className="flex items-center gap-2 cursor-pointer"
+            >
               <span className="font-bold text-sm tracking-wider uppercase text-white font-mono">
                 {APP_CONFIG.name}
               </span>
@@ -36,7 +41,11 @@ export default function Header() {
           {/* Right: Account bar matching screenshot 4 + Functional shortcuts */}
           <div className="flex items-center gap-2 sm:gap-3">
             {/* User Profile Block from Screenshot 4 */}
-            <div className="flex items-center gap-2 bg-black/25 px-2.5 py-1 rounded border border-white/10 hover:bg-black/35 transition-colors cursor-pointer">
+            <div
+              onClick={() => navigate('/pengaturan')}
+              className="flex items-center gap-2 bg-black/25 px-2.5 py-1 rounded border border-white/10 hover:bg-black/35 transition-colors cursor-pointer"
+              title="Buka Pengaturan Akun"
+            >
               <div className="w-6 h-6 rounded-full border border-white/40 bg-[#3A220F] flex items-center justify-center text-[10px] font-bold text-amber-300">
                 {currentUser?.name ? currentUser.name.split(' ').map((n) => n[0]).join('') : 'U'}
               </div>
@@ -61,15 +70,17 @@ export default function Header() {
             <div className="flex items-center gap-1 border-l border-white/15 pl-2">
               <button
                 type="button"
+                onClick={() => navigate('/rekapan')}
                 className="p-1.5 rounded bg-black/20 hover:bg-black/35 text-white/90 hover:text-white transition-colors"
-                title="Riwayat Transaksi"
+                title="Riwayat Transaksi (Jurnal GI)"
               >
                 <RotateCcw className="w-3.5 h-3.5" />
               </button>
               <button
                 type="button"
+                onClick={() => navigate('/pengaturan')}
                 className="p-1.5 rounded bg-black/20 hover:bg-black/35 text-white/90 hover:text-white transition-colors"
-                title="Konfigurasi Sistem"
+                title="Konfigurasi Sistem & Pengaturan"
               >
                 <Settings className="w-3.5 h-3.5" />
               </button>

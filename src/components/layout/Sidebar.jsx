@@ -8,6 +8,7 @@ import {
   Receipt,
   BarChart3,
   Database,
+  Settings,
   X,
   ChevronLeft,
   ChevronRight,
@@ -26,6 +27,7 @@ const ICON_MAP = {
   Receipt,
   BarChart3,
   Database,
+  Settings,
 };
 
 export default function Sidebar() {

@@ -18,7 +18,7 @@ import { formatCurrency, formatVolume } from '../../utils/formatters';
 
 export default function BkkPage() {
   const navigate = useNavigate();
-  const { bkkList, markBkkPaid } = useData();
+  const { bkkList, markBkkPaid, suppliers, customers, bankAccounts } = useData();
 
   // Filter state replicating Screenshot 2: "Buat Cash Out"
   const [filterData, setFilterData] = useState({
@@ -117,8 +117,11 @@ export default function BkkPage() {
                 onChange={(e) => setFilterData({ ...filterData, pelanggan: e.target.value })}
                 className="w-full bg-[#1C1C1C] border border-[#2C2C2C] text-neutral-200 rounded px-3 py-2 text-xs focus:outline-none focus:border-[#F4511E]"
               >
-                <option value="PT LION WINGS">PT LION WINGS</option>
-                <option value="PT SEMEN INDONESIA">PT SEMEN INDONESIA</option>
+                {customers.map((c) => (
+                  <option key={c.id} value={c.name}>
+                    {c.name}
+                  </option>
+                ))}
               </select>
             </div>
 
@@ -132,8 +135,11 @@ export default function BkkPage() {
                 onChange={(e) => setFilterData({ ...filterData, supplier: e.target.value })}
                 className="w-full bg-[#1C1C1C] border border-[#2C2C2C] text-neutral-200 rounded px-3 py-2 text-xs focus:outline-none focus:border-[#F4511E]"
               >
-                <option value="CV BERKAH SEJAHTERA (GRESIK)">CV BERKAH SEJAHTERA (GRESIK)</option>
-                <option value="UD PASIR JAYA GRESIK">UD PASIR JAYA GRESIK</option>
+                {suppliers.map((s) => (
+                  <option key={s.id} value={s.name}>
+                    {s.name} ({s.bank} - {s.noRekening})
+                  </option>
+                ))}
               </select>
             </div>
           </div>
@@ -318,8 +324,11 @@ export default function BkkPage() {
                   onChange={(e) => setPaymentForm({ ...paymentForm, rekeningSumber: e.target.value })}
                   className="w-full bg-[#1C1C1C] border border-[#2C2C2C] text-white rounded p-1.5 text-xs"
                 >
-                  <option value="BCA - 0188920199 a/n PT Berkah Alam Semesta">BCA - 0188920199 a/n PT Berkah Alam Semesta</option>
-                  <option value="Mandiri - 14200192881 a/n PT Berkah Alam Semesta">Mandiri - 14200192881 a/n PT Berkah Alam Semesta</option>
+                  {bankAccounts.map((acc) => (
+                    <option key={acc.id} value={`${acc.bank} - ${acc.nomorRekening} a/n ${acc.rekeningAtasNama}`}>
+                      {acc.bank} - {acc.nomorRekening} a/n {acc.rekeningAtasNama}
+                    </option>
+                  ))}
                   <option value="Kas Tunai Kantor Gresik">Kas Tunai Kantor Gresik</option>
                 </select>
               </div>

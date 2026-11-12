@@ -14,9 +14,11 @@ import {
 } from 'lucide-react';
 import { formatCurrency } from '../../utils/formatters';
 import { TAX_RATES } from '../../utils/constants';
+import { useData } from '../../context/DataContext';
 
 export default function InvoicePage() {
   const navigate = useNavigate();
+  const { customers, bankAccounts } = useData();
 
   // Form state replicating Screenshot 5: "Buat Invoice"
   const [formData, setFormData] = useState({
@@ -108,8 +110,11 @@ export default function InvoicePage() {
                   onChange={(e) => setFormData({ ...formData, pelanggan: e.target.value })}
                   className="w-full bg-[#1C1C1C] border border-[#2C2C2C] text-neutral-200 rounded px-3 py-2 text-xs focus:outline-none focus:border-[#F4511E]"
                 >
-                  <option value="PT LION WINGS">PT LION WINGS</option>
-                  <option value="PT SEMEN INDONESIA">PT SEMEN INDONESIA</option>
+                  {customers.map((c) => (
+                    <option key={c.id} value={c.name}>
+                      {c.name}
+                    </option>
+                  ))}
                 </select>
               </div>
 
@@ -123,12 +128,11 @@ export default function InvoicePage() {
                   onChange={(e) => setFormData({ ...formData, kirimKeRekening: e.target.value })}
                   className="w-full bg-[#1C1C1C] border border-[#2C2C2C] text-neutral-200 rounded px-3 py-2 text-xs focus:outline-none focus:border-[#F4511E]"
                 >
-                  <option value="BCA - 0188920199 a/n PT Berkah Alam Semesta">
-                    BCA - 0188920199 a/n PT Berkah Alam Semesta
-                  </option>
-                  <option value="Mandiri - 14200192881 a/n PT Berkah Alam Semesta">
-                    Mandiri - 14200192881 a/n PT Berkah Alam Semesta
-                  </option>
+                  {bankAccounts.map((acc) => (
+                    <option key={acc.id} value={`${acc.bank} - ${acc.nomorRekening} a/n ${acc.rekeningAtasNama}`}>
+                      {acc.bank} - {acc.nomorRekening} a/n {acc.rekeningAtasNama}
+                    </option>
+                  ))}
                 </select>
               </div>
             </div>

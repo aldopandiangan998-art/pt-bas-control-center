@@ -14,6 +14,7 @@ import BkkPage from './pages/Bkk/BkkPage';
 import InvoicePage from './pages/Invoice/InvoicePage';
 import LaporanPage from './pages/Laporan/LaporanPage';
 import MasterDataPage from './pages/MasterData/MasterDataPage';
+import SettingsPage from './pages/Settings/SettingsPage';
 import NotFoundPage from './pages/NotFound/NotFoundPage';
 
 export default function App() {
@@ -33,6 +34,7 @@ export default function App() {
                   <Route path="invoices" element={<InvoicePage />} />
                   <Route path="laporan" element={<LaporanPage />} />
                   <Route path="master-data" element={<MasterDataPage />} />
+                  <Route path="pengaturan" element={<SettingsPage />} />
                   <Route path="*" element={<NotFoundPage />} />
                 </Route>
               </Routes>

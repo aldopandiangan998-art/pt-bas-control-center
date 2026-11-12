@@ -23,7 +23,7 @@ import { DEFAULT_MATERIALS } from '../../utils/constants';
 export default function PreOrderPage() {
   const navigate = useNavigate();
   const { currentUser, permissions } = useAuth();
-  const { preOrders, createPreOrder, approvePreOrder, rejectPreOrder } = useData();
+  const { preOrders, createPreOrder, approvePreOrder, rejectPreOrder, materials, customers } = useData();
 
   const [activeTab, setActiveTab] = useState('list');
   const [rejectModalId, setRejectModalId] = useState(null);
@@ -284,10 +284,24 @@ export default function PreOrderPage() {
               </label>
               <select
                 value={formData.materialId}
-                onChange={(e) => setFormData({ ...formData, materialId: e.target.value })}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  const mat = materials.find((m) => m.id === val);
+                  if (mat) {
+                    setFormData({
+                      ...formData,
+                      materialId: val,
+                      hargaBeli: mat.beli || formData.hargaBeli,
+                      hargaJual: mat.jual || formData.hargaJual,
+                      satuan: mat.satuan || formData.satuan,
+                    });
+                  } else {
+                    setFormData({ ...formData, materialId: val });
+                  }
+                }}
                 className="w-full bg-[#1C1C1C] border border-[#2C2C2C] text-neutral-100 rounded px-3 py-2 text-xs focus:outline-none focus:border-[#F4511E]"
               >
-                {DEFAULT_MATERIALS.map((mat) => (
+                {materials.map((mat) => (
                   <option key={mat.id} value={mat.id}>
                     {mat.name} (PPH {mat.pphRate}%)
                   </option>
@@ -305,9 +319,11 @@ export default function PreOrderPage() {
                 onChange={(e) => setFormData({ ...formData, customer: e.target.value })}
                 className="w-full bg-[#1C1C1C] border border-[#2C2C2C] text-neutral-100 rounded px-3 py-2 text-xs focus:outline-none focus:border-[#F4511E]"
               >
-                <option value="PT LION WINGS">PT LION WINGS</option>
-                <option value="PT SEMEN INDONESIA">PT SEMEN INDONESIA</option>
-                <option value="PT PETROKIMIA GRESIK">PT PETROKIMIA GRESIK</option>
+                {customers.map((c) => (
+                  <option key={c.id} value={c.name}>
+                    {c.kodePrefix ? `${c.kodePrefix} - ` : ''}{c.name}
+                  </option>
+                ))}
               </select>
             </div>
           </div>

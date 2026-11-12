@@ -23,7 +23,7 @@ import TruckVisualizer from '../../components/common/TruckVisualizer';
 
 export default function SuratJalanPage() {
   const navigate = useNavigate();
-  const { preOrders, createSuratJalan } = useData();
+  const { preOrders, createSuratJalan, materials, armadaList, customers } = useData();
 
   const approvedPos = preOrders.filter((po) => po.status === 'APPROVED');
 
@@ -145,9 +145,11 @@ export default function SuratJalanPage() {
               onChange={(e) => setFormData({ ...formData, customer: e.target.value })}
               className="w-full bg-[#1C1C1C] border border-[#2C2C2C] text-neutral-100 rounded px-3 py-2 text-xs focus:outline-none focus:border-[#F4511E]"
             >
-              <option value="PT LION WINGS">PT LION WINGS</option>
-              <option value="PT SEMEN INDONESIA">PT SEMEN INDONESIA</option>
-              <option value="PT PETROKIMIA GRESIK">PT PETROKIMIA GRESIK</option>
+              {customers.map((c) => (
+                <option key={c.id} value={c.name}>
+                  {c.kodePrefix ? `${c.kodePrefix} - ` : ''}{c.name}
+                </option>
+              ))}
             </select>
           </div>
 
@@ -213,8 +215,10 @@ export default function SuratJalanPage() {
                 onChange={(e) => setFormData({ ...formData, materialId: e.target.value })}
                 className="w-full bg-[#1C1C1C] border border-[#2C2C2C] text-neutral-100 rounded px-3 py-2 text-xs focus:outline-none focus:border-[#F4511E]"
               >
-                {DEFAULT_MATERIALS.map((m) => (
-                  <option key={m.id} value={m.id}>{m.name}</option>
+                {materials.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.name} ({m.satuan}) - PPH {m.pphRate}%
+                  </option>
                 ))}
               </select>
             </div>
@@ -289,13 +293,29 @@ export default function SuratJalanPage() {
               </label>
               <select
                 value={formData.nomorPolisi}
-                onChange={(e) => setFormData({ ...formData, nomorPolisi: e.target.value })}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  const arm = armadaList.find((a) => a.nopol === val);
+                  if (arm) {
+                    setFormData({
+                      ...formData,
+                      nomorPolisi: val,
+                      panjangCm: arm.panjangCm,
+                      lebarCm: arm.lebarCm,
+                      tinggiCm: arm.tinggiCm,
+                      koreksiTinggiCm: 0,
+                    });
+                  } else {
+                    setFormData({ ...formData, nomorPolisi: val });
+                  }
+                }}
                 className="w-full bg-[#1C1C1C] border border-[#2C2C2C] text-neutral-100 rounded px-3 py-2 text-xs focus:outline-none focus:border-[#F4511E] font-mono font-bold"
               >
-                <option value="W 9821 UB">W 9821 UB (Hino 500 - Tronton)</option>
-                <option value="W 8812 UA">W 8812 UA (Fuso Fighter - Index 24)</option>
-                <option value="L 9021 UT">L 9021 UT (Isuzu Giga)</option>
-                <option value="W 7710 UX">W 7710 UX (Colt Diesel)</option>
+                {armadaList.map((a) => (
+                  <option key={a.id} value={a.nopol}>
+                    {a.nopol} ({a.merk} - {a.kapasitas} m³)
+                  </option>
+                ))}
               </select>
             </div>
           </div>

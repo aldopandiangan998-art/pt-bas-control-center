@@ -1,32 +1,67 @@
 @import "tailwindcss";
 
+@plugin "daisyui" {
+  themes: ptbas --default, dark;
+}
+
+@plugin "daisyui/theme" {
+  name: "ptbas";
+  default: true;
+  --color-primary: #F4511E;
+  --color-primary-content: #FFFFFF;
+  --color-secondary: #7E4F20;
+  --color-secondary-content: #FFFFFF;
+  --color-accent: #F59E0B;
+  --color-accent-content: #000000;
+  --color-neutral: #1C1F22;
+  --color-neutral-content: #ECEFF1;
+  --color-base-100: #131517;
+  --color-base-200: #0C0D0E;
+  --color-base-300: #1C1F22;
+  --color-base-content: #ECEFF1;
+  --color-success: #10B981;
+  --color-warning: #F59E0B;
+  --color-error: #EF4444;
+  --radius-box: 0.5rem;
+  --radius-btn: 0.375rem;
+  --radius-badge: 0.25rem;
+}
+
 @layer base {
   :root {
-    --bg-base: #0D0D0D;
-    --bg-surface: #161616;
-    --bg-card: #1C1C1C;
-    --bg-input: #121212;
-    --border-subtle: #262626;
-    --border-bold: #383838;
+    --bg-base: #0C0D0E;
+    --bg-surface: #131517;
+    --bg-card: #171A1D;
+    --bg-card-hover: #1E2226;
+    --border-subtle: #24282C;
+    --border-bold: #333940;
     --primary-orange: #F4511E;
     --primary-hover: #D84315;
-    --text-primary: #F0F0F0;
-    --text-secondary: #909090;
-    --text-muted: #5C5C5C;
+    --timber-base: #6B4219;
+    --timber-dark: #4A2B0E;
+    --text-primary: #ECEFF1;
+    --text-secondary: #9BA3AF;
+    --text-muted: #64748B;
   }
 
   body {
     background-color: var(--bg-base);
     color: var(--text-primary);
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
     -webkit-font-smoothing: antialiased;
-    letter-spacing: -0.011em;
+    letter-spacing: -0.012em;
   }
 
-  /* Universal numbers: always tabular for financial and engineering alignment */
+  /* Universal numbers: always monospace tabular for financial and engineering alignment */
   .tabular-nums, .font-mono {
+    font-family: 'JetBrains Mono', monospace;
     font-variant-numeric: tabular-nums;
+  }
+
+  /* Focus ring for accessible keyboard navigation */
+  :focus-visible {
+    outline: 2px solid #F4511E;
+    outline-offset: 2px;
   }
 }
 
@@ -34,32 +69,32 @@
 .timber-header {
   background-color: #6B4219;
   background-image: 
-    linear-gradient(90deg, rgba(0, 0, 0, 0.25) 0%, transparent 40%, rgba(0, 0, 0, 0.15) 100%),
-    linear-gradient(180deg, #7E4F20 0%, #5E3914 100%);
+    linear-gradient(90deg, rgba(0, 0, 0, 0.3) 0%, transparent 40%, rgba(0, 0, 0, 0.2) 100%),
+    linear-gradient(180deg, #7E4F20 0%, #553312 100%);
   border-bottom: 1px solid #45280C;
 }
 
-/* Crisp technical grid for engineering diagrams */
+/* Technical grid background for CAD/blueprint cross-sections */
 .tech-grid {
   background-size: 16px 16px;
   background-image: 
-    linear-gradient(to right, #202020 1px, transparent 1px),
-    linear-gradient(to bottom, #202020 1px, transparent 1px);
+    linear-gradient(to right, #1E2226 1px, transparent 1px),
+    linear-gradient(to bottom, #1E2226 1px, transparent 1px);
 }
 
 /* Sleek minimalist scrollbar */
 ::-webkit-scrollbar {
-  width: 5px;
-  height: 5px;
+  width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #111111;
+  background: #0C0D0E;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #2C2C2C;
-  border-radius: 2px;
+  background: #282C30;
+  border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {

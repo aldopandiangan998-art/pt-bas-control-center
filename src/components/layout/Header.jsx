@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { Menu, RotateCcw, Settings, ChevronRight } from 'lucide-react';
+import { Menu, RotateCcw, Settings, ChevronRight, Activity } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useApp } from '../../context/AppContext';
 import { APP_CONFIG } from '../../utils/constants';
@@ -19,20 +19,24 @@ export default function Header() {
             <button
               type="button"
               onClick={toggleMobileSidebar}
-              className="lg:hidden p-1.5 rounded bg-black/25 hover:bg-black/40 text-neutral-200 transition-colors"
-              aria-label="Menu"
+              className="lg:hidden p-1.5 rounded bg-black/25 hover:bg-black/40 text-neutral-200 transition-colors focus-visible:ring-2 focus-visible:ring-amber-400"
+              aria-label="Buka Menu Navigasi"
             >
               <Menu className="w-4 h-4" />
             </button>
 
             <div
               onClick={() => navigate('/')}
-              className="flex items-center gap-2 cursor-pointer"
+              className="flex items-center gap-2 cursor-pointer group"
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => e.key === 'Enter' && navigate('/')}
             >
-              <span className="font-bold text-sm tracking-wider uppercase text-white font-mono">
+              <span className="font-extrabold text-sm tracking-wider uppercase text-white font-mono group-hover:text-amber-200 transition-colors">
                 {APP_CONFIG.name}
               </span>
-              <span className="hidden sm:inline-block text-[10px] uppercase font-bold tracking-widest px-1.5 py-0.5 rounded bg-black/35 text-amber-200/90 border border-black/20">
+              <span className="hidden sm:inline-flex items-center gap-1 text-[10px] uppercase font-bold tracking-widest px-2 py-0.5 rounded bg-black/35 text-amber-200/90 border border-black/30">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                 Gresik Hub
               </span>
             </div>
@@ -43,7 +47,10 @@ export default function Header() {
             {/* User Profile Block from Screenshot 4 */}
             <div
               onClick={() => navigate('/pengaturan')}
-              className="flex items-center gap-2 bg-black/25 px-2.5 py-1 rounded border border-white/10 hover:bg-black/35 transition-colors cursor-pointer"
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => e.key === 'Enter' && navigate('/pengaturan')}
+              className="flex items-center gap-2 bg-black/25 px-2.5 py-1 rounded border border-white/15 hover:bg-black/35 hover:border-amber-400/40 transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-amber-400"
               title="Buka Pengaturan Akun"
             >
               <div className="w-6 h-6 rounded-full border border-white/40 bg-[#3A220F] flex items-center justify-center text-[10px] font-bold text-amber-300">
@@ -59,7 +66,7 @@ export default function Header() {
                 </div>
               </div>
 
-              <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.2 rounded bg-[#F4511E] text-white ml-1">
+              <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.2 rounded bg-[#F4511E] text-white ml-1 shadow-xs">
                 {currentUser.role}
               </span>
 
@@ -71,7 +78,7 @@ export default function Header() {
               <button
                 type="button"
                 onClick={() => navigate('/rekapan')}
-                className="p-1.5 rounded bg-black/20 hover:bg-black/35 text-white/90 hover:text-white transition-colors"
+                className="p-1.5 rounded bg-black/20 hover:bg-black/35 text-white/90 hover:text-white transition-colors focus-visible:ring-2 focus-visible:ring-amber-400 cursor-pointer"
                 title="Riwayat Transaksi (Jurnal GI)"
               >
                 <RotateCcw className="w-3.5 h-3.5" />
@@ -79,7 +86,7 @@ export default function Header() {
               <button
                 type="button"
                 onClick={() => navigate('/pengaturan')}
-                className="p-1.5 rounded bg-black/20 hover:bg-black/35 text-white/90 hover:text-white transition-colors"
+                className="p-1.5 rounded bg-black/20 hover:bg-black/35 text-white/90 hover:text-white transition-colors focus-visible:ring-2 focus-visible:ring-amber-400 cursor-pointer"
                 title="Konfigurasi Sistem & Pengaturan"
               >
                 <Settings className="w-3.5 h-3.5" />

@@ -18,8 +18,8 @@ import {
 } from 'lucide-react';
 import { useData } from '../../context/DataContext';
 import { calculateKubikasi, formatVolume } from '../../utils/formatters';
-import { DEFAULT_MATERIALS } from '../../utils/constants';
 import TruckVisualizer from '../../components/common/TruckVisualizer';
+import { Button, Badge, Card, CardHeader, CardTitle, Input, Select } from '../../components/ui';
 
 export default function SuratJalanPage() {
   const navigate = useNavigate();
@@ -33,7 +33,7 @@ export default function SuratJalanPage() {
     customer: 'PT LION WINGS',
     poNumber: approvedPos[0]?.nomorPo || 'PO-LW-2026-089',
     nomorRo: 'RO-202611-00042',
-    materialId: 'mat-2',
+    materialId: 'mat-8',
     jenis: 'Jasa Angkut + Material',
     tanggal: new Date().toISOString().split('T')[0],
     waktu: '09:43',
@@ -88,210 +88,188 @@ export default function SuratJalanPage() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    createSuratJalan(formData);
+
+    const selectedMat = materials.find((m) => m.id === formData.materialId);
+
+    createSuratJalan({
+      ...formData,
+      material: selectedMat?.name || 'SIRTU',
+      volumeAkhir: kubikasi.volumeAkhir,
+      driver: 'Supir Armada Terjadwal',
+    });
+
+    // Reset form with new SJ number
     setFormData((prev) => ({
       ...prev,
-      nomorSj: String(Number(prev.nomorSj) + 1),
-      nomorNota: `NT-${Math.floor(88000 + Math.random() * 999)}`,
+      nomorSj: `296${Math.floor(70 + Math.random() * 29)}`,
+      fotoSuratJalan: null,
+      fotoPreview: null,
+      koreksiTinggiCm: 0,
     }));
   };
 
   return (
-    <div className="space-y-4 max-w-5xl mx-auto pb-24 relative">
-      {/* Top Header Bar matching Screenshot 1 */}
-      <div className="flex items-center justify-between pb-2.5 border-b border-[#242424]">
+    <div className="space-y-4 max-w-5xl mx-auto pb-20">
+      {/* Top Header */}
+      <div className="flex items-center justify-between pb-3 border-b border-[#24282C]">
         <div className="flex items-center gap-2.5">
-          <button
-            type="button"
+          <Button
+            size="sm"
+            variant="ghost"
+            icon={ArrowLeft}
             onClick={() => navigate('/')}
-            className="p-1.5 rounded bg-[#1C1C1C] hover:bg-[#282828] text-neutral-300 transition-colors"
             title="Kembali ke Dashboard"
-          >
-            <ArrowLeft className="w-4 h-4" />
-          </button>
+          />
           <div>
-            <h2 className="text-base sm:text-lg font-bold text-white tracking-tight">
-              Buat Good Issue
-            </h2>
+            <h1 className="text-base sm:text-lg font-bold text-white tracking-tight flex items-center gap-2">
+              <span>Buat Good Issue (Surat Jalan)</span>
+              <Badge size="xs" variant="primary">Pencatatan Ritase</Badge>
+            </h1>
             <p className="text-[11px] text-neutral-400">
-              Surat Jalan pengiriman material & kalkulator kubikasi armada
+              Kalkulator kubikasi bak dump truck otomatis P &times; L &times; (T + K) / 1.000.000
             </p>
           </div>
         </div>
 
-        {/* PPN Badge Switcher */}
-        <label className="text-xs text-neutral-300 flex items-center gap-1.5 cursor-pointer bg-[#181818] px-2.5 py-1 rounded border border-[#2D2D2D]">
-          <input
-            type="checkbox"
-            checked={formData.isPpn}
-            onChange={(e) => setFormData({ ...formData, isPpn: e.target.checked })}
-            className="w-3.5 h-3.5 rounded text-[#F4511E] focus:ring-0"
-          />
-          <span className="font-mono text-[11px]">Pengiriman PPN (Awalan PPN)</span>
-        </label>
+        {/* PPN Toggle Switch matching screenshot */}
+        <div className="flex items-center gap-2 bg-[#131517] border border-[#24282C] px-3 py-1.5 rounded-md">
+          <span className="text-[11px] text-neutral-300 font-mono font-medium">Format PPN:</span>
+          <button
+            type="button"
+            onClick={() => setFormData({ ...formData, isPpn: !formData.isPpn })}
+            className={`w-9 h-5 flex items-center rounded-full p-0.5 transition-colors cursor-pointer ${
+              formData.isPpn ? 'bg-[#F4511E]' : 'bg-[#2A2E33]'
+            }`}
+          >
+            <div
+              className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${
+                formData.isPpn ? 'translate-x-4' : 'translate-x-0'
+              }`}
+            />
+          </button>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
+      {/* Main 2-Column Responsive Layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
         {/* Left Form Column (7 cols) - Replicating Screenshot 1 */}
-        <form onSubmit={handleSubmit} className="lg:col-span-7 bg-[#141414] border border-[#242424] rounded-lg p-3.5 sm:p-5 space-y-3">
-          {/* Field 1: Pilih Customer */}
-          <div>
-            <label className="block text-[11px] font-medium text-neutral-400 mb-1 flex items-center gap-1">
-              <User className="w-3.5 h-3.5 text-neutral-500" />
-              Pilih Customer
-            </label>
-            <select
+        <Card className="lg:col-span-7 p-4 sm:p-5">
+          <form onSubmit={handleSubmit} className="space-y-3.5">
+            {/* Field 1: Pilih Customer */}
+            <Select
+              label="Pilih Customer"
+              icon={User}
+              required
               value={formData.customer}
               onChange={(e) => setFormData({ ...formData, customer: e.target.value })}
-              className="w-full bg-[#1C1C1C] border border-[#2C2C2C] text-neutral-100 rounded px-3 py-2 text-xs focus:outline-none focus:border-[#F4511E]"
             >
               {customers.map((c) => (
                 <option key={c.id} value={c.name}>
                   {c.kodePrefix ? `${c.kodePrefix} - ` : ''}{c.name}
                 </option>
               ))}
-            </select>
-          </div>
+            </Select>
 
-          {/* Field 2: Nomor PO Customer */}
-          <div>
-            <label className="block text-[11px] font-medium text-neutral-400 mb-1 flex items-center gap-1">
-              <Ticket className="w-3.5 h-3.5 text-neutral-500" />
-              Nomor PO Customer
-            </label>
-            <select
+            {/* Field 2: Nomor PO Customer */}
+            <Select
+              label="Nomor PO Customer"
+              icon={Ticket}
               value={formData.poNumber}
               onChange={(e) => setFormData({ ...formData, poNumber: e.target.value })}
-              className="w-full bg-[#1C1C1C] border border-[#2C2C2C] text-neutral-100 rounded px-3 py-2 text-xs focus:outline-none focus:border-[#F4511E] font-mono"
             >
               {approvedPos.map((po) => (
                 <option key={po.id} value={po.nomorPo || po.id}>
                   {po.nomorPo || '(Menunggu SJ Pertama)'} - {po.customer} ({po.materialName})
                 </option>
               ))}
-            </select>
-          </div>
+            </Select>
 
-          {/* Field 3: Nomor Surat Jalan & Nomor RO */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className="block text-[11px] font-medium text-neutral-400 mb-1 flex items-center gap-1">
-                <Ticket className="w-3.5 h-3.5 text-neutral-500" />
-                Nomor Surat Jalan <span className="text-rose-500">*</span>
-              </label>
-              <input
-                type="text"
-                value={formData.isPpn ? `PPN${formData.nomorSj}` : formData.nomorSj}
-                onChange={(e) => setFormData({ ...formData, nomorSj: e.target.value.replace('PPN', '') })}
-                className="w-full bg-[#1C1C1C] border border-[#2C2C2C] text-neutral-100 rounded px-3 py-2 text-xs focus:outline-none focus:border-[#F4511E] font-mono font-bold"
+            {/* Field 3: Nomor Surat Jalan & Nomor RO */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <Input
+                label="Nomor Surat Jalan"
+                icon={Ticket}
                 required
+                value={formData.isPpn ? `PPN${formData.nomorSj}` : formData.nomorSj}
+                onChange={(e) =>
+                  setFormData({ ...formData, nomorSj: e.target.value.replace('PPN', '') })
+                }
+                className="font-mono font-bold"
               />
-            </div>
 
-            <div>
-              <label className="block text-[11px] font-medium text-neutral-400 mb-1 flex items-center gap-1">
-                <Ticket className="w-3.5 h-3.5 text-neutral-500" />
-                Nomor RO <span className="text-rose-500">*</span>
-              </label>
-              <input
-                type="text"
+              <Input
+                label="Nomor RO"
+                icon={Ticket}
+                required
                 value={formData.nomorRo}
                 onChange={(e) => setFormData({ ...formData, nomorRo: e.target.value })}
-                className="w-full bg-[#1C1C1C] border border-[#2C2C2C] text-neutral-100 rounded px-3 py-2 text-xs focus:outline-none focus:border-[#F4511E] font-mono"
-                required
+                className="font-mono"
               />
             </div>
-          </div>
 
-          {/* Row 4: Material & Jenis */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className="block text-[11px] font-medium text-neutral-400 mb-1 flex items-center gap-1">
-                <Box className="w-3.5 h-3.5 text-neutral-500" />
-                Material <span className="text-rose-500">*</span>
-              </label>
-              <select
+            {/* Row 4: Material & Jenis */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <Select
+                label="Material"
+                icon={Box}
+                required
                 value={formData.materialId}
                 onChange={(e) => setFormData({ ...formData, materialId: e.target.value })}
-                className="w-full bg-[#1C1C1C] border border-[#2C2C2C] text-neutral-100 rounded px-3 py-2 text-xs focus:outline-none focus:border-[#F4511E]"
               >
                 {materials.map((m) => (
                   <option key={m.id} value={m.id}>
                     {m.name} ({m.satuan}) - PPH {m.pphRate}%
                   </option>
                 ))}
-              </select>
-            </div>
+              </Select>
 
-            <div>
-              <label className="block text-[11px] font-medium text-neutral-400 mb-1 flex items-center gap-1">
-                <Monitor className="w-3.5 h-3.5 text-neutral-500" />
-                Jenis <span className="text-rose-500">*</span>
-              </label>
-              <select
+              <Select
+                label="Jenis Layanan"
+                icon={Monitor}
+                required
                 value={formData.jenis}
                 onChange={(e) => setFormData({ ...formData, jenis: e.target.value })}
-                className="w-full bg-[#1C1C1C] border border-[#2C2C2C] text-neutral-100 rounded px-3 py-2 text-xs focus:outline-none focus:border-[#F4511E]"
               >
                 <option value="Jasa Angkut + Material">Jasa Angkut + Material</option>
-                <option value="Material Curah">Material Curah Saja</option>
+                <option value="Material Curah Saja">Material Curah Saja</option>
                 <option value="Jasa Angkut Saja">Jasa Angkut Saja</option>
-              </select>
+              </Select>
             </div>
-          </div>
 
-          {/* Row 5: Tanggal & Waktu */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className="block text-[11px] font-medium text-neutral-400 mb-1 flex items-center gap-1">
-                <Calendar className="w-3.5 h-3.5 text-neutral-500" />
-                Tanggal <span className="text-rose-500">*</span>
-              </label>
-              <input
+            {/* Row 5: Tanggal & Waktu */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <Input
+                label="Tanggal Good Issue"
+                icon={Calendar}
                 type="date"
+                required
                 value={formData.tanggal}
                 onChange={(e) => setFormData({ ...formData, tanggal: e.target.value })}
-                className="w-full bg-[#1C1C1C] border border-[#2C2C2C] text-neutral-100 rounded px-3 py-2 text-xs focus:outline-none focus:border-[#F4511E]"
-                required
               />
-            </div>
 
-            <div>
-              <label className="block text-[11px] font-medium text-neutral-400 mb-1 flex items-center gap-1">
-                <Clock className="w-3.5 h-3.5 text-neutral-500" />
-                Waktu
-              </label>
-              <input
+              <Input
+                label="Waktu Muat"
+                icon={Clock}
                 type="time"
                 value={formData.waktu}
                 onChange={(e) => setFormData({ ...formData, waktu: e.target.value })}
-                className="w-full bg-[#1C1C1C] border border-[#2C2C2C] text-neutral-100 rounded px-3 py-2 text-xs focus:outline-none focus:border-[#F4511E]"
               />
             </div>
-          </div>
 
-          {/* Row 6: Nomor Nota & Nomor Polisi */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className="block text-[11px] font-medium text-neutral-400 mb-1 flex items-center gap-1">
-                <FileText className="w-3.5 h-3.5 text-neutral-500" />
-                Nomor Nota
-              </label>
-              <input
-                type="text"
+            {/* Row 6: Nomor Nota & Nomor Polisi */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <Input
+                label="Nomor Nota Pengambilan"
+                icon={FileText}
                 placeholder="Contoh: NT-88921"
                 value={formData.nomorNota}
                 onChange={(e) => setFormData({ ...formData, nomorNota: e.target.value })}
-                className="w-full bg-[#1C1C1C] border border-[#2C2C2C] text-neutral-100 rounded px-3 py-2 text-xs focus:outline-none focus:border-[#F4511E] font-mono"
+                className="font-mono"
               />
-            </div>
 
-            <div>
-              <label className="block text-[11px] font-medium text-neutral-400 mb-1 flex items-center gap-1">
-                <Truck className="w-3.5 h-3.5 text-neutral-500" />
-                Nomor Polisi Armada
-              </label>
-              <select
+              <Select
+                label="Nomor Polisi Armada"
+                icon={Truck}
                 value={formData.nomorPolisi}
                 onChange={(e) => {
                   const val = e.target.value;
@@ -309,146 +287,166 @@ export default function SuratJalanPage() {
                     setFormData({ ...formData, nomorPolisi: val });
                   }
                 }}
-                className="w-full bg-[#1C1C1C] border border-[#2C2C2C] text-neutral-100 rounded px-3 py-2 text-xs focus:outline-none focus:border-[#F4511E] font-mono font-bold"
+                className="font-mono font-bold"
               >
                 {armadaList.map((a) => (
                   <option key={a.id} value={a.nopol}>
                     {a.nopol} ({a.merk} - {a.kapasitas} m³)
                   </option>
                 ))}
-              </select>
-            </div>
-          </div>
-
-          {/* TRUCK DIMENSIONS SECTION (Screenshot 1) */}
-          <div className="pt-2 border-t border-[#222222] space-y-2.5">
-            {/* Koreksi Tinggi Stepper */}
-            <div className="flex items-center justify-between p-2.5 rounded bg-[#181818] border border-[#282828]">
-              <div className="text-xs text-neutral-300 font-medium">
-                Koreksi Tinggi (K): <span className="font-mono font-bold text-white ml-1">{formData.koreksiTinggiCm} cm</span>
-              </div>
-
-              <div className="flex items-center gap-1">
-                <button
-                  type="button"
-                  onClick={() => handleKoreksiChange(-5)}
-                  className="w-7 h-7 rounded bg-[#242424] hover:bg-[#F4511E] text-white flex items-center justify-center transition-colors"
-                  title="Kurangi 5 cm"
-                >
-                  <Minus className="w-3.5 h-3.5" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleKoreksiChange(5)}
-                  className="w-7 h-7 rounded bg-[#242424] hover:bg-[#F4511E] text-white flex items-center justify-center transition-colors"
-                  title="Tambah 5 cm"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                </button>
-              </div>
+              </Select>
             </div>
 
-            {/* Tinggi Hasil Koreksi (TK) Header from Screenshot 1 */}
-            <div className="text-xs font-semibold text-neutral-300">
-              Tinggi Hasil Koreksi (TK): <span className="text-[#F4511E] font-mono font-bold">{kubikasi.tinggiHasilKoreksi} cm</span>
-            </div>
-
-            {/* 3 Dimension Inputs: P, L, T */}
-            <div className="grid grid-cols-3 gap-2">
-              <div className="bg-[#181818] border border-[#282828] rounded p-2 text-center">
-                <span className="block text-[10px] text-neutral-400 mb-0.5">Panjang (P) *</span>
-                <div className="flex items-center justify-center gap-1 font-mono font-bold text-neutral-100 text-sm">
-                  <input
-                    type="number"
-                    value={formData.panjangCm}
-                    onChange={(e) => setFormData({ ...formData, panjangCm: Number(e.target.value) })}
-                    className="w-14 bg-transparent text-center focus:outline-none border-b border-[#444] focus:border-[#F4511E]"
-                  />
-                  <span className="text-[10px] text-neutral-500 font-normal">cm</span>
-                </div>
-              </div>
-
-              <div className="bg-[#181818] border border-[#282828] rounded p-2 text-center">
-                <span className="block text-[10px] text-neutral-400 mb-0.5">Lebar (L) *</span>
-                <div className="flex items-center justify-center gap-1 font-mono font-bold text-neutral-100 text-sm">
-                  <input
-                    type="number"
-                    value={formData.lebarCm}
-                    onChange={(e) => setFormData({ ...formData, lebarCm: Number(e.target.value) })}
-                    className="w-14 bg-transparent text-center focus:outline-none border-b border-[#444] focus:border-[#F4511E]"
-                  />
-                  <span className="text-[10px] text-neutral-500 font-normal">cm</span>
-                </div>
-              </div>
-
-              <div className="bg-[#181818] border border-[#282828] rounded p-2 text-center">
-                <span className="block text-[10px] text-neutral-400 mb-0.5">Tinggi (T) *</span>
-                <div className="flex items-center justify-center gap-1 font-mono font-bold text-neutral-100 text-sm">
-                  <input
-                    type="number"
-                    value={formData.tinggiCm}
-                    onChange={(e) => setFormData({ ...formData, tinggiCm: Number(e.target.value) })}
-                    className="w-14 bg-transparent text-center focus:outline-none border-b border-[#444] focus:border-[#F4511E]"
-                  />
-                  <span className="text-[10px] text-neutral-500 font-normal">cm</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Results: Kubikasi Default & Akhir */}
-            <div className="grid grid-cols-2 gap-2">
-              <div className="bg-[#181818] border border-[#282828] rounded p-2.5">
-                <span className="block text-[10px] text-neutral-400 mb-0.5">Kubikasi Default</span>
-                <div className="text-base font-bold font-mono text-neutral-300">
-                  {kubikasi.volumeDefault} <span className="text-[10px] text-neutral-500 font-normal">m3</span>
-                </div>
-              </div>
-
-              <div className="bg-[#1C1613] border border-[#F4511E]/40 rounded p-2.5">
-                <span className="block text-[10px] text-orange-400/90 mb-0.5 font-medium">Kubikasi Akhir</span>
-                <div className="text-base font-bold font-mono text-[#F4511E]">
-                  {kubikasi.volumeAkhir} <span className="text-[10px] text-orange-400 font-normal">m3</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Upload Foto Surat Jalan */}
-          <div className="pt-2">
-            <label className="block text-[11px] font-medium text-neutral-400 mb-1 flex items-center gap-1">
-              <Camera className="w-3.5 h-3.5 text-neutral-500" />
-              Foto Bukti Fisik Surat Jalan
-            </label>
-            <div className="border border-dashed border-[#333] hover:border-[#F4511E] rounded p-2.5 text-center cursor-pointer transition-colors bg-[#111]">
-              <input
-                type="file"
-                accept="image/*"
-                className="hidden"
-                id="foto-sj-input"
-                onChange={handlePhotoUpload}
-              />
-              <label htmlFor="foto-sj-input" className="cursor-pointer block text-xs">
-                {formData.fotoPreview ? (
-                  <div className="flex items-center justify-center gap-3">
-                    <img
-                      src={formData.fotoPreview}
-                      alt="Bukti SJ"
-                      className="w-12 h-12 object-cover rounded border border-[#333]"
-                    />
-                    <div className="text-left font-mono text-xs">
-                      <span className="text-emerald-400 font-bold block">✓ {formData.fotoSuratJalan}</span>
-                      <span className="text-[10px] text-neutral-400">Klik untuk mengganti</span>
-                    </div>
-                  </div>
-                ) : (
-                  <span className="text-neutral-400 hover:text-white">
-                    Unggah / Ambil Foto Bukti Surat Jalan
+            {/* TRUCK DIMENSIONS SECTION (Screenshot 1) */}
+            <div className="pt-3 border-t border-[#24282C] space-y-3">
+              {/* Koreksi Tinggi Stepper */}
+              <div className="flex items-center justify-between p-2.5 rounded-md bg-[#181B1E] border border-[#2B3036]">
+                <div className="text-xs text-neutral-300 font-medium">
+                  Koreksi Tinggi (K):{' '}
+                  <span className="font-mono font-bold text-white ml-1">
+                    {formData.koreksiTinggiCm} cm
                   </span>
-                )}
-              </label>
+                </div>
+
+                <div className="flex items-center gap-1">
+                  <Button
+                    size="xs"
+                    variant="secondary"
+                    icon={Minus}
+                    onClick={() => handleKoreksiChange(-5)}
+                    title="Kurangi 5 cm"
+                  />
+                  <Button
+                    size="xs"
+                    variant="secondary"
+                    icon={Plus}
+                    onClick={() => handleKoreksiChange(5)}
+                    title="Tambah 5 cm"
+                  />
+                </div>
+              </div>
+
+              {/* Tinggi Hasil Koreksi (TK) Header from Screenshot 1 */}
+              <div className="text-xs font-semibold text-neutral-300 flex items-center justify-between">
+                <span>Tinggi Hasil Koreksi (TK):</span>
+                <span className="text-[#F4511E] font-mono font-bold text-sm">
+                  {kubikasi.tinggiHasilKoreksi} cm
+                </span>
+              </div>
+
+              {/* 3 Dimension Inputs: P, L, T */}
+              <div className="grid grid-cols-3 gap-2">
+                <div className="bg-[#181B1E] border border-[#2B3036] rounded-md p-2 text-center">
+                  <span className="block text-[10px] text-neutral-400 mb-0.5">Panjang (P) *</span>
+                  <div className="flex items-center justify-center gap-1 font-mono font-bold text-neutral-100 text-sm">
+                    <input
+                      type="number"
+                      value={formData.panjangCm}
+                      onChange={(e) =>
+                        setFormData({ ...formData, panjangCm: Number(e.target.value) })
+                      }
+                      className="w-16 bg-transparent text-center focus:outline-none border-b border-[#3E454D] focus:border-[#F4511E]"
+                    />
+                    <span className="text-[10px] text-neutral-500 font-normal">cm</span>
+                  </div>
+                </div>
+
+                <div className="bg-[#181B1E] border border-[#2B3036] rounded-md p-2 text-center">
+                  <span className="block text-[10px] text-neutral-400 mb-0.5">Lebar (L) *</span>
+                  <div className="flex items-center justify-center gap-1 font-mono font-bold text-neutral-100 text-sm">
+                    <input
+                      type="number"
+                      value={formData.lebarCm}
+                      onChange={(e) =>
+                        setFormData({ ...formData, lebarCm: Number(e.target.value) })
+                      }
+                      className="w-16 bg-transparent text-center focus:outline-none border-b border-[#3E454D] focus:border-[#F4511E]"
+                    />
+                    <span className="text-[10px] text-neutral-500 font-normal">cm</span>
+                  </div>
+                </div>
+
+                <div className="bg-[#181B1E] border border-[#2B3036] rounded-md p-2 text-center">
+                  <span className="block text-[10px] text-neutral-400 mb-0.5">Tinggi (T) *</span>
+                  <div className="flex items-center justify-center gap-1 font-mono font-bold text-neutral-100 text-sm">
+                    <input
+                      type="number"
+                      value={formData.tinggiCm}
+                      onChange={(e) =>
+                        setFormData({ ...formData, tinggiCm: Number(e.target.value) })
+                      }
+                      className="w-16 bg-transparent text-center focus:outline-none border-b border-[#3E454D] focus:border-[#F4511E]"
+                    />
+                    <span className="text-[10px] text-neutral-500 font-normal">cm</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Results: Kubikasi Default & Akhir */}
+              <div className="grid grid-cols-2 gap-2 pt-1">
+                <div className="bg-[#181B1E] border border-[#2B3036] rounded-md p-2.5">
+                  <span className="block text-[10px] text-neutral-400 mb-0.5">Kubikasi Default</span>
+                  <div className="text-base font-bold font-mono text-neutral-300">
+                    {kubikasi.volumeDefault} <span className="text-[10px] text-neutral-500 font-normal">m³</span>
+                  </div>
+                </div>
+
+                <div className="bg-[#1C1511] border border-[#F4511E]/40 rounded-md p-2.5">
+                  <span className="block text-[10px] text-orange-400 mb-0.5 font-medium">Kubikasi Akhir</span>
+                  <div className="text-base font-bold font-mono text-[#F4511E]">
+                    {kubikasi.volumeAkhir} <span className="text-[10px] text-orange-400 font-normal">m³</span>
+                  </div>
+                </div>
+              </div>
             </div>
-          </div>
-        </form>
+
+            {/* Upload Foto Surat Jalan */}
+            <div className="pt-2">
+              <label className="block text-[11px] font-medium text-neutral-400 mb-1 flex items-center gap-1">
+                <Camera className="w-3.5 h-3.5 text-neutral-500" />
+                Foto Bukti Fisik Surat Jalan
+              </label>
+              <div className="border border-dashed border-[#333940] hover:border-[#F4511E] rounded-md p-3 text-center cursor-pointer transition-colors bg-[#101214]">
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  id="foto-sj-input"
+                  onChange={handlePhotoUpload}
+                />
+                <label htmlFor="foto-sj-input" className="cursor-pointer block text-xs">
+                  {formData.fotoPreview ? (
+                    <div className="flex items-center justify-center gap-3">
+                      <img
+                        src={formData.fotoPreview}
+                        alt="Bukti SJ"
+                        className="w-12 h-12 object-cover rounded border border-[#333]"
+                      />
+                      <div className="text-left font-mono text-xs">
+                        <span className="text-emerald-400 font-bold block">✓ {formData.fotoSuratJalan}</span>
+                        <span className="text-[10px] text-neutral-400">Klik untuk mengganti berkas</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <span className="text-neutral-400 hover:text-white">
+                      Ambil Foto / Unggah Bukti Fisik Surat Jalan
+                    </span>
+                  )}
+                </label>
+              </div>
+            </div>
+
+            <Button
+              type="submit"
+              variant="primary"
+              size="md"
+              icon={Save}
+              className="w-full mt-2"
+            >
+              Simpan Surat Jalan (Good Issue)
+            </Button>
+          </form>
+        </Card>
 
         {/* Right Column (5 cols) - Technical Blueprint & Dispatch Summary */}
         <div className="lg:col-span-5 space-y-3">
@@ -460,54 +458,44 @@ export default function SuratJalanPage() {
             onApplyPreset={handleApplyPreset}
           />
 
-          <div className="bg-[#141414] border border-[#242424] rounded-lg p-3 space-y-2.5">
-            <h4 className="text-[11px] font-bold text-neutral-300 uppercase tracking-wider font-mono">
-              Verifikasi Kiriman
-            </h4>
+          <Card className="p-4 space-y-3">
+            <h2 className="text-xs font-bold text-neutral-300 uppercase tracking-wider font-mono">
+              Verifikasi Kiriman Harian
+            </h2>
 
             <div className="space-y-1.5 text-xs">
-              <div className="flex justify-between py-1 border-b border-[#202020]">
-                <span className="text-neutral-500">Nopol:</span>
+              <div className="flex justify-between py-1 border-b border-[#202326]">
+                <span className="text-neutral-500">Nopol Armada:</span>
                 <span className="font-mono font-bold text-neutral-200">{formData.nomorPolisi}</span>
               </div>
-              <div className="flex justify-between py-1 border-b border-[#202020]">
+              <div className="flex justify-between py-1 border-b border-[#202326]">
                 <span className="text-neutral-500">Customer:</span>
                 <span className="text-neutral-200">{formData.customer}</span>
               </div>
-              <div className="flex justify-between py-1 border-b border-[#202020]">
+              <div className="flex justify-between py-1 border-b border-[#202326]">
                 <span className="text-neutral-500">No. PO:</span>
                 <span className="font-mono text-neutral-300">{formData.poNumber}</span>
               </div>
-              <div className="flex justify-between py-1.5 border-t border-[#2A2A2A] items-baseline font-mono">
-                <span className="font-semibold text-neutral-300">Volume Riil:</span>
-                <span className="text-base font-bold text-[#F4511E]">
+              <div className="flex justify-between py-2 border-t border-[#262A2F] items-baseline font-mono">
+                <span className="font-semibold text-neutral-300">Volume Riil Diterima:</span>
+                <span className="text-lg font-bold text-[#F4511E]">
                   {formatVolume(kubikasi.volumeAkhir)}
                 </span>
               </div>
             </div>
 
-            <button
+            <Button
               type="button"
+              variant="primary"
+              size="md"
+              icon={Save}
               onClick={handleSubmit}
-              className="w-full py-2.5 rounded bg-[#F4511E] hover:bg-[#D84315] text-white font-bold text-xs uppercase tracking-wider shadow transition-colors flex items-center justify-center gap-1.5"
+              className="w-full"
             >
-              <Save className="w-4 h-4" />
               Simpan Good Issue
-            </button>
-          </div>
+            </Button>
+          </Card>
         </div>
-      </div>
-
-      {/* Floating Action Button (FAB) matching Screenshot 1 */}
-      <div className="fixed bottom-6 right-6 z-30">
-        <button
-          type="button"
-          onClick={handleSubmit}
-          className="w-12 h-12 rounded-full bg-[#F4511E] hover:bg-[#D84315] text-white flex items-center justify-center shadow-lg transform hover:scale-105 active:scale-95 transition-all"
-          title="Simpan Good Issue"
-        >
-          <Save className="w-5 h-5" />
-        </button>
       </div>
     </div>
   );

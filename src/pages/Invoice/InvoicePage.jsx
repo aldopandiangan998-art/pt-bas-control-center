@@ -15,6 +15,7 @@ import {
 import { formatCurrency } from '../../utils/formatters';
 import { TAX_RATES } from '../../utils/constants';
 import { useData } from '../../context/DataContext';
+import { Button, Badge, Card, Input, Select } from '../../components/ui';
 
 export default function InvoicePage() {
   const navigate = useNavigate();
@@ -60,231 +61,202 @@ export default function InvoicePage() {
   };
 
   return (
-    <div className="space-y-4 max-w-5xl mx-auto pb-16">
+    <div className="space-y-4 max-w-5xl mx-auto pb-20">
       {/* Top Header Bar matching Screenshot 5 */}
-      <div className="flex items-center justify-between pb-2.5 border-b border-[#242424]">
+      <div className="flex items-center justify-between pb-3 border-b border-[#24282C]">
         <div className="flex items-center gap-2.5">
-          <button
-            type="button"
+          <Button
+            size="sm"
+            variant="ghost"
+            icon={ArrowLeft}
             onClick={() => navigate('/')}
-            className="p-1.5 rounded bg-[#1C1C1C] hover:bg-[#282828] text-neutral-300 transition-colors"
             title="Kembali ke Dashboard"
-          >
-            <ArrowLeft className="w-4 h-4" />
-          </button>
+          />
           <div>
-            <h2 className="text-base sm:text-lg font-bold text-white tracking-tight">
-              Buat Invoice
-            </h2>
+            <h1 className="text-base sm:text-lg font-bold text-white tracking-tight flex items-center gap-2">
+              <span>Buat Invoice Penjualan</span>
+              <Badge size="xs" variant="primary">Faktur Pajak</Badge>
+            </h1>
             <p className="text-[11px] text-neutral-400">
-              Faktur penagihan customer • Menghitung PPN 11% & PPH otomatis
+              Faktur tagihan customer resmi • Menghitung PPN 11% & PPH 2.0% / 2.65% otomatis
             </p>
           </div>
         </div>
 
         <div className="flex items-center gap-1.5">
-          <button
-            type="button"
+          <Button
+            size="xs"
+            variant="ghost"
+            icon={RotateCcw}
             onClick={() => setInvoiceGenerated(false)}
-            className="p-1.5 rounded bg-[#1C1C1C] hover:bg-[#282828] text-neutral-400 hover:text-white"
-            title="Reset"
-          >
-            <RotateCcw className="w-3.5 h-3.5" />
-          </button>
+            title="Reset Faktur"
+          />
         </div>
       </div>
 
       {/* Filter / Form Container strictly replicating Screenshot 5 */}
-      <form onSubmit={handleApply} className="bg-[#141414] border border-[#242424] rounded-lg p-3.5 sm:p-4 space-y-3">
-        {!filterHidden && (
-          <>
-            {/* Row 1: Pilih Pelanggan & Kirim ke Rekening */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="block text-[11px] font-medium text-neutral-400 mb-1 flex items-center gap-1">
-                  <User className="w-3.5 h-3.5 text-neutral-500" />
-                  Pilih Pelanggan
-                </label>
-                <select
+      <Card className="p-4 sm:p-5">
+        <form onSubmit={handleApply} className="space-y-3.5">
+          {!filterHidden && (
+            <>
+              {/* Row 1: Pilih Pelanggan & Kirim ke Rekening */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <Select
+                  label="Pilih Pelanggan"
+                  icon={User}
                   value={formData.pelanggan}
                   onChange={(e) => setFormData({ ...formData, pelanggan: e.target.value })}
-                  className="w-full bg-[#1C1C1C] border border-[#2C2C2C] text-neutral-200 rounded px-3 py-2 text-xs focus:outline-none focus:border-[#F4511E]"
                 >
                   {customers.map((c) => (
                     <option key={c.id} value={c.name}>
                       {c.name}
                     </option>
                   ))}
-                </select>
-              </div>
+                </Select>
 
-              <div>
-                <label className="block text-[11px] font-medium text-neutral-400 mb-1 flex items-center gap-1">
-                  <Building2 className="w-3.5 h-3.5 text-neutral-500" />
-                  Kirim ke Rekening
-                </label>
-                <select
+                <Select
+                  label="Kirim ke Rekening PT BAS"
+                  icon={Building2}
                   value={formData.kirimKeRekening}
                   onChange={(e) => setFormData({ ...formData, kirimKeRekening: e.target.value })}
-                  className="w-full bg-[#1C1C1C] border border-[#2C2C2C] text-neutral-200 rounded px-3 py-2 text-xs focus:outline-none focus:border-[#F4511E]"
                 >
                   {bankAccounts.map((acc) => (
-                    <option key={acc.id} value={`${acc.bank} - ${acc.nomorRekening} a/n ${acc.rekeningAtasNama}`}>
+                    <option
+                      key={acc.id}
+                      value={`${acc.bank} - ${acc.nomorRekening} a/n ${acc.rekeningAtasNama}`}
+                    >
                       {acc.bank} - {acc.nomorRekening} a/n {acc.rekeningAtasNama}
                     </option>
                   ))}
-                </select>
+                </Select>
               </div>
-            </div>
 
-            {/* Row 2: ID Received Order & Rekening Atas Nama (auto) */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="block text-[11px] font-medium text-neutral-400 mb-1 flex items-center gap-1">
-                  <Ticket className="w-3.5 h-3.5 text-neutral-500" />
-                  ID Received Order
-                </label>
-                <select
+              {/* Row 2: ID Received Order & Rekening Atas Nama (auto) */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <Input
+                  label="ID Received Order"
+                  icon={Ticket}
                   value={formData.idReceivedOrder}
                   onChange={(e) => setFormData({ ...formData, idReceivedOrder: e.target.value })}
-                  className="w-full bg-[#1C1C1C] border border-[#2C2C2C] text-neutral-200 rounded px-3 py-2 text-xs focus:outline-none focus:border-[#F4511E] font-mono"
-                >
-                  <option value="RO-202611-00042">RO-202611-00042 (PO-LW-2026-089)</option>
-                </select>
-              </div>
+                  className="font-mono"
+                />
 
-              <div>
-                <label className="block text-[11px] font-medium text-neutral-400 mb-1 flex items-center gap-1">
-                  <User className="w-3.5 h-3.5 text-neutral-500" />
-                  Rekening Atas Nama (auto)
-                </label>
-                <input
-                  type="text"
+                <Input
+                  label="Rekening Atas Nama (auto)"
+                  icon={User}
+                  readOnly
                   value={formData.rekeningAtasNama}
-                  readOnly
-                  className="w-full bg-[#181818] border border-[#242424] text-neutral-300 rounded px-3 py-2 text-xs font-mono"
+                  className="text-neutral-400 bg-[#141618]"
                 />
               </div>
-            </div>
 
-            {/* Row 3: ID Nomor PO Customer (auto), Tanggal, Waktu */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div>
-                <label className="block text-[11px] font-medium text-neutral-400 mb-1 flex items-center gap-1">
-                  <Ticket className="w-3.5 h-3.5 text-neutral-500" />
-                  ID Nomor PO Customer (auto)
-                </label>
-                <input
-                  type="text"
+              {/* Row 3: ID Nomor PO Customer (auto) & Tanggal/Waktu */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <Input
+                  label="ID Nomor PO Customer (auto)"
+                  icon={Ticket}
+                  readOnly
                   value={formData.nomorPoCustomer}
-                  readOnly
-                  className="w-full bg-[#181818] border border-[#242424] text-neutral-300 rounded px-3 py-2 text-xs font-mono"
+                  className="font-mono font-bold text-neutral-300 bg-[#141618]"
                 />
-              </div>
 
-              <div>
-                <label className="block text-[11px] font-medium text-neutral-400 mb-1 flex items-center gap-1">
-                  <Calendar className="w-3.5 h-3.5 text-neutral-500" />
-                  Tanggal <span className="text-rose-500">*</span>
-                </label>
-                <input
+                <Input
+                  label="Tanggal Invoice"
+                  icon={Calendar}
                   type="date"
                   value={formData.tanggal}
                   onChange={(e) => setFormData({ ...formData, tanggal: e.target.value })}
-                  className="w-full bg-[#1C1C1C] border border-[#2C2C2C] text-neutral-100 rounded px-3 py-2 text-xs focus:outline-none focus:border-[#F4511E]"
                 />
-              </div>
 
-              <div>
-                <label className="block text-[11px] font-medium text-neutral-400 mb-1 flex items-center gap-1">
-                  <Clock className="w-3.5 h-3.5 text-neutral-500" />
-                  Waktu
-                </label>
-                <input
+                <Input
+                  label="Waktu"
+                  icon={Clock}
                   type="time"
                   value={formData.waktu}
                   onChange={(e) => setFormData({ ...formData, waktu: e.target.value })}
-                  className="w-full bg-[#1C1C1C] border border-[#2C2C2C] text-neutral-100 rounded px-3 py-2 text-xs focus:outline-none focus:border-[#F4511E]"
                 />
               </div>
-            </div>
-          </>
-        )}
+            </>
+          )}
 
-        {/* Orange Action Button: TERAPKAN (Screenshot 5) */}
-        <button
-          type="submit"
-          className="w-full py-2.5 rounded bg-[#F4511E] hover:bg-[#D84315] text-white font-bold text-xs tracking-wider uppercase shadow transition-colors"
-        >
-          TERAPKAN
-        </button>
-
-        {/* Toggle Collapse: Sembunyikan Filter ^ */}
-        <div className="text-center pt-0.5">
-          <button
-            type="button"
-            onClick={() => setFilterHidden(!filterHidden)}
-            className="text-[11px] text-neutral-400 hover:text-white inline-flex items-center gap-1"
+          {/* Orange Action Button: TERAPKAN (Screenshot 5) */}
+          <Button
+            type="submit"
+            variant="primary"
+            size="md"
+            className="w-full uppercase font-bold tracking-wider"
           >
-            {filterHidden ? 'Tampilkan Filter' : 'Sembunyikan Filter'}
-            {filterHidden ? <ChevronDown className="w-3 h-3" /> : <ChevronUp className="w-3 h-3" />}
-          </button>
-        </div>
-      </form>
+            TERAPKAN & GENERATE INVOICE
+          </Button>
+
+          {/* Toggle Collapse: Sembunyikan Filter */}
+          <div className="text-center pt-1">
+            <button
+              type="button"
+              onClick={() => setFilterHidden(!filterHidden)}
+              className="text-[11px] text-neutral-400 hover:text-white inline-flex items-center gap-1 font-mono transition-colors cursor-pointer"
+            >
+              {filterHidden ? 'Tampilkan Filter' : 'Sembunyikan Filter'}
+              {filterHidden ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronUp className="w-3.5 h-3.5" />}
+            </button>
+          </div>
+        </form>
+      </Card>
 
       {/* Generated Enterprise Invoice Sheet (Aturan 28 - 32) */}
       {invoiceGenerated && (
-        <section className="bg-[#141414] border border-[#242424] rounded-lg p-5 sm:p-6 space-y-4">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-4 border-b border-[#222222]">
+        <Card className="p-5 sm:p-6 space-y-4">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-4 border-b border-[#24282C]">
             <div>
               <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-[#F4511E] block">
                 PT BERKAH ALAM SEMESTA • FAKTUR TAGIHAN
               </span>
-              <h3 className="text-lg font-bold text-white font-mono mt-0.5">
+              <h2 className="text-lg font-bold text-white font-mono mt-0.5">
                 INV-202611-00001
-              </h3>
-              <p className="text-xs text-neutral-400 font-mono">
-                Customer: <strong className="text-white">{formData.pelanggan}</strong> | PO: {formData.nomorPoCustomer}
+              </h2>
+              <p className="text-xs text-neutral-400 font-mono mt-0.5">
+                Customer: <strong className="text-white">{formData.pelanggan}</strong> | PO:{' '}
+                {formData.nomorPoCustomer}
               </p>
             </div>
 
-            <button
-              type="button"
+            <Button
+              variant="secondary"
+              size="sm"
+              icon={Printer}
               onClick={() => window.print()}
-              className="px-3 py-1.5 rounded bg-[#1F1F1F] hover:bg-[#282828] text-white text-xs font-semibold flex items-center gap-1.5 border border-[#333] transition-colors"
             >
-              <Printer className="w-3.5 h-3.5" />
-              Cetak Faktur
-            </button>
+              Cetak Faktur Penjualan
+            </Button>
           </div>
 
           {/* Tax Breakdown Table per Section 2 Aturan 29 - 31 */}
           <div className="space-y-2 max-w-sm ml-auto font-mono text-xs">
-            <div className="flex justify-between py-1 border-b border-[#1E1E1E]">
+            <div className="flex justify-between py-1.5 border-b border-[#202326]">
               <span className="text-neutral-400">Total Jasa & Material:</span>
               <span className="text-white font-medium">{formatCurrency(calculation.subtotal)}</span>
             </div>
 
-            <div className="flex justify-between py-1 border-b border-[#1E1E1E]">
-              <span className="text-neutral-400">PPN 11%:</span>
-              <span className="text-neutral-200">+{formatCurrency(calculation.ppnNominal)}</span>
+            <div className="flex justify-between py-1.5 border-b border-[#202326]">
+              <span className="text-neutral-400">PPN 11% (Pasal 22):</span>
+              <span className="text-emerald-400 font-medium">+{formatCurrency(calculation.ppnNominal)}</span>
             </div>
 
-            <div className="flex justify-between py-1 border-b border-[#1E1E1E]">
+            <div className="flex justify-between py-1.5 border-b border-[#202326]">
               <span className="text-neutral-400">
                 PPH {calculation.pphRate}% ({formData.materialType === 'Curah' ? 'Curah' : 'Padat'}):
               </span>
-              <span className="text-[#F4511E]">-{formatCurrency(calculation.pphNominal)}</span>
+              <span className="text-[#F4511E] font-medium">-{formatCurrency(calculation.pphNominal)}</span>
             </div>
 
-            <div className="pt-2 flex justify-between items-baseline border-t border-[#2A2A2A]">
-              <span className="text-xs font-bold text-neutral-300">Total Dibayar:</span>
-              <span className="text-base font-bold text-[#F4511E]">
+            <div className="pt-2 flex justify-between items-baseline border-t border-[#2A2E33]">
+              <span className="text-xs font-bold text-neutral-300">Total Bersih Tagihan:</span>
+              <span className="text-lg font-bold text-[#F4511E]">
                 {formatCurrency(calculation.totalTagihan)}
               </span>
             </div>
           </div>
-        </section>
+        </Card>
       )}
     </div>
   );

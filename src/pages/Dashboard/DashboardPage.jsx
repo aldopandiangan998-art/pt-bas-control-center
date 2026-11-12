@@ -19,12 +19,13 @@ import {
   TrendingUp,
   Clock,
   ChevronRight,
-  Shield,
   MoreHorizontal,
+  ArrowUpRight,
 } from 'lucide-react';
 import { useData } from '../../context/DataContext';
 import { useAuth } from '../../context/AuthContext';
 import { formatCurrency, formatVolume } from '../../utils/formatters';
+import { Button, Badge, Card, CardHeader, CardTitle, CardContent } from '../../components/ui';
 
 export default function DashboardPage() {
   const navigate = useNavigate();
@@ -53,7 +54,7 @@ export default function DashboardPage() {
   // 8 Master Data strictly matching Screenshot 3
   const masterData = [
     { title: 'Data Pengguna', desc: '4 Role Akun', tab: 'pengguna', icon: Users },
-    { title: 'Data Material', desc: '8 Jenis (Tarif PPH)', tab: 'material', icon: Mountain },
+    { title: 'Data Material', desc: '9 Jenis (Tarif PPH)', tab: 'material', icon: Mountain },
     { title: 'Data Supplier', desc: 'Vendor Tambang', tab: 'supplier', icon: HardHat },
     { title: 'Data Customer', desc: 'Customer Proyek', tab: 'customer', icon: Building2 },
     { title: 'Data Armada', desc: 'Dump Truck', tab: 'armada', icon: Truck },
@@ -63,136 +64,152 @@ export default function DashboardPage() {
   ];
 
   return (
-    <div className="space-y-5">
-      {/* Top Industrial Status Strip with Quick Action Bar matching Screenshot 4 */}
-      <div className="bg-[#141414] border border-[#242424] rounded-lg p-3 flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
+    <div className="space-y-6">
+      {/* Top Status Strip & Quick Action Bar matching Screenshot 4 */}
+      <div className="bg-[#131517] border border-[#24282C] rounded-lg p-3 flex flex-col md:flex-row items-start md:items-center justify-between gap-3 shadow-xs">
         <div className="flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-          <span className="text-xs font-mono font-semibold text-neutral-300 uppercase tracking-wide">
+          <span className="w-2 h-2 rounded-full bg-emerald-400" />
+          <span className="text-xs font-mono font-bold text-neutral-200 uppercase tracking-wider">
             Pusat Kendali Operasi Gresik
           </span>
-          <span className="text-neutral-500">•</span>
+          <span className="text-neutral-600">•</span>
           <span className="text-xs text-neutral-400">
-            Operator: <strong className="text-neutral-200">{currentUser.name}</strong> ({currentUser.role})
+            Operator: <strong className="text-neutral-200 font-medium">{currentUser.name}</strong>{' '}
+            <span className="text-neutral-500 font-mono">({currentUser.role})</span>
           </span>
         </div>
 
         {/* Quick Action Buttons matching Screenshot 4 dock */}
         <div className="flex items-center gap-1.5 flex-wrap">
           <span className="text-[10px] text-neutral-500 font-mono uppercase mr-1">Aksi Cepat:</span>
-          <button
-            type="button"
+          <Button
+            size="xs"
+            variant="secondary"
+            icon={Plus}
             onClick={() => navigate('/pre-orders')}
-            className="px-2.5 py-1 rounded bg-[#1F1F1F] hover:bg-[#2A2A2A] text-neutral-200 text-xs font-medium border border-[#333] transition-colors flex items-center gap-1"
           >
-            <Plus className="w-3 h-3 text-[#F4511E]" />
-            <span>Buat RO</span>
-          </button>
-          <button
-            type="button"
+            Buat RO
+          </Button>
+          <Button
+            size="xs"
+            variant="secondary"
+            icon={Plus}
             onClick={() => navigate('/surat-jalan')}
-            className="px-2.5 py-1 rounded bg-[#1F1F1F] hover:bg-[#2A2A2A] text-neutral-200 text-xs font-medium border border-[#333] transition-colors flex items-center gap-1"
           >
-            <Plus className="w-3 h-3 text-[#F4511E]" />
-            <span>Buat GI</span>
-          </button>
-          <button
-            type="button"
+            Buat GI
+          </Button>
+          <Button
+            size="xs"
+            variant="secondary"
+            icon={Plus}
             onClick={() => navigate('/rekapan')}
-            className="px-2.5 py-1 rounded bg-[#1F1F1F] hover:bg-[#2A2A2A] text-neutral-200 text-xs font-medium border border-[#333] transition-colors flex items-center gap-1"
           >
-            <Plus className="w-3 h-3 text-[#F4511E]" />
-            <span>Buat Jurnal GI</span>
-          </button>
-          <button
-            type="button"
+            Buat Jurnal GI
+          </Button>
+          <Button
+            size="xs"
+            variant="secondary"
+            icon={Plus}
             onClick={() => navigate('/bkk')}
-            className="px-2.5 py-1 rounded bg-[#1F1F1F] hover:bg-[#2A2A2A] text-neutral-200 text-xs font-medium border border-[#333] transition-colors flex items-center gap-1"
           >
-            <Plus className="w-3 h-3 text-[#F4511E]" />
-            <span>Buat CO</span>
-          </button>
-          <button
-            type="button"
+            Buat CO
+          </Button>
+          <Button
+            size="xs"
+            variant="secondary"
+            icon={Plus}
             onClick={() => navigate('/invoices')}
-            className="px-2.5 py-1 rounded bg-[#1F1F1F] hover:bg-[#2A2A2A] text-neutral-200 text-xs font-medium border border-[#333] transition-colors flex items-center gap-1"
           >
-            <Plus className="w-3 h-3 text-[#F4511E]" />
-            <span>Buat Invoice</span>
-          </button>
-          <button
-            type="button"
+            Buat Invoice
+          </Button>
+          <Button
+            size="xs"
+            variant="ghost"
+            icon={MoreHorizontal}
             onClick={() => navigate('/pengaturan')}
-            className="px-2 py-1 rounded bg-[#1F1F1F] hover:bg-[#2A2A2A] text-neutral-300 text-xs font-medium border border-[#333] transition-colors flex items-center gap-1"
             title="Lihat Pengaturan & Konfigurasi"
           >
-            <MoreHorizontal className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Lainnya</span>
-          </button>
+            Lainnya
+          </Button>
         </div>
       </div>
 
       {/* 3 Real Operational KPI Panels */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <div
+        <Card
+          hover
           onClick={() => navigate('/rekapan')}
-          className="bg-[#141414] border border-[#242424] hover:border-[#F4511E]/60 rounded-lg p-3.5 cursor-pointer transition-colors"
+          className="p-4 cursor-pointer group"
         >
           <div className="flex items-center justify-between text-neutral-400 mb-1">
-            <span className="text-[11px] font-mono uppercase tracking-wider">Rekapan Belum Di-Invoice</span>
-            <Clock className="w-3.5 h-3.5 text-neutral-500" />
+            <span className="text-[11px] font-mono font-semibold uppercase tracking-wider text-neutral-400">
+              Rekapan Belum Di-Invoice
+            </span>
+            <Clock className="w-3.5 h-3.5 text-neutral-500 group-hover:text-amber-400 transition-colors" />
           </div>
-          <div className="text-xl font-mono font-bold text-white tracking-tight">
-            {suratJalanList.length} Pengiriman
+          <div className="text-2xl font-mono font-bold text-white tracking-tight mt-1">
+            {suratJalanList.length} <span className="text-xs font-normal text-neutral-400 font-sans">Pengiriman</span>
           </div>
-          <div className="text-[11px] text-neutral-500 mt-1">
-            Total Volume: <strong className="text-neutral-300 font-mono">{formatVolume(totalVolumeDelivered)}</strong>
+          <div className="text-xs text-neutral-400 mt-2 font-mono flex items-center justify-between border-t border-[#202326] pt-2">
+            <span>Total Volume:</span>
+            <strong className="text-neutral-200">{formatVolume(totalVolumeDelivered)}</strong>
           </div>
-        </div>
+        </Card>
 
-        <div
+        <Card
+          hover
           onClick={() => navigate('/laporan')}
-          className="bg-[#141414] border border-[#242424] hover:border-[#F4511E]/60 rounded-lg p-3.5 cursor-pointer transition-colors"
+          className="p-4 cursor-pointer group"
         >
           <div className="flex items-center justify-between text-neutral-400 mb-1">
-            <span className="text-[11px] font-mono uppercase tracking-wider">Piutang Customer Berjalan</span>
-            <TrendingUp className="w-3.5 h-3.5 text-neutral-500" />
+            <span className="text-[11px] font-mono font-semibold uppercase tracking-wider text-neutral-400">
+              Piutang Customer Berjalan
+            </span>
+            <TrendingUp className="w-3.5 h-3.5 text-neutral-500 group-hover:text-emerald-400 transition-colors" />
           </div>
-          <div className="text-xl font-mono font-bold text-white tracking-tight">
+          <div className="text-2xl font-mono font-bold text-white tracking-tight mt-1">
             IDR 84,250,000
           </div>
-          <div className="text-[11px] text-neutral-500 mt-1">
-            5 faktur invoice belum dilunasi
+          <div className="text-xs text-neutral-400 mt-2 font-mono flex items-center justify-between border-t border-[#202326] pt-2">
+            <span>Status Penagihan:</span>
+            <span className="text-amber-400 font-semibold">5 Invoice Aktif</span>
           </div>
-        </div>
+        </Card>
 
-        <div
+        <Card
+          hover
           onClick={() => navigate('/bkk')}
-          className="bg-[#141414] border border-[#242424] hover:border-[#F4511E]/60 rounded-lg p-3.5 cursor-pointer transition-colors"
+          className="p-4 cursor-pointer group"
         >
           <div className="flex items-center justify-between text-neutral-400 mb-1">
-            <span className="text-[11px] font-mono uppercase tracking-wider">Kewajiban BKK Supplier</span>
-            <AlertCircle className="w-3.5 h-3.5 text-neutral-500" />
+            <span className="text-[11px] font-mono font-semibold uppercase tracking-wider text-neutral-400">
+              Kewajiban BKK Supplier
+            </span>
+            <AlertCircle className="w-3.5 h-3.5 text-neutral-500 group-hover:text-[#F4511E] transition-colors" />
           </div>
-          <div className="text-xl font-mono font-bold text-[#F4511E] tracking-tight">
+          <div className="text-2xl font-mono font-bold text-[#F4511E] tracking-tight mt-1">
             {formatCurrency(totalHutang)}
           </div>
-          <div className="text-[11px] text-neutral-500 mt-1">
-            BKK siap dicatat bayar ke vendor
+          <div className="text-xs text-neutral-400 mt-2 font-mono flex items-center justify-between border-t border-[#202326] pt-2">
+            <span>Disbursement Status:</span>
+            <span className="text-neutral-300">Siap Dicatat Lunas</span>
           </div>
-        </div>
+        </Card>
       </div>
 
       {/* 9 Modules Grid strictly matching Screenshot 3 */}
       <div>
-        <div className="flex items-center justify-between mb-2.5">
-          <h3 className="text-xs font-bold text-neutral-300 uppercase tracking-wider">
-            Menu Operasional Utama
-          </h3>
-          <span className="text-[11px] text-neutral-500">9 Modul Transaksi</span>
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <h3 className="text-xs font-bold text-neutral-300 uppercase tracking-wider font-mono">
+              Menu Operasional Utama
+            </h3>
+            <Badge size="xs" variant="neutral">9 Modul</Badge>
+          </div>
+          <span className="text-[11px] text-neutral-500">PT Berkah Alam Semesta Logistics ERP</span>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 gap-2.5">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 gap-3">
           {operationalModules.map((item) => {
             const Icon = item.icon;
             return (
@@ -200,13 +217,13 @@ export default function DashboardPage() {
                 key={item.title}
                 type="button"
                 onClick={() => navigate(item.path)}
-                className="bg-[#161616] hover:bg-[#1E1E1E] border border-[#242424] hover:border-[#F4511E] rounded-lg p-3.5 text-left transition-colors flex items-start gap-3 group"
+                className="bg-[#131517] hover:bg-[#181B1E] border border-[#24282C] hover:border-[#F4511E] rounded-lg p-3.5 text-left transition-all duration-150 flex items-start gap-3 group cursor-pointer shadow-xs"
               >
-                <div className="w-9 h-9 rounded bg-[#202020] border border-[#2A2A2A] flex items-center justify-center shrink-0 group-hover:border-[#F4511E] transition-colors">
+                <div className="w-9 h-9 rounded bg-[#1C1F22] border border-[#2A2E33] flex items-center justify-center shrink-0 group-hover:border-[#F4511E] group-hover:bg-[#F4511E]/10 transition-colors">
                   <Icon className="w-4 h-4 text-[#F4511E]" />
                 </div>
-                <div className="overflow-hidden">
-                  <div className="text-xs font-bold text-neutral-200 group-hover:text-white transition-colors">
+                <div className="overflow-hidden min-w-0">
+                  <div className="text-xs font-bold text-neutral-200 group-hover:text-white transition-colors truncate">
                     {item.title}
                   </div>
                   <div className="text-[11px] text-neutral-500 truncate mt-0.5">
@@ -220,47 +237,46 @@ export default function DashboardPage() {
       </div>
 
       {/* Active Pre Orders Pipeline Table */}
-      <div className="bg-[#141414] border border-[#242424] rounded-lg p-4 space-y-3">
-        <div className="flex items-center justify-between">
+      <Card>
+        <CardHeader>
           <div className="flex items-center gap-2">
             <ClipboardList className="w-4 h-4 text-[#F4511E]" />
-            <h3 className="text-xs font-bold text-neutral-200 uppercase tracking-wider">
-              Status Pemenuhan Pre Order Proyek
-            </h3>
+            <CardTitle>Status Pemenuhan Pre Order Proyek</CardTitle>
           </div>
-          <button
-            type="button"
+          <Button
+            size="xs"
+            variant="ghost"
+            rightIcon={ArrowUpRight}
             onClick={() => navigate('/pre-orders')}
-            className="text-[11px] text-[#F4511E] hover:underline font-mono"
           >
-            Kelola PO &rarr;
-          </button>
-        </div>
+            Kelola Pre Order
+          </Button>
+        </CardHeader>
 
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
-            <thead className="bg-[#1A1A1A] text-neutral-400 font-mono text-[11px] border-b border-[#262626]">
+            <thead className="bg-[#101214] text-neutral-400 font-mono text-[11px] border-b border-[#24282C]">
               <tr>
-                <th className="py-2 px-3">No. PO</th>
-                <th className="py-2 px-3">Customer</th>
-                <th className="py-2 px-3">Material</th>
-                <th className="py-2 px-3 text-right">Target</th>
-                <th className="py-2 px-3 text-right">Realisasi</th>
-                <th className="py-2 px-3">Status</th>
+                <th className="py-2.5 px-3">No. PO</th>
+                <th className="py-2.5 px-3">Customer Proyek</th>
+                <th className="py-2.5 px-3">Material</th>
+                <th className="py-2.5 px-3 text-right">Target Kuota</th>
+                <th className="py-2.5 px-3 text-right">Realisasi Kirim</th>
+                <th className="py-2.5 px-3">Status</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#1F1F1F]">
+            <tbody className="divide-y divide-[#1D2023]">
               {preOrders.map((po) => {
                 const pct = Math.round((po.terkirim / po.totalOrder) * 100);
 
                 return (
-                  <tr key={po.id} className="hover:bg-[#1A1A1A] transition-colors">
+                  <tr key={po.id} className="hover:bg-[#181B1E] transition-colors">
                     <td className="py-2.5 px-3 font-mono font-bold text-neutral-200">
-                      {po.nomorPo || <span className="text-amber-500/80 font-normal italic">Draft</span>}
+                      {po.nomorPo || <span className="text-amber-500/80 font-normal italic">Draft (Menunggu SJ)</span>}
                     </td>
                     <td className="py-2.5 px-3 font-medium text-white">{po.customer}</td>
-                    <td className="py-2.5 px-3 text-neutral-400">{po.materialName}</td>
-                    <td className="py-2.5 px-3 text-right font-mono text-neutral-300">
+                    <td className="py-2.5 px-3 text-neutral-300">{po.materialName}</td>
+                    <td className="py-2.5 px-3 text-right font-mono text-neutral-400">
                       {formatVolume(po.totalOrder, po.satuan)}
                     </td>
                     <td className="py-2.5 px-3 text-right font-mono font-bold text-white">
@@ -268,17 +284,21 @@ export default function DashboardPage() {
                       <span className="text-[10px] text-neutral-500 block font-normal">({pct}%)</span>
                     </td>
                     <td className="py-2.5 px-3">
-                      <span
-                        className={`text-[10px] font-mono px-2 py-0.5 rounded font-bold border ${
-                          po.status === 'APPROVED'
-                            ? 'bg-emerald-950/40 text-emerald-400 border-emerald-800/60'
-                            : po.status === 'MENUNGGU_APPROVAL'
-                            ? 'bg-amber-950/40 text-amber-400 border-amber-800/60'
-                            : 'bg-rose-950/40 text-rose-400 border-rose-800/60'
-                        }`}
-                      >
-                        {po.status}
-                      </span>
+                      {po.status === 'APPROVED' && (
+                        <Badge size="xs" variant="success" dot>
+                          APPROVED
+                        </Badge>
+                      )}
+                      {po.status === 'MENUNGGU_APPROVAL' && (
+                        <Badge size="xs" variant="warning" dot>
+                          MENUNGGU
+                        </Badge>
+                      )}
+                      {po.status === 'REJECTED' && (
+                        <Badge size="xs" variant="error" dot>
+                          DITOLAK
+                        </Badge>
+                      )}
                     </td>
                   </tr>
                 );
@@ -286,21 +306,25 @@ export default function DashboardPage() {
             </tbody>
           </table>
         </div>
-      </div>
+      </Card>
 
       {/* 8 Master Data Matching Screenshot 3 */}
       <div>
-        <div className="flex items-center justify-between mb-2">
-          <h3 className="text-xs font-bold text-neutral-400 uppercase tracking-wider">
-            Data Master
-          </h3>
-          <button
-            type="button"
+        <div className="flex items-center justify-between mb-2.5">
+          <div className="flex items-center gap-2">
+            <h3 className="text-xs font-bold text-neutral-400 uppercase tracking-wider font-mono">
+              Katalog Data Master
+            </h3>
+            <Badge size="xs" variant="neutral">8 Entitas</Badge>
+          </div>
+          <Button
+            size="xs"
+            variant="ghost"
+            rightIcon={ChevronRight}
             onClick={() => navigate('/master-data')}
-            className="text-[11px] text-[#F4511E] hover:underline"
           >
-            Buka Katalog Master Data &rarr;
-          </button>
+            Lihat Semua Master
+          </Button>
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2">
@@ -311,7 +335,7 @@ export default function DashboardPage() {
                 key={item.title}
                 type="button"
                 onClick={() => navigate(`/master-data?tab=${item.tab}`)}
-                className="bg-[#141414] hover:bg-[#1C1C1C] border border-[#222222] hover:border-[#F4511E] rounded p-2.5 text-center transition-colors flex flex-col items-center justify-center group"
+                className="bg-[#131517] hover:bg-[#181B1E] border border-[#24282C] hover:border-[#F4511E] rounded-md p-2.5 text-center transition-all duration-150 flex flex-col items-center justify-center group cursor-pointer shadow-xs"
                 title={`Kelola ${item.title}`}
               >
                 <Icon className="w-4 h-4 text-neutral-400 group-hover:text-[#F4511E] transition-colors mb-1.5" />

@@ -1,4 +1,5 @@
 import { NavLink } from 'react-router-dom';
+import { motion, AnimatePresence } from 'motion/react';
 import {
   LayoutDashboard,
   ClipboardList,
@@ -36,29 +37,35 @@ export default function Sidebar() {
 
   return (
     <>
-      {/* Mobile Backdrop */}
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 bg-black/75 z-40 lg:hidden"
-          onClick={closeMobileSidebar}
-          aria-hidden="true"
-        />
-      )}
+      {/* Mobile Backdrop with Motion */}
+      <AnimatePresence>
+        {sidebarOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            className="fixed inset-0 bg-black/80 backdrop-blur-xs z-40 lg:hidden"
+            onClick={closeMobileSidebar}
+            aria-hidden="true"
+          />
+        )}
+      </AnimatePresence>
 
       {/* Industrial Sidebar Shell */}
       <aside
-        className={`fixed lg:static top-0 bottom-0 left-0 z-50 flex flex-col bg-[#141414] border-r border-[#242424] transition-all duration-200 select-none ${
+        className={`fixed lg:static top-0 bottom-0 left-0 z-50 flex flex-col bg-[#111315] border-r border-[#22262A] transition-all duration-200 select-none ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         } ${sidebarCollapsed ? 'lg:w-16' : 'w-56 lg:w-56'}`}
       >
         {/* Top Mini Section */}
-        <div className="flex items-center justify-between px-3 py-3 border-b border-[#222222]">
+        <div className="flex items-center justify-between px-3 py-3 border-b border-[#22262A] bg-[#0E1012]">
           <div className="flex items-center gap-2 overflow-hidden">
-            <span className="w-6 h-6 rounded bg-[#F4511E] text-white flex items-center justify-center font-bold text-xs shrink-0 font-mono">
+            <span className="w-6 h-6 rounded bg-[#F4511E] text-white flex items-center justify-center font-bold text-xs shrink-0 font-mono shadow-xs">
               B
             </span>
             {!sidebarCollapsed && (
-              <span className="text-xs font-semibold text-neutral-300 tracking-wide uppercase">
+              <span className="text-xs font-bold text-neutral-300 tracking-wider uppercase font-mono">
                 Modul Operasi
               </span>
             )}
@@ -68,6 +75,7 @@ export default function Sidebar() {
             type="button"
             onClick={closeMobileSidebar}
             className="lg:hidden p-1 text-neutral-400 hover:text-white"
+            aria-label="Tutup Menu"
           >
             <X className="w-4 h-4" />
           </button>
@@ -75,15 +83,15 @@ export default function Sidebar() {
           <button
             type="button"
             onClick={toggleCollapseSidebar}
-            className="hidden lg:flex p-1 rounded text-neutral-400 hover:text-white hover:bg-neutral-800 transition-colors"
-            title={sidebarCollapsed ? 'Perluas' : 'Persempit'}
+            className="hidden lg:flex p-1 rounded text-neutral-400 hover:text-white hover:bg-neutral-800 transition-colors cursor-pointer"
+            title={sidebarCollapsed ? 'Perluas Sidebar' : 'Persempit Sidebar'}
           >
             {sidebarCollapsed ? <ChevronRight className="w-3.5 h-3.5" /> : <ChevronLeft className="w-3.5 h-3.5" />}
           </button>
         </div>
 
         {/* Navigation Item List */}
-        <nav className="flex-1 overflow-y-auto px-2 py-3 space-y-0.5">
+        <nav className="flex-1 overflow-y-auto px-2 py-3 space-y-0.5" aria-label="Menu Utama">
           {NAV_LINKS.map((link) => {
             const Icon = ICON_MAP[link.icon] || LayoutDashboard;
 
@@ -93,15 +101,15 @@ export default function Sidebar() {
                 to={link.path}
                 onClick={closeMobileSidebar}
                 className={({ isActive }) =>
-                  `flex items-center gap-2.5 px-2.5 py-2 rounded text-xs font-medium transition-colors group ${
+                  `flex items-center gap-2.5 px-2.5 py-2 rounded text-xs font-medium transition-all duration-150 group cursor-pointer ${
                     isActive
-                      ? 'bg-[#222222] text-[#F4511E] font-semibold border-l-2 border-[#F4511E]'
-                      : 'text-neutral-400 hover:text-neutral-100 hover:bg-[#1A1A1A]'
+                      ? 'bg-[#1D2125] text-[#F4511E] font-semibold border-l-2 border-[#F4511E] shadow-xs'
+                      : 'text-neutral-400 hover:text-neutral-100 hover:bg-[#181B1E]'
                   }`
                 }
                 title={sidebarCollapsed ? link.label : undefined}
               >
-                <Icon className="w-4 h-4 shrink-0 transition-colors" />
+                <Icon className="w-4 h-4 shrink-0 transition-colors group-hover:scale-105" />
                 {!sidebarCollapsed && (
                   <span className="truncate leading-none tracking-tight">{link.label}</span>
                 )}
@@ -111,7 +119,7 @@ export default function Sidebar() {
         </nav>
 
         {/* Bottom Role Simulator Panel */}
-        <div className="p-2.5 border-t border-[#222222] bg-[#111111]">
+        <div className="p-2.5 border-t border-[#22262A] bg-[#0E1012]">
           {!sidebarCollapsed ? (
             <div className="space-y-1">
               <div className="flex items-center gap-1.5 text-[10px] text-neutral-400 font-medium">
@@ -121,7 +129,7 @@ export default function Sidebar() {
               <select
                 value={currentUser.role}
                 onChange={(e) => switchRole(e.target.value)}
-                className="w-full text-[11px] bg-[#181818] border border-[#2E2E2E] text-neutral-200 rounded px-2 py-1 focus:outline-none focus:border-[#F4511E] font-medium"
+                className="w-full text-[11px] bg-[#16181B] border border-[#2B3036] text-neutral-200 rounded px-2 py-1.5 focus:outline-none focus:border-[#F4511E] font-medium cursor-pointer"
               >
                 <option value="Super Admin">Super Admin (Direktur)</option>
                 <option value="Staff Pusat">Staff Pusat</option>
@@ -130,8 +138,8 @@ export default function Sidebar() {
               </select>
             </div>
           ) : (
-            <div className="text-center" title={`Role aktif: ${currentUser.role}`}>
-              <span className="text-[10px] font-bold text-[#F4511E] font-mono">
+            <div className="text-center py-1" title={`Role aktif: ${currentUser.role}`}>
+              <span className="text-[10px] font-bold text-[#F4511E] font-mono px-1.5 py-0.5 rounded bg-black/40 border border-[#333]">
                 {currentUser.role[0]}
               </span>
             </div>

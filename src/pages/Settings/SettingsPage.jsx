@@ -13,11 +13,10 @@ import {
   ListOrdered,
   Smartphone,
   Info,
-  X,
-  Check,
   Send,
 } from 'lucide-react';
 import { useToast } from '../../context/ToastContext';
+import { Button, Badge, Card, Modal, Input, Select } from '../../components/ui';
 
 export default function SettingsPage() {
   const navigate = useNavigate();
@@ -26,10 +25,10 @@ export default function SettingsPage() {
   // Settings states
   const [quickLoginEnabled, setQuickLoginEnabled] = useState(true);
   const [selectedTheme, setSelectedTheme] = useState('Mode Mengikuti Sistem');
-  const [deviceType, setDeviceType] = useState('Web Desktop Console (Chrome)');
+  const [deviceType] = useState('Web Desktop Console (Chrome)');
 
   // Modals for interactive exploration
-  const [activeModal, setActiveModal] = useState(null); // 'faq' | 'report' | 'legal' | 'privacy' | 'release' | 'developer' | 'attribution'
+  const [activeModal, setActiveModal] = useState(null);
 
   const toggleQuickLogin = () => {
     const nextState = !quickLoginEnabled;
@@ -51,7 +50,7 @@ export default function SettingsPage() {
   const handleSendReport = (e) => {
     e.preventDefault();
     if (!reportForm.pesan) return;
-    addToast('Laporan masalah berhasil dikirim ke Tim IT PT BAS Gresik!', 'success');
+    addToast('Laporan kendala berhasil dikirim ke Tim IT PT BAS Gresik!', 'success');
     setReportForm({ kategori: 'Bug / Masalah Tampilan', pesan: '' });
     setActiveModal(null);
   };
@@ -59,50 +58,55 @@ export default function SettingsPage() {
   return (
     <div className="max-w-2xl mx-auto space-y-6 pb-20 select-none">
       {/* Top Header strictly matching Screenshot a384cad2 */}
-      <div className="flex items-center gap-3 pb-3 border-b border-[#242424]">
-        <button
-          type="button"
+      <div className="flex items-center gap-3 pb-3 border-b border-[#24282C]">
+        <Button
+          size="sm"
+          variant="ghost"
+          icon={ArrowLeft}
           onClick={() => navigate(-1)}
-          className="p-1.5 rounded text-neutral-300 hover:text-white hover:bg-[#202020] transition-colors"
           title="Kembali"
-        >
-          <ArrowLeft className="w-5 h-5" />
-        </button>
-        <h1 className="text-xl font-bold text-white tracking-tight">Pengaturan</h1>
+        />
+        <div>
+          <h1 className="text-base sm:text-lg font-bold text-white tracking-tight flex items-center gap-2">
+            <span>Pengaturan Sistem</span>
+            <Badge size="xs" variant="primary">v1.1.12</Badge>
+          </h1>
+          <p className="text-[11px] text-neutral-400">
+            Preferensi perangkat, autentikasi biometrik, bantuan lapangan, dan ketentuan legal
+          </p>
+        </div>
       </div>
 
       {/* SECTION 1: UMUM */}
-      <div className="space-y-1">
-        <div className="text-xs font-bold text-[#F4511E] uppercase tracking-wider px-2 py-1">
+      <div className="space-y-1.5">
+        <div className="text-xs font-bold text-[#F4511E] uppercase tracking-wider px-2 font-mono">
           Umum
         </div>
 
-        <div className="bg-[#181818] border border-[#262626] rounded-xl overflow-hidden divide-y divide-[#242424]">
+        <div className="bg-[#131517] border border-[#24282C] rounded-lg overflow-hidden divide-y divide-[#202326]">
           {/* Jenis Perangkat */}
-          <div className="flex items-center justify-between p-3.5 hover:bg-[#1E1E1E] transition-colors">
+          <div className="flex items-center justify-between p-3.5 hover:bg-[#181B1E] transition-colors">
             <div className="flex items-center gap-3.5">
-              <div className="text-emerald-500">
+              <div className="text-emerald-400">
                 <Monitor className="w-5 h-5" />
               </div>
               <div>
-                <div className="text-sm font-semibold text-white">Jenis Perangkat</div>
-                <div className="text-xs text-neutral-400">{deviceType}</div>
+                <div className="text-xs font-semibold text-white">Jenis Perangkat</div>
+                <div className="text-[11px] text-neutral-400">{deviceType}</div>
               </div>
             </div>
-            <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-black/40 text-neutral-400 border border-[#333]">
-              Terverifikasi
-            </span>
+            <Badge size="xs" variant="success" dot>Terverifikasi</Badge>
           </div>
 
           {/* Quick Login with Biometric Toggle */}
-          <div className="flex items-center justify-between p-3.5 hover:bg-[#1E1E1E] transition-colors">
+          <div className="flex items-center justify-between p-3.5 hover:bg-[#181B1E] transition-colors">
             <div className="flex items-center gap-3.5">
-              <div className="text-emerald-500">
+              <div className="text-emerald-400">
                 <Fingerprint className="w-5 h-5" />
               </div>
               <div>
-                <div className="text-sm font-semibold text-white">Quick Login</div>
-                <div className="text-xs text-neutral-400">Login menggunakan biometrik</div>
+                <div className="text-xs font-semibold text-white">Quick Login</div>
+                <div className="text-[11px] text-neutral-400">Login menggunakan biometrik</div>
               </div>
             </div>
 
@@ -110,12 +114,12 @@ export default function SettingsPage() {
             <button
               type="button"
               onClick={toggleQuickLogin}
-              className={`w-11 h-6 flex items-center rounded-full p-0.5 transition-colors cursor-pointer ${
-                quickLoginEnabled ? 'bg-[#F4511E]' : 'bg-neutral-600'
+              className={`w-10 h-5 flex items-center rounded-full p-0.5 transition-colors cursor-pointer ${
+                quickLoginEnabled ? 'bg-[#F4511E]' : 'bg-[#2A2E33]'
               }`}
             >
               <div
-                className={`bg-white w-5 h-5 rounded-full shadow-md transform transition-transform ${
+                className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${
                   quickLoginEnabled ? 'translate-x-5' : 'translate-x-0'
                 }`}
               />
@@ -134,386 +138,324 @@ export default function SettingsPage() {
               setSelectedTheme(themes[nextIndex]);
               addToast(`Tema diubah: ${themes[nextIndex]}`, 'info');
             }}
-            className="flex items-center justify-between p-3.5 hover:bg-[#1E1E1E] transition-colors cursor-pointer"
+            className="flex items-center justify-between p-3.5 hover:bg-[#181B1E] transition-colors cursor-pointer"
           >
             <div className="flex items-center gap-3.5">
-              <div className="text-emerald-500">
+              <div className="text-emerald-400">
                 <Moon className="w-5 h-5" />
               </div>
               <div>
-                <div className="text-sm font-semibold text-white">Tema</div>
-                <div className="text-xs text-neutral-400">{selectedTheme}</div>
+                <div className="text-xs font-semibold text-white">Tema</div>
+                <div className="text-[11px] text-neutral-400">{selectedTheme}</div>
               </div>
             </div>
-            <span className="text-xs text-neutral-500 font-mono">Ubah &rsaquo;</span>
+            <span className="text-xs text-neutral-400 font-mono">Ubah &rsaquo;</span>
           </div>
         </div>
       </div>
 
       {/* SECTION 2: BANTUAN */}
-      <div className="space-y-1">
-        <div className="text-xs font-bold text-[#F4511E] uppercase tracking-wider px-2 py-1">
+      <div className="space-y-1.5">
+        <div className="text-xs font-bold text-[#F4511E] uppercase tracking-wider px-2 font-mono">
           Bantuan
         </div>
 
-        <div className="bg-[#181818] border border-[#262626] rounded-xl overflow-hidden divide-y divide-[#242424]">
+        <div className="bg-[#131517] border border-[#24282C] rounded-lg overflow-hidden divide-y divide-[#202326]">
           {/* FAQ */}
           <div
             onClick={() => setActiveModal('faq')}
-            className="flex items-center justify-between p-3.5 hover:bg-[#1E1E1E] transition-colors cursor-pointer"
+            className="flex items-center justify-between p-3.5 hover:bg-[#181B1E] transition-colors cursor-pointer"
           >
             <div className="flex items-center gap-3.5">
-              <div className="text-emerald-500">
+              <div className="text-emerald-400">
                 <HelpCircle className="w-5 h-5" />
               </div>
               <div>
-                <div className="text-sm font-semibold text-white">FAQ</div>
-                <div className="text-xs text-neutral-400">Frequently Asked Questions</div>
+                <div className="text-xs font-semibold text-white">FAQ</div>
+                <div className="text-[11px] text-neutral-400">Frequently Asked Questions</div>
               </div>
             </div>
-            <span className="text-xs text-neutral-500 font-mono">&rsaquo;</span>
+            <span className="text-xs text-neutral-400 font-mono">&rsaquo;</span>
           </div>
 
           {/* Laporkan Masalah */}
           <div
             onClick={() => setActiveModal('report')}
-            className="flex items-center justify-between p-3.5 hover:bg-[#1E1E1E] transition-colors cursor-pointer"
+            className="flex items-center justify-between p-3.5 hover:bg-[#181B1E] transition-colors cursor-pointer"
           >
             <div className="flex items-center gap-3.5">
-              <div className="text-emerald-500">
+              <div className="text-emerald-400">
                 <Headphones className="w-5 h-5" />
               </div>
               <div>
-                <div className="text-sm font-semibold text-white">Laporkan Masalah</div>
-                <div className="text-xs text-neutral-400">Bantuan teknis & kendala lapangan</div>
+                <div className="text-xs font-semibold text-white">Laporkan Masalah</div>
+                <div className="text-[11px] text-neutral-400">Bantuan teknis & kendala lapangan</div>
               </div>
             </div>
-            <span className="text-xs text-neutral-500 font-mono">&rsaquo;</span>
+            <span className="text-xs text-neutral-400 font-mono">&rsaquo;</span>
           </div>
         </div>
       </div>
 
       {/* SECTION 3: LEGAL */}
-      <div className="space-y-1">
-        <div className="text-xs font-bold text-[#F4511E] uppercase tracking-wider px-2 py-1">
+      <div className="space-y-1.5">
+        <div className="text-xs font-bold text-[#F4511E] uppercase tracking-wider px-2 font-mono">
           Legal
         </div>
 
-        <div className="bg-[#181818] border border-[#262626] rounded-xl overflow-hidden divide-y divide-[#242424]">
+        <div className="bg-[#131517] border border-[#24282C] rounded-lg overflow-hidden divide-y divide-[#202326]">
           {/* Ketentuan-Ketentuan Penggunaan */}
           <div
             onClick={() => setActiveModal('legal')}
-            className="flex items-center justify-between p-3.5 hover:bg-[#1E1E1E] transition-colors cursor-pointer"
+            className="flex items-center justify-between p-3.5 hover:bg-[#181B1E] transition-colors cursor-pointer"
           >
             <div className="flex items-center gap-3.5">
-              <div className="text-emerald-500">
+              <div className="text-emerald-400">
                 <BookOpen className="w-5 h-5" />
               </div>
               <div>
-                <div className="text-sm font-semibold text-white">Ketentuan-Ketentuan Penggunaan</div>
-                <div className="text-xs text-neutral-400">SOP Operasional Truk & Tagihan</div>
+                <div className="text-xs font-semibold text-white">Ketentuan-Ketentuan Penggunaan</div>
+                <div className="text-[11px] text-neutral-400">SOP Operasional Truk & Tagihan</div>
               </div>
             </div>
-            <span className="text-xs text-neutral-500 font-mono">&rsaquo;</span>
+            <span className="text-xs text-neutral-400 font-mono">&rsaquo;</span>
           </div>
 
           {/* Kebijakan Privasi */}
           <div
             onClick={() => setActiveModal('privacy')}
-            className="flex items-center justify-between p-3.5 hover:bg-[#1E1E1E] transition-colors cursor-pointer"
+            className="flex items-center justify-between p-3.5 hover:bg-[#181B1E] transition-colors cursor-pointer"
           >
             <div className="flex items-center gap-3.5">
-              <div className="text-emerald-500">
+              <div className="text-emerald-400">
                 <FileText className="w-5 h-5" />
               </div>
               <div>
-                <div className="text-sm font-semibold text-white">Kebijakan Privasi</div>
-                <div className="text-xs text-neutral-400">Keamanan data transaksi & perbankan</div>
+                <div className="text-xs font-semibold text-white">Kebijakan Privasi</div>
+                <div className="text-[11px] text-neutral-400">Keamanan data transaksi & perbankan</div>
               </div>
             </div>
-            <span className="text-xs text-neutral-500 font-mono">&rsaquo;</span>
+            <span className="text-xs text-neutral-400 font-mono">&rsaquo;</span>
           </div>
         </div>
       </div>
 
       {/* SECTION 4: TENTANG */}
-      <div className="space-y-1">
-        <div className="text-xs font-bold text-[#F4511E] uppercase tracking-wider px-2 py-1">
+      <div className="space-y-1.5">
+        <div className="text-xs font-bold text-[#F4511E] uppercase tracking-wider px-2 font-mono">
           Tentang
         </div>
 
-        <div className="bg-[#181818] border border-[#262626] rounded-xl overflow-hidden divide-y divide-[#242424]">
+        <div className="bg-[#131517] border border-[#24282C] rounded-lg overflow-hidden divide-y divide-[#202326]">
           {/* Pengembang */}
           <div
             onClick={() => setActiveModal('developer')}
-            className="flex items-center justify-between p-3.5 hover:bg-[#1E1E1E] transition-colors cursor-pointer"
+            className="flex items-center justify-between p-3.5 hover:bg-[#181B1E] transition-colors cursor-pointer"
           >
             <div className="flex items-center gap-3.5">
-              <div className="text-emerald-500">
+              <div className="text-emerald-400">
                 <Code className="w-5 h-5" />
               </div>
               <div>
-                <div className="text-sm font-semibold text-white">Pengembang</div>
-                <div className="text-xs text-neutral-400">Tim IT PT Berkah Alam Semesta</div>
+                <div className="text-xs font-semibold text-white">Pengembang</div>
+                <div className="text-[11px] text-neutral-400">Tim IT PT Berkah Alam Semesta</div>
               </div>
             </div>
-            <span className="text-xs text-neutral-500 font-mono">&rsaquo;</span>
+            <span className="text-xs text-neutral-400 font-mono">&rsaquo;</span>
           </div>
 
           {/* Catatan Rilis */}
           <div
             onClick={() => setActiveModal('release')}
-            className="flex items-center justify-between p-3.5 hover:bg-[#1E1E1E] transition-colors cursor-pointer"
+            className="flex items-center justify-between p-3.5 hover:bg-[#181B1E] transition-colors cursor-pointer"
           >
             <div className="flex items-center gap-3.5">
-              <div className="text-emerald-500">
+              <div className="text-emerald-400">
                 <ListOrdered className="w-5 h-5" />
               </div>
               <div>
-                <div className="text-sm font-semibold text-white">Catatan Rilis</div>
-                <div className="text-xs text-neutral-400">Pembaruan sistem & fitur terbaru</div>
+                <div className="text-xs font-semibold text-white">Catatan Rilis</div>
+                <div className="text-[11px] text-neutral-400">Pembaruan sistem & fitur terbaru</div>
               </div>
             </div>
-            <span className="text-xs text-neutral-500 font-mono">&rsaquo;</span>
+            <span className="text-xs text-neutral-400 font-mono">&rsaquo;</span>
           </div>
 
           {/* Versi Aplikasi */}
-          <div className="flex items-center justify-between p-3.5 hover:bg-[#1E1E1E] transition-colors">
+          <div className="flex items-center justify-between p-3.5 hover:bg-[#181B1E] transition-colors">
             <div className="flex items-center gap-3.5">
-              <div className="text-emerald-500">
+              <div className="text-emerald-400">
                 <Smartphone className="w-5 h-5" />
               </div>
               <div>
-                <div className="text-sm font-semibold text-white">Versi Aplikasi</div>
-                <div className="text-xs font-mono text-amber-400 font-semibold">1.1.12.rc220</div>
+                <div className="text-xs font-semibold text-white">Versi Aplikasi</div>
+                <div className="text-xs font-mono text-amber-400 font-bold">1.1.12.rc220</div>
               </div>
             </div>
-            <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-emerald-950/70 text-emerald-400 border border-emerald-800/40">
-              Build Terverifikasi
-            </span>
+            <Badge size="xs" variant="success" dot>Build Resmi</Badge>
           </div>
 
           {/* Atribusi Data */}
           <div
             onClick={() => setActiveModal('attribution')}
-            className="flex items-center justify-between p-3.5 hover:bg-[#1E1E1E] transition-colors cursor-pointer"
+            className="flex items-center justify-between p-3.5 hover:bg-[#181B1E] transition-colors cursor-pointer"
           >
             <div className="flex items-center gap-3.5">
-              <div className="text-emerald-500">
+              <div className="text-emerald-400">
                 <Info className="w-5 h-5" />
               </div>
               <div>
-                <div className="text-sm font-semibold text-white">Atribusi Data</div>
-                <div className="text-xs text-neutral-400">Hak cipta sistem & izin operasional</div>
+                <div className="text-xs font-semibold text-white">Atribusi Data</div>
+                <div className="text-[11px] text-neutral-400">Hak cipta sistem & izin operasional</div>
               </div>
             </div>
-            <span className="text-xs text-neutral-500 font-mono">&rsaquo;</span>
+            <span className="text-xs text-neutral-400 font-mono">&rsaquo;</span>
           </div>
         </div>
       </div>
 
       {/* ======================================================== */}
-      {/* INTERACTIVE MODALS */}
+      {/* INTERACTIVE MODALS (MOTION POWERED) */}
       {/* ======================================================== */}
 
       {/* MODAL: FAQ */}
-      {activeModal === 'faq' && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-          <div className="bg-[#181818] border border-[#2D2D2D] rounded-xl w-full max-w-lg overflow-hidden shadow-2xl">
-            <div className="flex items-center justify-between px-4 py-3 bg-[#1F1F1F] border-b border-[#2C2C2C]">
-              <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                <HelpCircle className="w-4 h-4 text-[#F4511E]" />
-                <span>Frequently Asked Questions (FAQ)</span>
-              </h3>
-              <button
-                type="button"
-                onClick={() => setActiveModal(null)}
-                className="text-neutral-400 hover:text-white"
-              >
-                <X className="w-4 h-4" />
-              </button>
+      <Modal
+        isOpen={activeModal === 'faq'}
+        onClose={() => setActiveModal(null)}
+        title="Frequently Asked Questions (FAQ)"
+        subtitle="Panduan operasional harian dispatch material PT BAS Gresik"
+      >
+        <div className="p-4 space-y-3 text-xs text-neutral-300">
+          <div className="p-3 bg-[#181B1E] rounded-md border border-[#262A2F] space-y-1">
+            <div className="font-bold text-white">Bagaimana rumus perhitungan kubikasi truk?</div>
+            <div className="text-neutral-400 font-mono">
+              Kubikasi = (Panjang &times; Lebar &times; (Tinggi + Koreksi)) / 1.000.000 m³
             </div>
-            <div className="p-4 space-y-3 max-h-[70vh] overflow-y-auto text-xs text-neutral-300">
-              <div className="p-3 bg-[#222] rounded border border-[#333] space-y-1">
-                <div className="font-bold text-white">Bagaimana rumus perhitungan kubikasi truk?</div>
-                <div className="text-neutral-400 font-mono">
-                  Kubikasi = (Panjang &times; Lebar &times; (Tinggi + Koreksi)) / 1.000.000 m³
-                </div>
-              </div>
+          </div>
 
-              <div className="p-3 bg-[#222] rounded border border-[#333] space-y-1">
-                <div className="font-bold text-white">Kapan Nomor PO digenerate?</div>
-                <div className="text-neutral-400">
-                  Peraturan PT BAS: Pre Order awal tidak memiliki nomor PO. Nomor PO resmi otomatis digenerate saat Surat Jalan (Good Issue) pertama dicetak!
-                </div>
-              </div>
+          <div className="p-3 bg-[#181B1E] rounded-md border border-[#262A2F] space-y-1">
+            <div className="font-bold text-white">Kapan Nomor PO digenerate?</div>
+            <div className="text-neutral-400">
+              Peraturan PT BAS: Pre Order awal tidak memiliki nomor PO. Nomor PO resmi otomatis digenerate saat Surat Jalan (Good Issue) pertama dicetak!
+            </div>
+          </div>
 
-              <div className="p-3 bg-[#222] rounded border border-[#333] space-y-1">
-                <div className="font-bold text-white">Siapa yang berwenang menyetujui Pre Order?</div>
-                <div className="text-neutral-400">
-                  Hanya akun dengan role <strong>Super Admin (Direktur)</strong> yang memiliki akses untuk menyetujui atau menolak Pre Order.
-                </div>
-              </div>
+          <div className="p-3 bg-[#181B1E] rounded-md border border-[#262A2F] space-y-1">
+            <div className="font-bold text-white">Siapa yang berwenang menyetujui Pre Order?</div>
+            <div className="text-neutral-400">
+              Hanya akun dengan role <strong>Super Admin (Direktur)</strong> yang memiliki akses untuk menyetujui atau menolak Pre Order.
+            </div>
+          </div>
 
-              <div className="p-3 bg-[#222] rounded border border-[#333] space-y-1">
-                <div className="font-bold text-white">Berapa tarif pajak PPN dan PPH?</div>
-                <div className="text-neutral-400">
-                  PPN adalah 11%. Sedangkan tarif PPH adalah 2.0% untuk material Curah (Limestone Curah, Sirtu Curah, Pasir) dan 2.65% untuk material Padat (Base Course, Batu Boulder, Limestone Padat).
-                </div>
-              </div>
+          <div className="p-3 bg-[#181B1E] rounded-md border border-[#262A2F] space-y-1">
+            <div className="font-bold text-white">Berapa tarif pajak PPN dan PPH?</div>
+            <div className="text-neutral-400">
+              PPN adalah 11%. Sedangkan tarif PPH adalah 2.0% untuk material Curah (Limestone Curah, Sirtu Curah, Pasir) dan 2.65% untuk material Padat (Base Course, Batu Boulder, Limestone Padat).
             </div>
           </div>
         </div>
-      )}
+      </Modal>
 
       {/* MODAL: LAPORKAN MASALAH */}
-      {activeModal === 'report' && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-          <div className="bg-[#181818] border border-[#2D2D2D] rounded-xl w-full max-w-lg overflow-hidden shadow-2xl">
-            <div className="flex items-center justify-between px-4 py-3 bg-[#1F1F1F] border-b border-[#2C2C2C]">
-              <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                <Headphones className="w-4 h-4 text-[#F4511E]" />
-                <span>Laporkan Masalah Sistem</span>
-              </h3>
-              <button
-                type="button"
-                onClick={() => setActiveModal(null)}
-                className="text-neutral-400 hover:text-white"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            <form onSubmit={handleSendReport} className="p-4 space-y-3">
-              <div>
-                <label className="block text-[11px] text-neutral-400 mb-1">Kategori Masalah</label>
-                <select
-                  value={reportForm.kategori}
-                  onChange={(e) => setReportForm({ ...reportForm, kategori: e.target.value })}
-                  className="w-full bg-[#242424] border border-[#333] rounded-md px-3 py-2 text-xs text-white focus:outline-none focus:border-[#F4511E]"
-                >
-                  <option value="Bug / Masalah Tampilan">Bug / Masalah Tampilan</option>
-                  <option value="Perhitungan Kubikasi Tidak Sesuai">
-                    Perhitungan Kubikasi Tidak Sesuai
-                  </option>
-                  <option value="Kendala Upload Foto Surat Jalan">
-                    Kendala Upload Foto Surat Jalan
-                  </option>
-                  <option value="Masalah Sinkronisasi BKK / Kas Keluar">
-                    Masalah Sinkronisasi BKK / Kas Keluar
-                  </option>
-                </select>
-              </div>
+      <Modal
+        isOpen={activeModal === 'report'}
+        onClose={() => setActiveModal(null)}
+        title="Laporkan Masalah Sistem"
+        subtitle="Sampaikan kendala teknis atau lapangan ke tim IT PT BAS"
+      >
+        <form onSubmit={handleSendReport} className="p-4 space-y-3">
+          <Select
+            label="Kategori Kendala"
+            value={reportForm.kategori}
+            onChange={(e) => setReportForm({ ...reportForm, kategori: e.target.value })}
+          >
+            <option value="Bug / Masalah Tampilan">Bug / Masalah Tampilan</option>
+            <option value="Perhitungan Kubikasi Tidak Sesuai">
+              Perhitungan Kubikasi Tidak Sesuai
+            </option>
+            <option value="Kendala Upload Foto Surat Jalan">
+              Kendala Upload Foto Surat Jalan
+            </option>
+            <option value="Masalah Sinkronisasi BKK / Kas Keluar">
+              Masalah Sinkronisasi BKK / Kas Keluar
+            </option>
+          </Select>
 
-              <div>
-                <label className="block text-[11px] text-neutral-400 mb-1">Detail Kendala</label>
-                <textarea
-                  required
-                  rows={4}
-                  value={reportForm.pesan}
-                  onChange={(e) => setReportForm({ ...reportForm, pesan: e.target.value })}
-                  placeholder="Jelaskan langkah kejadian dan nomor transaksi jika relevan..."
-                  className="w-full bg-[#242424] border border-[#333] rounded-md px-3 py-2 text-xs text-white placeholder-neutral-500 focus:outline-none focus:border-[#F4511E]"
-                />
-              </div>
-
-              <div className="pt-2 flex justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setActiveModal(null)}
-                  className="px-3 py-1.5 rounded text-xs text-neutral-400 hover:text-white"
-                >
-                  Batal
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 rounded bg-[#F4511E] hover:bg-[#e04515] text-white text-xs font-bold flex items-center gap-1.5 shadow-md"
-                >
-                  <Send className="w-3.5 h-3.5" />
-                  <span>Kirim Laporan</span>
-                </button>
-              </div>
-            </form>
+          <div>
+            <label className="block text-[11px] font-medium text-neutral-300 mb-1">Detail Kendala</label>
+            <textarea
+              required
+              rows={4}
+              value={reportForm.pesan}
+              onChange={(e) => setReportForm({ ...reportForm, pesan: e.target.value })}
+              placeholder="Jelaskan langkah kejadian dan nomor transaksi jika relevan..."
+              className="w-full bg-[#181B1E] border border-[#2D3339] rounded-md px-3 py-2 text-xs text-white placeholder-neutral-500 focus:outline-none focus:border-[#F4511E]"
+            />
           </div>
-        </div>
-      )}
+
+          <div className="pt-2 flex justify-end gap-2 border-t border-[#24282C]">
+            <Button variant="ghost" onClick={() => setActiveModal(null)}>
+              Batal
+            </Button>
+            <Button type="submit" variant="primary" icon={Send}>
+              Kirim Laporan
+            </Button>
+          </div>
+        </form>
+      </Modal>
 
       {/* MODAL: LEGAL & PRIVASI */}
-      {(activeModal === 'legal' || activeModal === 'privacy') && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-          <div className="bg-[#181818] border border-[#2D2D2D] rounded-xl w-full max-w-lg overflow-hidden shadow-2xl">
-            <div className="flex items-center justify-between px-4 py-3 bg-[#1F1F1F] border-b border-[#2C2C2C]">
-              <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                <BookOpen className="w-4 h-4 text-[#F4511E]" />
-                <span>
-                  {activeModal === 'legal'
-                    ? 'Ketentuan Penggunaan Sistem PT BAS'
-                    : 'Kebijakan Privasi & Keamanan'}
-                </span>
-              </h3>
-              <button
-                type="button"
-                onClick={() => setActiveModal(null)}
-                className="text-neutral-400 hover:text-white"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            <div className="p-4 space-y-3 text-xs text-neutral-300 leading-relaxed max-h-[60vh] overflow-y-auto">
-              <p>
-                Sistem PT BAS Control Center digunakan secara internal oleh seluruh staf, kadiv, admin lapangan Gresik, dan direksi PT Berkah Alam Semesta.
-              </p>
-              <p>
-                1. Setiap pengemudi dan armada wajib diverifikasi dimensi baknya sebelum surat jalan dicetak.
-              </p>
-              <p>
-                2. Pencatatan pengeluaran kas (BKK) harus disertai dengan verifikasi rekening bank vendor yang terdaftar resmi di master data supplier.
-              </p>
-              <p>
-                3. Pembayaran invoice customer tunduk pada ketentuan perpajakan PPN 11% dan tarif pemotongan PPH 2.0% atau 2.65% sesuai jenis material tambang.
-              </p>
-            </div>
-          </div>
+      <Modal
+        isOpen={activeModal === 'legal' || activeModal === 'privacy'}
+        onClose={() => setActiveModal(null)}
+        title={
+          activeModal === 'legal'
+            ? 'Ketentuan Penggunaan Sistem PT BAS'
+            : 'Kebijakan Privasi & Keamanan'
+        }
+        subtitle="Dokumentasi tata kelola operasional & data internal"
+      >
+        <div className="p-4 space-y-3 text-xs text-neutral-300 leading-relaxed max-h-[60vh] overflow-y-auto">
+          <p>
+            Sistem PT BAS Control Center digunakan secara internal oleh seluruh staf, kadiv, admin lapangan Gresik, dan direksi PT Berkah Alam Semesta.
+          </p>
+          <p>
+            1. Setiap pengemudi dan armada wajib diverifikasi dimensi baknya sebelum surat jalan dicetak.
+          </p>
+          <p>
+            2. Pencatatan pengeluaran kas (BKK) harus disertai dengan verifikasi rekening bank vendor yang terdaftar resmi di master data supplier.
+          </p>
+          <p>
+            3. Pembayaran invoice customer tunduk pada ketentuan perpajakan PPN 11% dan tarif pemotongan PPH 2.0% atau 2.65% sesuai jenis material tambang.
+          </p>
         </div>
-      )}
+      </Modal>
 
       {/* MODAL: PENGEMBANG & TENTANG */}
-      {(activeModal === 'developer' || activeModal === 'release' || activeModal === 'attribution') && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-          <div className="bg-[#181818] border border-[#2D2D2D] rounded-xl w-full max-w-lg overflow-hidden shadow-2xl">
-            <div className="flex items-center justify-between px-4 py-3 bg-[#1F1F1F] border-b border-[#2C2C2C]">
-              <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                <Info className="w-4 h-4 text-[#F4511E]" />
-                <span>
-                  {activeModal === 'developer'
-                    ? 'Tim Pengembang Sistem'
-                    : activeModal === 'release'
-                    ? 'Catatan Rilis Aplikasi'
-                    : 'Atribusi & Hak Cipta'}
-                </span>
-              </h3>
-              <button
-                type="button"
-                onClick={() => setActiveModal(null)}
-                className="text-neutral-400 hover:text-white"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            <div className="p-4 space-y-2 text-xs text-neutral-300">
-              <div className="p-3 bg-[#242424] rounded border border-[#333]">
-                <div className="text-sm font-bold text-white">PT BAS Control Center</div>
-                <div className="text-amber-400 font-mono">Versi 1.1.12.rc220</div>
-                <div className="text-neutral-400 mt-1">
-                  Arsitektur Web Dispatch & ERP Logistik Tambang Gresik Hub
-                </div>
-              </div>
-              <p className="text-neutral-400 text-[11px] pt-2">
-                &copy; {new Date().getFullYear()} PT Berkah Alam Semesta. Hak cipta dilindungi undang-undang.
-              </p>
+      <Modal
+        isOpen={activeModal === 'developer' || activeModal === 'release' || activeModal === 'attribution'}
+        onClose={() => setActiveModal(null)}
+        title={
+          activeModal === 'developer'
+            ? 'Tim Pengembang Sistem'
+            : activeModal === 'release'
+            ? 'Catatan Rilis Aplikasi'
+            : 'Atribusi & Hak Cipta'
+        }
+      >
+        <div className="p-4 space-y-3 text-xs text-neutral-300">
+          <div className="p-3 bg-[#181B1E] rounded-md border border-[#2D3339]">
+            <div className="text-sm font-bold text-white">PT BAS Control Center</div>
+            <div className="text-amber-400 font-mono">Versi 1.1.12.rc220</div>
+            <div className="text-neutral-400 mt-1">
+              Arsitektur Web Dispatch & ERP Logistik Tambang Gresik Hub
             </div>
           </div>
+          <p className="text-neutral-400 text-[11px] pt-1 font-mono">
+            &copy; {new Date().getFullYear()} PT Berkah Alam Semesta. Hak cipta dilindungi undang-undang.
+          </p>
         </div>
-      )}
+      </Modal>
     </div>
   );
 }

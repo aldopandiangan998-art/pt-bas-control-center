@@ -12,9 +12,11 @@ import {
   Building2,
   Banknote,
   Search,
+  CheckCircle2,
 } from 'lucide-react';
 import { useData } from '../../context/DataContext';
 import { formatCurrency, formatVolume } from '../../utils/formatters';
+import { Button, Badge, Card, Input, Select, Modal } from '../../components/ui';
 
 export default function BkkPage() {
   const navigate = useNavigate();
@@ -69,295 +71,309 @@ export default function BkkPage() {
   };
 
   return (
-    <div className="space-y-4 max-w-5xl mx-auto pb-24">
+    <div className="space-y-4 max-w-5xl mx-auto pb-28">
       {/* Top Header Bar matching Screenshot 2 */}
-      <div className="flex items-center justify-between pb-2.5 border-b border-[#242424]">
+      <div className="flex items-center justify-between pb-3 border-b border-[#24282C]">
         <div className="flex items-center gap-2.5">
-          <button
-            type="button"
+          <Button
+            size="sm"
+            variant="ghost"
+            icon={ArrowLeft}
             onClick={() => navigate('/')}
-            className="p-1.5 rounded bg-[#1C1C1C] hover:bg-[#282828] text-neutral-300 transition-colors"
             title="Kembali ke Dashboard"
-          >
-            <ArrowLeft className="w-4 h-4" />
-          </button>
+          />
           <div>
-            <h2 className="text-base sm:text-lg font-bold text-white tracking-tight">
-              Buat Cash Out (BKK)
-            </h2>
+            <h1 className="text-base sm:text-lg font-bold text-white tracking-tight flex items-center gap-2">
+              <span>Buat Cash Out (BKK)</span>
+              <Badge size="xs" variant="primary">Disbursement</Badge>
+            </h1>
             <p className="text-[11px] text-neutral-400">
-              Bukti Kas Keluar ke supplier • Pembayaran rekapan pengiriman non-PPN
+              Bukti Kas Keluar ke supplier • Pembayaran rekapan ritase pengiriman non-PPN
             </p>
           </div>
         </div>
 
         <div className="flex items-center gap-1.5">
-          <button
-            type="button"
+          <Button
+            size="xs"
+            variant="ghost"
+            icon={RotateCcw}
             onClick={() => setSelectedItems(['bkk-1', 'bkk-2'])}
-            className="p-1.5 rounded bg-[#1C1C1C] hover:bg-[#282828] text-neutral-400 hover:text-white"
-            title="Reset"
-          >
-            <RotateCcw className="w-3.5 h-3.5" />
-          </button>
+            title="Reset Pilihan"
+          />
         </div>
       </div>
 
       {/* Filter Box strictly reproducing Screenshot 2 */}
-      <div className="bg-[#141414] border border-[#242424] rounded-lg p-3.5 sm:p-4 space-y-3">
+      <Card className="p-4 space-y-3">
         {!filterHidden && (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className="block text-[11px] font-medium text-neutral-400 mb-1 flex items-center gap-1">
-                <User className="w-3.5 h-3.5 text-neutral-500" />
-                Pilih Pelanggan
-              </label>
-              <select
-                value={filterData.pelanggan}
-                onChange={(e) => setFilterData({ ...filterData, pelanggan: e.target.value })}
-                className="w-full bg-[#1C1C1C] border border-[#2C2C2C] text-neutral-200 rounded px-3 py-2 text-xs focus:outline-none focus:border-[#F4511E]"
-              >
-                {customers.map((c) => (
-                  <option key={c.id} value={c.name}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <Select
+              label="Pilih Pelanggan"
+              icon={User}
+              value={filterData.pelanggan}
+              onChange={(e) => setFilterData({ ...filterData, pelanggan: e.target.value })}
+            >
+              {customers.map((c) => (
+                <option key={c.id} value={c.name}>
+                  {c.name}
+                </option>
+              ))}
+            </Select>
 
-            <div>
-              <label className="block text-[11px] font-medium text-neutral-400 mb-1 flex items-center gap-1">
-                <Building2 className="w-3.5 h-3.5 text-neutral-500" />
-                Pilih Supplier
-              </label>
-              <select
-                value={filterData.supplier}
-                onChange={(e) => setFilterData({ ...filterData, supplier: e.target.value })}
-                className="w-full bg-[#1C1C1C] border border-[#2C2C2C] text-neutral-200 rounded px-3 py-2 text-xs focus:outline-none focus:border-[#F4511E]"
-              >
-                {suppliers.map((s) => (
-                  <option key={s.id} value={s.name}>
-                    {s.name} ({s.bank} - {s.noRekening})
-                  </option>
-                ))}
-              </select>
-            </div>
+            <Select
+              label="Pilih Supplier"
+              icon={Building2}
+              value={filterData.supplier}
+              onChange={(e) => setFilterData({ ...filterData, supplier: e.target.value })}
+            >
+              {suppliers.map((s) => (
+                <option key={s.id} value={s.name}>
+                  {s.name} ({s.bank} - {s.noRekening})
+                </option>
+              ))}
+            </Select>
           </div>
         )}
 
-        {/* Button: + TAMBAH KETERANGAN (Screenshot 2) */}
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-2 pt-1 border-t border-[#202326]">
+          <Button
+            size="xs"
+            variant="ghost"
+            icon={Plus}
+            className="text-neutral-400 hover:text-white"
+          >
+            Tambah Keterangan
+          </Button>
+
+          <Button
+            variant="primary"
+            size="sm"
+            className="w-full sm:w-auto uppercase tracking-wide font-bold"
+          >
+            Terapkan Filter
+          </Button>
+        </div>
+
         <div className="flex justify-center pt-1">
           <button
             type="button"
-            className="px-4 py-1.5 rounded border border-[#F4511E] text-[#F4511E] hover:bg-[#F4511E]/10 font-bold text-[11px] tracking-wider uppercase flex items-center gap-1.5 transition-colors"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            TAMBAH KETERANGAN
-          </button>
-        </div>
-
-        {/* Orange Action Button: TERAPKAN (Screenshot 2) */}
-        <button
-          type="button"
-          className="w-full py-2.5 rounded bg-[#F4511E] hover:bg-[#D84315] text-white font-bold text-xs tracking-wider uppercase shadow transition-colors"
-        >
-          TERAPKAN
-        </button>
-
-        {/* Toggle Collapse: Sembunyikan Filter ^ (Screenshot 2) */}
-        <div className="text-center pt-0.5">
-          <button
-            type="button"
             onClick={() => setFilterHidden(!filterHidden)}
-            className="text-[11px] text-neutral-400 hover:text-white inline-flex items-center gap-1"
+            className="text-[11px] text-neutral-400 hover:text-white flex items-center gap-1 font-mono transition-colors cursor-pointer"
           >
-            {filterHidden ? 'Tampilkan Filter' : 'Sembunyikan Filter'}
-            {filterHidden ? <ChevronDown className="w-3 h-3" /> : <ChevronUp className="w-3 h-3" />}
+            {filterHidden ? (
+              <>
+                <ChevronDown className="w-3.5 h-3.5" />
+                <span>Tampilkan Filter</span>
+              </>
+            ) : (
+              <>
+                <ChevronUp className="w-3.5 h-3.5" />
+                <span>Sembunyikan Filter</span>
+              </>
+            )}
           </button>
         </div>
-      </div>
+      </Card>
 
-      {/* Transaction List Rows strictly matching Screenshot 2 */}
-      <div className="space-y-2">
-        <div className="flex items-center justify-between text-[11px] text-neutral-400 px-1 font-mono">
-          <label className="flex items-center gap-2 cursor-pointer text-neutral-300">
+      {/* List Header & Quick Search Bar */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-1">
+        <div className="flex items-center gap-3">
+          <label className="flex items-center gap-2 text-xs font-mono text-neutral-300 cursor-pointer select-none">
             <input
               type="checkbox"
               checked={selectedItems.length === filteredBkk.length && filteredBkk.length > 0}
               onChange={toggleSelectAll}
-              className="w-3.5 h-3.5 rounded text-[#F4511E] focus:ring-0"
+              className="accent-[#F4511E] w-4 h-4 rounded cursor-pointer"
             />
             <span>Pilih Semua ({filteredBkk.length})</span>
           </label>
-
-          <span>
-            {selectedItems.length} dipilih: <strong className="text-white">{formatCurrency(totalSelected)}</strong>
-          </span>
         </div>
 
+        <div className="w-full sm:w-64">
+          <Input
+            icon={Search}
+            value={filterData.searchQuery}
+            onChange={(e) => setFilterData({ ...filterData, searchQuery: e.target.value })}
+            placeholder="Cari nomor bukti / PT..."
+          />
+        </div>
+      </div>
+
+      {/* Transaction Cards List strictly reproducing Screenshot 2 */}
+      <div className="space-y-2.5">
         {filteredBkk.map((item) => {
           const isSelected = selectedItems.includes(item.id);
           const isPaid = item.statusBayar === 'Lunas';
 
           return (
-            <div
+            <Card
               key={item.id}
-              className={`bg-[#141414] border rounded-lg p-3 flex flex-col md:flex-row md:items-center justify-between gap-3 transition-colors ${
-                isSelected ? 'border-[#F4511E]/70 bg-[#181310]' : 'border-[#242424] hover:border-[#333333]'
+              hover
+              className={`p-3.5 transition-all select-none ${
+                isSelected ? 'border-[#F4511E]/70 bg-[#171413]' : 'bg-[#131517]'
               }`}
             >
-              {/* Left Column: Checkbox, Volume, and Details */}
-              <div className="flex items-start gap-3">
-                <input
-                  type="checkbox"
-                  checked={isSelected}
-                  onChange={() => toggleSelect(item.id)}
-                  className="w-4 h-4 mt-1 rounded bg-[#222] border-[#444] text-[#F4511E] focus:ring-0 cursor-pointer shrink-0"
-                />
+              <div className="flex items-start justify-between gap-3">
+                {/* Left check & volume column */}
+                <div className="flex items-start gap-3">
+                  <input
+                    type="checkbox"
+                    disabled={isPaid}
+                    checked={isSelected}
+                    onChange={() => toggleSelect(item.id)}
+                    className="accent-[#F4511E] w-4 h-4 rounded mt-1 cursor-pointer disabled:opacity-40"
+                  />
 
-                <div className="space-y-0.5">
-                  {/* Volume box & Material */}
-                  <div className="flex items-baseline gap-2">
-                    <span className="text-sm sm:text-base font-bold font-mono text-white tracking-tight">
-                      {formatVolume(item.volume)}
-                    </span>
-                    <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-amber-950/60 text-amber-400 border border-amber-800/60 font-mono">
+                  <div>
+                    <div className="text-base font-bold font-mono text-white leading-tight">
+                      {item.volume} m³
+                    </div>
+                    <Badge size="xs" variant="primary" className="mt-1">
                       {item.material}
-                    </span>
-                    <span className="text-[10px] text-neutral-500 font-mono">{item.timestamp}</span>
+                    </Badge>
+                    <div className="text-[10px] text-neutral-500 font-mono mt-1">
+                      {item.timestamp}
+                    </div>
                   </div>
-
-                  {/* Transaction metadata */}
-                  <div className="text-xs font-semibold text-neutral-200">
-                    {item.kodeTransaksi} • {item.jenis}
-                  </div>
-
-                  <div className="text-[11px] text-neutral-400">
-                    <span className="text-white font-medium">{item.perusahaan}</span> • {item.subDetail}
-                  </div>
-
-                  <div className="text-[10px] text-neutral-500 font-mono">{item.periode}</div>
                 </div>
-              </div>
 
-              {/* Right Column: Amount & Action Buttons (Trash & Info) per Screenshot 2 */}
-              <div className="flex items-center justify-between md:justify-end gap-3 border-t md:border-t-0 pt-2 md:pt-0 border-[#1F1F1F]">
-                <div className="text-right font-mono">
-                  <div className="text-sm sm:text-base font-bold text-white">
+                {/* Center details */}
+                <div className="flex-1 min-w-0 px-2 space-y-0.5">
+                  <div className="text-xs font-mono font-semibold text-neutral-200">
+                    {item.kodeTransaksi}
+                  </div>
+                  <div className="text-xs text-neutral-400 font-medium">
+                    {item.jenis}
+                  </div>
+                  <div className="text-xs text-white font-bold truncate">
+                    {item.perusahaan}
+                  </div>
+                  <div className="text-[11px] text-neutral-500 truncate font-mono">
+                    {item.subDetail}
+                  </div>
+                </div>
+
+                {/* Right nominal & status column */}
+                <div className="text-right shrink-0 space-y-1">
+                  <div className="text-[11px] text-neutral-500 font-mono">
+                    {item.periode}
+                  </div>
+                  <div className="text-sm font-mono font-bold text-white">
                     {formatCurrency(item.amount)}
                   </div>
-                  <span
-                    className={`text-[9px] font-bold px-1.5 py-0.2 rounded uppercase ${
-                      isPaid
-                        ? 'bg-emerald-950/50 text-emerald-400 border border-emerald-800/60'
-                        : 'bg-rose-950/50 text-rose-400 border border-rose-800/60'
-                    }`}
-                  >
-                    {isPaid ? 'Lunas' : 'Belum Dibayar'}
-                  </span>
-                </div>
 
-                <div className="flex items-center gap-1">
-                  <button
-                    type="button"
-                    className="p-1.5 rounded bg-[#1C1C1C] hover:bg-rose-950/60 text-neutral-400 hover:text-rose-400 transition-colors border border-[#2C2C2C]"
-                    title="Hapus BKK"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                  <button
-                    type="button"
-                    className="p-1.5 rounded bg-[#1C1C1C] hover:bg-neutral-800 text-neutral-400 hover:text-white transition-colors border border-[#2C2C2C]"
-                    title="Rincian"
-                  >
-                    <Info className="w-3.5 h-3.5" />
-                  </button>
+                  <div>
+                    {isPaid ? (
+                      <Badge size="xs" variant="success" dot>
+                        LUNAS
+                      </Badge>
+                    ) : (
+                      <Badge size="xs" variant="warning" dot>
+                        BELUM BAYAR
+                      </Badge>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
+            </Card>
           );
         })}
       </div>
 
-      {/* Bottom Sticky Payment Bar (Poin 22) */}
+      {/* Sticky Batch Payment Bar */}
       {selectedItems.length > 0 && (
-        <div className="sticky bottom-4 z-20 bg-[#161616] border border-[#333333] p-3 rounded shadow-xl flex flex-col sm:flex-row items-center justify-between gap-3">
-          <div className="font-mono text-xs">
-            <span className="text-neutral-400 mr-2">Total Terpilih:</span>
-            <strong className="text-base font-bold text-white">{formatCurrency(totalSelected)}</strong>
-          </div>
-
-          <button
-            type="button"
-            onClick={() => setShowPaymentModal(true)}
-            className="w-full sm:w-auto px-4 py-2 rounded bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs uppercase tracking-wide flex items-center justify-center gap-1.5 transition-colors"
-          >
-            <Banknote className="w-3.5 h-3.5" />
-            Catat Pembayaran BKK (Lunas)
-          </button>
-        </div>
-      )}
-
-      {/* Payment Modal */}
-      {showPaymentModal && (
-        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
-          <div className="bg-[#141414] border border-[#2C2C2C] rounded-lg max-w-sm w-full p-4 space-y-3 shadow-2xl">
-            <h3 className="text-xs font-bold text-neutral-200 uppercase tracking-wider font-mono">
-              Konfirmasi Pelunasan BKK
-            </h3>
-
-            <div className="space-y-2 text-xs font-mono">
-              <div>
-                <label className="block text-neutral-400 mb-1">Tanggal Kas Keluar:</label>
-                <input
-                  type="date"
-                  value={paymentForm.tanggalBayar}
-                  onChange={(e) => setPaymentForm({ ...paymentForm, tanggalBayar: e.target.value })}
-                  className="w-full bg-[#1C1C1C] border border-[#2C2C2C] text-white rounded p-1.5 text-xs"
-                />
-              </div>
-
-              <div>
-                <label className="block text-neutral-400 mb-1">Rekening Sumber PT BAS:</label>
-                <select
-                  value={paymentForm.rekeningSumber}
-                  onChange={(e) => setPaymentForm({ ...paymentForm, rekeningSumber: e.target.value })}
-                  className="w-full bg-[#1C1C1C] border border-[#2C2C2C] text-white rounded p-1.5 text-xs"
-                >
-                  {bankAccounts.map((acc) => (
-                    <option key={acc.id} value={`${acc.bank} - ${acc.nomorRekening} a/n ${acc.rekeningAtasNama}`}>
-                      {acc.bank} - {acc.nomorRekening} a/n {acc.rekeningAtasNama}
-                    </option>
-                  ))}
-                  <option value="Kas Tunai Kantor Gresik">Kas Tunai Kantor Gresik</option>
-                </select>
-              </div>
-
-              <div className="pt-1">
-                <span className="text-neutral-400 block">Nominal:</span>
-                <span className="text-sm font-bold text-emerald-400">{formatCurrency(totalSelected)}</span>
-              </div>
+        <div className="fixed bottom-0 left-0 right-0 z-40 bg-[#111315] border-t border-[#262A2F] p-3 shadow-2xl">
+          <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-[#F4511E] animate-pulse" />
+              <span className="text-xs font-mono text-neutral-300">
+                <strong className="text-white">{selectedItems.length}</strong> BKK Terpilih &bull; Total Kas Keluar:{' '}
+                <strong className="text-[#F4511E] text-sm">{formatCurrency(totalSelected)}</strong>
+              </span>
             </div>
 
-            <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#222]">
-              <button
-                type="button"
-                onClick={() => setShowPaymentModal(false)}
-                className="px-3 py-1.5 text-xs text-neutral-400 hover:text-white"
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setSelectedItems([])}
               >
                 Batal
-              </button>
-              <button
-                type="button"
-                onClick={handleConfirmPayment}
-                className="px-4 py-1.5 rounded bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs"
+              </Button>
+
+              <Button
+                variant="primary"
+                size="md"
+                icon={CheckCircle2}
+                onClick={() => setShowPaymentModal(true)}
+                className="w-full sm:w-auto"
               >
-                Simpan Pelunasan
-              </button>
+                Bayar & Lunasi BKK
+              </Button>
             </div>
           </div>
         </div>
       )}
+
+      {/* Payment Modal with Motion */}
+      <Modal
+        isOpen={showPaymentModal}
+        onClose={() => setShowPaymentModal(false)}
+        title="Konfirmasi Pelunasan Kas Keluar (BKK)"
+        subtitle="Pencatatan tanggal dan rekening kas PT BAS yang didebit"
+      >
+        <div className="p-4 space-y-3 font-mono">
+          <Input
+            label="Tanggal Kas Keluar"
+            type="date"
+            required
+            value={paymentForm.tanggalBayar}
+            onChange={(e) =>
+              setPaymentForm({ ...paymentForm, tanggalBayar: e.target.value })
+            }
+          />
+
+          <Select
+            label="Rekening Sumber PT BAS"
+            required
+            value={paymentForm.rekeningSumber}
+            onChange={(e) =>
+              setPaymentForm({ ...paymentForm, rekeningSumber: e.target.value })
+            }
+          >
+            {bankAccounts.map((acc) => (
+              <option
+                key={acc.id}
+                value={`${acc.bank} - ${acc.nomorRekening} a/n ${acc.rekeningAtasNama}`}
+              >
+                {acc.bank} - {acc.nomorRekening} a/n {acc.rekeningAtasNama}
+              </option>
+            ))}
+            <option value="Kas Tunai Kantor Gresik">Kas Tunai Kantor Gresik</option>
+          </Select>
+
+          <div className="p-2.5 rounded bg-[#181B1E] border border-[#262A2F] flex justify-between items-center text-xs">
+            <span className="text-neutral-400">Total Pembayaran Vendor:</span>
+            <span className="text-sm font-bold text-emerald-400">
+              {formatCurrency(totalSelected)}
+            </span>
+          </div>
+
+          <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#24282C]">
+            <Button variant="ghost" onClick={() => setShowPaymentModal(false)}>
+              Batal
+            </Button>
+            <Button
+              variant="primary"
+              icon={CheckCircle2}
+              onClick={handleConfirmPayment}
+            >
+              Simpan Pelunasan
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

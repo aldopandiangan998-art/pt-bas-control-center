@@ -633,10 +633,8 @@ export function DataProvider({ children }) {
 
   // Data Pengguna (Users)
   const [usersList, setUsersList] = useState([
-    { id: 'usr-1', name: 'David Rusiah', role: 'Super Admin', email: 'ptbas.adm1@outlook.com', phone: '0811-3001-992', aktif: true },
-    { id: 'usr-2', name: 'Siti Nurhaliza', role: 'Kadiv Pusat', email: 'siti.pusat@ptbas.co.id', phone: '0812-4455-667', aktif: true },
-    { id: 'usr-3', name: 'Rudi Hartono', role: 'Admin Gresik', email: 'admin.gresik@ptbas.co.id', phone: '0813-8899-112', aktif: true },
-    { id: 'usr-4', name: 'Ahmad Rifai', role: 'Staff Pusat', email: 'ahmad.staff@ptbas.co.id', phone: '0819-0011-223', aktif: true },
+    { id: 'usr-1', name: 'David Rusiah', role: 'Super Admin', email: 'superadmin@ptbas.co.id', phone: '0811-3001-992', aktif: true },
+    { id: 'usr-2', name: 'Rudi Hartono', role: 'Admin', email: 'admin@ptbas.co.id', phone: '0813-8899-112', aktif: true },
   ]);
 
   // ==========================================

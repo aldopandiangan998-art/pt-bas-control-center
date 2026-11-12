@@ -118,29 +118,27 @@ export default function Sidebar() {
           })}
         </nav>
 
-        {/* Bottom Role Simulator Panel */}
+        {/* Bottom Role Switcher Panel (Strictly Admin and Superadmin) */}
         <div className="p-2.5 border-t border-[#22262A] bg-[#0E1012]">
           {!sidebarCollapsed ? (
             <div className="space-y-1">
               <div className="flex items-center gap-1.5 text-[10px] text-neutral-400 font-medium">
                 <UserCheck className="w-3 h-3 text-[#F4511E]" />
-                <span>Simulasi Role:</span>
+                <span>Simulasi Peran Aktif:</span>
               </div>
               <select
-                value={currentUser.role}
+                value={currentUser?.role === 'superadmin' ? 'superadmin' : 'admin'}
                 onChange={(e) => switchRole(e.target.value)}
                 className="w-full text-[11px] bg-[#16181B] border border-[#2B3036] text-neutral-200 rounded px-2 py-1.5 focus:outline-none focus:border-[#F4511E] font-medium cursor-pointer"
               >
-                <option value="Super Admin">Super Admin (Direktur)</option>
-                <option value="Staff Pusat">Staff Pusat</option>
-                <option value="Kadiv Pusat">Kadiv Pusat</option>
-                <option value="Admin Gresik">Admin Gresik</option>
+                <option value="superadmin">Super Admin (Direktur)</option>
+                <option value="admin">Admin (Operasional Gresik)</option>
               </select>
             </div>
           ) : (
-            <div className="text-center py-1" title={`Role aktif: ${currentUser.role}`}>
+            <div className="text-center py-1" title={`Role aktif: ${currentUser?.role}`}>
               <span className="text-[10px] font-bold text-[#F4511E] font-mono px-1.5 py-0.5 rounded bg-black/40 border border-[#333]">
-                {currentUser.role[0]}
+                {currentUser?.role === 'superadmin' ? 'SA' : 'AD'}
               </span>
             </div>
           )}

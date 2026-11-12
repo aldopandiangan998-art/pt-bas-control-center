@@ -1,13 +1,23 @@
 import { useNavigate } from 'react-router-dom';
-import { Menu, RotateCcw, Settings, ChevronRight, Activity } from 'lucide-react';
+import { Menu, RotateCcw, Settings, ChevronRight, Activity, LogOut } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useApp } from '../../context/AppContext';
+import { useToast } from '../../context/ToastContext';
 import { APP_CONFIG } from '../../utils/constants';
 
 export default function Header() {
   const navigate = useNavigate();
-  const { currentUser } = useAuth();
+  const { currentUser, roleLabel, logout } = useAuth();
   const { toggleMobileSidebar } = useApp();
+  const { addToast } = useToast();
+
+  const handleLogout = () => {
+    logout();
+    addToast('Sesi akun telah diakhiri. Silakan masuk kembali.', 'info');
+    navigate('/login');
+  };
+
+  const displayRole = roleLabel || (currentUser?.role === 'superadmin' ? 'Super Admin' : 'Admin');
 
   return (
     <header className="timber-header text-white shadow-md relative z-20 select-none">
@@ -66,8 +76,8 @@ export default function Header() {
                 </div>
               </div>
 
-              <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.2 rounded bg-[#F4511E] text-white ml-1 shadow-xs">
-                {currentUser.role}
+              <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.2 rounded bg-[#F4511E] text-white ml-1 shadow-xs font-mono">
+                {displayRole}
               </span>
 
               <ChevronRight className="w-3.5 h-3.5 text-white/50 hidden sm:block" />
@@ -90,6 +100,14 @@ export default function Header() {
                 title="Konfigurasi Sistem & Pengaturan"
               >
                 <Settings className="w-3.5 h-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="p-1.5 rounded bg-black/20 hover:bg-rose-900/60 text-rose-300 hover:text-white transition-colors focus-visible:ring-2 focus-visible:ring-rose-400 cursor-pointer ml-0.5"
+                title="Keluar dari Akun (Logout)"
+              >
+                <LogOut className="w-3.5 h-3.5" />
               </button>
             </div>
           </div>

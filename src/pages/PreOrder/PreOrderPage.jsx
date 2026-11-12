@@ -22,7 +22,7 @@ import { Button, Badge, Card, CardHeader, CardTitle, CardContent, Input, Select,
 
 export default function PreOrderPage() {
   const navigate = useNavigate();
-  const { currentUser, permissions } = useAuth();
+  const { currentUser, roleLabel, permissions } = useAuth();
   const { preOrders, createPreOrder, approvePreOrder, rejectPreOrder, materials, customers } = useData();
 
   const [activeTab, setActiveTab] = useState('list');
@@ -115,7 +115,7 @@ export default function PreOrderPage() {
         <section className="space-y-3">
           <div className="flex items-center justify-between text-[11px] text-neutral-400 font-mono px-1">
             <span>Daftar Pre Order di Sistem Gresik:</span>
-            <span>Role aktif: <strong className="text-white font-medium">{currentUser.role}</strong></span>
+            <span>Role aktif: <strong className="text-white font-medium">{roleLabel || (currentUser?.role === 'superadmin' ? 'Super Admin' : 'Admin')}</strong></span>
           </div>
 
           <div className="grid grid-cols-1 gap-3">

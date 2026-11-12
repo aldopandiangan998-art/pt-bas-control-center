@@ -7,13 +7,33 @@ export const APP_CONFIG = {
   version: '1.1.12.rc220',
 };
 
-// Initial user profile matching the screenshots
-export const INITIAL_USER = {
-  name: 'David Rusiah',
-  email: 'ptbas.adm1@outlook.com',
-  role: 'Super Admin', // Direktur
-  branch: 'Gresik',
-};
+// Initial user profiles and mock database (strictly limited to Admin and Super Admin)
+export const INITIAL_USERS_DB = [
+  {
+    id: 'usr-1',
+    name: 'David Rusiah',
+    email: 'superadmin@ptbas.co.id',
+    password: 'superadmin123',
+    role: 'superadmin',
+    roleLabel: 'Super Admin',
+    branch: 'Pusat & Hub Gresik',
+    phone: '0811-3001-992',
+    aktif: true,
+  },
+  {
+    id: 'usr-2',
+    name: 'Rudi Hartono',
+    email: 'admin@ptbas.co.id',
+    password: 'admin123',
+    role: 'admin',
+    roleLabel: 'Admin',
+    branch: 'Hub Gresik',
+    phone: '0813-8899-112',
+    aktif: true,
+  },
+];
+
+export const INITIAL_USER = INITIAL_USERS_DB[0];
 
 // Tax rates strictly per PT BAS Implementation Plan Section 2 (Aturan 29)
 export const TAX_RATES = {

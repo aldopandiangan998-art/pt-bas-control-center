@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { AlertTriangle, ArrowLeft } from 'lucide-react';
-import { Button, Card, Badge } from '../components/ui';
+import { Button, Card, Badge } from '../../components/ui';
 
 export default function NotFoundPage() {
   const navigate = useNavigate();

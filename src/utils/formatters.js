@@ -64,3 +64,4 @@ export function calculateKubikasi(panjangCm, lebarCm, tinggiCm, koreksiCm = 0) {
     volumeAkhir: Number(volumeAkhir.toFixed(2)),
   };
 }
+

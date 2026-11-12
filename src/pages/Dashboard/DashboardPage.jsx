@@ -18,11 +18,24 @@ import {
   AlertCircle,
   TrendingUp,
   Clock,
+  CheckCircle2,
+  ChevronRight,
 } from 'lucide-react';
-import { APP_CONFIG } from '../../utils/constants';
+import { useData } from '../../context/DataContext';
+import { useAuth } from '../../context/AuthContext';
+import { formatCurrency, formatVolume } from '../../utils/formatters';
 
 export default function DashboardPage() {
   const navigate = useNavigate();
+  const { preOrders, suratJalanList, bkkList } = useData();
+  const { currentUser } = useAuth();
+
+  // Dynamic calculations from central data
+  const totalVolumeDelivered = suratJalanList.reduce((sum, sj) => sum + sj.volumeAkhir, 0);
+  const totalHutang = bkkList
+    .filter((b) => b.statusBayar === 'Belum Dibayar')
+    .reduce((sum, b) => sum + b.amount, 0);
+  const pendingApprovals = preOrders.filter((po) => po.status === 'MENUNGGU_APPROVAL').length;
 
   // Quick action shortcut pills from Screenshot 4
   const quickActions = [
@@ -35,8 +48,8 @@ export default function DashboardPage() {
 
   // 9 Operational menus from Screenshot 3
   const operationalMenus = [
-    { title: 'Received Order', subtitle: 'Pre Order & PO', icon: ClipboardList, color: 'bg-blue-500/15 text-blue-400', path: '/pre-orders' },
-    { title: 'Good Issue', subtitle: 'Surat Jalan Kiriman', icon: Truck, color: 'bg-amber-500/15 text-amber-400', path: '/surat-jalan' },
+    { title: 'Received Order', subtitle: `${preOrders.length} Pre Order Aktif`, icon: ClipboardList, color: 'bg-blue-500/15 text-blue-400', path: '/pre-orders' },
+    { title: 'Good Issue', subtitle: `${suratJalanList.length} Surat Jalan`, icon: Truck, color: 'bg-amber-500/15 text-amber-400', path: '/surat-jalan' },
     { title: 'Jurnal Good Issue', subtitle: 'Rekapan Harian PO', icon: BookOpen, color: 'bg-emerald-500/15 text-emerald-400', path: '/rekapan' },
     { title: 'Cash Out', subtitle: 'BKK ke Supplier', icon: Banknote, color: 'bg-green-500/15 text-green-400', path: '/bkk' },
     { title: 'Invoice', subtitle: 'Faktur Tagihan', icon: Receipt, color: 'bg-cyan-500/15 text-cyan-400', path: '/invoices' },
@@ -59,26 +72,39 @@ export default function DashboardPage() {
   ];
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 max-w-6xl mx-auto pb-16">
       {/* Top Welcome & Quick Actions Bar (Screenshot 4) */}
-      <section className="bg-[#1E1E1E] border border-[#2F2F2F] rounded-2xl p-4 sm:p-6 shadow-xl">
+      <section className="bg-[#1C1C1C] border border-[#2F2F2F] rounded-2xl p-4 sm:p-6 shadow-xl">
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-5">
           <div>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+              <span className="text-xs uppercase font-bold tracking-wider text-emerald-400">
+                Pusat Kontrol Operasional Gresik
+              </span>
+            </div>
             <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
-              Dashboard Operasional PT BAS
+              Selamat Bertugas, {currentUser.name}!
             </h2>
             <p className="text-xs sm:text-sm text-neutral-400">
-              Alur kerja: Pre Order &rarr; Approve &rarr; Surat Jalan &rarr; Rekapan &rarr; BKK &rarr; Invoice &rarr; Bayar
+              Alur: Pre Order &rarr; Approve &rarr; Surat Jalan &rarr; Rekapan &rarr; BKK &rarr; Invoice &rarr; Bayar
             </p>
           </div>
-          <div className="flex items-center gap-2 text-xs font-semibold px-3 py-1.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
-            Operasional Gresik Aktif
-          </div>
+
+          {pendingApprovals > 0 && (
+            <button
+              type="button"
+              onClick={() => navigate('/pre-orders')}
+              className="flex items-center gap-2.5 px-4 py-2 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/40 text-amber-300 text-xs font-semibold transition-colors"
+            >
+              <AlertCircle className="w-4 h-4 text-amber-400 shrink-0" />
+              <span>{pendingApprovals} Pre Order Butuh Approval Direktur</span>
+            </button>
+          )}
         </div>
 
         {/* Quick Action Dock */}
-        <div className="flex flex-wrap items-center gap-2.5 pt-2 border-t border-[#2C2C2C]">
+        <div className="flex flex-wrap items-center gap-2.5 pt-3 border-t border-[#2C2C2C]">
           <span className="text-xs font-semibold text-neutral-400 mr-2 flex items-center gap-1.5">
             <PlusCircle className="w-3.5 h-3.5 text-[#F4511E]" />
             Aksi Cepat:
@@ -100,40 +126,62 @@ export default function DashboardPage() {
         </div>
       </section>
 
-      {/* 3 Main Executive KPI Cards (Section 19: Laporan paling sering dicari) */}
+      {/* 3 Executive KPI Cards per Implementation Plan Section 0 (Poin 19) */}
       <section className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="bg-[#1E1E1E] border border-amber-500/30 rounded-2xl p-4.5 shadow-md hover:border-amber-500 transition-colors">
+        {/* KPI 1 */}
+        <div
+          onClick={() => navigate('/rekapan')}
+          className="bg-[#1C1C1C] border border-amber-500/30 hover:border-amber-500 rounded-2xl p-4.5 shadow-md cursor-pointer transition-all group"
+        >
           <div className="flex items-center justify-between text-neutral-400 mb-2">
             <span className="text-xs font-medium">Rekapan Belum Di-Invoice</span>
-            <Clock className="w-4 h-4 text-amber-400" />
+            <Clock className="w-4 h-4 text-amber-400 group-hover:rotate-12 transition-transform" />
           </div>
-          <div className="text-2xl font-bold text-white mb-1">12 Rekapan</div>
-          <p className="text-xs text-neutral-400">Total volume: ~960.5 m³</p>
+          <div className="text-2xl font-bold text-white mb-1">
+            {suratJalanList.length} Pengiriman
+          </div>
+          <p className="text-xs text-neutral-400">
+            Total volume: <strong className="text-amber-400">{formatVolume(totalVolumeDelivered)}</strong>
+          </p>
         </div>
 
-        <div className="bg-[#1E1E1E] border border-rose-500/30 rounded-2xl p-4.5 shadow-md hover:border-rose-500 transition-colors">
+        {/* KPI 2 */}
+        <div
+          onClick={() => navigate('/laporan')}
+          className="bg-[#1C1C1C] border border-rose-500/30 hover:border-rose-500 rounded-2xl p-4.5 shadow-md cursor-pointer transition-all group"
+        >
           <div className="flex items-center justify-between text-neutral-400 mb-2">
             <span className="text-xs font-medium">Piutang (Invoice Belum Lunas)</span>
-            <TrendingUp className="w-4 h-4 text-rose-400" />
+            <TrendingUp className="w-4 h-4 text-rose-400 group-hover:translate-x-1 transition-transform" />
           </div>
-          <div className="text-2xl font-bold text-rose-400 mb-1">IDR 84,250,000</div>
-          <p className="text-xs text-neutral-400">5 invoice menanti pelunasan</p>
+          <div className="text-2xl font-bold text-rose-400 mb-1">
+            IDR 84,250,000
+          </div>
+          <p className="text-xs text-neutral-400">5 invoice menanti pelunasan customer</p>
         </div>
 
-        <div className="bg-[#1E1E1E] border border-emerald-500/30 rounded-2xl p-4.5 shadow-md hover:border-emerald-500 transition-colors">
+        {/* KPI 3 */}
+        <div
+          onClick={() => navigate('/bkk')}
+          className="bg-[#1C1C1C] border border-emerald-500/30 hover:border-emerald-500 rounded-2xl p-4.5 shadow-md cursor-pointer transition-all group"
+        >
           <div className="flex items-center justify-between text-neutral-400 mb-2">
             <span className="text-xs font-medium">Hutang (BKK Belum Dibayar)</span>
-            <AlertCircle className="w-4 h-4 text-emerald-400" />
+            <AlertCircle className="w-4 h-4 text-emerald-400 group-hover:scale-110 transition-transform" />
           </div>
-          <div className="text-2xl font-bold text-emerald-400 mb-1">IDR 38,920,000</div>
-          <p className="text-xs text-neutral-400">3 BKK siap diproses bayar</p>
+          <div className="text-2xl font-bold text-emerald-400 mb-1">
+            {formatCurrency(totalHutang)}
+          </div>
+          <p className="text-xs text-neutral-400">
+            {bkkList.filter((b) => b.statusBayar === 'Belum Dibayar').length} BKK siap dicatat bayar
+          </p>
         </div>
       </section>
 
       {/* Menu Operasional Grid (Screenshot 3) */}
       <section>
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-bold text-white">Menu Operasional</h3>
+          <h3 className="text-lg font-bold text-white tracking-tight">Menu Operasional</h3>
           <span className="text-xs text-neutral-400">Pilih modul untuk transaksi harian</span>
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3.5 sm:gap-4">
@@ -144,7 +192,7 @@ export default function DashboardPage() {
                 key={menu.title}
                 type="button"
                 onClick={() => navigate(menu.path)}
-                className="group flex flex-col items-center justify-center p-4 sm:p-5 rounded-2xl bg-[#1E1E1E] hover:bg-[#252525] border border-[#2D2D2D] hover:border-[#F4511E] text-center transition-all duration-200 transform hover:-translate-y-1 shadow-md"
+                className="group flex flex-col items-center justify-center p-4 sm:p-5 rounded-2xl bg-[#1C1C1C] hover:bg-[#252525] border border-[#2D2D2D] hover:border-[#F4511E] text-center transition-all duration-200 transform hover:-translate-y-1 shadow-md"
               >
                 <div className={`w-12 h-12 rounded-xl flex items-center justify-center mb-3 shadow-inner ${menu.color} group-hover:scale-110 transition-transform`}>
                   <Icon className="w-6 h-6" />
@@ -164,7 +212,7 @@ export default function DashboardPage() {
       {/* Data Master Section (Screenshot 3) */}
       <section>
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-bold text-white">Data Master</h3>
+          <h3 className="text-lg font-bold text-white tracking-tight">Data Master</h3>
           <button
             type="button"
             onClick={() => navigate('/master-data')}

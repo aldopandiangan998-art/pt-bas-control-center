@@ -85,3 +85,4 @@ export const NAV_LINKS = [
     description: 'Pengguna, Material, Supplier, Customer, Armada, Bank',
   },
 ];
+

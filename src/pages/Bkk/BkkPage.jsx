@@ -13,52 +13,40 @@ import {
   Banknote,
   Building2,
   Calendar,
-  CreditCard,
+  Search,
+  AlertTriangle,
 } from 'lucide-react';
+import { useData } from '../../context/DataContext';
 import { formatCurrency, formatVolume } from '../../utils/formatters';
 
 export default function BkkPage() {
   const navigate = useNavigate();
+  const { bkkList, markBkkPaid } = useData();
 
-  // State replicating Screenshot 2: "Buat Cash Out"
+  // Filter state replicating Screenshot 2: "Buat Cash Out"
   const [filterData, setFilterData] = useState({
     pelanggan: 'PT LION WINGS',
     supplier: 'CV BERKAH SEJAHTERA (GRESIK)',
+    searchQuery: '',
   });
 
   const [filterHidden, setFilterHidden] = useState(false);
   const [selectedItems, setSelectedItems] = useState(['bkk-1', 'bkk-2']);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [paymentForm, setPaymentForm] = useState({
+    tanggalBayar: new Date().toISOString().split('T')[0],
+    rekeningSumber: 'BCA - 0188920199 a/n PT Berkah Alam Semesta',
+    keterangan: 'Pembayaran jasa angkut & material sirtu curah',
+  });
 
-  // Data rows directly matching Screenshot 2
-  const [bkkList, setBkkList] = useState([
-    {
-      id: 'bkk-1',
-      volume: 81.09,
-      material: 'SIRTU',
-      kodeTransaksi: '2026-11-07 - RCP - RU4TN',
-      jenis: 'CURAH | JASA ANGKUT + MATERIAL',
-      perusahaan: 'LION WINGS, PT',
-      subDetail: 'LW 655 - CUR - 459001...',
-      timestamp: '2026-11-09 09:43:20',
-      periode: 'Periode: 2026-11-07',
-      amount: 9730800.0,
-      statusBayar: 'Belum Dibayar', // Hutang
-    },
-    {
-      id: 'bkk-2',
-      volume: 80.34,
-      material: 'SIRTU',
-      kodeTransaksi: '2026-11-05 - RCP - XAGXH',
-      jenis: 'CURAH | JASA ANGKUT + MATERIAL',
-      perusahaan: 'LION WINGS, PT',
-      subDetail: 'LW 655 - CUR - 459002...',
-      timestamp: '2026-11-09 09:43:20',
-      periode: 'Periode: 2026-11-05',
-      amount: 9640800.0,
-      statusBayar: 'Belum Dibayar', // Hutang
-    },
-  ]);
+  // Filtered rows
+  const filteredBkk = bkkList.filter((item) => {
+    const matchQuery =
+      item.kodeTransaksi.toLowerCase().includes(filterData.searchQuery.toLowerCase()) ||
+      item.perusahaan.toLowerCase().includes(filterData.searchQuery.toLowerCase()) ||
+      item.material.toLowerCase().includes(filterData.searchQuery.toLowerCase());
+    return matchQuery;
+  });
 
   const toggleSelect = (id) => {
     setSelectedItems((prev) =>
@@ -66,14 +54,28 @@ export default function BkkPage() {
     );
   };
 
+  const toggleSelectAll = () => {
+    if (selectedItems.length === filteredBkk.length) {
+      setSelectedItems([]);
+    } else {
+      setSelectedItems(filteredBkk.map((i) => i.id));
+    }
+  };
+
   const totalSelected = bkkList
     .filter((item) => selectedItems.includes(item.id))
     .reduce((sum, item) => sum + item.amount, 0);
 
+  const handleConfirmPayment = () => {
+    markBkkPaid(selectedItems, paymentForm);
+    setSelectedItems([]);
+    setShowPaymentModal(false);
+  };
+
   return (
-    <div className="space-y-6 max-w-5xl mx-auto">
+    <div className="space-y-6 max-w-5xl mx-auto pb-24">
       {/* Top Header Bar matching Screenshot 2 */}
-      <div className="flex items-center justify-between pb-3 border-b border-[#2C2C2C]">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-3 border-b border-[#2C2C2C]">
         <div className="flex items-center gap-3">
           <button
             type="button"
@@ -97,6 +99,10 @@ export default function BkkPage() {
         <div className="flex items-center gap-2">
           <button
             type="button"
+            onClick={() => {
+              setFilterData({ pelanggan: 'PT LION WINGS', supplier: '', searchQuery: '' });
+              setSelectedItems(['bkk-1', 'bkk-2']);
+            }}
             className="p-2 rounded-lg bg-[#242424] hover:bg-[#333] text-neutral-300 hover:text-white"
             title="Muat Ulang"
           >
@@ -105,10 +111,20 @@ export default function BkkPage() {
         </div>
       </div>
 
+      {/* PPN Supplier Notice Banner (Implementation Plan Section 2, Aturan 23) */}
+      <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/25 text-amber-300 text-xs flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
+          <span>
+            <strong>Aturan BKK PT BAS:</strong> Transaksi di bawah ini adalah rekapan <strong>Non-PPN</strong>. BKK untuk supplier PPN sementara dikelola via rekonsiliasi tagihan (Fase 8).
+          </span>
+        </div>
+      </div>
+
       {/* Filter Box reproducing Screenshot 2 */}
       <div className="bg-[#1C1C1C] border border-[#2D2D2D] rounded-2xl p-4 sm:p-6 shadow-xl space-y-4">
         {!filterHidden && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
               <label className="block text-xs font-medium text-neutral-400 mb-1.5 flex items-center gap-1.5">
                 <User className="w-4 h-4 text-neutral-400" />
@@ -121,6 +137,7 @@ export default function BkkPage() {
               >
                 <option value="PT LION WINGS">PT LION WINGS</option>
                 <option value="PT SEMEN INDONESIA">PT SEMEN INDONESIA</option>
+                <option value="PT PETROKIMIA GRESIK">PT PETROKIMIA GRESIK</option>
               </select>
             </div>
 
@@ -137,6 +154,20 @@ export default function BkkPage() {
                 <option value="CV BERKAH SEJAHTERA (GRESIK)">CV BERKAH SEJAHTERA (GRESIK)</option>
                 <option value="UD PASIR JAYA GRESIK">UD PASIR JAYA GRESIK</option>
               </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-neutral-400 mb-1.5 flex items-center gap-1.5">
+                <Search className="w-4 h-4 text-neutral-400" />
+                Cari Transaksi / Nota
+              </label>
+              <input
+                type="text"
+                placeholder="Cari kode RCP, material..."
+                value={filterData.searchQuery}
+                onChange={(e) => setFilterData({ ...filterData, searchQuery: e.target.value })}
+                className="w-full bg-[#272727] border border-[#3C3C3C] text-white rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:border-[#F4511E]"
+              />
             </div>
           </div>
         )}
@@ -176,20 +207,32 @@ export default function BkkPage() {
       {/* Transaction List Cards matching Screenshot 2 */}
       <section className="space-y-3">
         <div className="flex items-center justify-between text-xs text-neutral-400 px-1">
-          <span>Daftar Transaksi Rekapan:</span>
+          <div className="flex items-center gap-3">
+            <label className="flex items-center gap-2 cursor-pointer text-neutral-300">
+              <input
+                type="checkbox"
+                checked={selectedItems.length === filteredBkk.length && filteredBkk.length > 0}
+                onChange={toggleSelectAll}
+                className="w-4 h-4 rounded text-[#F4511E] focus:ring-0"
+              />
+              <span>Pilih Semua ({filteredBkk.length})</span>
+            </label>
+          </div>
+
           <span>
             {selectedItems.length} transaksi dipilih ({formatCurrency(totalSelected)})
           </span>
         </div>
 
-        {bkkList.map((item) => {
+        {filteredBkk.map((item) => {
           const isSelected = selectedItems.includes(item.id);
+          const isPaid = item.statusBayar === 'Lunas';
 
           return (
             <div
               key={item.id}
-              className={`bg-[#1C1C1C] border rounded-xl p-3.5 sm:p-4.5 flex flex-col md:flex-row md:items-center justify-between gap-4 transition-all ${
-                isSelected ? 'border-[#F4511E]/60 bg-[#211B18]' : 'border-[#2D2D2D] hover:border-[#3E3E3E]'
+              className={`bg-[#1C1C1C] border rounded-2xl p-4 sm:p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 transition-all ${
+                isSelected ? 'border-[#F4511E]/70 bg-[#221A16]' : 'border-[#2D2D2D] hover:border-[#3E3E3E]'
               }`}
             >
               {/* Left Column: Checkbox, Volume, and Transaction Details */}
@@ -234,8 +277,14 @@ export default function BkkPage() {
                   <div className="text-sm sm:text-base font-bold font-mono text-white">
                     {formatCurrency(item.amount)}
                   </div>
-                  <span className="text-[10px] text-rose-400 font-semibold px-1.5 py-0.5 rounded bg-rose-500/15 border border-rose-500/30 inline-block mt-0.5">
-                    {item.statusBayar}
+                  <span
+                    className={`text-[10px] font-semibold px-2 py-0.5 rounded border inline-block mt-0.5 ${
+                      isPaid
+                        ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
+                        : 'bg-rose-500/15 text-rose-400 border-rose-500/30'
+                    }`}
+                  >
+                    {isPaid ? `Lunas (${item.tanggalBayar})` : 'Belum Dibayar (Hutang)'}
                   </span>
                 </div>
 
@@ -285,40 +334,45 @@ export default function BkkPage() {
       {/* Payment Modal per Section 2 Aturan 22: Tanggal Bayar & Rekening Sumber */}
       {showPaymentModal && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-[#1C1C1C] border border-[#333] rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl">
-            <h3 className="text-lg font-bold text-white flex items-center gap-2">
-              <Banknote className="w-5 h-5 text-emerald-400" />
-              Catat Pembayaran BKK
+          <div className="bg-[#1C1C1C] border border-[#333] rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl animate-in fade-in">
+            <h3 className="text-base font-bold text-white flex items-center gap-2 text-emerald-400">
+              <Banknote className="w-5 h-5" />
+              Catat Pembayaran BKK ke Supplier
             </h3>
             <p className="text-xs text-neutral-400">
               Mencatat kas keluar ke supplier PT BAS. Transaksi akan langsung terhitung lunas di laporan hutang.
             </p>
 
-            <div className="space-y-3">
+            <div className="space-y-3 text-xs">
               <div>
-                <label className="block text-xs font-medium text-neutral-300 mb-1">
+                <label className="block text-neutral-300 mb-1">
                   Tanggal Bayar <span className="text-rose-500">*</span>
                 </label>
                 <input
                   type="date"
-                  defaultValue={new Date().toISOString().split('T')[0]}
-                  className="w-full bg-[#272727] border border-[#3C3C3C] text-white rounded-xl px-3 py-2 text-sm"
+                  value={paymentForm.tanggalBayar}
+                  onChange={(e) => setPaymentForm({ ...paymentForm, tanggalBayar: e.target.value })}
+                  className="w-full bg-[#272727] border border-[#3C3C3C] text-white rounded-xl px-3 py-2 text-xs"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-neutral-300 mb-1">
+                <label className="block text-neutral-300 mb-1">
                   Rekening Sumber PT BAS <span className="text-rose-500">*</span>
                 </label>
-                <select className="w-full bg-[#272727] border border-[#3C3C3C] text-white rounded-xl px-3 py-2 text-sm">
-                  <option>BCA - 0188920199 a/n PT Berkah Alam Semesta</option>
-                  <option>Mandiri - 14200192881 a/n PT Berkah Alam Semesta</option>
-                  <option>Kas Tunai Kantor Gresik</option>
+                <select
+                  value={paymentForm.rekeningSumber}
+                  onChange={(e) => setPaymentForm({ ...paymentForm, rekeningSumber: e.target.value })}
+                  className="w-full bg-[#272727] border border-[#3C3C3C] text-white rounded-xl px-3 py-2 text-xs"
+                >
+                  <option value="BCA - 0188920199 a/n PT Berkah Alam Semesta">BCA - 0188920199 a/n PT Berkah Alam Semesta</option>
+                  <option value="Mandiri - 14200192881 a/n PT Berkah Alam Semesta">Mandiri - 14200192881 a/n PT Berkah Alam Semesta</option>
+                  <option value="Kas Tunai Kantor Gresik">Kas Tunai Kantor Gresik</option>
                 </select>
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-neutral-300 mb-1">
+                <label className="block text-neutral-300 mb-1">
                   Total Nominal Dibayar
                 </label>
                 <input
@@ -340,11 +394,8 @@ export default function BkkPage() {
               </button>
               <button
                 type="button"
-                onClick={() => {
-                  setShowPaymentModal(false);
-                  alert('Pembayaran BKK berhasil dicatat!');
-                }}
-                className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs"
+                onClick={handleConfirmPayment}
+                className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs transition-colors"
               >
                 Konfirmasi Pembayaran
               </button>

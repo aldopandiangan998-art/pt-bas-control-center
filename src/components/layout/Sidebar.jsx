@@ -1,4 +1,5 @@
-import { NavLink } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   LayoutDashboard,
@@ -13,7 +14,15 @@ import {
   X,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   UserCheck,
+  HardHat,
+  Mountain,
+  Building2,
+  Landmark,
+  CreditCard,
+  Users,
+  Coins,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { useAuth } from '../../context/AuthContext';
@@ -29,11 +38,38 @@ const ICON_MAP = {
   BarChart3,
   Database,
   Settings,
+  HardHat,
+  Mountain,
+  Building2,
+  Landmark,
+  CreditCard,
+  Users,
+  Coins,
 };
 
 export default function Sidebar() {
+  const location = useLocation();
+  const navigate = useNavigate();
   const { sidebarOpen, closeMobileSidebar, sidebarCollapsed, toggleCollapseSidebar } = useApp();
   const { currentUser, switchRole } = useAuth();
+
+  // Track expanded state for expandable submenus
+  const [openSubmenus, setOpenSubmenus] = useState(() => ({
+    '/master-data': location.pathname === '/master-data',
+  }));
+
+  // Automatically expand submenu if on /master-data
+  useEffect(() => {
+    if (location.pathname === '/master-data') {
+      setOpenSubmenus((prev) => ({ ...prev, '/master-data': true }));
+    }
+  }, [location.pathname]);
+
+  const toggleSubmenu = (path) => {
+    setOpenSubmenus((prev) => ({ ...prev, [path]: !prev[path] }));
+  };
+
+  const currentTab = new URLSearchParams(location.search).get('tab') || 'supplier';
 
   return (
     <>
@@ -112,7 +148,97 @@ export default function Sidebar() {
               <div className="space-y-0.5">
                 {cat.items.map((link) => {
                   const Icon = ICON_MAP[link.icon] || LayoutDashboard;
+                  const hasChildren = Boolean(link.children && link.children.length > 0);
+                  const isSubmenuOpen = Boolean(openSubmenus[link.path]);
+                  const isParentActive = location.pathname === link.path;
 
+                  // 1. Render item with submenu (e.g. Data Master)
+                  if (hasChildren) {
+                    return (
+                      <div key={link.path} className="space-y-0.5">
+                        <div
+                          onClick={() => {
+                            if (sidebarCollapsed) {
+                              navigate(link.path);
+                            } else {
+                              toggleSubmenu(link.path);
+                            }
+                          }}
+                          role="button"
+                          tabIndex={0}
+                          onKeyDown={(e) => e.key === 'Enter' && toggleSubmenu(link.path)}
+                          className={`flex items-center justify-between px-2.5 py-2 rounded text-xs font-medium transition-all duration-150 group cursor-pointer ${
+                            isParentActive
+                              ? 'bg-[#1D2125] text-white font-semibold'
+                              : 'text-neutral-400 hover:text-neutral-100 hover:bg-[#181B1E]'
+                          }`}
+                          title={sidebarCollapsed ? `${link.label} (${link.children.length} sub-item)` : link.description}
+                        >
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <Icon className={`w-4 h-4 shrink-0 transition-colors ${isParentActive ? 'text-[#F4511E]' : 'group-hover:scale-105'}`} />
+                            {!sidebarCollapsed && (
+                              <span className="truncate leading-none tracking-tight">{link.label}</span>
+                            )}
+                          </div>
+
+                          {!sidebarCollapsed && (
+                            <div className="flex items-center gap-1.5 shrink-0 ml-1">
+                              <span className="text-[10px] font-mono text-neutral-500 bg-[#16181B] px-1.5 py-0.2 rounded">
+                                {link.children.length}
+                              </span>
+                              <ChevronDown
+                                className={`w-3.5 h-3.5 text-neutral-400 transition-transform duration-200 ${
+                                  isSubmenuOpen ? 'rotate-180 text-white' : ''
+                                }`}
+                              />
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Submenu Children List */}
+                        {!sidebarCollapsed && hasChildren && isSubmenuOpen && (
+                          <div className="ml-3.5 pl-2.5 border-l border-[#24282C] space-y-0.5 py-1">
+                            {link.children.map((child) => {
+                              const ChildIcon = ICON_MAP[child.icon] || Database;
+                              const isChildActive = isParentActive && currentTab === child.tab;
+
+                              return (
+                                <button
+                                  key={child.path}
+                                  type="button"
+                                  onClick={() => {
+                                    navigate(child.path);
+                                    closeMobileSidebar();
+                                  }}
+                                  className={`w-full flex items-center justify-between px-2 py-1.5 rounded text-[11px] transition-all text-left group cursor-pointer ${
+                                    isChildActive
+                                      ? 'bg-[#F4511E]/15 text-[#F4511E] font-semibold border-l-2 border-[#F4511E]'
+                                      : 'text-neutral-400 hover:text-neutral-200 hover:bg-[#181B1E]'
+                                  }`}
+                                >
+                                  <div className="flex items-center gap-2 truncate">
+                                    <ChildIcon
+                                      className={`w-3.5 h-3.5 shrink-0 ${
+                                        isChildActive
+                                          ? 'text-[#F4511E]'
+                                          : 'text-neutral-500 group-hover:text-neutral-300'
+                                      }`}
+                                    />
+                                    <span className="truncate">{child.label}</span>
+                                  </div>
+                                  {isChildActive && (
+                                    <span className="w-1.5 h-1.5 rounded-full bg-[#F4511E] shrink-0" />
+                                  )}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  }
+
+                  // 2. Normal Single NavLink
                   return (
                     <NavLink
                       key={link.path}

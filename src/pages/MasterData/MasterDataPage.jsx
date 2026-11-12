@@ -230,16 +230,42 @@ export default function MasterDataPage() {
     setModalOpen(false);
   };
 
-  const categories = [
-    { key: 'supplier', label: 'Data Supplier', count: suppliers.length, icon: HardHat },
-    { key: 'material', label: 'Data Material', count: materials.length, icon: Mountain },
-    { key: 'customer', label: 'Data Customer', count: customers.length, icon: Building2 },
-    { key: 'armada', label: 'Data Armada', count: armadaList.length, icon: Truck },
-    { key: 'bank', label: 'Data Bank', count: banks.length, icon: Landmark },
-    { key: 'rekening', label: 'Data Rekening Bank', count: bankAccounts.length, icon: CreditCard },
-    { key: 'pengguna', label: 'Data Pengguna', count: usersList.length, icon: Users },
-    { key: 'mata-uang', label: 'Data Mata Uang', count: 1, icon: Coins },
+  const masterSubgroups = [
+    {
+      id: 'operasional',
+      label: 'Operasional Lapangan',
+      items: [
+        { key: 'supplier', label: 'Data Supplier', shortLabel: 'Supplier', count: suppliers.length, icon: HardHat },
+        { key: 'material', label: 'Data Material', shortLabel: 'Material', count: materials.length, icon: Mountain },
+        { key: 'customer', label: 'Data Customer', shortLabel: 'Customer', count: customers.length, icon: Building2 },
+        { key: 'armada', label: 'Data Armada', shortLabel: 'Armada Truk', count: armadaList.length, icon: Truck },
+      ],
+    },
+    {
+      id: 'finansial',
+      label: 'Finansial & Bank',
+      items: [
+        { key: 'bank', label: 'Data Bank', shortLabel: 'Bank Mitra', count: banks.length, icon: Landmark },
+        { key: 'rekening', label: 'Data Rekening Bank', shortLabel: 'Rekening PT BAS', count: bankAccounts.length, icon: CreditCard },
+        { key: 'mata-uang', label: 'Data Mata Uang', shortLabel: 'Mata Uang Basis', count: 1, icon: Coins },
+      ],
+    },
+    {
+      id: 'pengguna',
+      label: 'Akses & Pengguna',
+      items: [
+        { key: 'pengguna', label: 'Data Pengguna', shortLabel: 'Pengguna Sistem', count: usersList.length, icon: Users },
+      ],
+    },
   ];
+
+  // Flattened for easy lookup
+  const categories = masterSubgroups.flatMap((g) => g.items);
+
+  // Active subgroup based on current active tab
+  const activeSubgroup =
+    masterSubgroups.find((g) => g.items.some((it) => it.key === currentTab)) ||
+    masterSubgroups[0];
 
   return (
     <div className="space-y-5 pb-20 relative min-h-screen">
@@ -259,7 +285,7 @@ export default function MasterDataPage() {
               <Badge size="xs" variant="primary">ERP Core</Badge>
             </h1>
             <p className="text-[11px] text-neutral-400">
-              Pengaturan master supplier, material, customer, armada dump truck, dan rekening bank resmi
+              Pengaturan terstruktur: Operasional tambang, akun perbankan, dan hak akses pengguna
             </p>
           </div>
         </div>
@@ -275,36 +301,74 @@ export default function MasterDataPage() {
         </div>
       </div>
 
-      {/* Category Horizontal Selector Pills */}
-      <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none" role="tablist">
-        {categories.map((cat) => {
-          const Icon = cat.icon;
-          const isActive = currentTab === cat.key;
-          return (
-            <button
-              key={cat.key}
-              type="button"
-              role="tab"
-              aria-selected={isActive}
-              onClick={() => setTab(cat.key)}
-              className={`px-3 py-2 rounded-md text-xs font-medium whitespace-nowrap flex items-center gap-2 transition-all cursor-pointer ${
-                isActive
-                  ? 'bg-[#F4511E] text-white font-semibold shadow-xs'
-                  : 'bg-[#131517] text-neutral-400 hover:text-neutral-200 hover:bg-[#181B1E] border border-[#24282C]'
-              }`}
-            >
-              <Icon className="w-3.5 h-3.5" />
-              <span>{cat.label}</span>
-              <span
-                className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
-                  isActive ? 'bg-black/30 text-white' : 'bg-black/40 text-neutral-400'
+      {/* Structured Submenu Navigation */}
+      <div className="bg-[#131517] border border-[#24282C] rounded-lg p-2.5 space-y-2.5">
+        {/* Tier 1: Group / Kategori Submenu */}
+        <div className="flex items-center gap-1.5 border-b border-[#22262A] pb-2 overflow-x-auto scrollbar-none">
+          <span className="text-[10px] font-mono uppercase text-neutral-500 font-bold px-1.5 tracking-wider hidden sm:inline">
+            Kelompok Master:
+          </span>
+          {masterSubgroups.map((group) => {
+            const isGroupActive = activeSubgroup.id === group.id;
+
+            return (
+              <button
+                key={group.id}
+                type="button"
+                onClick={() => setTab(group.items[0].key)}
+                className={`px-3 py-1.5 rounded-md text-xs font-semibold whitespace-nowrap transition-all cursor-pointer flex items-center gap-2 ${
+                  isGroupActive
+                    ? 'bg-[#1F2327] text-white border border-[#F4511E]/50 shadow-xs'
+                    : 'text-neutral-400 hover:text-neutral-200 hover:bg-[#181B1E]'
                 }`}
               >
-                {cat.count}
-              </span>
-            </button>
-          );
-        })}
+                <span>{group.label}</span>
+                <span
+                  className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
+                    isGroupActive
+                      ? 'bg-[#F4511E] text-white'
+                      : 'bg-[#24282C] text-neutral-400'
+                  }`}
+                >
+                  {group.items.length}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Tier 2: Sub-items Under Active Submenu */}
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 scrollbar-none" role="tablist">
+          {activeSubgroup.items.map((cat) => {
+            const Icon = cat.icon;
+            const isActive = currentTab === cat.key;
+
+            return (
+              <button
+                key={cat.key}
+                type="button"
+                role="tab"
+                aria-selected={isActive}
+                onClick={() => setTab(cat.key)}
+                className={`px-3 py-1.5 rounded-md text-xs font-medium whitespace-nowrap flex items-center gap-2 transition-all cursor-pointer ${
+                  isActive
+                    ? 'bg-[#F4511E] text-white font-bold shadow-xs'
+                    : 'bg-[#181B1E] text-neutral-300 hover:text-white hover:bg-[#202428] border border-[#2D3339]'
+                }`}
+              >
+                <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-white' : 'text-[#F4511E]'}`} />
+                <span>{cat.label}</span>
+                <span
+                  className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
+                    isActive ? 'bg-black/35 text-white' : 'bg-black/30 text-neutral-400'
+                  }`}
+                >
+                  {cat.count}
+                </span>
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* ======================================================== */}

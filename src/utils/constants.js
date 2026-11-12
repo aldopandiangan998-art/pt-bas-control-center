@@ -122,6 +122,16 @@ export const NAV_CATEGORIES = [
         label: 'Data Master',
         icon: 'Database',
         description: 'Pengguna, Material, Supplier, Customer, Armada, Bank',
+        children: [
+          { path: '/master-data?tab=supplier', tab: 'supplier', label: 'Data Supplier', icon: 'HardHat' },
+          { path: '/master-data?tab=material', tab: 'material', label: 'Data Material', icon: 'Mountain' },
+          { path: '/master-data?tab=customer', tab: 'customer', label: 'Data Customer', icon: 'Building2' },
+          { path: '/master-data?tab=armada', tab: 'armada', label: 'Data Armada', icon: 'Truck' },
+          { path: '/master-data?tab=bank', tab: 'bank', label: 'Data Bank', icon: 'Landmark' },
+          { path: '/master-data?tab=rekening', tab: 'rekening', label: 'Data Rekening Bank', icon: 'CreditCard' },
+          { path: '/master-data?tab=pengguna', tab: 'pengguna', label: 'Data Pengguna', icon: 'Users' },
+          { path: '/master-data?tab=mata-uang', tab: 'mata-uang', label: 'Data Mata Uang', icon: 'Coins' },
+        ],
       },
       {
         path: '/pengaturan',

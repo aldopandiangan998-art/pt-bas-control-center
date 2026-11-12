@@ -55,60 +55,83 @@ export const DEFAULT_MATERIALS = [
   { id: 'mat-9', name: 'SIRTU AYAK', category: 'Curah', pphRate: 2.0, defaultUnit: 'm3', beli: 25000, jual: 37000 },
 ];
 
-// Navigation menu links mapping mobile labels to enterprise module routes
-export const NAV_LINKS = [
+// Categorized navigation menu links for structured enterprise sidebar
+export const NAV_CATEGORIES = [
   {
-    path: '/',
-    label: 'Dashboard',
-    icon: 'LayoutDashboard',
-    description: 'Pusat kontrol dan ringkasan operasional',
+    category: 'Utama',
+    items: [
+      {
+        path: '/',
+        label: 'Dashboard',
+        icon: 'LayoutDashboard',
+        description: 'Pusat kontrol dan ringkasan operasional',
+      },
+    ],
   },
   {
-    path: '/pre-orders',
-    label: 'Pre Order (RO)',
-    icon: 'ClipboardList',
-    description: 'Pemesanan awal material dari customer',
+    category: 'Logistik & Dispatch',
+    items: [
+      {
+        path: '/pre-orders',
+        label: 'Pre Order (RO)',
+        icon: 'ClipboardList',
+        description: 'Pemesanan awal material dari customer',
+      },
+      {
+        path: '/surat-jalan',
+        label: 'Surat Jalan (GI)',
+        icon: 'Truck',
+        description: 'Pencatatan kiriman harian & kalkulator kubikasi',
+      },
+      {
+        path: '/rekapan',
+        label: 'Rekapan (Jurnal GI)',
+        icon: 'BookOpen',
+        description: 'Rekap kiriman per PO, tanggal, dan PPN',
+      },
+    ],
   },
   {
-    path: '/surat-jalan',
-    label: 'Surat Jalan (GI)',
-    icon: 'Truck',
-    description: 'Pencatatan kiriman harian & kalkulator kubikasi',
+    category: 'Keuangan & Faktur',
+    items: [
+      {
+        path: '/bkk',
+        label: 'BKK (Cash Out)',
+        icon: 'Banknote',
+        description: 'Bukti Kas Keluar ke supplier',
+      },
+      {
+        path: '/invoices',
+        label: 'Invoice',
+        icon: 'Receipt',
+        description: 'Tagihan penjualan ke customer',
+      },
+      {
+        path: '/laporan',
+        label: 'Pusat Laporan',
+        icon: 'BarChart3',
+        description: 'Rekapan belum invoice, piutang, dan hutang',
+      },
+    ],
   },
   {
-    path: '/rekapan',
-    label: 'Rekapan (Jurnal GI)',
-    icon: 'BookOpen',
-    description: 'Rekap kiriman per PO, tanggal, dan PPN',
-  },
-  {
-    path: '/bkk',
-    label: 'BKK (Cash Out)',
-    icon: 'Banknote',
-    description: 'Bukti Kas Keluar ke supplier',
-  },
-  {
-    path: '/invoices',
-    label: 'Invoice',
-    icon: 'Receipt',
-    description: 'Tagihan penjualan ke customer',
-  },
-  {
-    path: '/laporan',
-    label: 'Laporan',
-    icon: 'BarChart3',
-    description: 'Rekapan belum invoice, piutang, dan hutang',
-  },
-  {
-    path: '/master-data',
-    label: 'Data Master',
-    icon: 'Database',
-    description: 'Pengguna, Material, Supplier, Customer, Armada, Bank',
-  },
-  {
-    path: '/pengaturan',
-    label: 'Pengaturan',
-    icon: 'Settings',
-    description: 'Konfigurasi akun, biometrik, tema, FAQ & legal',
+    category: 'Sistem & Master',
+    items: [
+      {
+        path: '/master-data',
+        label: 'Data Master',
+        icon: 'Database',
+        description: 'Pengguna, Material, Supplier, Customer, Armada, Bank',
+      },
+      {
+        path: '/pengaturan',
+        label: 'Pengaturan',
+        icon: 'Settings',
+        description: 'Konfigurasi akun, biometrik, tema, FAQ & legal',
+      },
+    ],
   },
 ];
+
+// Flat export for convenience and backward compatibility
+export const NAV_LINKS = NAV_CATEGORIES.flatMap((c) => c.items);

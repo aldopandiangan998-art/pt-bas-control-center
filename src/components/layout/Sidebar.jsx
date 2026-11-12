@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { useAuth } from '../../context/AuthContext';
-import { NAV_LINKS } from '../../utils/constants';
+import { NAV_CATEGORIES } from '../../utils/constants';
 
 const ICON_MAP = {
   LayoutDashboard,
@@ -56,10 +56,10 @@ export default function Sidebar() {
       <aside
         className={`fixed lg:static top-0 bottom-0 left-0 z-50 flex flex-col bg-[#111315] border-r border-[#22262A] transition-all duration-200 select-none ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
-        } ${sidebarCollapsed ? 'lg:w-16' : 'w-56 lg:w-56'}`}
+        } ${sidebarCollapsed ? 'lg:w-16' : 'w-60 lg:w-60'}`}
       >
         {/* Top Mini Section */}
-        <div className="flex items-center justify-between px-3 py-3 border-b border-[#22262A] bg-[#0E1012]">
+        <div className="flex items-center justify-between px-3.5 py-3 border-b border-[#22262A] bg-[#0E1012]">
           <div className="flex items-center gap-2 overflow-hidden">
             <span className="w-6 h-6 rounded bg-[#F4511E] text-white flex items-center justify-center font-bold text-xs shrink-0 font-mono shadow-xs">
               B
@@ -74,7 +74,7 @@ export default function Sidebar() {
           <button
             type="button"
             onClick={closeMobileSidebar}
-            className="lg:hidden p-1 text-neutral-400 hover:text-white"
+            className="lg:hidden p-1 text-neutral-400 hover:text-white cursor-pointer"
             aria-label="Tutup Menu"
           >
             <X className="w-4 h-4" />
@@ -90,32 +90,53 @@ export default function Sidebar() {
           </button>
         </div>
 
-        {/* Navigation Item List */}
-        <nav className="flex-1 overflow-y-auto px-2 py-3 space-y-0.5" aria-label="Menu Utama">
-          {NAV_LINKS.map((link) => {
-            const Icon = ICON_MAP[link.icon] || LayoutDashboard;
+        {/* Categorized Navigation Item List */}
+        <nav className="flex-1 overflow-y-auto px-2 py-3 space-y-3.5 scrollbar-thin" aria-label="Menu Utama">
+          {NAV_CATEGORIES.map((cat, catIdx) => (
+            <div key={cat.category} className="space-y-1">
+              {/* Category Header (when expanded) or divider (when collapsed) */}
+              {!sidebarCollapsed ? (
+                <div className="flex items-center justify-between px-2.5 py-1">
+                  <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-neutral-400">
+                    {cat.category}
+                  </span>
+                  <span className="text-[9px] font-mono text-neutral-600 bg-[#16181B] px-1.5 py-0.2 rounded">
+                    {cat.items.length}
+                  </span>
+                </div>
+              ) : (
+                catIdx > 0 && <div className="border-t border-[#22262A] my-2 mx-1" />
+              )}
 
-            return (
-              <NavLink
-                key={link.path}
-                to={link.path}
-                onClick={closeMobileSidebar}
-                className={({ isActive }) =>
-                  `flex items-center gap-2.5 px-2.5 py-2 rounded text-xs font-medium transition-all duration-150 group cursor-pointer ${
-                    isActive
-                      ? 'bg-[#1D2125] text-[#F4511E] font-semibold border-l-2 border-[#F4511E] shadow-xs'
-                      : 'text-neutral-400 hover:text-neutral-100 hover:bg-[#181B1E]'
-                  }`
-                }
-                title={sidebarCollapsed ? link.label : undefined}
-              >
-                <Icon className="w-4 h-4 shrink-0 transition-colors group-hover:scale-105" />
-                {!sidebarCollapsed && (
-                  <span className="truncate leading-none tracking-tight">{link.label}</span>
-                )}
-              </NavLink>
-            );
-          })}
+              {/* Items in Category */}
+              <div className="space-y-0.5">
+                {cat.items.map((link) => {
+                  const Icon = ICON_MAP[link.icon] || LayoutDashboard;
+
+                  return (
+                    <NavLink
+                      key={link.path}
+                      to={link.path}
+                      onClick={closeMobileSidebar}
+                      className={({ isActive }) =>
+                        `flex items-center gap-2.5 px-2.5 py-2 rounded text-xs font-medium transition-all duration-150 group cursor-pointer ${
+                          isActive
+                            ? 'bg-[#1D2125] text-[#F4511E] font-semibold border-l-2 border-[#F4511E] shadow-xs'
+                            : 'text-neutral-400 hover:text-neutral-100 hover:bg-[#181B1E]'
+                        }`
+                      }
+                      title={sidebarCollapsed ? `${cat.category}: ${link.label}` : link.description}
+                    >
+                      <Icon className="w-4 h-4 shrink-0 transition-colors group-hover:scale-105" />
+                      {!sidebarCollapsed && (
+                        <span className="truncate leading-none tracking-tight">{link.label}</span>
+                      )}
+                    </NavLink>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
         </nav>
 
         {/* Bottom Role Switcher Panel (Strictly Admin and Superadmin) */}

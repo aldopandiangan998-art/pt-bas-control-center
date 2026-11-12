@@ -5,16 +5,16 @@ import Footer from './Footer';
 
 export default function MainLayout() {
   return (
-    <div className="min-h-screen flex flex-col bg-[#121212] text-white">
-      {/* Top Header with Wood Texture */}
+    <div className="min-h-screen flex flex-col bg-[#0F0F0F] text-neutral-100">
+      {/* Top Banner Header */}
       <Header />
 
-      {/* Main Body: Sidebar + Dynamic Content Outlet */}
+      {/* Main Workspace Frame */}
       <div className="flex-1 flex overflow-hidden">
         <Sidebar />
 
-        <main className="flex-1 overflow-y-auto bg-[#121212] p-4 sm:p-6 lg:p-8 flex flex-col justify-between">
-          <div className="max-w-7xl w-full mx-auto pb-10">
+        <main className="flex-1 overflow-y-auto bg-[#0F0F0F] p-3 sm:p-5 flex flex-col justify-between">
+          <div className="w-full max-w-7xl mx-auto pb-8">
             <Outlet />
           </div>
           <Footer />
@@ -23,4 +23,3 @@ export default function MainLayout() {
     </div>
   );
 }
-

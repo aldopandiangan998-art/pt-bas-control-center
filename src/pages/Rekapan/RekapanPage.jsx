@@ -4,14 +4,9 @@ import {
   ArrowLeft,
   User,
   Calendar,
-  Filter,
   RotateCcw,
-  CheckCircle2,
   ChevronUp,
   ChevronDown,
-  BookOpen,
-  FileSpreadsheet,
-  AlertTriangle,
 } from 'lucide-react';
 import { formatCurrency, formatVolume } from '../../utils/formatters';
 
@@ -23,13 +18,11 @@ export default function RekapanPage() {
     pelanggan: 'PT LION WINGS',
     mulai: '2026-11-01',
     akhir: '2026-11-07',
-    isPpn: false, // Per implementation plan: Rekapan dipisah PPN & Non-PPN
+    isPpn: false,
   });
 
   const [filterCollapsed, setFilterCollapsed] = useState(false);
-  const [isApplied, setIsApplied] = useState(false);
 
-  // Sample rekapan rows generated per PO & Date
   const rekapanData = [
     {
       id: 'REK-202611-0001',
@@ -40,10 +33,8 @@ export default function RekapanPage() {
       isPpn: false,
       totalSj: 6,
       totalVolume: 81.09,
-      nominalBeli: 7703550, // Dasar BKK (Harga Beli)
-      nominalJual: 9730800, // Dasar Invoice (Harga Jual)
-      statusBkk: 'Belum Dibuat',
-      statusInvoice: 'Belum Ditagih',
+      nominalBeli: 7703550,
+      nominalJual: 9730800,
     },
     {
       id: 'REK-202611-0002',
@@ -56,97 +47,87 @@ export default function RekapanPage() {
       totalVolume: 80.34,
       nominalBeli: 7632300,
       nominalJual: 9640800,
-      statusBkk: 'Belum Dibuat',
-      statusInvoice: 'Belum Ditagih',
     },
   ];
 
-  const handleApplyFilter = (e) => {
-    e.preventDefault();
-    setIsApplied(true);
-  };
-
   return (
-    <div className="space-y-6 max-w-5xl mx-auto">
+    <div className="space-y-4 max-w-5xl mx-auto">
       {/* Top Header Bar matching Screenshot 7 */}
-      <div className="flex items-center justify-between pb-3 border-b border-[#2C2C2C]">
-        <div className="flex items-center gap-3">
+      <div className="flex items-center justify-between pb-2.5 border-b border-[#242424]">
+        <div className="flex items-center gap-2.5">
           <button
             type="button"
             onClick={() => navigate('/')}
-            className="p-2 rounded-lg bg-[#242424] hover:bg-[#333] text-white transition-colors"
+            className="p-1.5 rounded bg-[#1C1C1C] hover:bg-[#282828] text-neutral-300 transition-colors"
             title="Kembali ke Dashboard"
           >
-            <ArrowLeft className="w-5 h-5" />
+            <ArrowLeft className="w-4 h-4" />
           </button>
           <div>
-            <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
+            <h2 className="text-base sm:text-lg font-bold text-white tracking-tight">
               Buat Jurnal GI (Rekapan)
             </h2>
-            <p className="text-xs text-neutral-400">
-              Rekap kiriman harian per PO, tanggal, dan pemisahan PPN/Non-PPN
+            <p className="text-[11px] text-neutral-400">
+              Rekap kiriman harian per PO, per tanggal, dan per jenis PPN/Non-PPN
             </p>
           </div>
         </div>
 
-        {/* Action icons from top right of Screenshot 7 */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
           <button
             type="button"
-            className="p-2 rounded-lg bg-[#242424] hover:bg-[#333] text-neutral-300 hover:text-white"
+            className="p-1.5 rounded bg-[#1C1C1C] hover:bg-[#282828] text-neutral-400 hover:text-white"
             title="Reset Filter"
-            onClick={() => setIsApplied(false)}
           >
-            <RotateCcw className="w-4 h-4" />
+            <RotateCcw className="w-3.5 h-3.5" />
           </button>
         </div>
       </div>
 
       {/* Filter Box reproducing Screenshot 7 */}
-      <form onSubmit={handleApplyFilter} className="bg-[#1C1C1C] border border-[#2D2D2D] rounded-2xl p-4 sm:p-6 shadow-xl space-y-4">
+      <div className="bg-[#141414] border border-[#242424] rounded-lg p-3.5 sm:p-4 space-y-3">
         {/* Field 1: Pilih Pelanggan */}
         <div>
-          <label className="block text-xs font-medium text-neutral-400 mb-1.5 flex items-center gap-1.5">
-            <User className="w-4 h-4 text-neutral-400" />
+          <label className="block text-[11px] font-medium text-neutral-400 mb-1 flex items-center gap-1">
+            <User className="w-3.5 h-3.5 text-neutral-500" />
             Pilih Pelanggan
           </label>
           <select
             value={filterData.pelanggan}
             onChange={(e) => setFilterData({ ...filterData, pelanggan: e.target.value })}
-            className="w-full bg-[#272727] border border-[#3C3C3C] text-white rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:border-[#F4511E]"
+            className="w-full bg-[#1C1C1C] border border-[#2C2C2C] text-neutral-200 rounded px-3 py-2 text-xs focus:outline-none focus:border-[#F4511E]"
           >
             <option value="PT LION WINGS">PT LION WINGS</option>
             <option value="PT SEMEN INDONESIA">PT SEMEN INDONESIA</option>
-            <option value="PT PETROKIMIA GRESIK">PT PETROKIMIA GRESIK</option>
           </select>
         </div>
 
         {/* Row 2: Mulai & Akhir */}
         {!filterCollapsed && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-medium text-neutral-400 mb-1.5 flex items-center gap-1.5">
-                <Calendar className="w-4 h-4 text-neutral-400" />
+              <label className="block text-[11px] font-medium text-neutral-400 mb-1 flex items-center gap-1">
+                <Calendar className="w-3.5 h-3.5 text-neutral-500" />
                 Mulai
               </label>
               <input
                 type="date"
                 value={filterData.mulai}
                 onChange={(e) => setFilterData({ ...filterData, mulai: e.target.value })}
-                className="w-full bg-[#272727] border border-[#3C3C3C] text-white rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:border-[#F4511E]"
+                className="w-full bg-[#1C1C1C] border border-[#2C2C2C] text-neutral-200 rounded px-3 py-2 text-xs focus:outline-none focus:border-[#F4511E]"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-neutral-400 mb-1.5 flex items-center gap-1.5">
-                <Calendar className="w-4 h-4 text-neutral-400" />
+              <label className="block text-[11px] font-medium text-neutral-400 mb-1 flex items-center gap-1">
+                <Calendar className="w-3.5 h-3.5 text-neutral-500" />
                 Akhir
               </label>
               <input
                 type="date"
                 value={filterData.akhir}
                 onChange={(e) => setFilterData({ ...filterData, akhir: e.target.value })}
-                className="w-full bg-[#272727] border border-[#3C3C3C] text-white rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:border-[#F4511E]"
+                className="w-full bg-[#1C1C1C] border border-[#2C2C2C] text-neutral-200 rounded px-3 py-2 text-xs focus:outline-none focus:border-[#F4511E]"
               />
             </div>
           </div>
@@ -154,87 +135,84 @@ export default function RekapanPage() {
 
         {/* Orange Action Button: TERAPKAN */}
         <button
-          type="submit"
-          className="w-full py-3 rounded-xl bg-[#F4511E] hover:bg-[#E64A19] text-white font-bold text-sm tracking-wider uppercase shadow-lg shadow-orange-950/40 transition-colors"
+          type="button"
+          className="w-full py-2.5 rounded bg-[#F4511E] hover:bg-[#D84315] text-white font-bold text-xs tracking-wider uppercase shadow transition-colors"
         >
           TERAPKAN
         </button>
 
         {/* Toggle Collapse: Tampilkan lebih sedikit ^ */}
-        <div className="text-center pt-1">
+        <div className="text-center pt-0.5">
           <button
             type="button"
             onClick={() => setFilterCollapsed(!filterCollapsed)}
-            className="text-xs text-neutral-400 hover:text-white inline-flex items-center gap-1 transition-colors"
+            className="text-[11px] text-neutral-400 hover:text-white inline-flex items-center gap-1"
           >
             {filterCollapsed ? 'Tampilkan Lebih Banyak' : 'Tampilkan Lebih Sedikit'}
-            {filterCollapsed ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronUp className="w-3.5 h-3.5" />}
+            {filterCollapsed ? <ChevronDown className="w-3 h-3" /> : <ChevronUp className="w-3 h-3" />}
           </button>
         </div>
-      </form>
+      </div>
 
       {/* Rekapan Result List */}
-      <section className="space-y-3">
-        <div className="flex items-center justify-between text-xs text-neutral-400 px-1">
-          <span>Daftar Rekapan Siap Proses:</span>
-          <span>Menampilkan {rekapanData.length} rekapan</span>
+      <div className="space-y-2">
+        <div className="text-[11px] text-neutral-500 font-mono px-1">
+          Rekapan Siap Tagih / BKK:
         </div>
 
         {rekapanData.map((rek) => (
           <div
             key={rek.id}
-            className="bg-[#1C1C1C] border border-[#2D2D2D] hover:border-[#3E3E3E] rounded-xl p-4 sm:p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 transition-all"
+            className="bg-[#141414] border border-[#242424] rounded-lg p-3 sm:p-4 flex flex-col md:flex-row md:items-center justify-between gap-3"
           >
-            <div className="space-y-1.5">
-              <div className="flex items-center gap-2.5">
-                <span className="font-mono text-xs font-semibold px-2 py-0.5 rounded bg-[#2A2A2A] text-amber-400 border border-[#3A3A3A]">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2 font-mono text-[11px]">
+                <span className="font-bold text-neutral-200 bg-[#1C1C1C] px-2 py-0.5 rounded border border-[#2E2E2E]">
                   {rek.id}
                 </span>
-                <span className="text-xs text-neutral-400">{rek.tanggal}</span>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-blue-500/15 text-blue-400 border border-blue-500/30">
-                  Non-PPN
-                </span>
+                <span className="text-neutral-500">{rek.tanggal}</span>
+                <span className="text-neutral-400">Non-PPN</span>
               </div>
 
-              <div className="text-sm font-bold text-white flex items-center gap-2">
-                <span>{rek.customer}</span>
-                <span className="text-neutral-500">•</span>
-                <span className="text-neutral-300 font-normal">{rek.material}</span>
+              <div className="text-xs font-bold text-white">
+                {rek.customer} <span className="text-neutral-500 font-normal">•</span> <span className="text-neutral-300 font-normal">{rek.material}</span>
               </div>
 
-              <div className="text-xs text-neutral-400">
-                Surat Jalan: <strong className="text-white">{rek.totalSj} kiriman</strong> • Total: <strong className="text-white">{formatVolume(rek.totalVolume)}</strong>
+              <div className="text-[11px] text-neutral-400 font-mono">
+                {rek.totalSj} Surat Jalan • Total: <strong className="text-white">{formatVolume(rek.totalVolume)}</strong>
               </div>
             </div>
 
-            <div className="flex flex-wrap md:flex-col items-start md:items-end gap-1.5 border-t md:border-t-0 pt-2 md:pt-0 border-[#2A2A2A]">
-              <div className="text-xs text-neutral-400">
-                Dasar Invoice: <strong className="text-white font-mono">{formatCurrency(rek.nominalJual)}</strong>
+            <div className="flex flex-wrap md:flex-col items-start md:items-end gap-1 font-mono text-xs border-t md:border-t-0 pt-2 md:pt-0 border-[#1E1E1E]">
+              <div>
+                <span className="text-neutral-500 mr-2">Dasar Invoice:</span>
+                <strong className="text-white">{formatCurrency(rek.nominalJual)}</strong>
               </div>
-              <div className="text-xs text-neutral-400">
-                Dasar BKK: <strong className="text-amber-400 font-mono">{formatCurrency(rek.nominalBeli)}</strong>
+              <div>
+                <span className="text-neutral-500 mr-2">Dasar BKK:</span>
+                <strong className="text-neutral-300">{formatCurrency(rek.nominalBeli)}</strong>
               </div>
-              <div className="flex items-center gap-2 mt-2">
+
+              <div className="flex items-center gap-1.5 mt-1">
                 <button
                   type="button"
                   onClick={() => navigate('/bkk')}
-                  className="px-2.5 py-1 rounded-lg bg-[#272727] hover:bg-[#F4511E] text-[11px] font-medium text-white transition-colors"
+                  className="px-2.5 py-1 rounded bg-[#1C1C1C] hover:bg-[#F4511E] text-neutral-200 hover:text-white text-[11px] transition-colors"
                 >
-                  Proses BKK
+                  Ke BKK
                 </button>
                 <button
                   type="button"
                   onClick={() => navigate('/invoices')}
-                  className="px-2.5 py-1 rounded-lg bg-[#272727] hover:bg-cyan-600 text-[11px] font-medium text-white transition-colors"
+                  className="px-2.5 py-1 rounded bg-[#1C1C1C] hover:bg-neutral-700 text-neutral-200 hover:text-white text-[11px] transition-colors"
                 >
-                  Buat Invoice
+                  Ke Invoice
                 </button>
               </div>
             </div>
           </div>
         ))}
-      </section>
+      </div>
     </div>
   );
 }
-

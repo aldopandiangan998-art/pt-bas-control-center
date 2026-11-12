@@ -14,12 +14,12 @@ import {
   PieChart,
   HardHat,
   Mountain,
-  PlusCircle,
+  Plus,
   AlertCircle,
   TrendingUp,
   Clock,
-  CheckCircle2,
   ChevronRight,
+  Shield,
 } from 'lucide-react';
 import { useData } from '../../context/DataContext';
 import { useAuth } from '../../context/AuthContext';
@@ -30,219 +30,284 @@ export default function DashboardPage() {
   const { preOrders, suratJalanList, bkkList } = useData();
   const { currentUser } = useAuth();
 
-  // Dynamic calculations from central data
+  // Metrics
   const totalVolumeDelivered = suratJalanList.reduce((sum, sj) => sum + sj.volumeAkhir, 0);
   const totalHutang = bkkList
     .filter((b) => b.statusBayar === 'Belum Dibayar')
     .reduce((sum, b) => sum + b.amount, 0);
   const pendingApprovals = preOrders.filter((po) => po.status === 'MENUNGGU_APPROVAL').length;
 
-  // Quick action shortcut pills from Screenshot 4
-  const quickActions = [
-    { label: 'Buat RO', path: '/pre-orders', icon: ClipboardList },
-    { label: 'Buat GI', path: '/surat-jalan', icon: Truck },
-    { label: 'Buat Jurnal GI', path: '/rekapan', icon: BookOpen },
-    { label: 'Buat CO', path: '/bkk', icon: Banknote },
-    { label: 'Buat Invoice', path: '/invoices', icon: Receipt },
+  // 9 Modules strictly matching Screenshot 3
+  const operationalModules = [
+    { title: 'Received Order', code: 'RO', desc: 'Pre Order & Approval PO', path: '/pre-orders', icon: ClipboardList },
+    { title: 'Good Issue', code: 'GI', desc: 'Surat Jalan & Ukur Kubikasi', path: '/surat-jalan', icon: Truck },
+    { title: 'Jurnal Good Issue', code: 'REK', desc: 'Rekapan Harian PO (PPN/Non)', path: '/rekapan', icon: BookOpen },
+    { title: 'Cash Out', code: 'BKK', desc: 'Bukti Kas Keluar Supplier', path: '/bkk', icon: Banknote },
+    { title: 'Invoice', code: 'INV', desc: 'Faktur Tagihan Customer', path: '/invoices', icon: Receipt },
+    { title: 'Laporan Pajak', code: 'TAX', desc: 'Rekapitulasi PPN 11% & PPH', path: '/laporan', icon: FileSpreadsheet },
+    { title: 'Laporan All-in-One', code: 'ALL', desc: 'Ringkasan Eksekutif Tonase', path: '/laporan', icon: Network },
+    { title: 'Laporan Supplier', code: 'SUP', desc: 'Hutang & Pengiriman Supplier', path: '/laporan', icon: HardHat },
+    { title: 'Pusat Statistik', code: 'STAT', desc: 'Grafik Muatan & Ritase', path: '/laporan', icon: PieChart },
   ];
 
-  // 9 Operational menus from Screenshot 3
-  const operationalMenus = [
-    { title: 'Received Order', subtitle: `${preOrders.length} Pre Order Aktif`, icon: ClipboardList, color: 'bg-blue-500/15 text-blue-400', path: '/pre-orders' },
-    { title: 'Good Issue', subtitle: `${suratJalanList.length} Surat Jalan`, icon: Truck, color: 'bg-amber-500/15 text-amber-400', path: '/surat-jalan' },
-    { title: 'Jurnal Good Issue', subtitle: 'Rekapan Harian PO', icon: BookOpen, color: 'bg-emerald-500/15 text-emerald-400', path: '/rekapan' },
-    { title: 'Cash Out', subtitle: 'BKK ke Supplier', icon: Banknote, color: 'bg-green-500/15 text-green-400', path: '/bkk' },
-    { title: 'Invoice', subtitle: 'Faktur Tagihan', icon: Receipt, color: 'bg-cyan-500/15 text-cyan-400', path: '/invoices' },
-    { title: 'Laporan Pajak', subtitle: 'PPN 11% & PPH', icon: FileSpreadsheet, color: 'bg-purple-500/15 text-purple-400', path: '/laporan' },
-    { title: 'Laporan All-in-One', subtitle: 'Rekap Eksekutif', icon: Network, color: 'bg-indigo-500/15 text-indigo-400', path: '/laporan' },
-    { title: 'Laporan Supplier', subtitle: 'Hutang & Pengiriman', icon: HardHat, color: 'bg-rose-500/15 text-rose-400', path: '/laporan' },
-    { title: 'Pusat Statistik', subtitle: 'Grafik Tonase/Kubikasi', icon: PieChart, color: 'bg-teal-500/15 text-teal-400', path: '/laporan' },
-  ];
-
-  // 8 Master data cards from Screenshot 3
-  const masterDataMenus = [
-    { title: 'Data Pengguna', icon: Users, count: '4 Role' },
-    { title: 'Data Material', icon: Mountain, count: '8 Jenis (PPH)' },
-    { title: 'Data Supplier', icon: HardHat, count: 'Gresik' },
-    { title: 'Data Customer', icon: Building2, count: 'Aktif' },
-    { title: 'Data Armada', icon: Truck, count: 'Dump Truck' },
-    { title: 'Data Bank', icon: Building2, count: 'BCA / Mandiri' },
-    { title: 'Data Rekening Bank', icon: CreditCard, count: 'PT BAS' },
-    { title: 'Data Mata Uang', icon: Coins, count: 'IDR' },
+  // 8 Master Data strictly matching Screenshot 3
+  const masterData = [
+    { title: 'Data Pengguna', desc: '4 Role Akun', icon: Users },
+    { title: 'Data Material', desc: '8 Jenis (Tarif PPH)', icon: Mountain },
+    { title: 'Data Supplier', desc: 'Vendor Tambang', icon: HardHat },
+    { title: 'Data Customer', desc: 'Customer Proyek', icon: Building2 },
+    { title: 'Data Armada', desc: 'Dump Truck', icon: Truck },
+    { title: 'Data Bank', desc: 'BCA & Mandiri', icon: Building2 },
+    { title: 'Data Rekening', desc: 'Rekening PT BAS', icon: CreditCard },
+    { title: 'Data Mata Uang', desc: 'IDR (Rupiah)', icon: Coins },
   ];
 
   return (
-    <div className="space-y-8 max-w-6xl mx-auto pb-16">
-      {/* Top Welcome & Quick Actions Bar (Screenshot 4) */}
-      <section className="bg-[#1C1C1C] border border-[#2F2F2F] rounded-2xl p-4 sm:p-6 shadow-xl">
-        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-5">
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
-              <span className="text-xs uppercase font-bold tracking-wider text-emerald-400">
-                Pusat Kontrol Operasional Gresik
-              </span>
-            </div>
-            <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
-              Selamat Bertugas, {currentUser.name}!
-            </h2>
-            <p className="text-xs sm:text-sm text-neutral-400">
-              Alur: Pre Order &rarr; Approve &rarr; Surat Jalan &rarr; Rekapan &rarr; BKK &rarr; Invoice &rarr; Bayar
-            </p>
-          </div>
-
-          {pendingApprovals > 0 && (
-            <button
-              type="button"
-              onClick={() => navigate('/pre-orders')}
-              className="flex items-center gap-2.5 px-4 py-2 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/40 text-amber-300 text-xs font-semibold transition-colors"
-            >
-              <AlertCircle className="w-4 h-4 text-amber-400 shrink-0" />
-              <span>{pendingApprovals} Pre Order Butuh Approval Direktur</span>
-            </button>
-          )}
-        </div>
-
-        {/* Quick Action Dock */}
-        <div className="flex flex-wrap items-center gap-2.5 pt-3 border-t border-[#2C2C2C]">
-          <span className="text-xs font-semibold text-neutral-400 mr-2 flex items-center gap-1.5">
-            <PlusCircle className="w-3.5 h-3.5 text-[#F4511E]" />
-            Aksi Cepat:
+    <div className="space-y-5">
+      {/* Top Industrial Status Strip */}
+      <div className="bg-[#141414] border border-[#242424] rounded-lg p-3 flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+          <span className="text-xs font-mono font-semibold text-neutral-300 uppercase tracking-wide">
+            Pusat Kendali Operasi Gresik
           </span>
-          {quickActions.map((action) => {
-            const Icon = action.icon;
-            return (
-              <button
-                key={action.label}
-                type="button"
-                onClick={() => navigate(action.path)}
-                className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-[#282828] hover:bg-[#F4511E] text-white text-xs font-medium border border-[#3A3A3A] hover:border-[#F4511E] transition-all transform hover:-translate-y-0.5 shadow-sm"
-              >
-                <Icon className="w-3.5 h-3.5 text-[#F4511E] group-hover:text-white" />
-                <span>{action.label}</span>
-              </button>
-            );
-          })}
+          <span className="text-neutral-500">•</span>
+          <span className="text-xs text-neutral-400">
+            Operator: <strong className="text-neutral-200">{currentUser.name}</strong> ({currentUser.role})
+          </span>
         </div>
-      </section>
 
-      {/* 3 Executive KPI Cards per Implementation Plan Section 0 (Poin 19) */}
-      <section className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        {/* KPI 1 */}
+        {/* Quick Action Buttons Matching Screenshot 4 dock */}
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <span className="text-[10px] text-neutral-500 font-mono uppercase mr-1">Aksi Cepat:</span>
+          <button
+            type="button"
+            onClick={() => navigate('/pre-orders')}
+            className="px-2.5 py-1 rounded bg-[#1F1F1F] hover:bg-[#2A2A2A] text-neutral-200 text-xs font-medium border border-[#333] transition-colors flex items-center gap-1"
+          >
+            <Plus className="w-3 h-3 text-[#F4511E]" />
+            <span>Buat RO</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => navigate('/surat-jalan')}
+            className="px-2.5 py-1 rounded bg-[#1F1F1F] hover:bg-[#2A2A2A] text-neutral-200 text-xs font-medium border border-[#333] transition-colors flex items-center gap-1"
+          >
+            <Plus className="w-3 h-3 text-[#F4511E]" />
+            <span>Buat GI</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => navigate('/bkk')}
+            className="px-2.5 py-1 rounded bg-[#1F1F1F] hover:bg-[#2A2A2A] text-neutral-200 text-xs font-medium border border-[#333] transition-colors flex items-center gap-1"
+          >
+            <Plus className="w-3 h-3 text-[#F4511E]" />
+            <span>Buat BKK</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => navigate('/invoices')}
+            className="px-2.5 py-1 rounded bg-[#1F1F1F] hover:bg-[#2A2A2A] text-neutral-200 text-xs font-medium border border-[#333] transition-colors flex items-center gap-1"
+          >
+            <Plus className="w-3 h-3 text-[#F4511E]" />
+            <span>Buat Invoice</span>
+          </button>
+        </div>
+      </div>
+
+      {/* 3 Real Operational KPI Panels */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <div
           onClick={() => navigate('/rekapan')}
-          className="bg-[#1C1C1C] border border-amber-500/30 hover:border-amber-500 rounded-2xl p-4.5 shadow-md cursor-pointer transition-all group"
+          className="bg-[#141414] border border-[#242424] hover:border-[#F4511E]/60 rounded-lg p-3.5 cursor-pointer transition-colors"
         >
-          <div className="flex items-center justify-between text-neutral-400 mb-2">
-            <span className="text-xs font-medium">Rekapan Belum Di-Invoice</span>
-            <Clock className="w-4 h-4 text-amber-400 group-hover:rotate-12 transition-transform" />
+          <div className="flex items-center justify-between text-neutral-400 mb-1">
+            <span className="text-[11px] font-mono uppercase tracking-wider">Rekapan Belum Di-Invoice</span>
+            <Clock className="w-3.5 h-3.5 text-neutral-500" />
           </div>
-          <div className="text-2xl font-bold text-white mb-1">
+          <div className="text-xl font-mono font-bold text-white tracking-tight">
             {suratJalanList.length} Pengiriman
           </div>
-          <p className="text-xs text-neutral-400">
-            Total volume: <strong className="text-amber-400">{formatVolume(totalVolumeDelivered)}</strong>
-          </p>
+          <div className="text-[11px] text-neutral-500 mt-1">
+            Total Volume: <strong className="text-neutral-300 font-mono">{formatVolume(totalVolumeDelivered)}</strong>
+          </div>
         </div>
 
-        {/* KPI 2 */}
         <div
           onClick={() => navigate('/laporan')}
-          className="bg-[#1C1C1C] border border-rose-500/30 hover:border-rose-500 rounded-2xl p-4.5 shadow-md cursor-pointer transition-all group"
+          className="bg-[#141414] border border-[#242424] hover:border-[#F4511E]/60 rounded-lg p-3.5 cursor-pointer transition-colors"
         >
-          <div className="flex items-center justify-between text-neutral-400 mb-2">
-            <span className="text-xs font-medium">Piutang (Invoice Belum Lunas)</span>
-            <TrendingUp className="w-4 h-4 text-rose-400 group-hover:translate-x-1 transition-transform" />
+          <div className="flex items-center justify-between text-neutral-400 mb-1">
+            <span className="text-[11px] font-mono uppercase tracking-wider">Piutang Customer Berjalan</span>
+            <TrendingUp className="w-3.5 h-3.5 text-neutral-500" />
           </div>
-          <div className="text-2xl font-bold text-rose-400 mb-1">
+          <div className="text-xl font-mono font-bold text-white tracking-tight">
             IDR 84,250,000
           </div>
-          <p className="text-xs text-neutral-400">5 invoice menanti pelunasan customer</p>
+          <div className="text-[11px] text-neutral-500 mt-1">
+            5 faktur invoice belum dilunasi
+          </div>
         </div>
 
-        {/* KPI 3 */}
         <div
           onClick={() => navigate('/bkk')}
-          className="bg-[#1C1C1C] border border-emerald-500/30 hover:border-emerald-500 rounded-2xl p-4.5 shadow-md cursor-pointer transition-all group"
+          className="bg-[#141414] border border-[#242424] hover:border-[#F4511E]/60 rounded-lg p-3.5 cursor-pointer transition-colors"
         >
-          <div className="flex items-center justify-between text-neutral-400 mb-2">
-            <span className="text-xs font-medium">Hutang (BKK Belum Dibayar)</span>
-            <AlertCircle className="w-4 h-4 text-emerald-400 group-hover:scale-110 transition-transform" />
+          <div className="flex items-center justify-between text-neutral-400 mb-1">
+            <span className="text-[11px] font-mono uppercase tracking-wider">Kewajiban BKK Supplier</span>
+            <AlertCircle className="w-3.5 h-3.5 text-neutral-500" />
           </div>
-          <div className="text-2xl font-bold text-emerald-400 mb-1">
+          <div className="text-xl font-mono font-bold text-[#F4511E] tracking-tight">
             {formatCurrency(totalHutang)}
           </div>
-          <p className="text-xs text-neutral-400">
-            {bkkList.filter((b) => b.statusBayar === 'Belum Dibayar').length} BKK siap dicatat bayar
-          </p>
+          <div className="text-[11px] text-neutral-500 mt-1">
+            BKK siap dicatat bayar ke vendor
+          </div>
         </div>
-      </section>
+      </div>
 
-      {/* Menu Operasional Grid (Screenshot 3) */}
-      <section>
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-bold text-white tracking-tight">Menu Operasional</h3>
-          <span className="text-xs text-neutral-400">Pilih modul untuk transaksi harian</span>
+      {/* 9 Modules Grid strictly matching Screenshot 3 */}
+      <div>
+        <div className="flex items-center justify-between mb-2.5">
+          <h3 className="text-xs font-bold text-neutral-300 uppercase tracking-wider">
+            Menu Operasional Utama
+          </h3>
+          <span className="text-[11px] text-neutral-500">9 Modul Transaksi</span>
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3.5 sm:gap-4">
-          {operationalMenus.map((menu) => {
-            const Icon = menu.icon;
+
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 gap-2.5">
+          {operationalModules.map((item) => {
+            const Icon = item.icon;
             return (
               <button
-                key={menu.title}
+                key={item.title}
                 type="button"
-                onClick={() => navigate(menu.path)}
-                className="group flex flex-col items-center justify-center p-4 sm:p-5 rounded-2xl bg-[#1C1C1C] hover:bg-[#252525] border border-[#2D2D2D] hover:border-[#F4511E] text-center transition-all duration-200 transform hover:-translate-y-1 shadow-md"
+                onClick={() => navigate(item.path)}
+                className="bg-[#161616] hover:bg-[#1E1E1E] border border-[#242424] hover:border-[#F4511E] rounded-lg p-3.5 text-left transition-colors flex items-start gap-3 group"
               >
-                <div className={`w-12 h-12 rounded-xl flex items-center justify-center mb-3 shadow-inner ${menu.color} group-hover:scale-110 transition-transform`}>
-                  <Icon className="w-6 h-6" />
+                <div className="w-9 h-9 rounded bg-[#202020] border border-[#2A2A2A] flex items-center justify-center shrink-0 group-hover:border-[#F4511E] transition-colors">
+                  <Icon className="w-4 h-4 text-[#F4511E]" />
                 </div>
-                <span className="text-xs sm:text-sm font-semibold text-white group-hover:text-[#F4511E] transition-colors leading-tight">
-                  {menu.title}
-                </span>
-                <span className="text-[10px] text-neutral-400 mt-1 line-clamp-1">
-                  {menu.subtitle}
-                </span>
+                <div className="overflow-hidden">
+                  <div className="text-xs font-bold text-neutral-200 group-hover:text-white transition-colors">
+                    {item.title}
+                  </div>
+                  <div className="text-[11px] text-neutral-500 truncate mt-0.5">
+                    {item.desc}
+                  </div>
+                </div>
               </button>
             );
           })}
         </div>
-      </section>
+      </div>
 
-      {/* Data Master Section (Screenshot 3) */}
-      <section>
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-bold text-white tracking-tight">Data Master</h3>
+      {/* Active Pre Orders Pipeline Table */}
+      <div className="bg-[#141414] border border-[#242424] rounded-lg p-4 space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <ClipboardList className="w-4 h-4 text-[#F4511E]" />
+            <h3 className="text-xs font-bold text-neutral-200 uppercase tracking-wider">
+              Status Pemenuhan Pre Order Proyek
+            </h3>
+          </div>
+          <button
+            type="button"
+            onClick={() => navigate('/pre-orders')}
+            className="text-[11px] text-[#F4511E] hover:underline font-mono"
+          >
+            Kelola PO &rarr;
+          </button>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs">
+            <thead className="bg-[#1A1A1A] text-neutral-400 font-mono text-[11px] border-b border-[#262626]">
+              <tr>
+                <th className="py-2 px-3">No. PO</th>
+                <th className="py-2 px-3">Customer</th>
+                <th className="py-2 px-3">Material</th>
+                <th className="py-2 px-3 text-right">Target</th>
+                <th className="py-2 px-3 text-right">Realisasi</th>
+                <th className="py-2 px-3">Status</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[#1F1F1F]">
+              {preOrders.map((po) => {
+                const pct = Math.round((po.terkirim / po.totalOrder) * 100);
+
+                return (
+                  <tr key={po.id} className="hover:bg-[#1A1A1A] transition-colors">
+                    <td className="py-2.5 px-3 font-mono font-bold text-neutral-200">
+                      {po.nomorPo || <span className="text-amber-500/80 font-normal italic">Draft</span>}
+                    </td>
+                    <td className="py-2.5 px-3 font-medium text-white">{po.customer}</td>
+                    <td className="py-2.5 px-3 text-neutral-400">{po.materialName}</td>
+                    <td className="py-2.5 px-3 text-right font-mono text-neutral-300">
+                      {formatVolume(po.totalOrder, po.satuan)}
+                    </td>
+                    <td className="py-2.5 px-3 text-right font-mono font-bold text-white">
+                      {formatVolume(po.terkirim, po.satuan)}
+                      <span className="text-[10px] text-neutral-500 block font-normal">({pct}%)</span>
+                    </td>
+                    <td className="py-2.5 px-3">
+                      <span
+                        className={`text-[10px] font-mono px-2 py-0.5 rounded font-bold border ${
+                          po.status === 'APPROVED'
+                            ? 'bg-emerald-950/40 text-emerald-400 border-emerald-800/60'
+                            : po.status === 'MENUNGGU_APPROVAL'
+                            ? 'bg-amber-950/40 text-amber-400 border-amber-800/60'
+                            : 'bg-rose-950/40 text-rose-400 border-rose-800/60'
+                        }`}
+                      >
+                        {po.status}
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* 8 Master Data Matching Screenshot 3 */}
+      <div>
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="text-xs font-bold text-neutral-400 uppercase tracking-wider">
+            Data Master
+          </h3>
           <button
             type="button"
             onClick={() => navigate('/master-data')}
-            className="text-xs text-[#F4511E] hover:underline font-medium"
+            className="text-[11px] text-neutral-400 hover:text-white"
           >
-            Kelola Master Data &rarr;
+            Lihat Semua Master Data &rarr;
           </button>
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
-          {masterDataMenus.map((master) => {
-            const Icon = master.icon;
+
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2">
+          {masterData.map((item) => {
+            const Icon = item.icon;
             return (
               <button
-                key={master.title}
+                key={item.title}
                 type="button"
                 onClick={() => navigate('/master-data')}
-                className="flex flex-col items-center justify-center p-3 rounded-xl bg-[#1C1C1C] hover:bg-[#252525] border border-[#2C2C2C] text-center hover:border-neutral-500 transition-colors"
+                className="bg-[#141414] hover:bg-[#1C1C1C] border border-[#222222] hover:border-[#383838] rounded p-2.5 text-center transition-colors flex flex-col items-center justify-center"
               >
-                <div className="w-9 h-9 rounded-lg bg-neutral-800 text-neutral-300 flex items-center justify-center mb-2">
-                  <Icon className="w-4 h-4 text-neutral-300" />
-                </div>
-                <span className="text-[11px] font-medium text-neutral-200 leading-tight">
-                  {master.title}
+                <Icon className="w-4 h-4 text-neutral-400 mb-1.5" />
+                <span className="text-[11px] font-semibold text-neutral-300 leading-tight block">
+                  {item.title}
                 </span>
-                <span className="text-[9px] text-neutral-500 mt-0.5">{master.count}</span>
+                <span className="text-[10px] text-neutral-500 font-mono mt-0.5">
+                  {item.desc}
+                </span>
               </button>
             );
           })}
         </div>
-      </section>
+      </div>
     </div>
   );
 }

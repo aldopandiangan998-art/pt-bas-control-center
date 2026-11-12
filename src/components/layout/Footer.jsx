@@ -4,16 +4,13 @@ export default function Footer() {
   const currentYear = new Date().getFullYear();
 
   return (
-    <footer className="bg-[#181818] border-t border-[#2A2A2A] text-neutral-400 text-xs py-4 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2 text-center sm:text-left">
-        <p>
-          &copy; {currentYear} <span className="text-white font-medium">{APP_CONFIG.name}</span> • {APP_CONFIG.company}
-        </p>
-        <p className="text-neutral-500">
-          Operasional Cabang {APP_CONFIG.location} • Versi {APP_CONFIG.version}
-        </p>
+    <footer className="mt-8 pt-3 border-t border-[#1F1F1F] text-[11px] text-neutral-500 font-mono flex flex-col sm:flex-row items-center justify-between gap-1 select-none">
+      <div>
+        <strong className="text-neutral-400 font-sans font-medium">{APP_CONFIG.name}</strong> • {APP_CONFIG.company}
+      </div>
+      <div>
+        Hub Gresik • Sistem Operasional Rantai Pasok v1.0
       </div>
     </footer>
   );
 }
-

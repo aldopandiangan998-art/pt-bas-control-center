@@ -234,6 +234,7 @@ export default function MasterDataPage() {
     {
       id: 'operasional',
       label: 'Operasional Lapangan',
+      tag: 'Operasional',
       items: [
         { key: 'supplier', label: 'Data Supplier', shortLabel: 'Supplier', count: suppliers.length, icon: HardHat },
         { key: 'material', label: 'Data Material', shortLabel: 'Material', count: materials.length, icon: Mountain },
@@ -244,6 +245,7 @@ export default function MasterDataPage() {
     {
       id: 'finansial',
       label: 'Finansial & Bank',
+      tag: 'Finansial',
       items: [
         { key: 'bank', label: 'Data Bank', shortLabel: 'Bank Mitra', count: banks.length, icon: Landmark },
         { key: 'rekening', label: 'Data Rekening Bank', shortLabel: 'Rekening PT BAS', count: bankAccounts.length, icon: CreditCard },
@@ -253,6 +255,7 @@ export default function MasterDataPage() {
     {
       id: 'pengguna',
       label: 'Akses & Pengguna',
+      tag: 'Akses',
       items: [
         { key: 'pengguna', label: 'Data Pengguna', shortLabel: 'Pengguna Sistem', count: usersList.length, icon: Users },
       ],
@@ -262,112 +265,124 @@ export default function MasterDataPage() {
   // Flattened for easy lookup
   const categories = masterSubgroups.flatMap((g) => g.items);
 
-  // Active subgroup based on current active tab
+  // Active item & active subgroup
+  const activeItem = categories.find((it) => it.key === currentTab) || categories[0];
+  const ActiveIcon = activeItem?.icon || HardHat;
   const activeSubgroup =
     masterSubgroups.find((g) => g.items.some((it) => it.key === currentTab)) ||
     masterSubgroups[0];
 
   return (
-    <div className="space-y-5 pb-20 relative min-h-screen">
-      {/* Top Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#24282C] pb-3">
-        <div className="flex items-center gap-2.5">
-          <Button
-            size="sm"
-            variant="ghost"
-            icon={ArrowLeft}
+    <div className="space-y-3.5 pb-20 relative min-h-screen">
+      {/* 1. Sleek Compact Breadcrumb & Control Bar (Horizontal & Space-Saving) */}
+      <div className="bg-[#131A24] border border-[#1D2838] rounded-xl p-2.5 sm:px-3 sm:py-2 flex flex-col md:flex-row md:items-center justify-between gap-2.5 shadow-sm">
+        {/* Left: Breadcrumbs Trail */}
+        <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 flex-wrap text-xs">
+          <button
+            type="button"
             onClick={() => navigate('/')}
+            className="flex items-center gap-1.5 text-neutral-400 hover:text-white transition-colors cursor-pointer group"
             title="Kembali ke Dashboard"
-          />
-          <div>
-            <h1 className="text-base sm:text-lg font-bold text-white tracking-tight flex items-center gap-2">
-              <span>Katalog Data Master PT BAS</span>
-              <Badge size="xs" variant="primary">ERP Core</Badge>
-            </h1>
-            <p className="text-[11px] text-neutral-400">
-              Pengaturan terstruktur: Operasional tambang, akun perbankan, dan hak akses pengguna
-            </p>
-          </div>
-        </div>
+          >
+            <ArrowLeft className="w-3.5 h-3.5 text-neutral-500 group-hover:text-white transition-colors" />
+            <span className="font-medium">Dashboard</span>
+          </button>
 
-        {/* Global Search within Master Data */}
-        <div className="w-full sm:w-64">
-          <Input
-            icon={Search}
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Cari entitas master..."
-          />
+          <ChevronRight className="w-3.5 h-3.5 text-neutral-600 shrink-0" />
+
+          <span className="text-neutral-400 font-medium">Data Master</span>
+
+          <ChevronRight className="w-3.5 h-3.5 text-neutral-600 shrink-0" />
+
+          <span className="text-neutral-400 font-mono text-[11px] hidden sm:inline">
+            {activeSubgroup.label}
+          </span>
+
+          <ChevronRight className="w-3.5 h-3.5 text-neutral-600 shrink-0 hidden sm:inline" />
+
+          {/* Active Entity Badge */}
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-[#F4511E]/20 text-[#FF7043] border border-[#F4511E]/40 font-bold text-xs shadow-2xs">
+            <ActiveIcon className="w-3.5 h-3.5 text-[#F4511E]" />
+            <span>{activeItem.label}</span>
+            <span className="font-mono text-[10px] bg-black/40 text-neutral-200 px-1.5 py-0.2 rounded ml-0.5 border border-white/10">
+              {activeItem.count}
+            </span>
+          </div>
+        </nav>
+
+        {/* Right: Compact Search & Add Button on the Same Horizontal Line */}
+        <div className="flex items-center gap-2 w-full md:w-auto justify-between md:justify-end">
+          <div className="w-full sm:w-56">
+            <Input
+              icon={Search}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder={`Cari ${activeItem.shortLabel}...`}
+              className="py-1 text-xs"
+            />
+          </div>
+
+          {['supplier', 'material', 'armada', 'customer', 'bank', 'rekening'].includes(currentTab) && (
+            <Button
+              size="sm"
+              variant="primary"
+              icon={Plus}
+              onClick={() => setModalOpen(true)}
+              className="whitespace-nowrap shrink-0 font-medium bg-[#F4511E] hover:bg-[#D84315]"
+            >
+              Tambah {activeItem.shortLabel}
+            </Button>
+          )}
         </div>
       </div>
 
-      {/* Structured Submenu Navigation */}
-      <div className="bg-[#131517] border border-[#24282C] rounded-lg p-2.5 space-y-2.5">
-        {/* Tier 1: Group / Kategori Submenu */}
-        <div className="flex items-center gap-1.5 border-b border-[#22262A] pb-2 overflow-x-auto scrollbar-none">
-          <span className="text-[10px] font-mono uppercase text-neutral-500 font-bold px-1.5 tracking-wider hidden sm:inline">
-            Kelompok Master:
-          </span>
-          {masterSubgroups.map((group) => {
-            const isGroupActive = activeSubgroup.id === group.id;
+      {/* 2. Unified Single-Row Horizontal Tab Ribbon (Melebar ke Samping) */}
+      <div className="bg-[#131A24] border border-[#1D2838] rounded-xl p-1.5 shadow-sm">
+        <div
+          className="flex items-center gap-1.5 overflow-x-auto scrollbar-none py-0.5 px-1 min-w-0"
+          role="tablist"
+        >
+          {masterSubgroups.map((group, gIdx) => (
+            <div key={group.id} className="flex items-center gap-1 shrink-0">
+              {gIdx > 0 && <div className="h-5 w-px bg-[#1D2838] mx-2 shrink-0" />}
 
-            return (
-              <button
-                key={group.id}
-                type="button"
-                onClick={() => setTab(group.items[0].key)}
-                className={`px-3 py-1.5 rounded-md text-xs font-semibold whitespace-nowrap transition-all cursor-pointer flex items-center gap-2 ${
-                  isGroupActive
-                    ? 'bg-[#1F2327] text-white border border-[#F4511E]/50 shadow-xs'
-                    : 'text-neutral-400 hover:text-neutral-200 hover:bg-[#181B1E]'
-                }`}
-              >
-                <span>{group.label}</span>
-                <span
-                  className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
-                    isGroupActive
-                      ? 'bg-[#F4511E] text-white'
-                      : 'bg-[#24282C] text-neutral-400'
-                  }`}
-                >
-                  {group.items.length}
-                </span>
-              </button>
-            );
-          })}
-        </div>
+              {/* Group Label Chip */}
+              <span className="text-[10px] font-mono uppercase text-neutral-400 font-bold px-2 py-1 rounded bg-[#0B0F17] border border-[#1D2838] shrink-0 select-none">
+                {group.tag || group.label}
+              </span>
 
-        {/* Tier 2: Sub-items Under Active Submenu */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 scrollbar-none" role="tablist">
-          {activeSubgroup.items.map((cat) => {
-            const Icon = cat.icon;
-            const isActive = currentTab === cat.key;
+              {/* Items in Group */}
+              {group.items.map((cat) => {
+                const Icon = cat.icon;
+                const isActive = currentTab === cat.key;
 
-            return (
-              <button
-                key={cat.key}
-                type="button"
-                role="tab"
-                aria-selected={isActive}
-                onClick={() => setTab(cat.key)}
-                className={`px-3 py-1.5 rounded-md text-xs font-medium whitespace-nowrap flex items-center gap-2 transition-all cursor-pointer ${
-                  isActive
-                    ? 'bg-[#F4511E] text-white font-bold shadow-xs'
-                    : 'bg-[#181B1E] text-neutral-300 hover:text-white hover:bg-[#202428] border border-[#2D3339]'
-                }`}
-              >
-                <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-white' : 'text-[#F4511E]'}`} />
-                <span>{cat.label}</span>
-                <span
-                  className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
-                    isActive ? 'bg-black/35 text-white' : 'bg-black/30 text-neutral-400'
-                  }`}
-                >
-                  {cat.count}
-                </span>
-              </button>
-            );
-          })}
+                return (
+                  <button
+                    key={cat.key}
+                    type="button"
+                    role="tab"
+                    aria-selected={isActive}
+                    onClick={() => setTab(cat.key)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap flex items-center gap-1.5 transition-all cursor-pointer shrink-0 select-none ${
+                      isActive
+                        ? 'bg-[#F4511E] text-white font-bold shadow-xs'
+                        : 'bg-[#0E1520] text-neutral-300 hover:text-white hover:bg-[#16202C] border border-[#1D2838]'
+                    }`}
+                  >
+                    <Icon className={`w-3.5 h-3.5 shrink-0 ${isActive ? 'text-white' : 'text-[#FF7043]'}`} />
+                    <span>{cat.shortLabel || cat.label}</span>
+                    <span
+                      className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
+                        isActive ? 'bg-black/40 text-white font-bold' : 'bg-black/30 text-neutral-400'
+                      }`}
+                    >
+                      {cat.count}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          ))}
         </div>
       </div>
 

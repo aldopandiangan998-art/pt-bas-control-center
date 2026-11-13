@@ -7,17 +7,17 @@
 @plugin "daisyui/theme" {
   name: "ptbas";
   default: true;
-  --color-primary: #0284C7;
+  --color-primary: #F4511E;
   --color-primary-content: #FFFFFF;
-  --color-secondary: #0EA5E9;
+  --color-secondary: #FB8C00;
   --color-secondary-content: #FFFFFF;
-  --color-accent: #38BDF8;
+  --color-accent: #F59E0B;
   --color-accent-content: #0B111E;
-  --color-neutral: #162238;
+  --color-neutral: #16202C;
   --color-neutral-content: #F1F5F9;
-  --color-base-100: #131D2D;
-  --color-base-200: #0B111E;
-  --color-base-300: #18253A;
+  --color-base-100: #131A24;
+  --color-base-200: #0B0F17;
+  --color-base-300: #182230;
   --color-base-content: #F1F5F9;
   --color-success: #10B981;
   --color-warning: #F59E0B;
@@ -29,17 +29,18 @@
 
 @layer base {
   :root {
-    --bg-base: #0B111E;
-    --bg-surface: #0F172A;
-    --bg-card: #131D2D;
-    --bg-card-hover: #18253A;
-    --border-subtle: #1E2B3E;
-    --border-bold: #2A3C56;
-    --color-primary: #0284C7;
-    --primary-blue: #0284C7;
-    --primary-sky: #0EA5E9;
-    --primary-cyan: #38BDF8;
-    --primary-hover: #0369A1;
+    --bg-base: #0B0F17;
+    --bg-surface: #0E1520;
+    --bg-card: #131B26;
+    --bg-card-hover: #182332;
+    --border-subtle: #1D2838;
+    --border-bold: #29384D;
+    --color-primary: #F4511E;
+    --primary-orange: #F4511E;
+    --primary-flame: #FB8C00;
+    --primary-amber: #F59E0B;
+    --primary-light: #FF7043;
+    --primary-hover: #D84315;
     --timber-base: #1E293B;
     --timber-dark: #0F172A;
     --text-primary: #F8FAFC;
@@ -63,7 +64,7 @@
 
   /* Focus ring for accessible keyboard navigation */
   :focus-visible {
-    outline: 2px solid #0284C7;
+    outline: 2px solid #F4511E;
     outline-offset: 2px;
   }
 }

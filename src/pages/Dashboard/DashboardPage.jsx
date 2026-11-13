@@ -119,21 +119,21 @@ export default function DashboardPage() {
         { day: '12 Nov', created: 0.0, approved: 0.0 },
       ];
 
-  // 2. Donut Breakdown Categories matching Screenshot exactly
+  // 2. Donut Breakdown Categories matching Screenshot with Primary Orange Palette
   const documentTypes = isExecView
     ? [
-        { label: 'Surat Perjanjian Kerjasama Eksternal', percent: '26.7%', count: 8, color: '#0284C7' },
-        { label: 'Surat Korespondensi Eksternal', percent: '16.7%', count: 5, color: '#0EA5E9' },
-        { label: 'Surat Undangan', percent: '16.7%', count: 5, color: '#38BDF8' },
-        { label: 'Surat Kuasa', percent: '10%', count: 3, color: '#7DD3FC' },
-        { label: 'Lainnya', percent: '30%', count: 9, color: '#334155' },
+        { label: 'Surat Perjanjian Kerjasama Eksternal', percent: '26.7%', count: 8, color: '#F4511E' },
+        { label: 'Surat Korespondensi Eksternal', percent: '16.7%', count: 5, color: '#FB8C00' },
+        { label: 'Surat Undangan', percent: '16.7%', count: 5, color: '#F59E0B' },
+        { label: 'Surat Kuasa', percent: '10%', count: 3, color: '#FCD34D' },
+        { label: 'Lainnya', percent: '30%', count: 9, color: '#374151' },
       ]
     : [
-        { label: 'Surat Perjanjian Kerjasama Eksternal', percent: '26.7%', count: 8, color: '#0284C7' },
-        { label: 'Surat Korespondensi Eksternal', percent: '16.7%', count: 5, color: '#0EA5E9' },
-        { label: 'Surat Undangan', percent: '16.7%', count: 5, color: '#38BDF8' },
-        { label: 'Surat Kuasa', percent: '10%', count: 3, color: '#7DD3FC' },
-        { label: 'Lainnya', percent: '30%', count: 9, color: '#334155' },
+        { label: 'Surat Perjanjian Kerjasama Eksternal', percent: '26.7%', count: 8, color: '#F4511E' },
+        { label: 'Surat Korespondensi Eksternal', percent: '16.7%', count: 5, color: '#FB8C00' },
+        { label: 'Surat Undangan', percent: '16.7%', count: 5, color: '#F59E0B' },
+        { label: 'Surat Kuasa', percent: '10%', count: 3, color: '#FCD34D' },
+        { label: 'Lainnya', percent: '30%', count: 9, color: '#374151' },
       ];
 
   // 3. Compliance and Efficiency stats
@@ -145,18 +145,18 @@ export default function DashboardPage() {
   const statUserCount = isExecView ? 84 : 60;
   const statActiveUnits = isExecView ? 31 : 23;
 
-  // 4. Most active units (Top 4)
+  // 4. Most active units (Top 4) with Primary Orange Progress Bars
   const activeUnits = [
-    { name: 'Administrasi Manajemen ...', count: 5, percent: '16.7%', barWidth: '16.7%', color: 'bg-[#0284C7]' },
-    { name: 'Administrasi Manajemen ...', count: 5, percent: '16.7%', barWidth: '16.7%', color: 'bg-[#0284C7]' },
-    { name: 'Administrasi Manajemen ...', count: 3, percent: '10%', barWidth: '10%', color: 'bg-[#0EA5E9]' },
-    { name: 'Tim Manajemen Mutu', count: 1, percent: '3.3%', barWidth: '3.3%', color: 'bg-[#38BDF8]' },
+    { name: 'Administrasi Manajemen ...', count: 5, percent: '16.7%', barWidth: '16.7%', color: 'bg-[#F4511E]' },
+    { name: 'Administrasi Manajemen ...', count: 5, percent: '16.7%', barWidth: '16.7%', color: 'bg-[#F4511E]' },
+    { name: 'Administrasi Manajemen ...', count: 3, percent: '10%', barWidth: '10%', color: 'bg-[#FB8C00]' },
+    { name: 'Tim Manajemen Mutu', count: 1, percent: '3.3%', barWidth: '3.3%', color: 'bg-[#F59E0B]' },
   ];
 
   return (
     <div className="space-y-4 sm:space-y-5">
       {/* Top Console Strip: Role Identification & Perspective Switcher */}
-      <div className="bg-[#111A29] border border-[#1E2B3E] rounded-xl p-3 sm:p-3.5 flex flex-col md:flex-row items-start md:items-center justify-between gap-3 shadow-sm">
+      <div className="bg-[#131A24] border border-[#1D2838] rounded-xl p-3 sm:p-3.5 flex flex-col md:flex-row items-start md:items-center justify-between gap-3 shadow-sm">
         <div className="flex items-center gap-2.5 flex-wrap">
           <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_8px_rgba(52,211,153,0.6)]" />
           <span className="text-xs font-mono font-bold text-white uppercase tracking-wider">
@@ -165,7 +165,7 @@ export default function DashboardPage() {
           <span className="text-neutral-600 hidden sm:inline">•</span>
           <span className="text-xs text-neutral-300">
             Sesi: <strong className="text-white font-medium">{currentUser?.name || 'Administrator'}</strong>{' '}
-            <span className="text-[#38BDF8] font-mono text-[11px] font-semibold">
+            <span className="text-[#FF7043] font-mono text-[11px] font-semibold">
               ({currentUser?.role === 'superadmin' ? 'Super Admin' : 'Admin Operasional'})
             </span>
           </span>
@@ -173,13 +173,13 @@ export default function DashboardPage() {
 
         {/* Perspective Mode Switcher & Quick Actions */}
         <div className="flex items-center gap-2 w-full md:w-auto justify-between md:justify-end flex-wrap">
-          <div className="flex items-center bg-[#0B111E] p-0.5 rounded-lg border border-[#1E2B3E]">
+          <div className="flex items-center bg-[#0B0F17] p-0.5 rounded-lg border border-[#1D2838]">
             <button
               type="button"
               onClick={() => setActivePerspective('admin')}
               className={`px-2.5 py-1 text-[11px] font-medium rounded-md transition-all cursor-pointer ${
                 activePerspective === 'admin'
-                  ? 'bg-[#0284C7] text-white shadow-xs font-semibold'
+                  ? 'bg-[#F4511E] text-white shadow-xs font-semibold'
                   : 'text-neutral-400 hover:text-neutral-200'
               }`}
               title="Tampilkan Perspektif Admin Operasional"
@@ -191,7 +191,7 @@ export default function DashboardPage() {
               onClick={() => setActivePerspective('superadmin')}
               className={`px-2.5 py-1 text-[11px] font-medium rounded-md transition-all cursor-pointer ${
                 activePerspective === 'superadmin'
-                  ? 'bg-[#0284C7] text-white shadow-xs font-semibold'
+                  ? 'bg-[#F4511E] text-white shadow-xs font-semibold'
                   : 'text-neutral-400 hover:text-neutral-200'
               }`}
               title="Tampilkan Perspektif Super Admin Eksekutif"
@@ -206,7 +206,7 @@ export default function DashboardPage() {
               variant="primary"
               icon={Plus}
               onClick={() => navigate('/surat-jalan')}
-              className="bg-[#0284C7] hover:bg-[#0369A1] font-medium"
+              className="bg-[#F4511E] hover:bg-[#D84315] font-medium"
             >
               Buat GI
             </Button>
@@ -215,7 +215,7 @@ export default function DashboardPage() {
               variant="secondary"
               icon={Plus}
               onClick={() => navigate('/pre-orders')}
-              className="bg-[#152033] hover:bg-[#1E2D47] border-[#1E2B3E]"
+              className="bg-[#151D28] hover:bg-[#1D2838] border-[#1D2838]"
             >
               Buat RO
             </Button>
@@ -223,13 +223,13 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* 4 SIGNATURE DASHBOARD WIDGETS MATCHING UPLOADED REFERENCE THEME */}
+      {/* 4 SIGNATURE DASHBOARD WIDGETS MATCHING UPLOADED REFERENCE THEME WITH PRIMARY ORANGE */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
         {/* ==================================================================== */}
         {/* WIDGET 1: Analisis Aktivitas Dokumen (Curved Spline Area Chart)       */}
         {/* ==================================================================== */}
-        <div className="lg:col-span-7 bg-[#131D2D] border border-[#1E2B3E] rounded-xl p-4 sm:p-5 flex flex-col justify-between shadow-sm">
-          {/* Card Header with Top Right Pill Button */}
+        <div className="lg:col-span-7 bg-[#131B26] border border-[#1D2838] rounded-xl p-4 sm:p-5 flex flex-col justify-between shadow-sm">
+          {/* Card Header with Top Right Orange Pill Button */}
           <div className="flex items-start justify-between gap-2 mb-3">
             <div>
               <h2 className="text-base sm:text-lg font-bold text-white tracking-tight leading-snug">
@@ -240,11 +240,11 @@ export default function DashboardPage() {
               </p>
             </div>
 
-            {/* Blue Pill Button matching Screenshot */}
+            {/* Primary Orange Pill Button matching Screenshot */}
             <button
               type="button"
               onClick={() => setTimeRange(timeRange === '8 Hari Terakhir' ? '30 Hari' : '8 Hari Terakhir')}
-              className="px-3 py-1 text-xs font-semibold rounded-md bg-[#0284C7] hover:bg-[#0369A1] text-white transition-colors shrink-0 shadow-xs cursor-pointer"
+              className="px-3 py-1 text-xs font-semibold rounded-md bg-[#F4511E] hover:bg-[#D84315] text-white transition-colors shrink-0 shadow-xs cursor-pointer"
             >
               {timeRange}
             </button>
@@ -258,11 +258,11 @@ export default function DashboardPage() {
               preserveAspectRatio="none"
             >
               <defs>
-                {/* Blue Gradient Area Fill */}
-                <linearGradient id="areaGradientBlue" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#0284C7" stopOpacity="0.45" />
-                  <stop offset="60%" stopColor="#0284C7" stopOpacity="0.15" />
-                  <stop offset="100%" stopColor="#0284C7" stopOpacity="0.0" />
+                {/* Primary Orange Gradient Area Fill */}
+                <linearGradient id="areaGradientOrange" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#F4511E" stopOpacity="0.45" />
+                  <stop offset="60%" stopColor="#F4511E" stopOpacity="0.15" />
+                  <stop offset="100%" stopColor="#F4511E" stopOpacity="0.0" />
                 </linearGradient>
               </defs>
 
@@ -291,7 +291,7 @@ export default function DashboardPage() {
                     y1={grid.y}
                     x2="530"
                     y2={grid.y}
-                    stroke="#1E2B3E"
+                    stroke="#1D2838"
                     strokeWidth="1"
                     strokeDasharray={idx === 5 ? 'none' : '3 3'}
                   />
@@ -302,24 +302,24 @@ export default function DashboardPage() {
               {/* Spline: (35,148) -> (100,20) -> (170,148) -> (240,180) -> (530,180) */}
               <path
                 d="M 35 148 C 65 140, 75 20, 100 20 C 125 20, 140 145, 170 148 C 200 151, 215 180, 240 180 L 530 180 L 530 180 L 35 180 Z"
-                fill="url(#areaGradientBlue)"
+                fill="url(#areaGradientOrange)"
               />
 
-              {/* Solid Line (Dokumen Dibuat) */}
+              {/* Solid Line (Dokumen Dibuat - Primary Orange) */}
               <path
                 d="M 35 148 C 65 140, 75 20, 100 20 C 125 20, 140 145, 170 148 C 200 151, 215 180, 240 180 L 530 180"
                 fill="none"
-                stroke="#0284C7"
+                stroke="#F4511E"
                 strokeWidth="2.5"
                 strokeLinecap="round"
               />
 
-              {/* Dashed Line (Dokumen Disetujui Aktif) */}
+              {/* Dashed Line (Dokumen Disetujui Aktif - Amber Gold) */}
               {/* Spline: (35,148) -> (100,52) -> (170,148) -> (220,165) -> (260,180) -> (530,180) */}
               <path
                 d="M 35 148 C 65 140, 75 52, 100 52 C 125 52, 145 130, 170 148 C 190 162, 215 165, 235 174 C 250 180, 260 180, 280 180 L 530 180"
                 fill="none"
-                stroke="#38BDF8"
+                stroke="#F59E0B"
                 strokeWidth="2"
                 strokeDasharray="4 4"
                 strokeLinecap="round"
@@ -343,7 +343,7 @@ export default function DashboardPage() {
                         y1="20"
                         x2={xCoord}
                         y2="180"
-                        stroke="#38BDF8"
+                        stroke="#FF7043"
                         strokeWidth="1"
                         strokeDasharray="2 2"
                       />
@@ -352,7 +352,7 @@ export default function DashboardPage() {
                     <text
                       x={xCoord}
                       y="196"
-                      fill={isHovered ? '#38BDF8' : '#64748B'}
+                      fill={isHovered ? '#FF7043' : '#64748B'}
                       fontSize="10"
                       fontFamily="JetBrains Mono, monospace"
                       textAnchor="middle"
@@ -368,21 +368,21 @@ export default function DashboardPage() {
             {/* Hover Tooltip Overlay */}
             {hoveredPoint !== null && (
               <div
-                className="absolute z-10 bg-[#0B111E] border border-[#38BDF8]/60 text-white text-[11px] p-2 rounded shadow-xl pointer-events-none transform -translate-x-1/2 -translate-y-full"
+                className="absolute z-10 bg-[#0B0F17] border border-[#FF7043]/60 text-white text-[11px] p-2 rounded shadow-xl pointer-events-none transform -translate-x-1/2 -translate-y-full"
                 style={{
                   left: `${(hoveredPoint / (chartDays.length - 1)) * 90 + 5}%`,
                   top: '30%',
                 }}
               >
-                <div className="font-mono font-bold text-neutral-300 border-b border-[#1E2B3E] pb-1 mb-1">
+                <div className="font-mono font-bold text-neutral-300 border-b border-[#1D2838] pb-1 mb-1">
                   {activityData[hoveredPoint].day}
                 </div>
-                <div className="flex items-center gap-1.5 text-[#0284C7] font-semibold">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#0284C7]" />
+                <div className="flex items-center gap-1.5 text-[#F4511E] font-semibold">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#F4511E]" />
                   <span>Dibuat: {activityData[hoveredPoint].created} dok</span>
                 </div>
-                <div className="flex items-center gap-1.5 text-[#38BDF8] font-semibold">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#38BDF8]" />
+                <div className="flex items-center gap-1.5 text-[#F59E0B] font-semibold">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#F59E0B]" />
                   <span>Disetujui: {activityData[hoveredPoint].approved} dok</span>
                 </div>
               </div>
@@ -390,13 +390,13 @@ export default function DashboardPage() {
           </div>
 
           {/* Bottom Legend matching Screenshot */}
-          <div className="flex items-center justify-center gap-6 pt-3 border-t border-[#1E2B3E]/80 text-xs font-medium">
+          <div className="flex items-center justify-center gap-6 pt-3 border-t border-[#1D2838]/80 text-xs font-medium">
             <div className="flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-[#0284C7]" />
+              <span className="w-2.5 h-2.5 rounded-full bg-[#F4511E]" />
               <span className="text-neutral-300">Dokumen Dibuat</span>
             </div>
             <div className="flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-[#38BDF8]" />
+              <span className="w-2.5 h-2.5 rounded-full bg-[#F59E0B]" />
               <span className="text-neutral-300">Dokumen Disetujui (Aktif)</span>
             </div>
           </div>
@@ -405,7 +405,7 @@ export default function DashboardPage() {
         {/* ==================================================================== */}
         {/* WIDGET 2: Jenis Dokumen Teratas (Precision Donut Chart & Breakdown)   */}
         {/* ==================================================================== */}
-        <div className="lg:col-span-5 bg-[#131D2D] border border-[#1E2B3E] rounded-xl p-4 sm:p-5 flex flex-col justify-between shadow-sm">
+        <div className="lg:col-span-5 bg-[#131B26] border border-[#1D2838] rounded-xl p-4 sm:p-5 flex flex-col justify-between shadow-sm">
           {/* Header with Link to Master Data */}
           <div className="flex items-start justify-between gap-2 mb-3">
             <div>
@@ -420,7 +420,7 @@ export default function DashboardPage() {
             <button
               type="button"
               onClick={() => navigate('/master-data')}
-              className="text-xs font-medium text-[#38BDF8] hover:text-[#7DD3FC] flex items-center gap-1 transition-colors cursor-pointer shrink-0"
+              className="text-xs font-medium text-[#FF7043] hover:text-[#FFA726] flex items-center gap-1 transition-colors cursor-pointer shrink-0"
             >
               <span>Kelola Tipe</span>
               <span className="text-sm">→</span>
@@ -437,65 +437,65 @@ export default function DashboardPage() {
                   cy="80"
                   r="56"
                   fill="none"
-                  stroke="#1E2B3E"
+                  stroke="#1D2838"
                   strokeWidth="20"
                 />
 
-                {/* Slice 1: 26.7% (109 / 408) */}
+                {/* Slice 1: 26.7% (94 / 351.6) - Primary Orange #F4511E */}
                 <circle
                   cx="80"
                   cy="80"
                   r="56"
                   fill="none"
-                  stroke="#0284C7"
+                  stroke="#F4511E"
                   strokeWidth="20"
                   strokeDasharray="94 257.6"
                   strokeDashoffset="0"
                 />
 
-                {/* Slice 2: 16.7% (58.7 / 351.6) */}
+                {/* Slice 2: 16.7% (58.7 / 351.6) - Flame Orange #FB8C00 */}
                 <circle
                   cx="80"
                   cy="80"
                   r="56"
                   fill="none"
-                  stroke="#0EA5E9"
+                  stroke="#FB8C00"
                   strokeWidth="20"
                   strokeDasharray="58.7 292.9"
                   strokeDashoffset="-94"
                 />
 
-                {/* Slice 3: 16.7% (58.7 / 351.6) */}
+                {/* Slice 3: 16.7% (58.7 / 351.6) - Amber Gold #F59E0B */}
                 <circle
                   cx="80"
                   cy="80"
                   r="56"
                   fill="none"
-                  stroke="#38BDF8"
+                  stroke="#F59E0B"
                   strokeWidth="20"
                   strokeDasharray="58.7 292.9"
                   strokeDashoffset="-152.7"
                 />
 
-                {/* Slice 4: 10.0% (35.2 / 351.6) */}
+                {/* Slice 4: 10.0% (35.2 / 351.6) - Warm Gold #FCD34D */}
                 <circle
                   cx="80"
                   cy="80"
                   r="56"
                   fill="none"
-                  stroke="#7DD3FC"
+                  stroke="#FCD34D"
                   strokeWidth="20"
                   strokeDasharray="35.2 316.4"
                   strokeDashoffset="-211.4"
                 />
 
-                {/* Slice 5: 30.0% (105.5 / 351.6) */}
+                {/* Slice 5: 30.0% (105.5 / 351.6) - Dark Charcoal #374151 */}
                 <circle
                   cx="80"
                   cy="80"
                   r="56"
                   fill="none"
-                  stroke="#334155"
+                  stroke="#374151"
                   strokeWidth="20"
                   strokeDasharray="105.5 246.1"
                   strokeDashoffset="-246.6"
@@ -511,7 +511,7 @@ export default function DashboardPage() {
           </div>
 
           {/* Breakdown List matching Screenshot */}
-          <div className="space-y-2 mt-2 pt-2 border-t border-[#1E2B3E]/60 text-xs">
+          <div className="space-y-2 mt-2 pt-2 border-t border-[#1D2838]/60 text-xs">
             {documentTypes.map((item, idx) => (
               <div key={idx} className="flex items-center justify-between text-neutral-300">
                 <div className="flex items-center gap-2 truncate pr-2">
@@ -533,7 +533,7 @@ export default function DashboardPage() {
         {/* ==================================================================== */}
         {/* WIDGET 3: Tingkat Kepatuhan & Efisiensi (Gauge Meter & Achievements)  */}
         {/* ==================================================================== */}
-        <div className="lg:col-span-7 bg-[#131D2D] border border-[#1E2B3E] rounded-xl p-4 sm:p-5 flex flex-col justify-between shadow-sm">
+        <div className="lg:col-span-7 bg-[#131B26] border border-[#1D2838] rounded-xl p-4 sm:p-5 flex flex-col justify-between shadow-sm">
           {/* Header with Target Pill */}
           <div className="flex items-start justify-between gap-2 mb-3">
             <div>
@@ -546,14 +546,14 @@ export default function DashboardPage() {
             </div>
 
             {/* Target Organisasi: 100% Pill */}
-            <div className="px-2.5 py-1 text-[11px] font-mono text-neutral-300 bg-[#0B111E] border border-[#1E2B3E] rounded-md shrink-0 shadow-xs">
+            <div className="px-2.5 py-1 text-[11px] font-mono text-neutral-300 bg-[#0B0F17] border border-[#1D2838] rounded-md shrink-0 shadow-xs">
               Target Organisasi: 100%
             </div>
           </div>
 
           {/* Content: Left Semi-Circle Speedometer + Right Achievement Box & Stats */}
           <div className="grid grid-cols-1 sm:grid-cols-12 gap-4 items-center my-auto">
-            {/* Left: Semi-circular Gauge */}
+            {/* Left: Semi-circular Gauge in Primary Orange */}
             <div className="sm:col-span-5 flex flex-col items-center justify-center">
               <div className="relative w-44 h-28 flex items-center justify-center">
                 <svg className="w-full h-full overflow-visible" viewBox="0 0 160 100">
@@ -561,25 +561,25 @@ export default function DashboardPage() {
                   <path
                     d="M 20 85 A 60 60 0 0 1 140 85"
                     fill="none"
-                    stroke="#1E2B3E"
+                    stroke="#1D2838"
                     strokeWidth="16"
                     strokeLinecap="round"
                   />
 
-                  {/* Gauge Arc Progress Bar in Bright Cyan/Sky Blue */}
+                  {/* Gauge Arc Progress Bar in Primary Orange #F4511E */}
                   <path
                     d="M 20 85 A 60 60 0 0 1 140 85"
                     fill="none"
-                    stroke="#0284C7"
+                    stroke="#F4511E"
                     strokeWidth="16"
                     strokeDasharray={`${complianceArcOffset} 188.5`}
                     strokeLinecap="round"
                   />
                 </svg>
 
-                {/* Percentage Text Center */}
+                {/* Percentage Text Center in Bright Flame Orange */}
                 <div className="absolute inset-0 flex items-center justify-center pt-8 pointer-events-none">
-                  <span className="text-3xl font-extrabold text-[#38BDF8] tracking-tight">
+                  <span className="text-3xl font-extrabold text-[#FF7043] tracking-tight">
                     {complianceScore}
                   </span>
                 </div>
@@ -589,8 +589,8 @@ export default function DashboardPage() {
             {/* Right: Achievement Box & Stats Counters */}
             <div className="sm:col-span-7 space-y-3">
               {/* Highlight Card */}
-              <div className="bg-[#0B111E] border border-[#1E2B3E] rounded-lg p-3">
-                <div className="flex items-center gap-1.5 text-xs font-semibold text-[#38BDF8] mb-1">
+              <div className="bg-[#0B0F17] border border-[#1D2838] rounded-lg p-3">
+                <div className="flex items-center gap-1.5 text-xs font-semibold text-[#FF7043] mb-1">
                   <span>🎉</span>
                   <span>Pencapaian Sangat Baik!</span>
                 </div>
@@ -601,7 +601,7 @@ export default function DashboardPage() {
 
               {/* Bottom 2 Key Stats */}
               <div className="grid grid-cols-2 gap-2 text-center pt-1">
-                <div className="bg-[#0B111E]/70 border border-[#1E2B3E]/60 rounded-lg p-2">
+                <div className="bg-[#0B0F17]/70 border border-[#1D2838]/60 rounded-lg p-2">
                   <div className="text-[10px] font-mono uppercase tracking-wider text-neutral-400">
                     TOTAL PENGGUNA
                   </div>
@@ -610,7 +610,7 @@ export default function DashboardPage() {
                   </div>
                 </div>
 
-                <div className="bg-[#0B111E]/70 border border-[#1E2B3E]/60 rounded-lg p-2">
+                <div className="bg-[#0B0F17]/70 border border-[#1D2838]/60 rounded-lg p-2">
                   <div className="text-[10px] font-mono uppercase tracking-wider text-neutral-400">
                     UNIT KERJA AKTIF
                   </div>
@@ -626,7 +626,7 @@ export default function DashboardPage() {
         {/* ==================================================================== */}
         {/* WIDGET 4: Unit Kerja Teraktif (Progress Bars List)                    */}
         {/* ==================================================================== */}
-        <div className="lg:col-span-5 bg-[#131D2D] border border-[#1E2B3E] rounded-xl p-4 sm:p-5 flex flex-col justify-between shadow-sm">
+        <div className="lg:col-span-5 bg-[#131B26] border border-[#1D2838] rounded-xl p-4 sm:p-5 flex flex-col justify-between shadow-sm">
           {/* Header with Top 4 Badge */}
           <div className="flex items-start justify-between gap-2 mb-3">
             <div>
@@ -638,12 +638,12 @@ export default function DashboardPage() {
               </p>
             </div>
 
-            <div className="px-2 py-0.5 text-[11px] font-mono text-neutral-300 bg-[#0B111E] border border-[#1E2B3E] rounded shrink-0">
+            <div className="px-2 py-0.5 text-[11px] font-mono text-neutral-300 bg-[#0B0F17] border border-[#1D2838] rounded shrink-0">
               Top 4
             </div>
           </div>
 
-          {/* Progress Bars Rows matching Screenshot */}
+          {/* Progress Bars Rows matching Screenshot with Orange Tones */}
           <div className="space-y-4 my-auto py-2">
             {activeUnits.map((item, idx) => (
               <div key={idx} className="space-y-1.5">
@@ -651,11 +651,11 @@ export default function DashboardPage() {
                   <span className="font-medium text-neutral-200 truncate pr-2">
                     {item.name}
                   </span>
-                  <span className="font-mono text-[11px] text-[#38BDF8] shrink-0 font-medium">
+                  <span className="font-mono text-[11px] text-[#FF7043] shrink-0 font-medium">
                     {item.count} dok {item.percent}
                   </span>
                 </div>
-                <div className="w-full bg-[#1E2B3E] h-1.5 rounded-full overflow-hidden">
+                <div className="w-full bg-[#1D2838] h-1.5 rounded-full overflow-hidden">
                   <div
                     className={`h-full ${item.color} rounded-full transition-all duration-500`}
                     style={{ width: item.barWidth }}
@@ -684,7 +684,7 @@ export default function DashboardPage() {
                 key={item.title}
                 type="button"
                 onClick={() => navigate(item.path)}
-                className="bg-[#131D2D] hover:bg-[#18253A] border border-[#1E2B3E] hover:border-[#0284C7]/60 rounded-xl p-2.5 aspect-square flex flex-col items-center justify-center text-center group cursor-pointer transition-all duration-150 shadow-xs"
+                className="bg-[#131B26] hover:bg-[#182332] border border-[#1D2838] hover:border-[#F4511E]/60 rounded-xl p-2.5 aspect-square flex flex-col items-center justify-center text-center group cursor-pointer transition-all duration-150 shadow-xs"
                 title={item.title}
               >
                 <div className="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center mb-1 group-hover:scale-110 transition-transform shrink-0">
@@ -716,7 +716,7 @@ export default function DashboardPage() {
                 key={item.title}
                 type="button"
                 onClick={() => navigate(`/master-data?tab=${item.tab}`)}
-                className="bg-[#131D2D] hover:bg-[#18253A] border border-[#1E2B3E] hover:border-[#0284C7]/60 rounded-xl p-2.5 aspect-square flex flex-col items-center justify-center text-center group cursor-pointer transition-all duration-150 shadow-xs"
+                className="bg-[#131B26] hover:bg-[#182332] border border-[#1D2838] hover:border-[#F4511E]/60 rounded-xl p-2.5 aspect-square flex flex-col items-center justify-center text-center group cursor-pointer transition-all duration-150 shadow-xs"
                 title={item.title}
               >
                 <div className="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center mb-1 group-hover:scale-110 transition-transform shrink-0">

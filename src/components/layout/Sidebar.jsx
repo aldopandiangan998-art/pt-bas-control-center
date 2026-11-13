@@ -175,7 +175,7 @@ export default function Sidebar() {
                           title={sidebarCollapsed ? `${link.label} (${link.children.length} sub-item)` : link.description}
                         >
                           <div className="flex items-center gap-2.5 min-w-0">
-                            <Icon className={`w-4 h-4 shrink-0 transition-colors ${isParentActive ? 'text-[#0EA5E9]' : 'group-hover:scale-105'}`} />
+                            <Icon className={`w-4 h-4 shrink-0 transition-colors ${isParentActive ? 'text-[#F4511E]' : 'group-hover:scale-105'}`} />
                             {!sidebarCollapsed && (
                               <span className="truncate leading-none tracking-tight">{link.label}</span>
                             )}
@@ -183,7 +183,7 @@ export default function Sidebar() {
 
                           {!sidebarCollapsed && (
                             <div className="flex items-center gap-1.5 shrink-0 ml-1">
-                              <span className="text-[10px] font-mono text-neutral-400 bg-[#152033] px-1.5 py-0.2 rounded border border-[#1E2B3E]">
+                              <span className="text-[10px] font-mono text-neutral-400 bg-[#151D28] px-1.5 py-0.2 rounded border border-[#1E2B3C]">
                                 {link.children.length}
                               </span>
                               <ChevronDown
@@ -197,7 +197,7 @@ export default function Sidebar() {
 
                         {/* Submenu Children List */}
                         {!sidebarCollapsed && hasChildren && isSubmenuOpen && (
-                          <div className="ml-3.5 pl-2.5 border-l border-[#1E2B3E] space-y-0.5 py-1">
+                          <div className="ml-3.5 pl-2.5 border-l border-[#1E2B3C] space-y-0.5 py-1">
                             {link.children.map((child) => {
                               const ChildIcon = ICON_MAP[child.icon] || Database;
                               const isChildActive = isParentActive && currentTab === child.tab;
@@ -212,22 +212,22 @@ export default function Sidebar() {
                                   }}
                                   className={`w-full flex items-center justify-between px-2 py-1.5 rounded text-[11px] transition-all text-left group cursor-pointer ${
                                     isChildActive
-                                      ? 'bg-[#0284C7]/20 text-[#38BDF8] font-semibold border-l-2 border-[#0284C7]'
-                                      : 'text-neutral-400 hover:text-neutral-200 hover:bg-[#152033]'
+                                      ? 'bg-[#F4511E]/20 text-[#FF7043] font-semibold border-l-2 border-[#F4511E]'
+                                      : 'text-neutral-400 hover:text-neutral-200 hover:bg-[#151D28]'
                                   }`}
                                 >
                                   <div className="flex items-center gap-2 truncate">
                                     <ChildIcon
                                       className={`w-3.5 h-3.5 shrink-0 ${
                                         isChildActive
-                                          ? 'text-[#38BDF8]'
+                                          ? 'text-[#FF7043]'
                                           : 'text-neutral-500 group-hover:text-neutral-300'
                                       }`}
                                     />
                                     <span className="truncate">{child.label}</span>
                                   </div>
                                   {isChildActive && (
-                                    <span className="w-1.5 h-1.5 rounded-full bg-[#0284C7] shrink-0" />
+                                    <span className="w-1.5 h-1.5 rounded-full bg-[#F4511E] shrink-0" />
                                   )}
                                 </button>
                               );
@@ -247,8 +247,8 @@ export default function Sidebar() {
                       className={({ isActive }) =>
                         `flex items-center gap-2.5 px-2.5 py-2 rounded text-xs font-medium transition-all duration-150 group cursor-pointer ${
                           isActive
-                            ? 'bg-[#152033] text-[#38BDF8] font-semibold border-l-2 border-[#0284C7] shadow-xs'
-                            : 'text-neutral-400 hover:text-neutral-100 hover:bg-[#152033]'
+                            ? 'bg-[#151D28] text-[#FF7043] font-semibold border-l-2 border-[#F4511E] shadow-xs'
+                            : 'text-neutral-400 hover:text-neutral-100 hover:bg-[#151D28]'
                         }`
                       }
                       title={sidebarCollapsed ? `${cat.category}: ${link.label}` : link.description}
@@ -266,17 +266,17 @@ export default function Sidebar() {
         </nav>
 
         {/* Bottom Role Switcher Panel (Strictly Admin and Superadmin) */}
-        <div className="p-2.5 border-t border-[#1E2B3E] bg-[#0B111E]">
+        <div className="p-2.5 border-t border-[#1E2B3C] bg-[#0B0F17]">
           {!sidebarCollapsed ? (
             <div className="space-y-1">
               <div className="flex items-center gap-1.5 text-[10px] text-neutral-400 font-medium">
-                <UserCheck className="w-3 h-3 text-[#0284C7]" />
+                <UserCheck className="w-3 h-3 text-[#F4511E]" />
                 <span>Simulasi Peran Aktif:</span>
               </div>
               <select
                 value={currentUser?.role === 'superadmin' ? 'superadmin' : 'admin'}
                 onChange={(e) => switchRole(e.target.value)}
-                className="w-full text-[11px] bg-[#131D2D] border border-[#1E2B3E] text-neutral-200 rounded px-2 py-1.5 focus:outline-none focus:border-[#0284C7] font-medium cursor-pointer"
+                className="w-full text-[11px] bg-[#131B26] border border-[#1E2B3C] text-neutral-200 rounded px-2 py-1.5 focus:outline-none focus:border-[#F4511E] font-medium cursor-pointer"
               >
                 <option value="superadmin">Super Admin (Direktur)</option>
                 <option value="admin">Admin (Operasional Gresik)</option>
@@ -284,7 +284,7 @@ export default function Sidebar() {
             </div>
           ) : (
             <div className="text-center py-1" title={`Role aktif: ${currentUser?.role}`}>
-              <span className="text-[10px] font-bold text-[#38BDF8] font-mono px-1.5 py-0.5 rounded bg-black/40 border border-[#1E2B3E]">
+              <span className="text-[10px] font-bold text-[#FF7043] font-mono px-1.5 py-0.5 rounded bg-black/40 border border-[#1E2B3C]">
                 {currentUser?.role === 'superadmin' ? 'SA' : 'AD'}
               </span>
             </div>

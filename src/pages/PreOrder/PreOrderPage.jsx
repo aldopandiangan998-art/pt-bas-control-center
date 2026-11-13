@@ -306,117 +306,132 @@ export default function PreOrderPage() {
               </div>
 
               {/* T.O.P */}
-              <div className="relative bg-[#1C1F24] border border-[#2A2E33] rounded-xl px-4 py-3.5 flex items-center gap-3 focus-within:border-[#F4511E]/70 transition-colors group">
-                <Calendar className="w-5 h-5 text-neutral-500 shrink-0 group-focus-within:text-[#F4511E] transition-colors" />
-                <div className="flex-1 min-w-0">
+              <div className="relative bg-[#1C1F24] border border-[#2A2E33] rounded-xl px-4 py-3.5 flex items-center gap-3 focus-within:border-[#F4511E]/70 transition-colors group cursor-pointer">
+                <Calendar className="w-5 h-5 text-neutral-500 shrink-0 group-focus-within:text-[#F4511E] transition-colors pointer-events-none" />
+                <div className="flex-1 min-w-0 pointer-events-none">
                   <label className="block text-[10px] font-semibold text-neutral-500 uppercase tracking-widest mb-0.5">
                     T.O.P.
                   </label>
-                  <select
-                    value={formData.top}
-                    onChange={(e) => setFormData({ ...formData, top: e.target.value })}
-                    className="w-full bg-transparent text-xs text-white focus:outline-none appearance-none cursor-pointer"
-                  >
-                    <option value="" className="bg-[#1C1F24]">Pilih TOP</option>
-                    <option value="Cash / Tunai" className="bg-[#1C1F24]">Cash / Tunai</option>
-                    <option value="7 Hari" className="bg-[#1C1F24]">7 Hari</option>
-                    <option value="14 Hari" className="bg-[#1C1F24]">14 Hari</option>
-                    <option value="30 Hari" className="bg-[#1C1F24]">30 Hari</option>
-                    <option value="45 Hari" className="bg-[#1C1F24]">45 Hari</option>
-                    <option value="60 Hari" className="bg-[#1C1F24]">60 Hari</option>
-                  </select>
+                  <div className={`text-xs truncate ${formData.top ? 'text-white' : 'text-neutral-500'}`}>
+                    {formData.top || 'Pilih TOP'}
+                  </div>
                 </div>
                 <ChevronDown className="w-3.5 h-3.5 text-neutral-500 shrink-0 pointer-events-none" />
+                <select
+                  value={formData.top}
+                  onChange={(e) => setFormData({ ...formData, top: e.target.value })}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                >
+                  <option value="" className="bg-[#1C1F24]">Pilih TOP</option>
+                  <option value="Cash / Tunai" className="bg-[#1C1F24]">Cash / Tunai</option>
+                  <option value="7 Hari" className="bg-[#1C1F24]">7 Hari</option>
+                  <option value="14 Hari" className="bg-[#1C1F24]">14 Hari</option>
+                  <option value="30 Hari" className="bg-[#1C1F24]">30 Hari</option>
+                  <option value="45 Hari" className="bg-[#1C1F24]">45 Hari</option>
+                  <option value="60 Hari" className="bg-[#1C1F24]">60 Hari</option>
+                </select>
               </div>
             </div>
 
             {/* Row 2: Jenis + Mata Uang */}
             <div className="grid grid-cols-2 gap-2.5">
               {/* Jenis Material */}
-              <div className="relative bg-[#1C1F24] border border-[#2A2E33] rounded-xl px-4 py-3.5 flex items-center gap-3 focus-within:border-[#F4511E]/70 transition-colors group">
-                <Monitor className="w-5 h-5 text-neutral-500 shrink-0 group-focus-within:text-[#F4511E] transition-colors" />
-                <div className="flex-1 min-w-0">
+              <div className="relative bg-[#1C1F24] border border-[#2A2E33] rounded-xl px-4 py-3.5 flex items-center gap-3 focus-within:border-[#F4511E]/70 transition-colors group cursor-pointer">
+                <Monitor className="w-5 h-5 text-neutral-500 shrink-0 group-focus-within:text-[#F4511E] transition-colors pointer-events-none" />
+                <div className="flex-1 min-w-0 pointer-events-none">
                   <label className="block text-[10px] font-semibold text-neutral-500 uppercase tracking-widest mb-0.5">
                     Jenis <span className="text-[#F4511E]">*</span>
                   </label>
-                  <select
-                    required
-                    value={formData.jenis}
-                    onChange={(e) => setFormData({ ...formData, jenis: e.target.value })}
-                    className="w-full bg-transparent text-xs text-white focus:outline-none appearance-none cursor-pointer truncate"
-                  >
-                    <option value="" className="bg-[#1C1F24]">Pilih Jenis</option>
-                    <option value="BORONG" className="bg-[#1C1F24]">BORONG</option>
-                    <option value="CURAH" className="bg-[#1C1F24]">CURAH</option>
-                  </select>
+                  <div className={`text-xs truncate ${formData.jenis ? 'text-white' : 'text-neutral-500'}`}>
+                    {formData.jenis || 'Pilih Jenis'}
+                  </div>
                 </div>
                 <ChevronDown className="w-3.5 h-3.5 text-neutral-500 shrink-0 pointer-events-none" />
+                <select
+                  required
+                  value={formData.jenis}
+                  onChange={(e) => setFormData({ ...formData, jenis: e.target.value })}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                >
+                  <option value="" className="bg-[#1C1F24]">Pilih Jenis</option>
+                  <option value="BORONG" className="bg-[#1C1F24]">BORONG</option>
+                  <option value="CURAH" className="bg-[#1C1F24]">CURAH</option>
+                </select>
               </div>
 
               {/* Mata Uang */}
-              <div className="relative bg-[#1C1F24] border border-[#2A2E33] rounded-xl px-4 py-3.5 flex items-center gap-3 focus-within:border-[#F4511E]/70 transition-colors group">
-                <DollarSign className="w-5 h-5 text-neutral-500 shrink-0 group-focus-within:text-[#F4511E] transition-colors" />
-                <div className="flex-1 min-w-0">
+              <div className="relative bg-[#1C1F24] border border-[#2A2E33] rounded-xl px-4 py-3.5 flex items-center gap-3 focus-within:border-[#F4511E]/70 transition-colors group cursor-pointer">
+                <DollarSign className="w-5 h-5 text-neutral-500 shrink-0 group-focus-within:text-[#F4511E] transition-colors pointer-events-none" />
+                <div className="flex-1 min-w-0 pointer-events-none">
                   <label className="block text-[10px] font-semibold text-neutral-500 uppercase tracking-widest mb-0.5">
                     Mata Uang <span className="text-[#F4511E]">*</span>
                   </label>
-                  <select
-                    required
-                    value={formData.mataUang}
-                    onChange={(e) => setFormData({ ...formData, mataUang: e.target.value })}
-                    className="w-full bg-transparent text-xs text-white focus:outline-none appearance-none cursor-pointer font-mono"
-                  >
-                    <option value="IDR" className="bg-[#1C1F24]">IDR</option>
-                    <option value="USD" className="bg-[#1C1F24]">USD</option>
-                    <option value="EUR" className="bg-[#1C1F24]">EUR</option>
-                  </select>
+                  <div className="text-xs text-white font-mono truncate">
+                    {formData.mataUang || 'IDR'}
+                  </div>
                 </div>
                 <ChevronDown className="w-3.5 h-3.5 text-neutral-500 shrink-0 pointer-events-none" />
+                <select
+                  required
+                  value={formData.mataUang}
+                  onChange={(e) => setFormData({ ...formData, mataUang: e.target.value })}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                >
+                  <option value="IDR" className="bg-[#1C1F24]">IDR</option>
+                  <option value="USD" className="bg-[#1C1F24]">USD</option>
+                  <option value="EUR" className="bg-[#1C1F24]">EUR</option>
+                </select>
               </div>
             </div>
 
             {/* Row 3: Pilih Customer (full width) */}
-            <div className="relative bg-[#1C1F24] border border-[#2A2E33] rounded-xl px-4 py-3.5 flex items-center gap-3 focus-within:border-[#F4511E]/70 transition-colors group">
-              <User className="w-5 h-5 text-neutral-500 shrink-0 group-focus-within:text-[#F4511E] transition-colors" />
-              <div className="flex-1 min-w-0">
+            <div className="relative bg-[#1C1F24] border border-[#2A2E33] rounded-xl px-4 py-3.5 flex items-center gap-3 focus-within:border-[#F4511E]/70 transition-colors group cursor-pointer">
+              <User className="w-5 h-5 text-neutral-500 shrink-0 group-focus-within:text-[#F4511E] transition-colors pointer-events-none" />
+              <div className="flex-1 min-w-0 pointer-events-none">
                 <label className="block text-[10px] font-semibold text-neutral-500 uppercase tracking-widest mb-0.5">
                   Pilih Customer <span className="text-[#F4511E]">*</span>
                 </label>
-                <select
-                  required
-                  value={formData.customer}
-                  onChange={(e) => setFormData({ ...formData, customer: e.target.value })}
-                  className="w-full bg-transparent text-xs text-white focus:outline-none appearance-none cursor-pointer"
-                >
-                  <option value="" className="bg-[#1C1F24]">— Pilih Customer —</option>
-                  {customers.map((c) => (
-                    <option key={c.id} value={c.name} className="bg-[#1C1F24]">
-                      {c.kodePrefix ? `${c.kodePrefix} - ` : ''}{c.name}
-                    </option>
-                  ))}
-                </select>
+                <div className={`text-xs truncate ${formData.customer ? 'text-white' : 'text-neutral-500'}`}>
+                  {formData.customer || '— Pilih Customer —'}
+                </div>
               </div>
               <ChevronDown className="w-3.5 h-3.5 text-neutral-500 shrink-0 pointer-events-none" />
+              <select
+                required
+                value={formData.customer}
+                onChange={(e) => setFormData({ ...formData, customer: e.target.value })}
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+              >
+                <option value="" className="bg-[#1C1F24]">— Pilih Customer —</option>
+                {customers.map((c) => (
+                  <option key={c.id} value={c.name} className="bg-[#1C1F24]">
+                    {c.kodePrefix ? `${c.kodePrefix} - ` : ''}{c.name}
+                  </option>
+                ))}
+              </select>
             </div>
 
             {/* Row 4: Jenis Wajib Pajak (full width) */}
-            <div className="relative bg-[#1C1F24] border border-[#2A2E33] rounded-xl px-4 py-3.5 flex items-center gap-3 focus-within:border-[#F4511E]/70 transition-colors group">
-              <Monitor className="w-5 h-5 text-neutral-500 shrink-0 group-focus-within:text-[#F4511E] transition-colors" />
-              <div className="flex-1 min-w-0">
+            <div className="relative bg-[#1C1F24] border border-[#2A2E33] rounded-xl px-4 py-3.5 flex items-center gap-3 focus-within:border-[#F4511E]/70 transition-colors group cursor-pointer">
+              <Monitor className="w-5 h-5 text-neutral-500 shrink-0 group-focus-within:text-[#F4511E] transition-colors pointer-events-none" />
+              <div className="flex-1 min-w-0 pointer-events-none">
                 <label className="block text-[10px] font-semibold text-neutral-500 uppercase tracking-widest mb-0.5">
                   Jenis Pajak
                 </label>
-                <select
-                  value={formData.jenisWajibPajak}
-                  onChange={(e) => setFormData({ ...formData, jenisWajibPajak: e.target.value })}
-                  className="w-full bg-transparent text-xs text-white focus:outline-none appearance-none cursor-pointer"
-                >
-                  <option value="" className="bg-[#1C1F24]">— Pilih Jenis Pajak —</option>
-                  <option value="PKP" className="bg-[#1C1F24]">PKP (Pengusaha Kena Pajak)</option>
-                  <option value="NON PKP" className="bg-[#1C1F24]">NON PKP</option>
-                </select>
+                <div className={`text-xs truncate ${formData.jenisWajibPajak ? 'text-white' : 'text-neutral-500'}`}>
+                  {formData.jenisWajibPajak || '— Pilih Jenis Pajak —'}
+                </div>
               </div>
               <ChevronDown className="w-3.5 h-3.5 text-neutral-500 shrink-0 pointer-events-none" />
+              <select
+                value={formData.jenisWajibPajak}
+                onChange={(e) => setFormData({ ...formData, jenisWajibPajak: e.target.value })}
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+              >
+                <option value="" className="bg-[#1C1F24]">— Pilih Jenis Pajak —</option>
+                <option value="PKP" className="bg-[#1C1F24]">PKP (Pengusaha Kena Pajak)</option>
+                <option value="NON PKP" className="bg-[#1C1F24]">NON PKP</option>
+              </select>
             </div>
 
             {/* Row 5: Nomor PO Customer (full width, orange active border) */}
@@ -453,26 +468,29 @@ export default function PreOrderPage() {
             </div>
 
             {/* Row 7: Pilih Jenis RO (full width) */}
-            <div className="relative bg-[#1C1F24] border border-[#2A2E33] rounded-xl px-4 py-3.5 flex items-center gap-3 focus-within:border-[#F4511E]/70 transition-colors group">
-              <List className="w-5 h-5 text-neutral-500 shrink-0 group-focus-within:text-[#F4511E] transition-colors" />
-              <div className="flex-1 min-w-0">
+            <div className="relative bg-[#1C1F24] border border-[#2A2E33] rounded-xl px-4 py-3.5 flex items-center gap-3 focus-within:border-[#F4511E]/70 transition-colors group cursor-pointer">
+              <List className="w-5 h-5 text-neutral-500 shrink-0 group-focus-within:text-[#F4511E] transition-colors pointer-events-none" />
+              <div className="flex-1 min-w-0 pointer-events-none">
                 <label className="block text-[10px] font-semibold text-neutral-500 uppercase tracking-widest mb-0.5">
                   Pilih Jenis RO <span className="text-[#F4511E]">*</span>
                 </label>
-                <select
-                  required
-                  value={formData.jenisRO}
-                  onChange={(e) => setFormData({ ...formData, jenisRO: e.target.value })}
-                  className="w-full bg-transparent text-xs text-white focus:outline-none appearance-none cursor-pointer"
-                >
-                  <option value="" className="bg-[#1C1F24]">— Pilih Jenis RO —</option>
-                  <option value="Regular" className="bg-[#1C1F24]">Regular</option>
-                  <option value="Prioritas" className="bg-[#1C1F24]">Prioritas</option>
-                  <option value="Kontrak Tahunan" className="bg-[#1C1F24]">Kontrak Tahunan</option>
-                  <option value="Spot Order" className="bg-[#1C1F24]">Spot Order</option>
-                </select>
+                <div className={`text-xs truncate ${formData.jenisRO ? 'text-white' : 'text-neutral-500'}`}>
+                  {formData.jenisRO || '— Pilih Jenis RO —'}
+                </div>
               </div>
               <ChevronDown className="w-3.5 h-3.5 text-neutral-500 shrink-0 pointer-events-none" />
+              <select
+                required
+                value={formData.jenisRO}
+                onChange={(e) => setFormData({ ...formData, jenisRO: e.target.value })}
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+              >
+                <option value="" className="bg-[#1C1F24]">— Pilih Jenis RO —</option>
+                <option value="Regular" className="bg-[#1C1F24]">Regular</option>
+                <option value="Prioritas" className="bg-[#1C1F24]">Prioritas</option>
+                <option value="Kontrak Tahunan" className="bg-[#1C1F24]">Kontrak Tahunan</option>
+                <option value="Spot Order" className="bg-[#1C1F24]">Spot Order</option>
+              </select>
             </div>
 
             {/* ── Harga & Volume (Collapsible Detail) ── */}
@@ -484,20 +502,23 @@ export default function PreOrderPage() {
 
               <div className="grid grid-cols-2 gap-2.5">
                 {/* Satuan */}
-                <div className="relative bg-[#1C1F24] border border-[#2A2E33] rounded-lg px-3 py-2.5 flex items-center gap-2 focus-within:border-[#F4511E]/60 transition-colors">
-                  <div className="flex-1 min-w-0">
+                <div className="relative bg-[#1C1F24] border border-[#2A2E33] rounded-lg px-3 py-2.5 flex items-center gap-2 focus-within:border-[#F4511E]/60 transition-colors cursor-pointer">
+                  <div className="flex-1 min-w-0 pointer-events-none">
                     <label className="block text-[10px] text-neutral-500 font-semibold uppercase tracking-widest mb-0.5">Satuan</label>
-                    <select
-                      value={formData.satuan}
-                      onChange={(e) => setFormData({ ...formData, satuan: e.target.value })}
-                      className="w-full bg-transparent text-xs text-white focus:outline-none appearance-none cursor-pointer"
-                    >
-                      <option value="m3" className="bg-[#1C1F24]">m³ (Kubik)</option>
-                      <option value="ton" className="bg-[#1C1F24]">Ton</option>
-                      <option value="rit" className="bg-[#1C1F24]">Rit</option>
-                    </select>
+                    <div className="text-xs text-white truncate">
+                      {formData.satuan === 'm3' ? 'm³ (Kubik)' : formData.satuan === 'ton' ? 'Ton' : formData.satuan === 'rit' ? 'Rit' : formData.satuan}
+                    </div>
                   </div>
                   <ChevronDown className="w-3 h-3 text-neutral-500 shrink-0 pointer-events-none" />
+                  <select
+                    value={formData.satuan}
+                    onChange={(e) => setFormData({ ...formData, satuan: e.target.value })}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                  >
+                    <option value="m3" className="bg-[#1C1F24]">m³ (Kubik)</option>
+                    <option value="ton" className="bg-[#1C1F24]">Ton</option>
+                    <option value="rit" className="bg-[#1C1F24]">Rit</option>
+                  </select>
                 </div>
 
                 {/* Target Volume */}

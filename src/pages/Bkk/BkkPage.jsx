@@ -415,51 +415,57 @@ export default function BkkPage() {
           {!filterHidden && (
             <div className="space-y-3">
               {/* Field: Pilih Pelanggan */}
-              <div className="relative bg-[#1C1F24] border border-[#2A2E33] rounded-xl px-4 py-3 flex items-center gap-3 focus-within:border-[#F4511E]/70 transition-colors group">
-                <User className="w-5 h-5 text-neutral-500 shrink-0 group-focus-within:text-[#F4511E] transition-colors" />
-                <div className="flex-1 min-w-0">
-                  <select
-                    value={filterData.pelanggan}
-                    onChange={(e) =>
-                      setFilterData({ ...filterData, pelanggan: e.target.value })
-                    }
-                    className="w-full bg-transparent text-xs text-neutral-200 focus:outline-none appearance-none cursor-pointer"
-                  >
-                    <option value="" className="bg-[#1C1F24] text-neutral-400">
-                      Pilih Pelanggan
-                    </option>
-                    {customers.map((c) => (
-                      <option key={c.id} value={c.name} className="bg-[#1C1F24]">
-                        {c.name}
-                      </option>
-                    ))}
-                  </select>
+              <div className="relative bg-[#1C1F24] border border-[#2A2E33] rounded-xl px-4 py-3 flex items-center gap-3 focus-within:border-[#F4511E]/70 transition-colors group cursor-pointer">
+                <User className="w-5 h-5 text-neutral-500 shrink-0 group-focus-within:text-[#F4511E] transition-colors pointer-events-none" />
+                <div className="flex-1 min-w-0 pointer-events-none">
+                  <div className={`text-xs truncate ${filterData.pelanggan ? 'text-neutral-200' : 'text-neutral-400'}`}>
+                    {filterData.pelanggan || 'Pilih Pelanggan'}
+                  </div>
                 </div>
                 <ChevronDown className="w-4 h-4 text-neutral-500 shrink-0 pointer-events-none" />
+                <select
+                  value={filterData.pelanggan}
+                  onChange={(e) =>
+                    setFilterData({ ...filterData, pelanggan: e.target.value })
+                  }
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                >
+                  <option value="" className="bg-[#1C1F24] text-neutral-400">
+                    Pilih Pelanggan
+                  </option>
+                  {customers.map((c) => (
+                    <option key={c.id} value={c.name} className="bg-[#1C1F24]">
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               {/* Field: Pilih Supplier (with orange accent) */}
-              <div className="relative bg-[#1C1F24] border-t border-l border-r border-[#2A2E33] border-b-2 border-b-[#F4511E] rounded-xl px-4 py-3 flex items-center gap-3 transition-colors group">
-                <User className="w-5 h-5 text-neutral-500 shrink-0 group-focus-within:text-[#F4511E] transition-colors" />
-                <div className="flex-1 min-w-0">
-                  <select
-                    value={filterData.supplier}
-                    onChange={(e) =>
-                      setFilterData({ ...filterData, supplier: e.target.value })
-                    }
-                    className="w-full bg-transparent text-xs text-[#F4511E] font-medium focus:outline-none appearance-none cursor-pointer"
-                  >
-                    <option value="" className="bg-[#1C1F24] text-[#F4511E]">
-                      Pilih Supplier
-                    </option>
-                    {suppliers.map((s) => (
-                      <option key={s.id} value={s.name} className="bg-[#1C1F24] text-white">
-                        {s.name} ({s.bank} - {s.noRekening})
-                      </option>
-                    ))}
-                  </select>
+              <div className="relative bg-[#1C1F24] border-t border-l border-r border-[#2A2E33] border-b-2 border-b-[#F4511E] rounded-xl px-4 py-3 flex items-center gap-3 transition-colors group cursor-pointer">
+                <User className="w-5 h-5 text-neutral-500 shrink-0 group-focus-within:text-[#F4511E] transition-colors pointer-events-none" />
+                <div className="flex-1 min-w-0 pointer-events-none">
+                  <div className="text-xs text-[#F4511E] font-medium truncate">
+                    {filterData.supplier || 'Pilih Supplier'}
+                  </div>
                 </div>
                 <ChevronDown className="w-4 h-4 text-[#F4511E] shrink-0 pointer-events-none" />
+                <select
+                  value={filterData.supplier}
+                  onChange={(e) =>
+                    setFilterData({ ...filterData, supplier: e.target.value })
+                  }
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                >
+                  <option value="" className="bg-[#1C1F24] text-[#F4511E]">
+                    Pilih Supplier
+                  </option>
+                  {suppliers.map((s) => (
+                    <option key={s.id} value={s.name} className="bg-[#1C1F24] text-white">
+                      {s.name} ({s.bank} - {s.noRekening})
+                    </option>
+                  ))}
+                </select>
               </div>
 
               {/* Section: Daftar Keterangan */}

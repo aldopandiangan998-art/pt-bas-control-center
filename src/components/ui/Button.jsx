@@ -2,12 +2,12 @@ import { forwardRef } from 'react';
 import clsx from 'clsx';
 
 const VARIANTS = {
-  primary: 'bg-[#0284C7] hover:bg-[#0369A1] active:bg-[#075985] text-white border-transparent shadow-sm',
-  secondary: 'bg-[#152033] hover:bg-[#1E2D47] active:bg-[#253754] text-neutral-200 border-[#1E2B3E]',
-  outline: 'bg-transparent hover:bg-[#152033] text-neutral-300 hover:text-white border-[#1E2B3E]',
-  ghost: 'bg-transparent hover:bg-[#152033] text-neutral-400 hover:text-white border-transparent',
+  primary: 'bg-[#F4511E] hover:bg-[#D84315] active:bg-[#BF360C] text-white border-transparent shadow-sm',
+  secondary: 'bg-[#151D28] hover:bg-[#1D2838] active:bg-[#253346] text-neutral-200 border-[#1E2B3C]',
+  outline: 'bg-transparent hover:bg-[#151D28] text-neutral-300 hover:text-white border-[#1E2B3C]',
+  ghost: 'bg-transparent hover:bg-[#151D28] text-neutral-400 hover:text-white border-transparent',
   danger: 'bg-rose-950/40 hover:bg-rose-900/60 active:bg-rose-900 text-rose-400 border-rose-800/60',
-  timber: 'bg-[#0E2A47] hover:bg-[#143A61] text-sky-200 border-[#1E3A5F]',
+  timber: 'bg-[#6B4219]/70 hover:bg-[#6B4219] text-amber-200 border-[#855320]',
 };
 
 const SIZES = {
@@ -42,7 +42,7 @@ const Button = forwardRef(function Button(
       disabled={disabled || isLoading}
       className={clsx(
         'inline-flex items-center justify-center font-medium rounded-md border transition-all duration-150 select-none cursor-pointer',
-        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0284C7] focus-visible:ring-offset-1 focus-visible:ring-offset-[#0B111E]',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F4511E] focus-visible:ring-offset-1 focus-visible:ring-offset-[#0B0F17]',
         'disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none active:scale-[0.98]',
         variantClass,
         sizeClass,

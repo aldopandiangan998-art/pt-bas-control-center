@@ -76,7 +76,7 @@ export default function Header() {
                 </div>
               </div>
 
-              <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.2 rounded bg-[#0284C7] text-white ml-1 shadow-xs font-mono">
+              <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.2 rounded bg-[#F4511E] text-white ml-1 shadow-xs font-mono">
                 {displayRole}
               </span>
 

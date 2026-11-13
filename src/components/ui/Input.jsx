@@ -25,7 +25,7 @@ const Input = forwardRef(function Input(
           className="block text-[11px] font-medium text-neutral-300 flex items-center justify-between"
         >
           <span>
-            {label} {required && <span className="text-[#0284C7] font-bold">*</span>}
+            {label} {required && <span className="text-[#F4511E] font-bold">*</span>}
           </span>
         </label>
       )}
@@ -42,12 +42,12 @@ const Input = forwardRef(function Input(
           id={inputId}
           required={required}
           className={clsx(
-            'w-full bg-[#0F172A] border rounded-md px-3 py-2 text-xs text-neutral-100 placeholder-neutral-500 transition-colors',
-            'focus:outline-none focus:border-[#0284C7] focus:ring-1 focus:ring-[#0284C7]',
-            'disabled:opacity-50 disabled:bg-[#0B111E] disabled:cursor-not-allowed',
+            'w-full bg-[#0E1520] border rounded-md px-3 py-2 text-xs text-neutral-100 placeholder-neutral-500 transition-colors',
+            'focus:outline-none focus:border-[#F4511E] focus:ring-1 focus:ring-[#F4511E]',
+            'disabled:opacity-50 disabled:bg-[#0B0F17] disabled:cursor-not-allowed',
             Icon ? 'pl-9' : 'pl-3',
             rightElement ? 'pr-10' : 'pr-3',
-            error ? 'border-rose-500 focus:border-rose-500 focus:ring-rose-500' : 'border-[#1E2B3E]',
+            error ? 'border-rose-500 focus:border-rose-500 focus:ring-rose-500' : 'border-[#1E2B3C]',
             className
           )}
           {...props}

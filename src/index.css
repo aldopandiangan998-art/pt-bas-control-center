@@ -7,18 +7,18 @@
 @plugin "daisyui/theme" {
   name: "ptbas";
   default: true;
-  --color-primary: #F4511E;
+  --color-primary: #0284C7;
   --color-primary-content: #FFFFFF;
-  --color-secondary: #7E4F20;
+  --color-secondary: #0EA5E9;
   --color-secondary-content: #FFFFFF;
-  --color-accent: #F59E0B;
-  --color-accent-content: #000000;
-  --color-neutral: #1C1F22;
-  --color-neutral-content: #ECEFF1;
-  --color-base-100: #131517;
-  --color-base-200: #0C0D0E;
-  --color-base-300: #1C1F22;
-  --color-base-content: #ECEFF1;
+  --color-accent: #38BDF8;
+  --color-accent-content: #0B111E;
+  --color-neutral: #162238;
+  --color-neutral-content: #F1F5F9;
+  --color-base-100: #131D2D;
+  --color-base-200: #0B111E;
+  --color-base-300: #18253A;
+  --color-base-content: #F1F5F9;
   --color-success: #10B981;
   --color-warning: #F59E0B;
   --color-error: #EF4444;
@@ -29,18 +29,21 @@
 
 @layer base {
   :root {
-    --bg-base: #0C0D0E;
-    --bg-surface: #131517;
-    --bg-card: #171A1D;
-    --bg-card-hover: #1E2226;
-    --border-subtle: #24282C;
-    --border-bold: #333940;
-    --primary-orange: #F4511E;
-    --primary-hover: #D84315;
-    --timber-base: #6B4219;
-    --timber-dark: #4A2B0E;
-    --text-primary: #ECEFF1;
-    --text-secondary: #9BA3AF;
+    --bg-base: #0B111E;
+    --bg-surface: #0F172A;
+    --bg-card: #131D2D;
+    --bg-card-hover: #18253A;
+    --border-subtle: #1E2B3E;
+    --border-bold: #2A3C56;
+    --color-primary: #0284C7;
+    --primary-blue: #0284C7;
+    --primary-sky: #0EA5E9;
+    --primary-cyan: #38BDF8;
+    --primary-hover: #0369A1;
+    --timber-base: #1E293B;
+    --timber-dark: #0F172A;
+    --text-primary: #F8FAFC;
+    --text-secondary: #94A3B8;
     --text-muted: #64748B;
   }
 
@@ -60,26 +63,26 @@
 
   /* Focus ring for accessible keyboard navigation */
   :focus-visible {
-    outline: 2px solid #F4511E;
+    outline: 2px solid #0284C7;
     outline-offset: 2px;
   }
 }
 
-/* Authentic warm timber / amber band matching the physical PT BAS mobile banner */
+/* Authentic dark slate / navy console band matching executive dashboard theme */
 .timber-header {
-  background-color: #6B4219;
+  background-color: #0F172A;
   background-image: 
-    linear-gradient(90deg, rgba(0, 0, 0, 0.3) 0%, transparent 40%, rgba(0, 0, 0, 0.2) 100%),
-    linear-gradient(180deg, #7E4F20 0%, #553312 100%);
-  border-bottom: 1px solid #45280C;
+    linear-gradient(90deg, rgba(2, 132, 199, 0.08) 0%, transparent 40%, rgba(14, 165, 233, 0.06) 100%),
+    linear-gradient(180deg, #131D2D 0%, #0F172A 100%);
+  border-bottom: 1px solid #1E2B3E;
 }
 
 /* Technical grid background for CAD/blueprint cross-sections */
 .tech-grid {
   background-size: 16px 16px;
   background-image: 
-    linear-gradient(to right, #1E2226 1px, transparent 1px),
-    linear-gradient(to bottom, #1E2226 1px, transparent 1px);
+    linear-gradient(to right, #162238 1px, transparent 1px),
+    linear-gradient(to bottom, #162238 1px, transparent 1px);
 }
 
 /* Sleek minimalist scrollbar */

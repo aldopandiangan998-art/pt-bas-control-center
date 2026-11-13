@@ -4,9 +4,9 @@ const VARIANTS = {
   success: 'bg-emerald-950/60 text-emerald-400 border-emerald-800/60',
   warning: 'bg-amber-950/60 text-amber-400 border-amber-800/60',
   error: 'bg-rose-950/60 text-rose-400 border-rose-800/60',
-  neutral: 'bg-[#1C1F22] text-neutral-300 border-[#2E343A]',
-  primary: 'bg-[#F4511E]/20 text-[#FF7043] border-[#F4511E]/40',
-  timber: 'bg-[#6B4219]/30 text-amber-200 border-[#6B4219]/60',
+  neutral: 'bg-[#152033] text-neutral-300 border-[#1E2B3E]',
+  primary: 'bg-[#0284C7]/20 text-[#38BDF8] border-[#0284C7]/40',
+  timber: 'bg-[#0E2A47]/40 text-sky-200 border-[#1E3A5F]',
 };
 
 const SIZES = {
@@ -41,7 +41,7 @@ export default function Badge({
             'bg-amber-400': variant === 'warning',
             'bg-rose-400': variant === 'error',
             'bg-neutral-400': variant === 'neutral',
-            'bg-[#F4511E]': variant === 'primary',
+            'bg-[#0284C7]': variant === 'primary',
           })}
         />
       )}

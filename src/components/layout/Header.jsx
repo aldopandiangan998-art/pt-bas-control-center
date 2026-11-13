@@ -63,7 +63,7 @@ export default function Header() {
               className="flex items-center gap-2 bg-black/25 px-2.5 py-1 rounded border border-white/15 hover:bg-black/35 hover:border-amber-400/40 transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-amber-400"
               title="Buka Pengaturan Akun"
             >
-              <div className="w-6 h-6 rounded-full border border-white/40 bg-[#3A220F] flex items-center justify-center text-[10px] font-bold text-amber-300">
+              <div className="w-6 h-6 rounded-full border border-sky-400/30 bg-[#162B45] flex items-center justify-center text-[10px] font-bold text-sky-300">
                 {currentUser?.name ? currentUser.name.split(' ').map((n) => n[0]).join('') : 'U'}
               </div>
 
@@ -71,12 +71,12 @@ export default function Header() {
                 <div className="text-xs font-semibold text-white leading-tight">
                   {currentUser?.name || 'Pengguna'}
                 </div>
-                <div className="text-[10px] text-amber-200/70 font-mono leading-none">
+                <div className="text-[10px] text-sky-200/70 font-mono leading-none">
                   {currentUser?.email || '-'}
                 </div>
               </div>
 
-              <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.2 rounded bg-[#F4511E] text-white ml-1 shadow-xs font-mono">
+              <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.2 rounded bg-[#0284C7] text-white ml-1 shadow-xs font-mono">
                 {displayRole}
               </span>
 

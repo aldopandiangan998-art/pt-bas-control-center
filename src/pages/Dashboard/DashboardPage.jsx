@@ -48,10 +48,8 @@ export default function DashboardPage() {
   const { preOrders, suratJalanList, bkkList } = useData();
   const { currentUser, isSuperAdmin } = useAuth();
 
-  // Perspective switcher: Superadmin vs Admin tailored views
-  const [activePerspective, setActivePerspective] = useState(() =>
-    isSuperAdmin ? 'superadmin' : 'admin'
-  );
+  // Role-based view: automatically follows logged-in user role (superadmin vs admin)
+  const isExecView = Boolean(isSuperAdmin);
 
   // Time range filter for Activity chart
   const [timeRange, setTimeRange] = useState('8 Hari Terakhir');
@@ -92,16 +90,13 @@ export default function DashboardPage() {
     { title: 'Data Mata Uang', tab: 'mata-uang', icon: DataMataUangIcon },
   ];
 
-  // Perspective Configuration Data
-  const isExecView = activePerspective === 'superadmin';
-
   // 1. Chart Series Points (8 Days corresponding to the reference image)
   const chartDays = ['05 Nov', '06 Nov', '07 Nov', '08 Nov', '09 Nov', '10 Nov', '11 Nov', '12 Nov'];
   const activityData = isExecView
     ? [
-        { day: '05 Nov', created: 1.2, approved: 0.8 },
-        { day: '06 Nov', created: 5.0, approved: 4.0 }, // Peak matching screenshot
-        { day: '07 Nov', created: 0.8, approved: 1.2 },
+        { day: '05 Nov', created: 18.5, approved: 12.0 }, // Juta IDR
+        { day: '06 Nov', created: 48.0, approved: 42.5 }, // Peak matching screenshot
+        { day: '07 Nov', created: 8.5, approved: 15.0 },
         { day: '08 Nov', created: 0.0, approved: 0.0 },
         { day: '09 Nov', created: 0.0, approved: 0.0 },
         { day: '10 Nov', created: 0.0, approved: 0.0 },
@@ -109,7 +104,7 @@ export default function DashboardPage() {
         { day: '12 Nov', created: 0.0, approved: 0.0 },
       ]
     : [
-        { day: '05 Nov', created: 1.0, approved: 1.0 },
+        { day: '05 Nov', created: 1.0, approved: 1.0 }, // Ritase armada
         { day: '06 Nov', created: 5.0, approved: 4.0 }, // Peak matching screenshot
         { day: '07 Nov', created: 0.3, approved: 1.0 },
         { day: '08 Nov', created: 0.0, approved: 0.0 },
@@ -119,39 +114,46 @@ export default function DashboardPage() {
         { day: '12 Nov', created: 0.0, approved: 0.0 },
       ];
 
-  // 2. Donut Breakdown Categories matching Screenshot with Primary Orange Palette
-  const documentTypes = isExecView
+  // 2. Donut Breakdown Categories matching PT BAS Logistics & Mining Domain
+  const materialAndCustomerTypes = isExecView
     ? [
-        { label: 'Surat Perjanjian Kerjasama Eksternal', percent: '26.7%', count: 8, color: '#F4511E' },
-        { label: 'Surat Korespondensi Eksternal', percent: '16.7%', count: 5, color: '#FB8C00' },
-        { label: 'Surat Undangan', percent: '16.7%', count: 5, color: '#F59E0B' },
-        { label: 'Surat Kuasa', percent: '10%', count: 3, color: '#FCD34D' },
-        { label: 'Lainnya', percent: '30%', count: 9, color: '#374151' },
+        { label: 'PT Chiyoda International (Smelter Freeport)', percent: '26.7%', count: '8 faktur', color: '#F4511E' },
+        { label: 'PT Waskita Beton Precast (Tol KLBM)', percent: '16.7%', count: '5 faktur', color: '#FB8C00' },
+        { label: 'PT Semen Indonesia Logistik (Tuban Hub)', percent: '16.7%', count: '5 faktur', color: '#F59E0B' },
+        { label: 'PT Varia Usaha Fabrikasi Gresik', percent: '10%', count: '3 faktur', color: '#FCD34D' },
+        { label: 'Rekanan Kontraktor Tambang Lainnya', percent: '30%', count: '9 faktur', color: '#374151' },
       ]
     : [
-        { label: 'Surat Perjanjian Kerjasama Eksternal', percent: '26.7%', count: 8, color: '#F4511E' },
-        { label: 'Surat Korespondensi Eksternal', percent: '16.7%', count: 5, color: '#FB8C00' },
-        { label: 'Surat Undangan', percent: '16.7%', count: 5, color: '#F59E0B' },
-        { label: 'Surat Kuasa', percent: '10%', count: 3, color: '#FCD34D' },
-        { label: 'Lainnya', percent: '30%', count: 9, color: '#374151' },
+        { label: 'Batu Split 1-2 (Cor & Konstruksi Beton)', percent: '26.7%', count: '8 rit', color: '#F4511E' },
+        { label: 'Abu Batu Super (Batching Plant & Aspal)', percent: '16.7%', count: '5 rit', color: '#FB8C00' },
+        { label: 'Sirtu Urugan Pilihan (Proyek Smelter)', percent: '16.7%', count: '5 rit', color: '#F59E0B' },
+        { label: 'Base Course A / Makadam Lapis Pondasi', percent: '10%', count: '3 rit', color: '#FCD34D' },
+        { label: 'Batu Belah Pondasi & Urugan Biasa', percent: '30%', count: '9 rit', color: '#374151' },
       ];
 
   // 3. Compliance and Efficiency stats
   const complianceScore = isExecView ? '86.4%' : '46.7%';
   const complianceArcOffset = isExecView ? 162.8 : 88.0; // strokeDasharray for semi-circle
   const complianceText = isExecView
-    ? 'Sebanyak 26 dari 30 dokumen finansial & BKK telah disetujui sesuai otorisasi direksi.'
-    : 'Sebanyak 14 dari 30 dokumen telah terbit & disetujui secara tertib sesuai SOP.';
-  const statUserCount = isExecView ? 84 : 60;
-  const statActiveUnits = isExecView ? 31 : 23;
+    ? 'Sebanyak 26 dari 30 transaksi BKK kas keluar sopir & PO telah disetujui direksi secara tertib keuangan.'
+    : 'Sebanyak 14 dari 30 ritase armada dump truck telah tervalidasi timbangan Gresik & terbit BKK sesuai SOP.';
+  const statUserCount = isExecView ? '84 Transaksi' : '60 Armada';
+  const statActiveUnits = isExecView ? '31 Rekanan' : '23 Rute';
 
-  // 4. Most active units (Top 4) with Primary Orange Progress Bars
-  const activeUnits = [
-    { name: 'Administrasi Manajemen ...', count: 5, percent: '16.7%', barWidth: '16.7%', color: 'bg-[#F4511E]' },
-    { name: 'Administrasi Manajemen ...', count: 5, percent: '16.7%', barWidth: '16.7%', color: 'bg-[#F4511E]' },
-    { name: 'Administrasi Manajemen ...', count: 3, percent: '10%', barWidth: '10%', color: 'bg-[#FB8C00]' },
-    { name: 'Tim Manajemen Mutu', count: 1, percent: '3.3%', barWidth: '3.3%', color: 'bg-[#F59E0B]' },
-  ];
+  // 4. Most active units (Top 4) with PT BAS Projects & Contractors
+  const activeUnits = isExecView
+    ? [
+        { name: 'PT Chiyoda International (Smelter Freeport)', count: 'Rp 42.5 Jt', percent: '16.7%', barWidth: '16.7%', color: 'bg-[#F4511E]' },
+        { name: 'PT Waskita Beton Precast (Tol KLBM)', count: 'Rp 38.0 Jt', percent: '16.7%', barWidth: '16.7%', color: 'bg-[#F4511E]' },
+        { name: 'PT Semen Indonesia (Tuban Hub)', count: 'Rp 24.5 Jt', percent: '10%', barWidth: '10%', color: 'bg-[#FB8C00]' },
+        { name: 'PT Maspion Industrial Estate Manyar', count: 'Rp 8.2 Jt', percent: '3.3%', barWidth: '3.3%', color: 'bg-[#F59E0B]' },
+      ]
+    : [
+        { name: 'Proyek Smelter Freeport Manyar (Split 1-2)', count: '5 rit', percent: '16.7%', barWidth: '16.7%', color: 'bg-[#F4511E]' },
+        { name: 'Proyek Tol KLBM Ruas Bunder (Sirtu Urug)', count: '5 rit', percent: '16.7%', barWidth: '16.7%', color: 'bg-[#F4511E]' },
+        { name: 'Batching Plant Semen Indonesia Tuban (Abu Batu)', count: '3 rit', percent: '10%', barWidth: '10%', color: 'bg-[#FB8C00]' },
+        { name: 'Dermaga Pelabuhan Maspion Manyar (Base Course)', count: '1 rit', percent: '3.3%', barWidth: '3.3%', color: 'bg-[#F59E0B]' },
+      ];
 
   return (
     <div className="space-y-4 sm:space-y-5">
@@ -171,76 +173,60 @@ export default function DashboardPage() {
           </span>
         </div>
 
-        {/* Perspective Mode Switcher & Quick Actions */}
-        <div className="flex items-center gap-2 w-full md:w-auto justify-between md:justify-end flex-wrap">
-          <div className="flex items-center bg-[#0B0F17] p-0.5 rounded-lg border border-[#1D2838]">
-            <button
-              type="button"
-              onClick={() => setActivePerspective('admin')}
-              className={`px-2.5 py-1 text-[11px] font-medium rounded-md transition-all cursor-pointer ${
-                activePerspective === 'admin'
-                  ? 'bg-[#F4511E] text-white shadow-xs font-semibold'
-                  : 'text-neutral-400 hover:text-neutral-200'
-              }`}
-              title="Tampilkan Perspektif Admin Operasional"
-            >
-              Mode Admin
-            </button>
-            <button
-              type="button"
-              onClick={() => setActivePerspective('superadmin')}
-              className={`px-2.5 py-1 text-[11px] font-medium rounded-md transition-all cursor-pointer ${
-                activePerspective === 'superadmin'
-                  ? 'bg-[#F4511E] text-white shadow-xs font-semibold'
-                  : 'text-neutral-400 hover:text-neutral-200'
-              }`}
-              title="Tampilkan Perspektif Super Admin Eksekutif"
-            >
-              Mode Super Admin
-            </button>
-          </div>
-
-          <div className="flex items-center gap-1.5">
-            <Button
-              size="xs"
-              variant="primary"
-              icon={Plus}
-              onClick={() => navigate('/surat-jalan')}
-              className="bg-[#F4511E] hover:bg-[#D84315] font-medium"
-            >
-              Buat GI
-            </Button>
+        {/* Quick Action Buttons */}
+        <div className="flex items-center gap-1.5 w-full md:w-auto justify-end flex-wrap">
+          <Button
+            size="xs"
+            variant="primary"
+            icon={Plus}
+            onClick={() => navigate('/surat-jalan')}
+            className="bg-[#F4511E] hover:bg-[#D84315] font-medium"
+          >
+            Buat GI
+          </Button>
+          <Button
+            size="xs"
+            variant="secondary"
+            icon={Plus}
+            onClick={() => navigate('/pre-orders')}
+            className="bg-[#151D28] hover:bg-[#1D2838] border-[#1D2838]"
+          >
+            Buat RO
+          </Button>
+          {isExecView && (
             <Button
               size="xs"
               variant="secondary"
               icon={Plus}
-              onClick={() => navigate('/pre-orders')}
+              onClick={() => navigate('/invoices')}
               className="bg-[#151D28] hover:bg-[#1D2838] border-[#1D2838]"
             >
-              Buat RO
+              Buat Invoice
             </Button>
-          </div>
+          )}
         </div>
       </div>
 
-      {/* 4 SIGNATURE DASHBOARD WIDGETS MATCHING UPLOADED REFERENCE THEME WITH PRIMARY ORANGE */}
+      {/* 4 SIGNATURE DASHBOARD WIDGETS WITH PT BAS OPERATIONAL CONTEXT */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
         {/* ==================================================================== */}
-        {/* WIDGET 1: Analisis Aktivitas Dokumen (Curved Spline Area Chart)       */}
+        {/* WIDGET 1: Analisis Ritase / Arus Kas                                 */}
         {/* ==================================================================== */}
         <div className="lg:col-span-7 bg-[#131B26] border border-[#1D2838] rounded-xl p-4 sm:p-5 flex flex-col justify-between shadow-sm">
           {/* Card Header with Top Right Orange Pill Button */}
           <div className="flex items-start justify-between gap-2 mb-3">
             <div>
               <h2 className="text-base sm:text-lg font-bold text-white tracking-tight leading-snug">
-                {isExecView ? 'Analisis Aktivitas Dokumen' : 'Analisis Aktivitas Dokumen'}
+                {isExecView ? 'Analisis Arus Kas & Otorisasi Transaksi' : 'Analisis Ritase & Dispatch Armada'}
               </h2>
               <p className="text-xs text-neutral-400 mt-0.5">
-                Perbandingan pembuatan naskah baru dan dokumen yang disetujui.
+                {isExecView
+                  ? 'Perbandingan nilai Invoice tagihan (Piutang) vs realisasi pencairan BKK kas keluar disetujui.'
+                  : 'Perbandingan Surat Jalan (GI) diterbitkan vs ritase armada tervalidasi timbangan Gresik.'}
               </p>
             </div>
 
-            {/* Primary Orange Pill Button matching Screenshot */}
+            {/* Primary Orange Pill Button */}
             <button
               type="button"
               onClick={() => setTimeRange(timeRange === '8 Hari Terakhir' ? '30 Hari' : '8 Hari Terakhir')}
@@ -266,21 +252,21 @@ export default function DashboardPage() {
                 </linearGradient>
               </defs>
 
-              {/* Horizontal Gridlines and Y-axis scale (0 to 5) */}
+              {/* Horizontal Gridlines and Y-axis scale */}
               {[
-                { y: 20, label: '5' },
-                { y: 52, label: '4' },
-                { y: 84, label: '3' },
-                { y: 116, label: '2' },
-                { y: 148, label: '1' },
-                { y: 180, label: '0' },
+                { y: 20, label: isExecView ? '50Jt' : '5 rit' },
+                { y: 52, label: isExecView ? '40Jt' : '4 rit' },
+                { y: 84, label: isExecView ? '30Jt' : '3 rit' },
+                { y: 116, label: isExecView ? '20Jt' : '2 rit' },
+                { y: 148, label: isExecView ? '10Jt' : '1 rit' },
+                { y: 180, label: isExecView ? '0' : '0' },
               ].map((grid, idx) => (
                 <g key={idx}>
                   <text
-                    x="14"
+                    x="22"
                     y={grid.y + 3}
                     fill="#64748B"
-                    fontSize="11"
+                    fontSize="10"
                     fontFamily="JetBrains Mono, monospace"
                     textAnchor="end"
                   >
@@ -299,13 +285,12 @@ export default function DashboardPage() {
               ))}
 
               {/* Area under the Solid Curve */}
-              {/* Spline: (35,148) -> (100,20) -> (170,148) -> (240,180) -> (530,180) */}
               <path
                 d="M 35 148 C 65 140, 75 20, 100 20 C 125 20, 140 145, 170 148 C 200 151, 215 180, 240 180 L 530 180 L 530 180 L 35 180 Z"
                 fill="url(#areaGradientOrange)"
               />
 
-              {/* Solid Line (Dokumen Dibuat - Primary Orange) */}
+              {/* Solid Line (Surat Jalan Dibuat / Tagihan - Primary Orange) */}
               <path
                 d="M 35 148 C 65 140, 75 20, 100 20 C 125 20, 140 145, 170 148 C 200 151, 215 180, 240 180 L 530 180"
                 fill="none"
@@ -314,8 +299,7 @@ export default function DashboardPage() {
                 strokeLinecap="round"
               />
 
-              {/* Dashed Line (Dokumen Disetujui Aktif - Amber Gold) */}
-              {/* Spline: (35,148) -> (100,52) -> (170,148) -> (220,165) -> (260,180) -> (530,180) */}
+              {/* Dashed Line (Ritase Tervalidasi / BKK Disetujui - Amber Gold) */}
               <path
                 d="M 35 148 C 65 140, 75 52, 100 52 C 125 52, 145 130, 170 148 C 190 162, 215 165, 235 174 C 250 180, 260 180, 280 180 L 530 180"
                 fill="none"
@@ -379,50 +363,62 @@ export default function DashboardPage() {
                 </div>
                 <div className="flex items-center gap-1.5 text-[#F4511E] font-semibold">
                   <span className="w-1.5 h-1.5 rounded-full bg-[#F4511E]" />
-                  <span>Dibuat: {activityData[hoveredPoint].created} dok</span>
+                  <span>
+                    {isExecView ? 'Tagihan Diterbitkan' : 'Surat Jalan Dibuat'}:{' '}
+                    {activityData[hoveredPoint].created} {isExecView ? 'Jt' : 'rit'}
+                  </span>
                 </div>
                 <div className="flex items-center gap-1.5 text-[#F59E0B] font-semibold">
                   <span className="w-1.5 h-1.5 rounded-full bg-[#F59E0B]" />
-                  <span>Disetujui: {activityData[hoveredPoint].approved} dok</span>
+                  <span>
+                    {isExecView ? 'Kas Keluar Disetujui' : 'Ritase Tervalidasi'}:{' '}
+                    {activityData[hoveredPoint].approved} {isExecView ? 'Jt' : 'rit'}
+                  </span>
                 </div>
               </div>
             )}
           </div>
 
-          {/* Bottom Legend matching Screenshot */}
+          {/* Bottom Legend matching PT BAS Domain */}
           <div className="flex items-center justify-center gap-6 pt-3 border-t border-[#1D2838]/80 text-xs font-medium">
             <div className="flex items-center gap-2">
               <span className="w-2.5 h-2.5 rounded-full bg-[#F4511E]" />
-              <span className="text-neutral-300">Dokumen Dibuat</span>
+              <span className="text-neutral-300">
+                {isExecView ? 'Invoice Diterbitkan (Piutang)' : 'Surat Jalan Diterbitkan (GI)'}
+              </span>
             </div>
             <div className="flex items-center gap-2">
               <span className="w-2.5 h-2.5 rounded-full bg-[#F59E0B]" />
-              <span className="text-neutral-300">Dokumen Disetujui (Aktif)</span>
+              <span className="text-neutral-300">
+                {isExecView ? 'BKK Disetujui (Kas Keluar)' : 'Ritase Selesai & Tervalidasi'}
+              </span>
             </div>
           </div>
         </div>
 
         {/* ==================================================================== */}
-        {/* WIDGET 2: Jenis Dokumen Teratas (Precision Donut Chart & Breakdown)   */}
+        {/* WIDGET 2: Distribusi Material Tambang / Kontrak Customer             */}
         {/* ==================================================================== */}
         <div className="lg:col-span-5 bg-[#131B26] border border-[#1D2838] rounded-xl p-4 sm:p-5 flex flex-col justify-between shadow-sm">
           {/* Header with Link to Master Data */}
           <div className="flex items-start justify-between gap-2 mb-3">
             <div>
               <h2 className="text-base sm:text-lg font-bold text-white tracking-tight leading-snug">
-                Jenis Dokumen Teratas
+                {isExecView ? 'Komposisi Kontrak & Piutang' : 'Distribusi Material Tambang'}
               </h2>
               <p className="text-xs text-neutral-400 mt-0.5">
-                Komposisi berdasarkan tipe arsip
+                {isExecView
+                  ? 'Distribusi nilai piutang per customer proyek utama PT BAS'
+                  : 'Komposisi pengiriman material tambang Gresik Hub'}
               </p>
             </div>
 
             <button
               type="button"
-              onClick={() => navigate('/master-data')}
+              onClick={() => navigate(isExecView ? '/master-data?tab=customer' : '/master-data?tab=material')}
               className="text-xs font-medium text-[#FF7043] hover:text-[#FFA726] flex items-center gap-1 transition-colors cursor-pointer shrink-0"
             >
-              <span>Kelola Tipe</span>
+              <span>{isExecView ? 'Kelola Customer' : 'Kelola Material'}</span>
               <span className="text-sm">→</span>
             </button>
           </div>
@@ -504,15 +500,17 @@ export default function DashboardPage() {
 
               {/* Center Total Count Label */}
               <div className="absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none">
-                <span className="text-[11px] text-neutral-400 font-medium">Total</span>
+                <span className="text-[11px] text-neutral-400 font-medium">
+                  {isExecView ? 'Total Faktur' : 'Total Rit'}
+                </span>
                 <span className="text-2xl font-bold font-mono text-white leading-none mt-0.5">30</span>
               </div>
             </div>
           </div>
 
-          {/* Breakdown List matching Screenshot */}
+          {/* Breakdown List matching PT BAS Material & Contract Types */}
           <div className="space-y-2 mt-2 pt-2 border-t border-[#1D2838]/60 text-xs">
-            {documentTypes.map((item, idx) => (
+            {materialAndCustomerTypes.map((item, idx) => (
               <div key={idx} className="flex items-center justify-between text-neutral-300">
                 <div className="flex items-center gap-2 truncate pr-2">
                   <span
@@ -531,23 +529,25 @@ export default function DashboardPage() {
         </div>
 
         {/* ==================================================================== */}
-        {/* WIDGET 3: Tingkat Kepatuhan & Efisiensi (Gauge Meter & Achievements)  */}
+        {/* WIDGET 3: Tingkat Kepatuhan SOP Timbangan / Otorisasi Finansial       */}
         {/* ==================================================================== */}
         <div className="lg:col-span-7 bg-[#131B26] border border-[#1D2838] rounded-xl p-4 sm:p-5 flex flex-col justify-between shadow-sm">
           {/* Header with Target Pill */}
           <div className="flex items-start justify-between gap-2 mb-3">
             <div>
               <h2 className="text-base sm:text-lg font-bold text-white tracking-tight leading-snug">
-                Tingkat Kepatuhan & Efisiensi
+                {isExecView ? 'Kepatuhan Otorisasi & Likuiditas Finansial' : 'Kepatuhan SOP Timbangan & Ritase'}
               </h2>
               <p className="text-xs text-neutral-400 mt-0.5">
-                Rasio dokumen aktif terhadap seluruh draf dokumen organisasi.
+                {isExecView
+                  ? 'Rasio pencairan kas keluar & PO disetujui terhadap seluruh draf pengajuan biaya.'
+                  : 'Rasio Surat Jalan tervalidasi timbangan terhadap target ritase armada harian.'}
               </p>
             </div>
 
-            {/* Target Organisasi: 100% Pill */}
+            {/* Target SOP Pill */}
             <div className="px-2.5 py-1 text-[11px] font-mono text-neutral-300 bg-[#0B0F17] border border-[#1D2838] rounded-md shrink-0 shadow-xs">
-              Target Organisasi: 100%
+              {isExecView ? 'Target Otorisasi: 100%' : 'Target SOP: 100%'}
             </div>
           </div>
 
@@ -591,8 +591,8 @@ export default function DashboardPage() {
               {/* Highlight Card */}
               <div className="bg-[#0B0F17] border border-[#1D2838] rounded-lg p-3">
                 <div className="flex items-center gap-1.5 text-xs font-semibold text-[#FF7043] mb-1">
-                  <span>🎉</span>
-                  <span>Pencapaian Sangat Baik!</span>
+                  <span>{isExecView ? '💼' : '🚚'}</span>
+                  <span>{isExecView ? 'Likuiditas & Otorisasi Sehat!' : 'Ritase Lapangan Berjalan Tertib!'}</span>
                 </div>
                 <p className="text-xs text-neutral-300 leading-relaxed">
                   {complianceText}
@@ -603,7 +603,7 @@ export default function DashboardPage() {
               <div className="grid grid-cols-2 gap-2 text-center pt-1">
                 <div className="bg-[#0B0F17]/70 border border-[#1D2838]/60 rounded-lg p-2">
                   <div className="text-[10px] font-mono uppercase tracking-wider text-neutral-400">
-                    TOTAL PENGGUNA
+                    {isExecView ? 'DOKUMEN TERTIB' : 'TOTAL ARMADA SIAP'}
                   </div>
                   <div className="text-xl font-bold font-mono text-white mt-0.5">
                     {statUserCount}
@@ -612,7 +612,7 @@ export default function DashboardPage() {
 
                 <div className="bg-[#0B0F17]/70 border border-[#1D2838]/60 rounded-lg p-2">
                   <div className="text-[10px] font-mono uppercase tracking-wider text-neutral-400">
-                    UNIT KERJA AKTIF
+                    {isExecView ? 'REKANAN KONTRAK AKTIF' : 'RUTE PROYEK AKTIF'}
                   </div>
                   <div className="text-xl font-bold font-mono text-white mt-0.5">
                     {statActiveUnits}
@@ -624,26 +624,28 @@ export default function DashboardPage() {
         </div>
 
         {/* ==================================================================== */}
-        {/* WIDGET 4: Unit Kerja Teraktif (Progress Bars List)                    */}
+        {/* WIDGET 4: Proyek & Rute Teraktif / Rekanan Finansial Terbesar         */}
         {/* ==================================================================== */}
         <div className="lg:col-span-5 bg-[#131B26] border border-[#1D2838] rounded-xl p-4 sm:p-5 flex flex-col justify-between shadow-sm">
           {/* Header with Top 4 Badge */}
           <div className="flex items-start justify-between gap-2 mb-3">
             <div>
               <h2 className="text-base sm:text-lg font-bold text-white tracking-tight leading-snug">
-                Unit Kerja Teraktif
+                {isExecView ? 'Rekanan Nilai Transaksi Terbesar' : 'Proyek & Rute Tujuan Teraktif'}
               </h2>
               <p className="text-xs text-neutral-400 mt-0.5">
-                Berdasarkan volume arsip & ritase
+                {isExecView
+                  ? 'Top 4 kontributor omzet pengiriman bulan berjalan'
+                  : 'Berdasarkan frekuensi ritase armada dump truck'}
               </p>
             </div>
 
             <div className="px-2 py-0.5 text-[11px] font-mono text-neutral-300 bg-[#0B0F17] border border-[#1D2838] rounded shrink-0">
-              Top 4
+              {isExecView ? 'Top 4 Rekanan' : 'Top 4 Proyek'}
             </div>
           </div>
 
-          {/* Progress Bars Rows matching Screenshot with Orange Tones */}
+          {/* Progress Bars Rows matching PT BAS Projects & Contractors */}
           <div className="space-y-4 my-auto py-2">
             {activeUnits.map((item, idx) => (
               <div key={idx} className="space-y-1.5">
@@ -652,7 +654,7 @@ export default function DashboardPage() {
                     {item.name}
                   </span>
                   <span className="font-mono text-[11px] text-[#FF7043] shrink-0 font-medium">
-                    {item.count} dok {item.percent}
+                    {item.count} ({item.percent})
                   </span>
                 </div>
                 <div className="w-full bg-[#1D2838] h-1.5 rounded-full overflow-hidden">
@@ -667,7 +669,7 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* QUICK OPERATIONAL MODULES (Image 1 Compliance) */}
+      {/* QUICK OPERATIONAL MODULES */}
       <div className="pt-2">
         <div className="flex items-center justify-between mb-2.5">
           <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-neutral-300">
@@ -699,7 +701,7 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* DATA MASTER REPOSITORY (Image 2 Compliance) */}
+      {/* DATA MASTER REPOSITORY */}
       <div className="pt-1">
         <div className="flex items-center justify-between mb-2.5">
           <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-neutral-300">

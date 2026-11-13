@@ -14,6 +14,11 @@ import {
   TrendingUp,
   Clock,
   ChevronRight,
+  ChevronDown,
+  FileText,
+  Hash,
+  List,
+  Receipt,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useData } from '../../context/DataContext';
@@ -31,10 +36,14 @@ export default function PreOrderPage() {
 
   const [formData, setFormData] = useState({
     tanggal: new Date().toISOString().split('T')[0],
-    top: '30 Hari',
-    customer: 'PT LION WINGS',
-    jenisWajibPajak: 'Wajib Pajak Badan (WAPU)',
-    nomorPoCustomer: 'PO-LW-2026-089',
+    top: '',
+    jenis: '',
+    mataUang: 'IDR',
+    customer: '',
+    jenisWajibPajak: '',
+    nomorPoCustomer: '',
+    nomorRO: `RO-${new Date().getFullYear()}-${String(Date.now()).slice(-4)}`,
+    jenisRO: '',
     materialId: 'mat-8',
     satuan: 'm3',
     totalOrder: 500,
@@ -57,6 +66,23 @@ export default function PreOrderPage() {
       pphRate: selectedMat?.pphRate || 2.0,
     });
 
+    // Reset form
+    setFormData({
+      tanggal: new Date().toISOString().split('T')[0],
+      top: '',
+      jenis: '',
+      mataUang: 'IDR',
+      customer: '',
+      jenisWajibPajak: '',
+      nomorPoCustomer: '',
+      nomorRO: `RO-${new Date().getFullYear()}-${String(Date.now()).slice(-4)}`,
+      jenisRO: '',
+      materialId: 'mat-8',
+      satuan: 'm3',
+      totalOrder: 500,
+      hargaJual: 67233,
+      hargaBeli: 50765,
+    });
     setActiveTab('list');
   };
 
@@ -248,151 +274,296 @@ export default function PreOrderPage() {
         </section>
       )}
 
-      {/* VIEW 2: FORM INPUT PRE ORDER BARU */}
+      {/* VIEW 2: FORM INPUT PRE ORDER BARU — Desain Mobile-Style */}
       {activeTab === 'create' && (
-        <Card className="p-4 sm:p-5 space-y-4">
-          <div className="border-b border-[#24282C] pb-2">
-            <h2 className="text-sm font-bold text-white tracking-wide uppercase">
-              Formulir Permintaan Pre Order Material
+        <div className="max-w-2xl mx-auto">
+          {/* Page Title */}
+          <div className="flex items-center gap-3 mb-5">
+            <h2 className="text-base font-bold text-white tracking-tight">
+              Buat Received Order (RO)
             </h2>
-            <p className="text-[11px] text-neutral-400">
-              Isi kontrak pemesanan awal material tambang. PO akan diajukan ke Direktur untuk diverifikasi harganya.
-            </p>
           </div>
 
-          <form onSubmit={handleCreate} className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <Input
-                label="Tanggal Kontrak"
-                type="date"
-                required
-                value={formData.tanggal}
-                onChange={(e) => setFormData({ ...formData, tanggal: e.target.value })}
-              />
+          <form onSubmit={handleCreate} className="space-y-2.5">
 
-              <Select
-                label="Term of Payment (TOP)"
-                value={formData.top}
-                onChange={(e) => setFormData({ ...formData, top: e.target.value })}
-              >
-                <option value="Cash / Tunai">Cash / Tunai</option>
-                <option value="7 Hari">7 Hari</option>
-                <option value="14 Hari">14 Hari</option>
-                <option value="30 Hari">30 Hari</option>
-              </Select>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <Select
-                label="Jenis Material"
-                required
-                value={formData.materialId}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  const mat = materials.find((m) => m.id === val);
-                  if (mat) {
-                    setFormData({
-                      ...formData,
-                      materialId: val,
-                      hargaBeli: mat.beli || formData.hargaBeli,
-                      hargaJual: mat.jual || formData.hargaJual,
-                      satuan: mat.satuan || formData.satuan,
-                    });
-                  } else {
-                    setFormData({ ...formData, materialId: val });
-                  }
-                }}
-              >
-                {materials.map((mat) => (
-                  <option key={mat.id} value={mat.id}>
-                    {mat.name} (PPH {mat.pphRate}%)
-                  </option>
-                ))}
-              </Select>
-
-              <Select
-                label="Customer Proyek"
-                required
-                value={formData.customer}
-                onChange={(e) => setFormData({ ...formData, customer: e.target.value })}
-              >
-                {customers.map((c) => (
-                  <option key={c.id} value={c.name}>
-                    {c.kodePrefix ? `${c.kodePrefix} - ` : ''}{c.name}
-                  </option>
-                ))}
-              </Select>
-            </div>
-
-            {/* Pricing & Real-Time Margin Calculator */}
-            <div className="p-3.5 rounded-lg bg-[#181B1E] border border-[#2A2E33] space-y-3">
-              <div className="flex items-center justify-between text-xs font-mono">
-                <span className="text-neutral-400">Margin Profit per Satuan:</span>
-                <strong className="text-emerald-400">{formatCurrency(marginPerUnit)} ({marginPercentage}%)</strong>
+            {/* Row 1: Tanggal + T.O.P */}
+            <div className="grid grid-cols-2 gap-2.5">
+              {/* Tanggal */}
+              <div className="relative bg-[#1C1F24] border border-[#2A2E33] rounded-xl px-4 py-3.5 flex items-center gap-3 focus-within:border-[#F4511E]/70 transition-colors group">
+                <Calendar className="w-5 h-5 text-neutral-500 shrink-0 group-focus-within:text-[#F4511E] transition-colors" />
+                <div className="flex-1 min-w-0">
+                  <label className="block text-[10px] font-semibold text-neutral-500 uppercase tracking-widest mb-0.5">
+                    Tanggal <span className="text-[#F4511E]">*</span>
+                  </label>
+                  <input
+                    type="date"
+                    required
+                    value={formData.tanggal}
+                    onChange={(e) => setFormData({ ...formData, tanggal: e.target.value })}
+                    className="w-full bg-transparent text-xs text-white focus:outline-none placeholder-neutral-600 font-mono"
+                  />
+                </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-4 gap-2.5">
-                <Select
-                  label="Satuan"
-                  value={formData.satuan}
-                  onChange={(e) => setFormData({ ...formData, satuan: e.target.value })}
+              {/* T.O.P */}
+              <div className="relative bg-[#1C1F24] border border-[#2A2E33] rounded-xl px-4 py-3.5 flex items-center gap-3 focus-within:border-[#F4511E]/70 transition-colors group">
+                <Calendar className="w-5 h-5 text-neutral-500 shrink-0 group-focus-within:text-[#F4511E] transition-colors" />
+                <div className="flex-1 min-w-0">
+                  <label className="block text-[10px] font-semibold text-neutral-500 uppercase tracking-widest mb-0.5">
+                    T.O.P.
+                  </label>
+                  <select
+                    value={formData.top}
+                    onChange={(e) => setFormData({ ...formData, top: e.target.value })}
+                    className="w-full bg-transparent text-xs text-white focus:outline-none appearance-none cursor-pointer"
+                  >
+                    <option value="" className="bg-[#1C1F24]">Pilih TOP</option>
+                    <option value="Cash / Tunai" className="bg-[#1C1F24]">Cash / Tunai</option>
+                    <option value="7 Hari" className="bg-[#1C1F24]">7 Hari</option>
+                    <option value="14 Hari" className="bg-[#1C1F24]">14 Hari</option>
+                    <option value="30 Hari" className="bg-[#1C1F24]">30 Hari</option>
+                    <option value="45 Hari" className="bg-[#1C1F24]">45 Hari</option>
+                    <option value="60 Hari" className="bg-[#1C1F24]">60 Hari</option>
+                  </select>
+                </div>
+                <ChevronDown className="w-3.5 h-3.5 text-neutral-500 shrink-0 pointer-events-none" />
+              </div>
+            </div>
+
+            {/* Row 2: Jenis + Mata Uang */}
+            <div className="grid grid-cols-2 gap-2.5">
+              {/* Jenis Material */}
+              <div className="relative bg-[#1C1F24] border border-[#2A2E33] rounded-xl px-4 py-3.5 flex items-center gap-3 focus-within:border-[#F4511E]/70 transition-colors group">
+                <Monitor className="w-5 h-5 text-neutral-500 shrink-0 group-focus-within:text-[#F4511E] transition-colors" />
+                <div className="flex-1 min-w-0">
+                  <label className="block text-[10px] font-semibold text-neutral-500 uppercase tracking-widest mb-0.5">
+                    Jenis <span className="text-[#F4511E]">*</span>
+                  </label>
+                  <select
+                    required
+                    value={formData.jenis}
+                    onChange={(e) => setFormData({ ...formData, jenis: e.target.value })}
+                    className="w-full bg-transparent text-xs text-white focus:outline-none appearance-none cursor-pointer truncate"
+                  >
+                    <option value="" className="bg-[#1C1F24]">Pilih Jenis</option>
+                    <option value="BORONG" className="bg-[#1C1F24]">BORONG</option>
+                    <option value="CURAH" className="bg-[#1C1F24]">CURAH</option>
+                  </select>
+                </div>
+                <ChevronDown className="w-3.5 h-3.5 text-neutral-500 shrink-0 pointer-events-none" />
+              </div>
+
+              {/* Mata Uang */}
+              <div className="relative bg-[#1C1F24] border border-[#2A2E33] rounded-xl px-4 py-3.5 flex items-center gap-3 focus-within:border-[#F4511E]/70 transition-colors group">
+                <DollarSign className="w-5 h-5 text-neutral-500 shrink-0 group-focus-within:text-[#F4511E] transition-colors" />
+                <div className="flex-1 min-w-0">
+                  <label className="block text-[10px] font-semibold text-neutral-500 uppercase tracking-widest mb-0.5">
+                    Mata Uang <span className="text-[#F4511E]">*</span>
+                  </label>
+                  <select
+                    required
+                    value={formData.mataUang}
+                    onChange={(e) => setFormData({ ...formData, mataUang: e.target.value })}
+                    className="w-full bg-transparent text-xs text-white focus:outline-none appearance-none cursor-pointer font-mono"
+                  >
+                    <option value="IDR" className="bg-[#1C1F24]">IDR</option>
+                    <option value="USD" className="bg-[#1C1F24]">USD</option>
+                    <option value="EUR" className="bg-[#1C1F24]">EUR</option>
+                  </select>
+                </div>
+                <ChevronDown className="w-3.5 h-3.5 text-neutral-500 shrink-0 pointer-events-none" />
+              </div>
+            </div>
+
+            {/* Row 3: Pilih Customer (full width) */}
+            <div className="relative bg-[#1C1F24] border border-[#2A2E33] rounded-xl px-4 py-3.5 flex items-center gap-3 focus-within:border-[#F4511E]/70 transition-colors group">
+              <User className="w-5 h-5 text-neutral-500 shrink-0 group-focus-within:text-[#F4511E] transition-colors" />
+              <div className="flex-1 min-w-0">
+                <label className="block text-[10px] font-semibold text-neutral-500 uppercase tracking-widest mb-0.5">
+                  Pilih Customer <span className="text-[#F4511E]">*</span>
+                </label>
+                <select
+                  required
+                  value={formData.customer}
+                  onChange={(e) => setFormData({ ...formData, customer: e.target.value })}
+                  className="w-full bg-transparent text-xs text-white focus:outline-none appearance-none cursor-pointer"
                 >
-                  <option value="m3">m³ (Kubik)</option>
-                  <option value="ton">Ton</option>
-                  <option value="rit">Rit</option>
-                </Select>
-
-                <Input
-                  label="Target Volume"
-                  type="number"
-                  required
-                  value={formData.totalOrder}
-                  onChange={(e) => setFormData({ ...formData, totalOrder: Number(e.target.value) })}
-                  className="font-mono"
-                />
-
-                <Input
-                  label="Harga Jual (Customer)"
-                  type="number"
-                  required
-                  value={formData.hargaJual}
-                  onChange={(e) => setFormData({ ...formData, hargaJual: Number(e.target.value) })}
-                  className="font-mono"
-                />
-
-                <Input
-                  label="Harga Beli (Supplier)"
-                  type="number"
-                  required
-                  value={formData.hargaBeli}
-                  onChange={(e) => setFormData({ ...formData, hargaBeli: Number(e.target.value) })}
-                  className="font-mono"
-                />
+                  <option value="" className="bg-[#1C1F24]">— Pilih Customer —</option>
+                  {customers.map((c) => (
+                    <option key={c.id} value={c.name} className="bg-[#1C1F24]">
+                      {c.kodePrefix ? `${c.kodePrefix} - ` : ''}{c.name}
+                    </option>
+                  ))}
+                </select>
               </div>
+              <ChevronDown className="w-3.5 h-3.5 text-neutral-500 shrink-0 pointer-events-none" />
+            </div>
 
-              <div className="text-xs text-neutral-300 pt-2 border-t border-[#24282C] flex items-center justify-between font-mono">
-                <span className="text-neutral-400">Estimasi Total Gross Margin Kontrak:</span>
-                <strong className="text-white text-sm">{formatCurrency(totalMargin)}</strong>
+            {/* Row 4: Jenis Wajib Pajak (full width) */}
+            <div className="relative bg-[#1C1F24] border border-[#2A2E33] rounded-xl px-4 py-3.5 flex items-center gap-3 focus-within:border-[#F4511E]/70 transition-colors group">
+              <Monitor className="w-5 h-5 text-neutral-500 shrink-0 group-focus-within:text-[#F4511E] transition-colors" />
+              <div className="flex-1 min-w-0">
+                <label className="block text-[10px] font-semibold text-neutral-500 uppercase tracking-widest mb-0.5">
+                  Jenis Pajak
+                </label>
+                <select
+                  value={formData.jenisWajibPajak}
+                  onChange={(e) => setFormData({ ...formData, jenisWajibPajak: e.target.value })}
+                  className="w-full bg-transparent text-xs text-white focus:outline-none appearance-none cursor-pointer"
+                >
+                  <option value="" className="bg-[#1C1F24]">— Pilih Jenis Pajak —</option>
+                  <option value="PKP" className="bg-[#1C1F24]">PKP (Pengusaha Kena Pajak)</option>
+                  <option value="NON PKP" className="bg-[#1C1F24]">NON PKP</option>
+                </select>
+              </div>
+              <ChevronDown className="w-3.5 h-3.5 text-neutral-500 shrink-0 pointer-events-none" />
+            </div>
+
+            {/* Row 5: Nomor PO Customer (full width, orange active border) */}
+            <div className="relative bg-[#1C1F24] border border-[#F4511E]/60 rounded-xl px-4 py-3.5 flex items-center gap-3 transition-colors group">
+              <FileText className="w-5 h-5 text-[#F4511E] shrink-0" />
+              <div className="flex-1 min-w-0">
+                <label className="block text-[10px] font-semibold text-[#F4511E] uppercase tracking-widest mb-0.5">
+                  Nomor PO Customer
+                </label>
+                <input
+                  type="text"
+                  value={formData.nomorPoCustomer}
+                  onChange={(e) => setFormData({ ...formData, nomorPoCustomer: e.target.value })}
+                  placeholder="Biarkan kosong apabila belum tersedia"
+                  className="w-full bg-transparent text-xs text-neutral-200 focus:outline-none placeholder-neutral-500"
+                />
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-2 pt-2">
-              <Button
-                variant="ghost"
+            {/* Row 6: Nomor RO (full width, auto-generated) */}
+            <div className="relative bg-[#1C1F24] border border-[#2A2E33] rounded-xl px-4 py-3.5 flex items-center gap-3 focus-within:border-[#F4511E]/70 transition-colors group">
+              <Hash className="w-5 h-5 text-neutral-500 shrink-0 group-focus-within:text-[#F4511E] transition-colors" />
+              <div className="flex-1 min-w-0">
+                <label className="block text-[10px] font-semibold text-neutral-500 uppercase tracking-widest mb-0.5">
+                  Nomor RO (auto) <span className="text-[#F4511E]">*</span>
+                </label>
+                <input
+                  type="text"
+                  readOnly
+                  value={formData.nomorRO}
+                  className="w-full bg-transparent text-xs text-neutral-400 focus:outline-none font-mono cursor-not-allowed"
+                />
+              </div>
+            </div>
+
+            {/* Row 7: Pilih Jenis RO (full width) */}
+            <div className="relative bg-[#1C1F24] border border-[#2A2E33] rounded-xl px-4 py-3.5 flex items-center gap-3 focus-within:border-[#F4511E]/70 transition-colors group">
+              <List className="w-5 h-5 text-neutral-500 shrink-0 group-focus-within:text-[#F4511E] transition-colors" />
+              <div className="flex-1 min-w-0">
+                <label className="block text-[10px] font-semibold text-neutral-500 uppercase tracking-widest mb-0.5">
+                  Pilih Jenis RO <span className="text-[#F4511E]">*</span>
+                </label>
+                <select
+                  required
+                  value={formData.jenisRO}
+                  onChange={(e) => setFormData({ ...formData, jenisRO: e.target.value })}
+                  className="w-full bg-transparent text-xs text-white focus:outline-none appearance-none cursor-pointer"
+                >
+                  <option value="" className="bg-[#1C1F24]">— Pilih Jenis RO —</option>
+                  <option value="Regular" className="bg-[#1C1F24]">Regular</option>
+                  <option value="Prioritas" className="bg-[#1C1F24]">Prioritas</option>
+                  <option value="Kontrak Tahunan" className="bg-[#1C1F24]">Kontrak Tahunan</option>
+                  <option value="Spot Order" className="bg-[#1C1F24]">Spot Order</option>
+                </select>
+              </div>
+              <ChevronDown className="w-3.5 h-3.5 text-neutral-500 shrink-0 pointer-events-none" />
+            </div>
+
+            {/* ── Harga & Volume (Collapsible Detail) ── */}
+            <div className="bg-[#181B1E] border border-[#2A2E33] rounded-xl p-4 space-y-3">
+              <div className="flex items-center justify-between text-[11px] font-mono mb-1">
+                <span className="text-neutral-400 font-semibold uppercase tracking-widest text-[10px]">Detail Harga & Volume</span>
+                <strong className="text-emerald-400">{formatCurrency(formData.hargaJual - formData.hargaBeli)}/unit margin</strong>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2.5">
+                {/* Satuan */}
+                <div className="relative bg-[#1C1F24] border border-[#2A2E33] rounded-lg px-3 py-2.5 flex items-center gap-2 focus-within:border-[#F4511E]/60 transition-colors">
+                  <div className="flex-1 min-w-0">
+                    <label className="block text-[10px] text-neutral-500 font-semibold uppercase tracking-widest mb-0.5">Satuan</label>
+                    <select
+                      value={formData.satuan}
+                      onChange={(e) => setFormData({ ...formData, satuan: e.target.value })}
+                      className="w-full bg-transparent text-xs text-white focus:outline-none appearance-none cursor-pointer"
+                    >
+                      <option value="m3" className="bg-[#1C1F24]">m³ (Kubik)</option>
+                      <option value="ton" className="bg-[#1C1F24]">Ton</option>
+                      <option value="rit" className="bg-[#1C1F24]">Rit</option>
+                    </select>
+                  </div>
+                  <ChevronDown className="w-3 h-3 text-neutral-500 shrink-0 pointer-events-none" />
+                </div>
+
+                {/* Target Volume */}
+                <div className="relative bg-[#1C1F24] border border-[#2A2E33] rounded-lg px-3 py-2.5 focus-within:border-[#F4511E]/60 transition-colors">
+                  <label className="block text-[10px] text-neutral-500 font-semibold uppercase tracking-widest mb-0.5">Target Volume</label>
+                  <input
+                    type="number"
+                    required
+                    value={formData.totalOrder}
+                    onChange={(e) => setFormData({ ...formData, totalOrder: Number(e.target.value) })}
+                    className="w-full bg-transparent text-xs text-white focus:outline-none font-mono"
+                  />
+                </div>
+
+                {/* Harga Jual */}
+                <div className="relative bg-[#1C1F24] border border-[#2A2E33] rounded-lg px-3 py-2.5 focus-within:border-[#F4511E]/60 transition-colors">
+                  <label className="block text-[10px] text-neutral-500 font-semibold uppercase tracking-widest mb-0.5">Harga Jual</label>
+                  <input
+                    type="number"
+                    required
+                    value={formData.hargaJual}
+                    onChange={(e) => setFormData({ ...formData, hargaJual: Number(e.target.value) })}
+                    className="w-full bg-transparent text-xs text-white focus:outline-none font-mono"
+                  />
+                </div>
+
+                {/* Harga Beli */}
+                <div className="relative bg-[#1C1F24] border border-[#2A2E33] rounded-lg px-3 py-2.5 focus-within:border-[#F4511E]/60 transition-colors">
+                  <label className="block text-[10px] text-neutral-500 font-semibold uppercase tracking-widest mb-0.5">Harga Beli</label>
+                  <input
+                    type="number"
+                    required
+                    value={formData.hargaBeli}
+                    onChange={(e) => setFormData({ ...formData, hargaBeli: Number(e.target.value) })}
+                    className="w-full bg-transparent text-xs text-white focus:outline-none font-mono"
+                  />
+                </div>
+              </div>
+
+              {/* Total Margin Summary */}
+              <div className="text-xs text-neutral-300 pt-2.5 border-t border-[#24282C] flex items-center justify-between font-mono">
+                <span className="text-neutral-400">Estimasi Total Gross Margin:</span>
+                <strong className="text-white text-sm">{formatCurrency((formData.hargaJual - formData.hargaBeli) * formData.totalOrder)}</strong>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex items-center gap-2.5 pt-1">
+              <button
+                type="button"
                 onClick={() => setActiveTab('list')}
+                className="flex-1 py-3 rounded-xl text-xs font-semibold text-neutral-300 bg-[#1C1F24] border border-[#2A2E33] hover:border-[#3A3E45] hover:text-white transition-all"
               >
                 Batal
-              </Button>
-              <Button
+              </button>
+              <button
                 type="submit"
-                variant="primary"
-                icon={Plus}
+                className="flex-1 py-3 rounded-xl text-xs font-bold text-white bg-[#F4511E] hover:bg-[#E04418] active:bg-[#C93C15] transition-all shadow-lg shadow-[#F4511E]/20 flex items-center justify-center gap-2"
               >
-                Simpan & Ajukan Pre Order
-              </Button>
+                <Plus className="w-4 h-4" />
+                Simpan & Ajukan RO
+              </button>
             </div>
+
           </form>
-        </Card>
+        </div>
       )}
 
       {/* Reject Modal using Motion Modal Primitive */}

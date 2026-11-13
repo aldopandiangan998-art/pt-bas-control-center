@@ -61,7 +61,7 @@ export default function SuratJalanPage() {
   const handleKoreksiChange = (delta) => {
     setFormData((prev) => ({
       ...prev,
-      koreksiTinggiCm: prev.koreksiTinggiCm + delta,
+      koreksiTinggiCm: (Number(prev.koreksiTinggiCm) || 0) + delta,
     }));
   };
 
@@ -301,11 +301,24 @@ export default function SuratJalanPage() {
             <div className="pt-3 border-t border-[#24282C] space-y-3">
               {/* Koreksi Tinggi Stepper */}
               <div className="flex items-center justify-between p-2.5 rounded-md bg-[#181B1E] border border-[#2B3036]">
-                <div className="text-xs text-neutral-300 font-medium">
-                  Koreksi Tinggi (K):{' '}
-                  <span className="font-mono font-bold text-white ml-1">
-                    {formData.koreksiTinggiCm} cm
-                  </span>
+                <div className="text-xs text-neutral-300 font-medium flex items-center">
+                  <span>Koreksi Tinggi (K):</span>
+                  <input
+                    type="number"
+                    placeholder="0"
+                    value={formData.koreksiTinggiCm === 0 ? '' : formData.koreksiTinggiCm}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        koreksiTinggiCm: e.target.value === '' ? 0 : Number(e.target.value),
+                      }))
+                    }
+                    style={{
+                      width: `${Math.max(1, String(formData.koreksiTinggiCm === 0 ? 0 : formData.koreksiTinggiCm).length)}ch`,
+                    }}
+                    className="ml-1.5 p-0 bg-transparent border-none text-white placeholder:text-white font-mono font-bold text-xs text-center focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  />
+                  <span className="text-white font-mono font-bold ml-1">cm</span>
                 </div>
 
                 <div className="flex items-center gap-1">

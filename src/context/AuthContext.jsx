@@ -4,7 +4,7 @@ import { INITIAL_USERS_DB, INITIAL_USER } from '../utils/constants';
 const AuthContext = createContext(null);
 
 const USERS_STORAGE_KEY = 'ptbas_users_db_v2';
-const AUTH_STORAGE_KEY = 'ptbas_auth_user_v2';
+const AUTH_STORAGE_KEY = 'ptbas_auth_session_v1';
 
 export function AuthProvider({ children }) {
   // 1. Initialize registered users database from localStorage or default
@@ -21,9 +21,13 @@ export function AuthProvider({ children }) {
     return INITIAL_USERS_DB;
   });
 
-  // 2. Initialize current logged-in user from localStorage or default
+  // 2. Initialize current logged-in user from localStorage or null (guest)
   const [currentUser, setCurrentUser] = useState(() => {
     try {
+      // Clear legacy dev auto-login key if present to enforce clean login first
+      if (localStorage.getItem('ptbas_auth_user_v2')) {
+        localStorage.removeItem('ptbas_auth_user_v2');
+      }
       const saved = localStorage.getItem(AUTH_STORAGE_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
@@ -32,7 +36,7 @@ export function AuthProvider({ children }) {
     } catch (e) {
       console.warn('Failed to parse stored auth user:', e);
     }
-    return INITIAL_USER;
+    return null;
   });
 
   // Sync users from Node.js SQLite Database on mount

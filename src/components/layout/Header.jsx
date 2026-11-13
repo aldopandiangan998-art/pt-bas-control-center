@@ -69,10 +69,10 @@ export default function Header() {
 
               <div className="text-left hidden md:block">
                 <div className="text-xs font-semibold text-white leading-tight">
-                  {currentUser.name}
+                  {currentUser?.name || 'Pengguna'}
                 </div>
                 <div className="text-[10px] text-amber-200/70 font-mono leading-none">
-                  {currentUser.email}
+                  {currentUser?.email || '-'}
                 </div>
               </div>
 

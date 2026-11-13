@@ -45,7 +45,7 @@ export default function LoginPage() {
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setErrorMessage('');
 
@@ -56,20 +56,23 @@ export default function LoginPage() {
 
     setLoading(true);
 
-    setTimeout(() => {
-      const res = login(email, password);
+    try {
+      const res = await login(email, password);
       setLoading(false);
 
-      if (res.success) {
+      if (res && res.success) {
         addToast(
           `Selamat datang, ${res.user.name}! Masuk sebagai ${res.user.roleLabel || res.user.role}.`,
           'success'
         );
         navigate('/');
       } else {
-        setErrorMessage(res.message);
+        setErrorMessage(res?.message || 'Email atau kata sandi tidak valid.');
       }
-    }, 350);
+    } catch (err) {
+      setLoading(false);
+      setErrorMessage('Terjadi kendala saat proses autentikasi. Silakan coba kembali.');
+    }
   };
 
   return (

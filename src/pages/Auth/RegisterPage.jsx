@@ -39,7 +39,7 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setErrorMessage('');
 
@@ -61,8 +61,8 @@ export default function RegisterPage() {
 
     setLoading(true);
 
-    setTimeout(() => {
-      const res = register({
+    try {
+      const res = await register({
         name: formData.name,
         email: formData.email,
         phone: formData.phone,
@@ -73,16 +73,19 @@ export default function RegisterPage() {
 
       setLoading(false);
 
-      if (res.success) {
+      if (res && res.success) {
         addToast(
           `Akun ${res.user.roleLabel} berhasil dibuat untuk ${res.user.name}!`,
           'success'
         );
         navigate('/');
       } else {
-        setErrorMessage(res.message);
+        setErrorMessage(res?.message || 'Pendaftaran akun gagal.');
       }
-    }, 400);
+    } catch (err) {
+      setLoading(false);
+      setErrorMessage('Terjadi kendala saat proses pendaftaran.');
+    }
   };
 
   return (

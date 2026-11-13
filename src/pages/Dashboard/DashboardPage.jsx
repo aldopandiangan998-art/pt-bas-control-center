@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
 import {
-  Plus,
   ArrowRight,
   TrendingUp,
   ShieldCheck,
@@ -18,11 +17,16 @@ import {
   Building,
   Truck,
   RotateCcw,
+  ClipboardList,
+  PackageCheck,
+  BookOpen,
+  FileText,
+  Receipt,
 } from 'lucide-react';
 import { useData } from '../../context/DataContext';
 import { useAuth } from '../../context/AuthContext';
 import { formatCurrency, formatVolume } from '../../utils/formatters';
-import { Button, Card, Badge } from '../../components/ui';
+import { Card, Badge } from '../../components/ui';
 import {
   ReceivedOrderIcon,
   GoodIssueIcon,
@@ -171,39 +175,6 @@ export default function DashboardPage() {
               ({currentUser?.role === 'superadmin' ? 'Super Admin' : 'Admin Operasional'})
             </span>
           </span>
-        </div>
-
-        {/* Quick Action Buttons */}
-        <div className="flex items-center gap-1.5 w-full md:w-auto justify-end flex-wrap">
-          <Button
-            size="xs"
-            variant="primary"
-            icon={Plus}
-            onClick={() => navigate('/surat-jalan')}
-            className="bg-[#F4511E] hover:bg-[#D84315] font-medium"
-          >
-            Buat GI
-          </Button>
-          <Button
-            size="xs"
-            variant="secondary"
-            icon={Plus}
-            onClick={() => navigate('/pre-orders')}
-            className="bg-[#151D28] hover:bg-[#1D2838] border-[#1D2838]"
-          >
-            Buat RO
-          </Button>
-          {isExecView && (
-            <Button
-              size="xs"
-              variant="secondary"
-              icon={Plus}
-              onClick={() => navigate('/invoices')}
-              className="bg-[#151D28] hover:bg-[#1D2838] border-[#1D2838]"
-            >
-              Buat Invoice
-            </Button>
-          )}
         </div>
       </div>
 
@@ -527,6 +498,122 @@ export default function DashboardPage() {
             ))}
           </div>
         </div>
+
+      </div>
+
+      {/* ==================================================================== */}
+      {/* SUPERADMIN FEATURE CARDS — Di antara 2 baris grafik                  */}
+      {/* ==================================================================== */}
+      {isExecView && (
+        <div className="pt-1">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-neutral-300">
+                Fitur Utama Operasional
+              </h3>
+              <p className="text-[11px] text-neutral-500 mt-0.5">Akses langsung ke alur kerja inti PT BAS</p>
+            </div>
+            <span className="px-2 py-0.5 text-[10px] font-mono rounded bg-[#F4511E]/10 text-[#F4511E] border border-[#F4511E]/30 uppercase tracking-wider">
+              Super Admin
+            </span>
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            {/* Card 1: Received Order */}
+            <button
+              type="button"
+              onClick={() => navigate('/pre-orders')}
+              className="group bg-[#131B26] hover:bg-[#182332] border border-[#1D2838] hover:border-[#F4511E]/50 rounded-xl p-4 text-left transition-all duration-200 shadow-sm cursor-pointer"
+            >
+              <div className="flex items-start justify-between mb-3">
+                <div className="w-10 h-10 rounded-lg bg-[#F4511E]/10 border border-[#F4511E]/20 flex items-center justify-center group-hover:bg-[#F4511E]/20 transition-colors">
+                  <ClipboardList className="w-5 h-5 text-[#F4511E]" />
+                </div>
+                <ChevronRight className="w-4 h-4 text-neutral-600 group-hover:text-[#F4511E] transition-colors mt-1" />
+              </div>
+              <div className="text-sm font-bold text-white leading-tight mb-1">Received Order</div>
+              <div className="text-[11px] text-neutral-400 leading-snug mb-3">
+                Kelola pesanan masuk & approval PO dari customer
+              </div>
+              <div className="flex items-center justify-between pt-2 border-t border-[#1D2838]">
+                <span className="text-[10px] font-mono text-neutral-500 uppercase tracking-wide">PO Aktif</span>
+                <span className="text-sm font-bold font-mono text-[#F4511E]">{activePreOrders.length}</span>
+              </div>
+            </button>
+
+            {/* Card 2: Good Issue */}
+            <button
+              type="button"
+              onClick={() => navigate('/surat-jalan')}
+              className="group bg-[#131B26] hover:bg-[#182332] border border-[#1D2838] hover:border-[#FB8C00]/50 rounded-xl p-4 text-left transition-all duration-200 shadow-sm cursor-pointer"
+            >
+              <div className="flex items-start justify-between mb-3">
+                <div className="w-10 h-10 rounded-lg bg-[#FB8C00]/10 border border-[#FB8C00]/20 flex items-center justify-center group-hover:bg-[#FB8C00]/20 transition-colors">
+                  <PackageCheck className="w-5 h-5 text-[#FB8C00]" />
+                </div>
+                <ChevronRight className="w-4 h-4 text-neutral-600 group-hover:text-[#FB8C00] transition-colors mt-1" />
+              </div>
+              <div className="text-sm font-bold text-white leading-tight mb-1">Good Issue</div>
+              <div className="text-[11px] text-neutral-400 leading-snug mb-3">
+                Penerbitan surat jalan & monitoring pengiriman armada
+              </div>
+              <div className="flex items-center justify-between pt-2 border-t border-[#1D2838]">
+                <span className="text-[10px] font-mono text-neutral-500 uppercase tracking-wide">Total GI</span>
+                <span className="text-sm font-bold font-mono text-[#FB8C00]">{suratJalanList.length}</span>
+              </div>
+            </button>
+
+            {/* Card 3: Jurnal Good Issue / Cash Out */}
+            <button
+              type="button"
+              onClick={() => navigate('/bkk')}
+              className="group bg-[#131B26] hover:bg-[#182332] border border-[#1D2838] hover:border-[#F59E0B]/50 rounded-xl p-4 text-left transition-all duration-200 shadow-sm cursor-pointer"
+            >
+              <div className="flex items-start justify-between mb-3">
+                <div className="w-10 h-10 rounded-lg bg-[#F59E0B]/10 border border-[#F59E0B]/20 flex items-center justify-center group-hover:bg-[#F59E0B]/20 transition-colors">
+                  <BookOpen className="w-5 h-5 text-[#F59E0B]" />
+                </div>
+                <ChevronRight className="w-4 h-4 text-neutral-600 group-hover:text-[#F59E0B] transition-colors mt-1" />
+              </div>
+              <div className="text-sm font-bold text-white leading-tight mb-1">Jurnal GI Cash Out</div>
+              <div className="text-[11px] text-neutral-400 leading-snug mb-3">
+                Pencatatan & otorisasi kas keluar BKK operasional
+              </div>
+              <div className="flex items-center justify-between pt-2 border-t border-[#1D2838]">
+                <span className="text-[10px] font-mono text-neutral-500 uppercase tracking-wide">Belum Bayar</span>
+                <span className="text-sm font-bold font-mono text-[#F59E0B]">
+                  {bkkList.filter((b) => b.statusBayar === 'Belum Dibayar').length}
+                </span>
+              </div>
+            </button>
+
+            {/* Card 4: Invoice */}
+            <button
+              type="button"
+              onClick={() => navigate('/invoices')}
+              className="group bg-[#131B26] hover:bg-[#182332] border border-[#1D2838] hover:border-emerald-500/50 rounded-xl p-4 text-left transition-all duration-200 shadow-sm cursor-pointer"
+            >
+              <div className="flex items-start justify-between mb-3">
+                <div className="w-10 h-10 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center group-hover:bg-emerald-500/20 transition-colors">
+                  <Receipt className="w-5 h-5 text-emerald-400" />
+                </div>
+                <ChevronRight className="w-4 h-4 text-neutral-600 group-hover:text-emerald-400 transition-colors mt-1" />
+              </div>
+              <div className="text-sm font-bold text-white leading-tight mb-1">Invoice</div>
+              <div className="text-[11px] text-neutral-400 leading-snug mb-3">
+                Penerbitan tagihan & monitoring piutang customer
+              </div>
+              <div className="flex items-center justify-between pt-2 border-t border-[#1D2838]">
+                <span className="text-[10px] font-mono text-neutral-500 uppercase tracking-wide">Total Tagihan</span>
+                <span className="text-sm font-bold font-mono text-emerald-400">{suratJalanList.length}</span>
+              </div>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* 4 SIGNATURE DASHBOARD WIDGETS — Baris Grafik ke-2 */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
 
         {/* ==================================================================== */}
         {/* WIDGET 3: Tingkat Kepatuhan SOP Timbangan / Otorisasi Finansial       */}

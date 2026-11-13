@@ -57,6 +57,18 @@ export default function InvoicePage() {
   const [filterHidden, setFilterHidden] = useState(false);
   const [invoiceGenerated, setInvoiceGenerated] = useState(false);
 
+  // Delete confirmation state
+  const [deleteConfirmInvoice, setDeleteConfirmInvoice] = useState({ open: false, id: null, label: '' });
+
+  const handleAskDeleteInvoice = (id, label) => {
+    setDeleteConfirmInvoice({ open: true, id, label });
+  };
+
+  const handleConfirmDeleteInvoice = () => {
+    deleteInvoice(deleteConfirmInvoice.id);
+    setDeleteConfirmInvoice({ open: false, id: null, label: '' });
+  };
+
   // Exact Tax calculations per Implementation Plan Section 2 (Aturan 28 - 31)
   // Aturan 30: PPH selalu dihitung atas semua jenis jasa tanpa syarat
   const calculation = useMemo(() => {
@@ -354,7 +366,7 @@ export default function InvoicePage() {
                     <div className="grid grid-cols-2 border-t border-[#24282C] bg-[#16191D]/50">
                       <button
                         type="button"
-                        onClick={() => deleteInvoice(item.id)}
+                        onClick={() => handleAskDeleteInvoice(item.id, item.kodeTransaksi)}
                         className="py-2.5 flex items-center justify-center border-r border-[#24282C] text-[#E53935] hover:bg-[#E53935]/10 transition-colors cursor-pointer"
                         title="Hapus Invoice"
                       >
@@ -699,6 +711,42 @@ export default function InvoicePage() {
             </div>
           </div>
         )}
+      </Modal>
+
+      {/* MODAL: KONFIRMASI HAPUS INVOICE */}
+      <Modal
+        isOpen={deleteConfirmInvoice.open}
+        onClose={() => setDeleteConfirmInvoice({ open: false, id: null, label: '' })}
+        title="Konfirmasi Hapus"
+        subtitle="Tindakan ini tidak dapat dibatalkan"
+      >
+        <div className="p-4 space-y-4">
+          <div className="flex items-start gap-3 p-3 rounded-xl bg-rose-500/10 border border-rose-500/30">
+            <Trash2 className="w-5 h-5 text-rose-400 shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm text-neutral-200">
+                Apakah Anda yakin ingin menghapus invoice{' '}
+                <span className="font-bold text-white font-mono">{deleteConfirmInvoice.label}</span>?
+              </p>
+              <p className="text-xs text-rose-400 mt-1">
+                Data yang dihapus tidak dapat dikembalikan.
+              </p>
+            </div>
+          </div>
+          <div className="flex justify-end gap-2 pt-1">
+            <Button variant="ghost" onClick={() => setDeleteConfirmInvoice({ open: false, id: null, label: '' })}>
+              Batal
+            </Button>
+            <Button
+              variant="danger"
+              icon={Trash2}
+              onClick={handleConfirmDeleteInvoice}
+              className="bg-rose-600 hover:bg-rose-700 text-white border-0"
+            >
+              Ya, Hapus
+            </Button>
+          </div>
+        </div>
       </Modal>
     </div>
   );

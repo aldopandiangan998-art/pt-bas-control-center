@@ -735,7 +735,7 @@ export function DataProvider({ children }) {
     {
       id: 'bank-1',
       namaBank: 'Bank Central Asia',
-      namaAlias: 'BCA - 014',
+      namaAlias: 'BCA',
       kodeSwift: 'CENAIDJA',
       kodeBank: '014',
       aktif: true,
@@ -743,7 +743,7 @@ export function DataProvider({ children }) {
     {
       id: 'bank-2',
       namaBank: 'Bank Mandiri',
-      namaAlias: 'BMRII - 008',
+      namaAlias: 'Mandiri',
       kodeSwift: 'BMRIIDJA',
       kodeBank: '008',
       aktif: true,
@@ -751,7 +751,7 @@ export function DataProvider({ children }) {
     {
       id: 'bank-3',
       namaBank: 'Bank Rakyat Indonesia',
-      namaAlias: 'BRI - 002',
+      namaAlias: 'BRI',
       kodeSwift: 'BRINIDJA',
       kodeBank: '002',
       aktif: true,
@@ -759,7 +759,7 @@ export function DataProvider({ children }) {
     {
       id: 'bank-4',
       namaBank: 'Bank Negara Indonesia',
-      namaAlias: 'BNI - 009',
+      namaAlias: 'BNI',
       kodeSwift: 'BNINIDJA',
       kodeBank: '009',
       aktif: true,
@@ -987,6 +987,22 @@ export function DataProvider({ children }) {
     addToast('Material berhasil dihapus', 'info');
   };
 
+  const updateMaterial = (id, updatedData) => {
+    setMaterials((prev) =>
+      prev.map((m) =>
+        m.id === id
+          ? {
+              ...m,
+              ...updatedData,
+              beli: updatedData.beli !== undefined ? Number(updatedData.beli) : m.beli,
+              jual: updatedData.jual !== undefined ? Number(updatedData.jual) : m.jual,
+            }
+          : m
+      )
+    );
+    addToast('Data material berhasil diperbarui!', 'success');
+  };
+
   // Supplier CRUD
   const toggleSupplierStatus = (id) => {
     setSuppliers((prev) =>
@@ -1008,6 +1024,20 @@ export function DataProvider({ children }) {
   const deleteSupplier = (id) => {
     setSuppliers((prev) => prev.filter((s) => s.id !== id));
     addToast('Supplier berhasil dihapus', 'info');
+  };
+
+  const updateSupplier = (id, updatedData) => {
+    setSuppliers((prev) =>
+      prev.map((s) =>
+        s.id === id
+          ? {
+              ...s,
+              ...updatedData,
+            }
+          : s
+      )
+    );
+    addToast('Data supplier berhasil diperbarui!', 'success');
   };
 
   // Customer CRUD
@@ -1064,6 +1094,27 @@ export function DataProvider({ children }) {
     addToast('Armada berhasil dihapus', 'info');
   };
 
+  const updateArmada = (id, updatedData) => {
+    setArmadaList((prev) =>
+      prev.map((a) => {
+        if (a.id !== id) return a;
+        const p = updatedData.panjangCm !== undefined ? Number(updatedData.panjangCm) : a.panjangCm;
+        const l = updatedData.lebarCm !== undefined ? Number(updatedData.lebarCm) : a.lebarCm;
+        const t = updatedData.tinggiCm !== undefined ? Number(updatedData.tinggiCm) : a.tinggiCm;
+        const kapasitas = Number(((p * l * t) / 1000000).toFixed(2));
+        return {
+          ...a,
+          ...updatedData,
+          panjangCm: p,
+          lebarCm: l,
+          tinggiCm: t,
+          kapasitas,
+        };
+      })
+    );
+    addToast('Data armada berhasil diperbarui!', 'success');
+  };
+
   // Bank CRUD
   const toggleBankStatus = (id) => {
     setBanks((prev) =>
@@ -1085,6 +1136,20 @@ export function DataProvider({ children }) {
   const deleteBank = (id) => {
     setBanks((prev) => prev.filter((b) => b.id !== id));
     addToast('Bank berhasil dihapus', 'info');
+  };
+
+  const updateBank = (id, updatedData) => {
+    setBanks((prev) =>
+      prev.map((b) =>
+        b.id === id
+          ? {
+              ...b,
+              ...updatedData,
+            }
+          : b
+      )
+    );
+    addToast('Data bank berhasil diperbarui!', 'success');
   };
 
   // Bank Account CRUD
@@ -1139,18 +1204,22 @@ export function DataProvider({ children }) {
         // Master Data Actions
         toggleMaterialStatus,
         addMaterial,
+        updateMaterial,
         deleteMaterial,
         toggleSupplierStatus,
         addSupplier,
+        updateSupplier,
         deleteSupplier,
         toggleCustomerStatus,
         addCustomer,
         deleteCustomer,
         toggleArmadaStatus,
         addArmada,
+        updateArmada,
         deleteArmada,
         toggleBankStatus,
         addBank,
+        updateBank,
         deleteBank,
         toggleBankAccountStatus,
         addBankAccount,

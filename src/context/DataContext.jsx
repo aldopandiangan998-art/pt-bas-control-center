@@ -264,6 +264,82 @@ export function DataProvider({ children }) {
     },
   ]);
 
+  // Data Invoices strictly matching Screenshot media_1794538112384_ea2f3289.jpg
+  const [invoiceList, setInvoiceList] = useState([
+    {
+      id: 'inv-1',
+      volume: 331.03,
+      material: 'LIMESTONE',
+      jenis: 'JASA ANGKUT + MATERIAL',
+      timestamp: '2026-11-12 16:13',
+      amount: 25500102.0,
+      kodeTransaksi: 'POL-2607-000079 - INV - 4ENMI',
+      perusahaan: 'NUTRIPRO PRIMA ASIA, PT',
+      periode: 'Periode: [2026-11-02, 2026-11-03]',
+      statusBayar: 'Belum Dibayar', // 'Belum Dibayar' (BELUM LUNAS) | 'Lunas'
+    },
+    {
+      id: 'inv-2',
+      volume: 1983.38,
+      material: 'SIRTU',
+      jenis: 'JASA ANGKUT + MATERIAL',
+      timestamp: '2026-11-03 11:22',
+      amount: 267682756.0,
+      kodeTransaksi: 'POS-2608-000224 - INV - A3I1R',
+      perusahaan: 'KARYA INDAH ALAM SEJAHTERA, PT',
+      periode: 'Periode: [2026-10-22, 2026-10-23, 2026-10-26, 2026-10-...]',
+      statusBayar: 'Belum Dibayar',
+    },
+    {
+      id: 'inv-3',
+      volume: 376.43,
+      material: 'SIRTU',
+      jenis: 'JASA ANGKUT + MATERIAL',
+      timestamp: '2026-11-02 09:35',
+      amount: 43477210.0,
+      kodeTransaksi: '4510010537 - INV - L5CGP',
+      perusahaan: 'WINGS SURYA, PT',
+      periode: 'Periode: [2026-10-12, 2026-10-17, 2026-10-19, 2026-10-20]',
+      statusBayar: 'Belum Dibayar',
+    },
+    {
+      id: 'inv-4',
+      volume: 107.87,
+      material: 'SIRTU',
+      jenis: 'JASA ANGKUT + MATERIAL',
+      timestamp: '2026-11-02 09:27',
+      amount: 12458854.0,
+      kodeTransaksi: '4500391980 - INV - HMPPO',
+      perusahaan: 'WINGS SURYA, PT',
+      periode: 'Periode: [2026-09-28, 2026-10-05]',
+      statusBayar: 'Belum Dibayar',
+    },
+    {
+      id: 'inv-5',
+      volume: 550.54,
+      material: 'SIRTU',
+      jenis: 'JASA ANGKUT + MATERIAL',
+      timestamp: '2026-10-29 11:44',
+      amount: 74302486.0,
+      kodeTransaksi: '4590011130 - INV - C3DBN',
+      perusahaan: 'LION WINGS, PT',
+      periode: 'Periode: [2026-10-19, 2026-10-20, 2026-10-21, 2026-10-2...]',
+      statusBayar: 'Belum Dibayar',
+    },
+    {
+      id: 'inv-6',
+      volume: 790.82,
+      material: 'SIRTU',
+      jenis: 'JASA ANGKUT + MATERIAL',
+      timestamp: '2026-10-22 12:21',
+      amount: 106731376.0,
+      kodeTransaksi: '4590011130 - INV - 7X1KP',
+      perusahaan: 'LION WINGS, PT',
+      periode: 'Periode: [2026-10-12, 2026-10-14, 2026-10-15]',
+      statusBayar: 'Belum Dibayar',
+    },
+  ]);
+
   // ==========================================
   // 2. DATA MASTER (FAITHFUL TO SCREENSHOTS)
   // ==========================================
@@ -848,6 +924,41 @@ export function DataProvider({ children }) {
   };
 
   // ------------------------------------------
+  // INVOICE HELPERS
+  // ------------------------------------------
+  const createInvoice = (invData) => {
+    const newInv = {
+      id: `inv-${Date.now()}`,
+      volume: invData.volume || 100,
+      material: invData.material || 'SIRTU',
+      jenis: invData.jenis || 'JASA ANGKUT + MATERIAL',
+      timestamp: new Date().toISOString().replace('T', ' ').substring(0, 16),
+      amount: invData.totalTagihan || invData.amount || 0,
+      kodeTransaksi: invData.nomorInvoice || `INV-${new Date().getFullYear()}-${String(Date.now()).slice(-5)}`,
+      perusahaan: invData.pelanggan || 'PT CUSTOMER',
+      periode: invData.periode || `Periode: [${new Date().toISOString().split('T')[0]}]`,
+      statusBayar: 'Belum Dibayar',
+    };
+    setInvoiceList((prev) => [newInv, ...prev]);
+    addToast(`Invoice No. ${newInv.kodeTransaksi} berhasil dibuat!`, 'success');
+    return newInv;
+  };
+
+  const markInvoicePaid = (invIds) => {
+    setInvoiceList((prev) =>
+      prev.map((item) =>
+        invIds.includes(item.id) ? { ...item, statusBayar: 'Lunas' } : item
+      )
+    );
+    addToast(`${invIds.length} Invoice berhasil dicatat LUNAS!`, 'success');
+  };
+
+  const deleteInvoice = (invId) => {
+    setInvoiceList((prev) => prev.filter((item) => item.id !== invId));
+    addToast('Invoice berhasil dihapus', 'info');
+  };
+
+  // ------------------------------------------
   // MASTER DATA CRUD HELPERS
   // ------------------------------------------
 
@@ -1005,11 +1116,15 @@ export function DataProvider({ children }) {
         preOrders,
         suratJalanList,
         bkkList,
+        invoiceList,
         createPreOrder,
         approvePreOrder,
         rejectPreOrder,
         createSuratJalan,
         markBkkPaid,
+        createInvoice,
+        markInvoicePaid,
+        deleteInvoice,
 
         // Master Data States
         materials,

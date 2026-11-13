@@ -908,11 +908,12 @@ export function DataProvider({ children }) {
   };
 
   const addCustomer = (newCust) => {
+    const jbuPrefix = (newCust.jenisBadanUsaha || '').split('-')[0] || newCust.jenisBadanUsaha;
     const item = {
       ...newCust,
       id: `cust-${Date.now()}`,
       aktif: true,
-      alias: newCust.alias || `${newCust.jenisBadanUsaha} ${newCust.name}`,
+      alias: newCust.alias || `${jbuPrefix} ${newCust.name}`.trim(),
     };
     setCustomers((prev) => [...prev, item]);
     addToast(`Customer "${item.name}" berhasil disimpan!`, 'success');

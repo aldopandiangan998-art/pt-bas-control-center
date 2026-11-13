@@ -32,18 +32,18 @@ export default function InvoicePage() {
     waktu: '10:15',
     materialType: 'Curah',
     subtotalJasa: 19371600,
-    memuatJasaPengangkutan: true,
   });
 
   const [filterHidden, setFilterHidden] = useState(false);
   const [invoiceGenerated, setInvoiceGenerated] = useState(false);
 
   // Exact Tax calculations per Implementation Plan Section 2 (Aturan 28 - 31)
+  // Aturan 30: PPH selalu dihitung atas semua jenis jasa tanpa syarat
   const calculation = useMemo(() => {
     const subtotal = formData.subtotalJasa;
     const ppnNominal = Math.round((subtotal * TAX_RATES.PPN_PERCENT) / 100);
     const pphRate = formData.materialType === 'Curah' ? TAX_RATES.PPH_CURAH : TAX_RATES.PPH_PADAT;
-    const pphNominal = formData.memuatJasaPengangkutan ? Math.round((subtotal * pphRate) / 100) : 0;
+    const pphNominal = Math.round((subtotal * pphRate) / 100);
     const totalTagihan = subtotal + ppnNominal - pphNominal;
 
     return {
@@ -53,7 +53,7 @@ export default function InvoicePage() {
       pphNominal,
       totalTagihan,
     };
-  }, [formData.subtotalJasa, formData.materialType, formData.memuatJasaPengangkutan]);
+  }, [formData.subtotalJasa, formData.materialType]);
 
   const handleApply = (e) => {
     e.preventDefault();

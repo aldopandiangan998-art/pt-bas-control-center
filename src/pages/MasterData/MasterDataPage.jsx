@@ -99,7 +99,7 @@ export default function MasterDataPage() {
   });
 
   const [customerForm, setCustomerForm] = useState({
-    jenisBadanUsaha: 'PT',
+    jenisBadanUsaha: 'PT-Perusahaan Terbatas',
     name: '',
     alias: '',
     alamat: '',
@@ -191,13 +191,14 @@ export default function MasterDataPage() {
     const prefix =
       customerForm.kodePrefix ||
       `${customerForm.name.slice(0, 2).toUpperCase()} ${Math.floor(100 + Math.random() * 900)}`;
+    const jbuPrefix = customerForm.jenisBadanUsaha.split('-')[0] || customerForm.jenisBadanUsaha;
     addCustomer({
       ...customerForm,
       kodePrefix: prefix,
-      alias: customerForm.alias || `${customerForm.jenisBadanUsaha} ${customerForm.name}`,
+      alias: customerForm.alias || `${jbuPrefix} ${customerForm.name}`,
     });
     setCustomerForm({
-      jenisBadanUsaha: 'PT',
+      jenisBadanUsaha: 'PT-Perusahaan Terbatas',
       name: '',
       alias: '',
       alamat: '',
@@ -1009,8 +1010,40 @@ export default function MasterDataPage() {
               label="Nomor Rekening"
               icon={Hash}
               required
+              inputMode="numeric"
+              pattern="[0-9]*"
               value={supplierForm.noRekening}
-              onChange={(e) => setSupplierForm({ ...supplierForm, noRekening: e.target.value })}
+              onKeyDown={(e) => {
+                // Allow control keys (Backspace, Delete, Tab, Arrow keys, Ctrl shortcuts)
+                if (
+                  [
+                    'Backspace',
+                    'Tab',
+                    'Enter',
+                    'Delete',
+                    'Escape',
+                    'ArrowLeft',
+                    'ArrowRight',
+                    'ArrowUp',
+                    'ArrowDown',
+                    'Home',
+                    'End',
+                  ].includes(e.key) ||
+                  e.ctrlKey ||
+                  e.metaKey
+                ) {
+                  return;
+                }
+                // Reject non-numeric input
+                if (!/^[0-9]$/.test(e.key)) {
+                  e.preventDefault();
+                }
+              }}
+              onChange={(e) => {
+                const numericOnly = e.target.value.replace(/\D/g, '');
+                setSupplierForm({ ...supplierForm, noRekening: numericOnly });
+              }}
+              placeholder="Contoh: 8295019281 (Hanya angka)"
               className="font-mono"
             />
 
@@ -1242,34 +1275,42 @@ export default function MasterDataPage() {
       <Modal
         isOpen={modalOpen && currentTab === 'customer'}
         onClose={() => setModalOpen(false)}
-        title="Tambah Customer Baru"
+        title="Tambah Customer"
         subtitle="Pendaftaran customer proyek penerima material tambang"
       >
         <form onSubmit={handleSubmitCustomer} className="p-4 space-y-3">
           <Select
             label="Pilih Jenis Badan Usaha"
+            icon={User}
             value={customerForm.jenisBadanUsaha}
-            onChange={(e) =>
-              setCustomerForm({ ...customerForm, jenisBadanUsaha: e.target.value })
-            }
+            onChange={(e) => {
+              const val = e.target.value;
+              const pfx = val.split('-')[0] || val;
+              setCustomerForm({
+                ...customerForm,
+                jenisBadanUsaha: val,
+                alias: customerForm.name ? `${pfx} ${customerForm.name}` : customerForm.alias,
+              });
+            }}
           >
-            <option value="PT">PT (Perseroan Terbatas)</option>
-            <option value="CV">CV (Commanditaire Vennootschap)</option>
-            <option value="UD">UD (Usaha Dagang)</option>
-            <option value="Perorangan">Perorangan / Pribadi</option>
+            <option value="CV-Persekutuan Komanditer">CV-Persekutuan Komanditer</option>
+            <option value="PE-Personal">PE-Personal</option>
+            <option value="PT-Perusahaan Terbatas">PT-Perusahaan Terbatas</option>
+            <option value="UD-Usaha Dagang">UD-Usaha Dagang</option>
           </Select>
 
           <Input
             label="Nama Customer"
             required
             value={customerForm.name}
-            onChange={(e) =>
+            onChange={(e) => {
+              const pfx = customerForm.jenisBadanUsaha.split('-')[0] || customerForm.jenisBadanUsaha;
               setCustomerForm({
                 ...customerForm,
                 name: e.target.value,
-                alias: `${customerForm.jenisBadanUsaha} ${e.target.value}`,
-              })
-            }
+                alias: `${pfx} ${e.target.value}`,
+              });
+            }}
             placeholder="Contoh: LION WINGS, SEMEN INDONESIA"
           />
 
@@ -1295,10 +1336,12 @@ export default function MasterDataPage() {
               className="font-mono"
             />
             <Input
-              label="Nomor Telepon"
+              label="Nomor Telepon Customer"
+              icon={Phone}
               value={customerForm.telepon}
               onChange={(e) => setCustomerForm({ ...customerForm, telepon: e.target.value })}
               className="font-mono"
+              placeholder="Contoh: 081234567890"
             />
           </div>
 
@@ -1404,10 +1447,38 @@ export default function MasterDataPage() {
           <Input
             label="Nomor Rekening"
             required
+            inputMode="numeric"
+            pattern="[0-9]*"
             value={rekeningForm.nomorRekening}
-            onChange={(e) =>
-              setRekeningForm({ ...rekeningForm, nomorRekening: e.target.value })
-            }
+            onKeyDown={(e) => {
+              if (
+                [
+                  'Backspace',
+                  'Tab',
+                  'Enter',
+                  'Delete',
+                  'Escape',
+                  'ArrowLeft',
+                  'ArrowRight',
+                  'ArrowUp',
+                  'ArrowDown',
+                  'Home',
+                  'End',
+                ].includes(e.key) ||
+                e.ctrlKey ||
+                e.metaKey
+              ) {
+                return;
+              }
+              if (!/^[0-9]$/.test(e.key)) {
+                e.preventDefault();
+              }
+            }}
+            onChange={(e) => {
+              const numericOnly = e.target.value.replace(/\D/g, '');
+              setRekeningForm({ ...rekeningForm, nomorRekening: numericOnly });
+            }}
+            placeholder="Contoh: 140001928192 (Hanya angka)"
             className="font-mono font-bold"
           />
 

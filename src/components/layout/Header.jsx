@@ -20,7 +20,7 @@ export default function Header() {
   const displayRole = roleLabel || (currentUser?.role === 'superadmin' ? 'Super Admin' : 'Admin');
 
   return (
-    <header className="timber-header text-white shadow-md relative z-20 select-none">
+    <header className="timber-header text-white shadow-md relative z-20 select-none shrink-0">
       <div className="w-full px-3 sm:px-5 py-2.5">
         <div className="flex items-center justify-between gap-3">
           
@@ -84,7 +84,7 @@ export default function Header() {
             </div>
 
             {/* Functional Tool Icons */}
-            <div className="flex items-center gap-1 border-l border-white/15 pl-2">
+            <div className="flex items-center gap-1.5 border-l border-white/15 pl-2">
               <button
                 type="button"
                 onClick={() => navigate('/rekapan')}

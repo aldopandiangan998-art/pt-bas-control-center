@@ -19,14 +19,42 @@ import {
   Save,
   Calendar,
   Info,
+  ShieldCheck,
+  CheckCircle2,
+  LayoutGrid,
+  List,
+  Edit2,
 } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 import { useData } from '../../context/DataContext';
+import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../context/ToastContext';
 import { Button, Badge, Card, Input, Select, Modal } from '../../components/ui';
 
 export default function MasterDataPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const currentTab = searchParams.get('tab') || 'supplier';
+
+  const [viewMode, setViewMode] = useState(() => {
+    try {
+      return localStorage.getItem('ptbas_master_view_mode') || 'grid';
+    } catch {
+      return 'grid';
+    }
+  });
+
+  const handleSetViewMode = (mode) => {
+    setViewMode(mode);
+    try {
+      localStorage.setItem('ptbas_master_view_mode', mode);
+    } catch (e) {
+      // ignore
+    }
+  };
+
+  const { users, approveUser, toggleUserStatus, deleteUser, isSuperAdmin } = useAuth();
+  const { addToast } = useToast();
 
   const {
     materials,
@@ -450,6 +478,8 @@ export default function MasterDataPage() {
     setModalOpen(false);
   };
 
+  const activeUsers = (users && users.length > 0) ? users : usersList;
+
   const masterSubgroups = [
     {
       id: 'operasional',
@@ -477,7 +507,7 @@ export default function MasterDataPage() {
       label: 'Akses & Pengguna',
       tag: 'Akses',
       items: [
-        { key: 'pengguna', label: 'Data Pengguna', shortLabel: 'Pengguna Sistem', count: usersList.length, icon: Users },
+        { key: 'pengguna', label: 'Data Pengguna', shortLabel: 'Pengguna Sistem', count: activeUsers.length, icon: Users },
       ],
     },
   ];
@@ -498,14 +528,44 @@ export default function MasterDataPage() {
           <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-[#F4511E]/20 text-[#FF7043] border border-[#F4511E]/40 font-bold text-xs shadow-2xs">
             <ActiveIcon className="w-3.5 h-3.5 text-[#F4511E]" />
             <span>{activeItem.label}</span>
-            <span className="font-mono text-[10px] bg-black/40 text-neutral-200 px-1.5 py-0.2 rounded ml-0.5 border border-white/10">
+            <span className="entity-badge-count font-mono text-[10px] bg-black/40 text-neutral-200 px-1.5 py-0.2 rounded ml-0.5 border border-white/10">
               {activeItem.count}
             </span>
           </div>
         </div>
 
-        {/* Right: Compact Search & Add Button on the Same Horizontal Line */}
-        <div className="flex items-center gap-2 w-full md:w-auto justify-between md:justify-end">
+        {/* Right: View Mode Toggle, Compact Search & Add Button */}
+        <div className="flex items-center gap-2 w-full md:w-auto justify-between md:justify-end flex-wrap sm:flex-nowrap">
+          {/* Opsi Tampilan Grid / List */}
+          <div className="view-toggle-container flex items-center bg-[#0B0F17] p-0.5 rounded-lg border border-[#1D2838] shrink-0">
+            <button
+              type="button"
+              onClick={() => handleSetViewMode('grid')}
+              className={`view-toggle-btn p-1.5 rounded-md transition-all cursor-pointer ${
+                viewMode === 'grid'
+                  ? 'active bg-[#F4511E] text-white shadow-xs font-bold'
+                  : 'text-neutral-400 hover:text-white hover:bg-[#151D28]'
+              }`}
+              title="Tampilan Grid (Kartu)"
+              aria-label="Tampilan Grid"
+            >
+              <LayoutGrid className="w-3.5 h-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={() => handleSetViewMode('list')}
+              className={`view-toggle-btn p-1.5 rounded-md transition-all cursor-pointer ${
+                viewMode === 'list'
+                  ? 'active bg-[#F4511E] text-white shadow-xs font-bold'
+                  : 'text-neutral-400 hover:text-white hover:bg-[#151D28]'
+              }`}
+              title="Tampilan List (Tabel)"
+              aria-label="Tampilan List"
+            >
+              <List className="w-3.5 h-3.5" />
+            </button>
+          </div>
+
           <div className="w-full sm:w-56">
             <Input
               icon={Search}
@@ -530,149 +590,313 @@ export default function MasterDataPage() {
         </div>
       </div>
 
-      {/* 2. Unified Single-Row Horizontal Tab Ribbon (Melebar ke Samping) */}
-      <div className="bg-[#131A24] border border-[#1D2838] rounded-xl p-1.5 shadow-sm">
-        <div
-          className="flex items-center gap-1.5 overflow-x-auto scrollbar-none py-0.5 px-1 min-w-0"
-          role="tablist"
+      {/* Dynamic Tab Content with View Transitions and Grid/List options */}
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={`${currentTab}-${viewMode}`}
+          initial={{ opacity: 0, y: 10, scale: 0.995 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: -10, scale: 0.995 }}
+          transition={{ duration: 0.2, ease: 'easeOut' }}
+          className="w-full"
         >
-          {masterSubgroups.map((group, gIdx) => (
-            <div key={group.id} className="flex items-center gap-1 shrink-0">
-              {gIdx > 0 && <div className="h-5 w-px bg-[#1D2838] mx-2 shrink-0" />}
-
-              {/* Group Label Chip */}
-              <span className="text-[10px] font-mono uppercase text-neutral-400 font-bold px-2 py-1 rounded bg-[#0B0F17] border border-[#1D2838] shrink-0 select-none">
-                {group.tag || group.label}
-              </span>
-
-              {/* Items in Group */}
-              {group.items.map((cat) => {
-                const Icon = cat.icon;
-                const isActive = currentTab === cat.key;
-
-                return (
-                  <button
-                    key={cat.key}
-                    type="button"
-                    role="tab"
-                    aria-selected={isActive}
-                    onClick={() => setTab(cat.key)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap flex items-center gap-1.5 transition-all cursor-pointer shrink-0 select-none ${
-                      isActive
-                        ? 'bg-[#F4511E] text-white font-bold shadow-xs'
-                        : 'bg-[#0E1520] text-neutral-300 hover:text-white hover:bg-[#16202C] border border-[#1D2838]'
-                    }`}
-                  >
-                    <Icon className={`w-3.5 h-3.5 shrink-0 ${isActive ? 'text-white' : 'text-[#FF7043]'}`} />
-                    <span>{cat.shortLabel || cat.label}</span>
-                    <span
-                      className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
-                        isActive ? 'bg-black/40 text-white font-bold' : 'bg-black/30 text-neutral-400'
-                      }`}
-                    >
-                      {cat.count}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* ======================================================== */}
-      {/* 1. DATA SUPPLIER (FAITHFUL TO SCREENSHOT 38e7625c) */}
-      {/* ======================================================== */}
-      {currentTab === 'supplier' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-          {suppliers
-            .filter(
+          {/* ======================================================== */}
+          {/* 1. DATA SUPPLIER */}
+          {/* ======================================================== */}
+          {currentTab === 'supplier' && (() => {
+            const filtered = suppliers.filter(
               (s) =>
                 s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                 s.penerima.toLowerCase().includes(searchQuery.toLowerCase()) ||
                 s.noRekening.includes(searchQuery)
-            )
-            .map((sup) => (
-              <Card
-                key={sup.id}
-                hover
-                className="p-3.5 flex flex-col justify-between"
-              >
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => toggleSupplierStatus(sup.id)}
-                        className={`w-9 h-5 flex items-center rounded-full p-0.5 transition-colors cursor-pointer ${
-                          sup.aktif ? 'bg-[#F4511E]' : 'bg-[#2A2E33]'
-                        }`}
-                      >
-                        <div
-                          className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${
-                            sup.aktif ? 'translate-x-4' : 'translate-x-0'
-                          }`}
-                        />
-                      </button>
-                      <span className="text-[11px] text-neutral-400 font-mono">
-                        {sup.aktif ? 'Aktif' : 'Non-aktif'}
-                      </span>
-                    </div>
+            );
 
-                    <button
-                      type="button"
-                      onClick={() => handleOpenEditSupplier(sup)}
-                      className="w-7 h-7 rounded-full bg-[#F4511E] text-white flex items-center justify-center hover:opacity-90 transition-opacity cursor-pointer shadow-xs"
-                      title="Perbarui Data Supplier"
-                    >
-                      <ChevronRight className="w-4 h-4" />
-                    </button>
+            if (filtered.length === 0) {
+              return (
+                <div className="p-8 text-center bg-[#131517] border border-[#24282C] rounded-lg">
+                  <HardHat className="w-8 h-8 text-neutral-500 mx-auto mb-2 opacity-50" />
+                  <p className="text-sm text-neutral-400">Tidak ada data supplier yang sesuai pencarian</p>
+                </div>
+              );
+            }
+
+            if (viewMode === 'list') {
+              return (
+                <div className="bg-[#131517] border border-[#24282C] rounded-lg overflow-hidden shadow-xs">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs">
+                      <thead className="bg-[#181B1E] text-neutral-400 font-semibold border-b border-[#24282C] font-mono text-[11px]">
+                        <tr>
+                          <th className="p-3 w-32">Status</th>
+                          <th className="p-3">Nama Supplier</th>
+                          <th className="p-3">Bank & No. Rekening</th>
+                          <th className="p-3">Penerima (a/n)</th>
+                          <th className="p-3">PKP</th>
+                          <th className="p-3 text-center w-28">Aksi</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-[#202326]">
+                        {filtered.map((sup) => (
+                          <tr key={sup.id} className="hover:bg-[#181B1E]/60 transition-colors">
+                            <td className="p-3">
+                              <div className="flex items-center gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => toggleSupplierStatus(sup.id)}
+                                  className={`w-8 h-4.5 flex items-center rounded-full p-0.5 transition-colors cursor-pointer ${
+                                    sup.aktif ? 'bg-[#F4511E]' : 'bg-[#2A2E33]'
+                                  }`}
+                                  title={sup.aktif ? 'Klik untuk non-aktifkan' : 'Klik untuk aktifkan'}
+                                >
+                                  <div
+                                    className={`bg-white w-3.5 h-3.5 rounded-full shadow-md transform transition-transform ${
+                                      sup.aktif ? 'translate-x-3.5' : 'translate-x-0'
+                                    }`}
+                                  />
+                                </button>
+                                <span className="text-[11px] font-mono text-neutral-400">
+                                  {sup.aktif ? 'Aktif' : 'Non-aktif'}
+                                </span>
+                              </div>
+                            </td>
+                            <td className="p-3">
+                              <span className="font-bold text-white uppercase tracking-wide">
+                                {sup.name}
+                              </span>
+                            </td>
+                            <td className="p-3 font-mono text-neutral-300">
+                              <span className="font-semibold text-white">{sup.bank}</span> - {sup.noRekening}
+                            </td>
+                            <td className="p-3 uppercase text-neutral-300 tracking-tight">
+                              {sup.penerima}
+                            </td>
+                            <td className="p-3">
+                              {sup.pkp ? (
+                                <Badge size="xs" variant="success" dot>
+                                  PKP
+                                </Badge>
+                              ) : (
+                                <span className="text-[11px] text-neutral-500 font-mono">Non-PKP</span>
+                              )}
+                            </td>
+                            <td className="p-3 text-center">
+                              <div className="flex items-center justify-center gap-1.5">
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenEditSupplier(sup)}
+                                  className="p-1.5 rounded-md bg-[#F4511E]/10 hover:bg-[#F4511E] text-[#F4511E] hover:text-white transition-all cursor-pointer border border-[#F4511E]/30"
+                                  title="Perbarui Data Supplier"
+                                >
+                                  <Edit2 className="w-3.5 h-3.5" />
+                                </button>
+                                <Button
+                                  size="xs"
+                                  variant="ghost"
+                                  icon={Trash2}
+                                  onClick={() => handleAskDelete('supplier', sup.id, sup.name)}
+                                  className="text-[#F4511E] hover:bg-[#F4511E]/10 border border-[#F4511E]/30"
+                                  title="Hapus Supplier"
+                                />
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
+                </div>
+              );
+            }
 
-                  <h3 className="text-sm font-bold text-white tracking-wide uppercase line-clamp-1">
-                    {sup.name}
-                  </h3>
+            return (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                {filtered.map((sup) => (
+                  <Card
+                    key={sup.id}
+                    hover
+                    className="p-3.5 flex flex-col justify-between"
+                  >
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => toggleSupplierStatus(sup.id)}
+                            className={`w-9 h-5 flex items-center rounded-full p-0.5 transition-colors cursor-pointer ${
+                              sup.aktif ? 'bg-[#F4511E]' : 'bg-[#2A2E33]'
+                            }`}
+                          >
+                            <div
+                              className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${
+                                sup.aktif ? 'translate-x-4' : 'translate-x-0'
+                              }`}
+                            />
+                          </button>
+                          <span className="text-[11px] text-neutral-400 font-mono">
+                            {sup.aktif ? 'Aktif' : 'Non-aktif'}
+                          </span>
+                        </div>
 
-                  <p className="text-xs text-neutral-300 font-mono mt-0.5">
-                    {sup.bank} - {sup.noRekening}
-                  </p>
+                        <button
+                          type="button"
+                          onClick={() => handleOpenEditSupplier(sup)}
+                          className="w-7 h-7 rounded-full bg-[#F4511E] text-white flex items-center justify-center hover:opacity-90 transition-opacity cursor-pointer shadow-xs"
+                          title="Perbarui Data Supplier"
+                        >
+                          <ChevronRight className="w-4 h-4" />
+                        </button>
+                      </div>
 
-                  <p className="text-xs text-neutral-400 uppercase tracking-tight mt-0.5 line-clamp-1">
-                    {sup.penerima}
-                  </p>
+                      <h3 className="text-sm font-bold text-white tracking-wide uppercase line-clamp-1">
+                        {sup.name}
+                      </h3>
 
-                  {sup.pkp && (
-                    <div className="mt-2">
-                      <Badge size="xs" variant="success" dot>
-                        PKP Terdaftar
-                      </Badge>
+                      <p className="text-xs text-neutral-300 font-mono mt-0.5">
+                        {sup.bank} - {sup.noRekening}
+                      </p>
+
+                      <p className="text-xs text-neutral-400 uppercase tracking-tight mt-0.5 line-clamp-1">
+                        {sup.penerima}
+                      </p>
+
+                      {sup.pkp && (
+                        <div className="mt-2">
+                          <Badge size="xs" variant="success" dot>
+                            PKP Terdaftar
+                          </Badge>
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
 
-                <div className="mt-3 pt-2 border-t border-[#22262A] flex justify-center">
-                  <Button
-                    size="xs"
-                    variant="ghost"
-                    icon={Trash2}
-                    onClick={() => handleAskDelete('supplier', sup.id, sup.name)}
-                    className="text-[#F4511E] hover:bg-[#F4511E]/10 border border-[#F4511E]/30"
-                    title="Hapus Supplier"
-                  />
-                </div>
-              </Card>
-            ))}
-        </div>
-      )}
+                    <div className="mt-3 pt-2 border-t border-[#22262A] flex justify-center">
+                      <Button
+                        size="xs"
+                        variant="ghost"
+                        icon={Trash2}
+                        onClick={() => handleAskDelete('supplier', sup.id, sup.name)}
+                        className="text-[#F4511E] hover:bg-[#F4511E]/10 border border-[#F4511E]/30"
+                        title="Hapus Supplier"
+                      />
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            );
+          })()}
 
       {/* ======================================================== */}
-      {/* 2. DATA MATERIAL (FAITHFUL TO SCREENSHOT e79f026e) */}
+      {/* 2. DATA MATERIAL */}
       {/* ======================================================== */}
-      {currentTab === 'material' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-          {materials
-            .filter((m) => m.name.toLowerCase().includes(searchQuery.toLowerCase()))
-            .map((mat) => (
+      {currentTab === 'material' && (() => {
+        const filtered = materials.filter((m) =>
+          m.name.toLowerCase().includes(searchQuery.toLowerCase())
+        );
+
+        if (filtered.length === 0) {
+          return (
+            <div className="p-8 text-center bg-[#131517] border border-[#24282C] rounded-lg">
+              <Mountain className="w-8 h-8 text-neutral-500 mx-auto mb-2 opacity-50" />
+              <p className="text-sm text-neutral-400">Tidak ada data material yang sesuai pencarian</p>
+            </div>
+          );
+        }
+
+        if (viewMode === 'list') {
+          return (
+            <div className="bg-[#131517] border border-[#24282C] rounded-lg overflow-hidden shadow-xs">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-[#181B1E] text-neutral-400 font-semibold border-b border-[#24282C] font-mono text-[11px]">
+                    <tr>
+                      <th className="p-3 w-32">Status</th>
+                      <th className="p-3">Nama Material</th>
+                      <th className="p-3">Kategori & Satuan</th>
+                      <th className="p-3 text-right">Harga Beli</th>
+                      <th className="p-3 text-right">Harga Jual</th>
+                      <th className="p-3 text-center">PPH Rate</th>
+                      <th className="p-3 text-center w-28">Aksi</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#202326]">
+                    {filtered.map((mat) => (
+                      <tr key={mat.id} className="hover:bg-[#181B1E]/60 transition-colors">
+                        <td className="p-3">
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => toggleMaterialStatus(mat.id)}
+                              className={`w-8 h-4.5 flex items-center rounded-full p-0.5 transition-colors cursor-pointer ${
+                                mat.aktif ? 'bg-[#F4511E]' : 'bg-[#2A2E33]'
+                              }`}
+                              title={mat.aktif ? 'Klik untuk non-aktifkan' : 'Klik untuk aktifkan'}
+                            >
+                              <div
+                                className={`bg-white w-3.5 h-3.5 rounded-full shadow-md transform transition-transform ${
+                                  mat.aktif ? 'translate-x-3.5' : 'translate-x-0'
+                                }`}
+                              />
+                            </button>
+                            <span className="text-[11px] font-mono text-neutral-400">
+                              {mat.aktif ? 'Aktif' : 'Non-aktif'}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="p-3">
+                          <span className="font-bold text-white uppercase tracking-wide">
+                            {mat.name}
+                          </span>
+                        </td>
+                        <td className="p-3">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <Badge size="xs" variant="neutral">
+                              {mat.category}
+                            </Badge>
+                            <Badge size="xs" variant="timber">
+                              {mat.satuan}
+                            </Badge>
+                          </div>
+                        </td>
+                        <td className="p-3 text-right font-mono text-neutral-300">
+                          {mat.beli.toFixed(1)}
+                        </td>
+                        <td className="p-3 text-right font-mono font-bold text-amber-400">
+                          {mat.jual.toFixed(1)}
+                        </td>
+                        <td className="p-3 text-center">
+                          <span className="font-mono text-xs text-neutral-300">{mat.pphRate}%</span>
+                        </td>
+                        <td className="p-3 text-center">
+                          <div className="flex items-center justify-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => handleOpenEditMaterial(mat)}
+                              className="p-1.5 rounded-md bg-[#F4511E]/10 hover:bg-[#F4511E] text-[#F4511E] hover:text-white transition-all cursor-pointer border border-[#F4511E]/30"
+                              title="Perbarui Data Material"
+                            >
+                              <Edit2 className="w-3.5 h-3.5" />
+                            </button>
+                            <Button
+                              size="xs"
+                              variant="ghost"
+                              icon={Trash2}
+                              onClick={() => handleAskDelete('material', mat.id, mat.name)}
+                              className="text-[#F4511E] hover:bg-[#F4511E]/10 border border-[#F4511E]/30"
+                              title="Hapus Material"
+                            />
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          );
+        }
+
+        return (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            {filtered.map((mat) => (
               <Card
                 key={mat.id}
                 hover
@@ -744,21 +968,119 @@ export default function MasterDataPage() {
                 </div>
               </Card>
             ))}
-        </div>
-      )}
+          </div>
+        );
+      })()}
 
       {/* ======================================================== */}
-      {/* 3. DATA ARMADA (FAITHFUL TO SCREENSHOT bf8de022) */}
+      {/* 3. DATA ARMADA */}
       {/* ======================================================== */}
-      {currentTab === 'armada' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-          {armadaList
-            .filter(
-              (a) =>
-                a.nopol.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                a.merk.toLowerCase().includes(searchQuery.toLowerCase())
-            )
-            .map((arm) => (
+      {currentTab === 'armada' && (() => {
+        const filtered = armadaList.filter(
+          (a) =>
+            a.nopol.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            a.merk.toLowerCase().includes(searchQuery.toLowerCase())
+        );
+
+        if (filtered.length === 0) {
+          return (
+            <div className="p-8 text-center bg-[#131517] border border-[#24282C] rounded-lg">
+              <Truck className="w-8 h-8 text-neutral-500 mx-auto mb-2 opacity-50" />
+              <p className="text-sm text-neutral-400">Tidak ada data armada yang sesuai pencarian</p>
+            </div>
+          );
+        }
+
+        if (viewMode === 'list') {
+          return (
+            <div className="bg-[#131517] border border-[#24282C] rounded-lg overflow-hidden shadow-xs">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-[#181B1E] text-neutral-400 font-semibold border-b border-[#24282C] font-mono text-[11px]">
+                    <tr>
+                      <th className="p-3 w-32">Status</th>
+                      <th className="p-3">No. Polisi</th>
+                      <th className="p-3">Merk & Tahun</th>
+                      <th className="p-3">Dimensi Bak (P x L x T)</th>
+                      <th className="p-3 text-right">Kapasitas Bak</th>
+                      <th className="p-3 text-center w-28">Aksi</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#202326]">
+                    {filtered.map((arm) => (
+                      <tr key={arm.id} className="hover:bg-[#181B1E]/60 transition-colors">
+                        <td className="p-3">
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => toggleArmadaStatus(arm.id)}
+                              className={`w-8 h-4.5 flex items-center rounded-full p-0.5 transition-colors cursor-pointer ${
+                                arm.aktif ? 'bg-[#F4511E]' : 'bg-[#2A2E33]'
+                              }`}
+                              title={arm.aktif ? 'Klik untuk non-aktifkan' : 'Klik untuk aktifkan'}
+                            >
+                              <div
+                                className={`bg-white w-3.5 h-3.5 rounded-full shadow-md transform transition-transform ${
+                                  arm.aktif ? 'translate-x-3.5' : 'translate-x-0'
+                                }`}
+                              />
+                            </button>
+                            <span className="text-[11px] font-mono text-neutral-400">
+                              {arm.aktif ? 'Aktif' : 'Non-aktif'}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="p-3">
+                          <span className="font-bold text-white font-mono tracking-wider text-sm">
+                            {arm.nopol}
+                          </span>
+                        </td>
+                        <td className="p-3">
+                          <div className="flex items-center gap-2">
+                            <span className="px-1.5 py-0.5 rounded bg-black/40 border border-[#2E3339] text-neutral-300 text-[11px]">
+                              {arm.merk}
+                            </span>
+                            <span className="text-neutral-400 text-xs">Thn {arm.tahun}</span>
+                          </div>
+                        </td>
+                        <td className="p-3 font-mono text-neutral-300">
+                          {arm.panjangCm} × {arm.lebarCm} × {arm.tinggiCm} cm
+                        </td>
+                        <td className="p-3 text-right font-mono font-bold text-amber-400">
+                          {arm.kapasitas} m³
+                        </td>
+                        <td className="p-3 text-center">
+                          <div className="flex items-center justify-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => handleOpenEditArmada(arm)}
+                              className="p-1.5 rounded-md bg-[#F4511E]/10 hover:bg-[#F4511E] text-[#F4511E] hover:text-white transition-all cursor-pointer border border-[#F4511E]/30"
+                              title="Perbarui Data Armada"
+                            >
+                              <Edit2 className="w-3.5 h-3.5" />
+                            </button>
+                            <Button
+                              size="xs"
+                              variant="ghost"
+                              icon={Trash2}
+                              onClick={() => handleAskDelete('armada', arm.id, arm.nopol)}
+                              className="text-[#F4511E] hover:bg-[#F4511E]/10 border border-[#F4511E]/30"
+                              title="Hapus Armada"
+                            />
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          );
+        }
+
+        return (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            {filtered.map((arm) => (
               <Card
                 key={arm.id}
                 hover
@@ -828,21 +1150,108 @@ export default function MasterDataPage() {
                 </div>
               </Card>
             ))}
-        </div>
-      )}
+          </div>
+        );
+      })()}
 
       {/* ======================================================== */}
-      {/* 4. DATA CUSTOMER (FAITHFUL TO SCREENSHOT cbe2d441) */}
+      {/* 4. DATA CUSTOMER */}
       {/* ======================================================== */}
-      {currentTab === 'customer' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-          {customers
-            .filter(
-              (c) =>
-                c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                c.kodePrefix.toLowerCase().includes(searchQuery.toLowerCase())
-            )
-            .map((cust) => (
+      {currentTab === 'customer' && (() => {
+        const filtered = customers.filter(
+          (c) =>
+            c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            c.kodePrefix.toLowerCase().includes(searchQuery.toLowerCase())
+        );
+
+        if (filtered.length === 0) {
+          return (
+            <div className="p-8 text-center bg-[#131517] border border-[#24282C] rounded-lg">
+              <Building2 className="w-8 h-8 text-neutral-500 mx-auto mb-2 opacity-50" />
+              <p className="text-sm text-neutral-400">Tidak ada data customer yang sesuai pencarian</p>
+            </div>
+          );
+        }
+
+        if (viewMode === 'list') {
+          return (
+            <div className="bg-[#131517] border border-[#24282C] rounded-lg overflow-hidden shadow-xs">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-[#181B1E] text-neutral-400 font-semibold border-b border-[#24282C] font-mono text-[11px]">
+                    <tr>
+                      <th className="p-3 w-32">Status</th>
+                      <th className="p-3">Kode Prefix</th>
+                      <th className="p-3">Nama Customer</th>
+                      <th className="p-3">Alamat</th>
+                      <th className="p-3">Telepon</th>
+                      <th className="p-3">NPWP</th>
+                      <th className="p-3 text-center w-24">Aksi</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#202326]">
+                    {filtered.map((cust) => (
+                      <tr key={cust.id} className="hover:bg-[#181B1E]/60 transition-colors">
+                        <td className="p-3">
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => toggleCustomerStatus(cust.id)}
+                              className={`w-8 h-4.5 flex items-center rounded-full p-0.5 transition-colors cursor-pointer ${
+                                cust.aktif ? 'bg-[#F4511E]' : 'bg-[#2A2E33]'
+                              }`}
+                              title={cust.aktif ? 'Klik untuk non-aktifkan' : 'Klik untuk aktifkan'}
+                            >
+                              <div
+                                className={`bg-white w-3.5 h-3.5 rounded-full shadow-md transform transition-transform ${
+                                  cust.aktif ? 'translate-x-3.5' : 'translate-x-0'
+                                }`}
+                              />
+                            </button>
+                            <span className="text-[11px] font-mono text-neutral-400">
+                              {cust.aktif ? 'Aktif' : 'Non-aktif'}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="p-3 font-mono font-bold text-[#F4511E]">
+                          {cust.kodePrefix}
+                        </td>
+                        <td className="p-3">
+                          <span className="font-bold text-white uppercase tracking-wide">
+                            {cust.name}
+                          </span>
+                        </td>
+                        <td className="p-3 text-neutral-300 max-w-xs truncate">
+                          {cust.alamat}
+                        </td>
+                        <td className="p-3 font-mono text-neutral-300">
+                          {cust.telepon || '-'}
+                        </td>
+                        <td className="p-3 font-mono text-neutral-400">
+                          {cust.npwp || '-'}
+                        </td>
+                        <td className="p-3 text-center">
+                          <Button
+                            size="xs"
+                            variant="ghost"
+                            icon={Trash2}
+                            onClick={() => handleAskDelete('customer', cust.id, cust.name)}
+                            className="text-[#F4511E] hover:bg-[#F4511E]/10 border border-[#F4511E]/30"
+                            title="Hapus Customer"
+                          />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          );
+        }
+
+        return (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            {filtered.map((cust) => (
               <Card
                 key={cust.id}
                 hover
@@ -907,21 +1316,114 @@ export default function MasterDataPage() {
                 </div>
               </Card>
             ))}
-        </div>
-      )}
+          </div>
+        );
+      })()}
 
       {/* ======================================================== */}
-      {/* 5. DATA BANK (FAITHFUL TO SCREENSHOT 6584ca21) */}
+      {/* 5. DATA BANK */}
       {/* ======================================================== */}
-      {currentTab === 'bank' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-          {banks
-            .filter(
-              (b) =>
-                b.namaBank.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                b.namaAlias.toLowerCase().includes(searchQuery.toLowerCase())
-            )
-            .map((bank) => (
+      {currentTab === 'bank' && (() => {
+        const filtered = banks.filter(
+          (b) =>
+            b.namaBank.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            b.namaAlias.toLowerCase().includes(searchQuery.toLowerCase())
+        );
+
+        if (filtered.length === 0) {
+          return (
+            <div className="p-8 text-center bg-[#131517] border border-[#24282C] rounded-lg">
+              <Landmark className="w-8 h-8 text-neutral-500 mx-auto mb-2 opacity-50" />
+              <p className="text-sm text-neutral-400">Tidak ada data bank yang sesuai pencarian</p>
+            </div>
+          );
+        }
+
+        if (viewMode === 'list') {
+          return (
+            <div className="bg-[#131517] border border-[#24282C] rounded-lg overflow-hidden shadow-xs">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-[#181B1E] text-neutral-400 font-semibold border-b border-[#24282C] font-mono text-[11px]">
+                    <tr>
+                      <th className="p-3 w-32">Status</th>
+                      <th className="p-3">Nama Alias</th>
+                      <th className="p-3">Nama Bank Resmi</th>
+                      <th className="p-3">Kode Bank</th>
+                      <th className="p-3">Kode SWIFT</th>
+                      <th className="p-3 text-center w-28">Aksi</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#202326]">
+                    {filtered.map((bank) => (
+                      <tr key={bank.id} className="hover:bg-[#181B1E]/60 transition-colors">
+                        <td className="p-3">
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => toggleBankStatus(bank.id)}
+                              className={`w-8 h-4.5 flex items-center rounded-full p-0.5 transition-colors cursor-pointer ${
+                                bank.aktif ? 'bg-[#F4511E]' : 'bg-[#2A2E33]'
+                              }`}
+                              title={bank.aktif ? 'Klik untuk non-aktifkan' : 'Klik untuk aktifkan'}
+                            >
+                              <div
+                                className={`bg-white w-3.5 h-3.5 rounded-full shadow-md transform transition-transform ${
+                                  bank.aktif ? 'translate-x-3.5' : 'translate-x-0'
+                                }`}
+                              />
+                            </button>
+                            <span className="text-[11px] font-mono text-neutral-400">
+                              {bank.aktif ? 'Aktif' : 'Non-aktif'}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="p-3">
+                          <span className="font-bold text-white font-mono tracking-wider">
+                            {bank.namaAlias}
+                          </span>
+                        </td>
+                        <td className="p-3 text-neutral-300">
+                          {bank.namaBank}
+                        </td>
+                        <td className="p-3 font-mono text-neutral-300">
+                          {bank.kodeBank}
+                        </td>
+                        <td className="p-3 font-mono text-neutral-400">
+                          {bank.kodeSwift || '-'}
+                        </td>
+                        <td className="p-3 text-center">
+                          <div className="flex items-center justify-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => handleOpenEditBank(bank)}
+                              className="p-1.5 rounded-md bg-[#F4511E]/10 hover:bg-[#F4511E] text-[#F4511E] hover:text-white transition-all cursor-pointer border border-[#F4511E]/30"
+                              title="Perbarui Data Bank"
+                            >
+                              <Edit2 className="w-3.5 h-3.5" />
+                            </button>
+                            <Button
+                              size="xs"
+                              variant="ghost"
+                              icon={Trash2}
+                              onClick={() => handleAskDelete('bank', bank.id, bank.namaAlias || bank.namaBank)}
+                              className="text-[#F4511E] hover:bg-[#F4511E]/10 border border-[#F4511E]/30"
+                              title="Hapus Bank"
+                            />
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          );
+        }
+
+        return (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            {filtered.map((bank) => (
               <Card
                 key={bank.id}
                 hover
@@ -981,21 +1483,102 @@ export default function MasterDataPage() {
                 </div>
               </Card>
             ))}
-        </div>
-      )}
+          </div>
+        );
+      })()}
 
       {/* ======================================================== */}
-      {/* 6. DATA REKENING BANK (FAITHFUL TO SCREENSHOT 5b565e7a) */}
+      {/* 6. DATA REKENING BANK */}
       {/* ======================================================== */}
-      {currentTab === 'rekening' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-          {bankAccounts
-            .filter(
-              (acc) =>
-                acc.nomorRekening.includes(searchQuery) ||
-                acc.namaAlias.toLowerCase().includes(searchQuery.toLowerCase())
-            )
-            .map((acc) => (
+      {currentTab === 'rekening' && (() => {
+        const filtered = bankAccounts.filter(
+          (acc) =>
+            acc.nomorRekening.includes(searchQuery) ||
+            acc.namaAlias.toLowerCase().includes(searchQuery.toLowerCase())
+        );
+
+        if (filtered.length === 0) {
+          return (
+            <div className="p-8 text-center bg-[#131517] border border-[#24282C] rounded-lg">
+              <CreditCard className="w-8 h-8 text-neutral-500 mx-auto mb-2 opacity-50" />
+              <p className="text-sm text-neutral-400">Tidak ada data rekening yang sesuai pencarian</p>
+            </div>
+          );
+        }
+
+        if (viewMode === 'list') {
+          return (
+            <div className="bg-[#131517] border border-[#24282C] rounded-lg overflow-hidden shadow-xs">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-[#181B1E] text-neutral-400 font-semibold border-b border-[#24282C] font-mono text-[11px]">
+                    <tr>
+                      <th className="p-3 w-32">Status</th>
+                      <th className="p-3">Nomor Rekening</th>
+                      <th className="p-3">Bank & Jenis Rekening</th>
+                      <th className="p-3">Atas Nama</th>
+                      <th className="p-3">Alias / Label</th>
+                      <th className="p-3 text-center w-24">Aksi</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#202326]">
+                    {filtered.map((acc) => (
+                      <tr key={acc.id} className="hover:bg-[#181B1E]/60 transition-colors">
+                        <td className="p-3">
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => toggleBankAccountStatus(acc.id)}
+                              className={`w-8 h-4.5 flex items-center rounded-full p-0.5 transition-colors cursor-pointer ${
+                                acc.aktif ? 'bg-[#F4511E]' : 'bg-[#2A2E33]'
+                              }`}
+                              title={acc.aktif ? 'Klik untuk non-aktifkan' : 'Klik untuk aktifkan'}
+                            >
+                              <div
+                                className={`bg-white w-3.5 h-3.5 rounded-full shadow-md transform transition-transform ${
+                                  acc.aktif ? 'translate-x-3.5' : 'translate-x-0'
+                                }`}
+                              />
+                            </button>
+                            <span className="text-[11px] font-mono text-neutral-400">
+                              {acc.aktif ? 'Aktif' : 'Non-aktif'}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="p-3 font-mono font-bold text-white text-sm tracking-wider">
+                          {acc.nomorRekening}
+                        </td>
+                        <td className="p-3 font-mono text-neutral-300">
+                          <span className="font-semibold text-white">{acc.bank}</span> &bull; {acc.jenisRekening}
+                        </td>
+                        <td className="p-3 text-neutral-300">
+                          {acc.rekeningAtasNama}
+                        </td>
+                        <td className="p-3 font-mono font-bold text-amber-300">
+                          {acc.namaAlias}
+                        </td>
+                        <td className="p-3 text-center">
+                          <Button
+                            size="xs"
+                            variant="ghost"
+                            icon={Trash2}
+                            onClick={() => handleAskDelete('rekening', acc.id, acc.nomorRekening)}
+                            className="text-[#F4511E] hover:bg-[#F4511E]/10 border border-[#F4511E]/30"
+                            title="Hapus Rekening"
+                          />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          );
+        }
+
+        return (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            {filtered.map((acc) => (
               <Card
                 key={acc.id}
                 hover
@@ -1053,39 +1636,284 @@ export default function MasterDataPage() {
                 </div>
               </Card>
             ))}
-        </div>
-      )}
+          </div>
+        );
+      })()}
 
       {/* ======================================================== */}
       {/* 7. DATA PENGGUNA (USERS) */}
       {/* ======================================================== */}
-      {currentTab === 'pengguna' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
-          {usersList.map((user) => (
-            <Card key={user.id} hover className="p-3.5 flex flex-col justify-between">
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="w-7 h-7 rounded-full bg-[#F4511E]/20 text-[#F4511E] font-bold text-xs flex items-center justify-center font-mono">
-                    {user.name.split(' ').map((n) => n[0]).join('')}
+      {currentTab === 'pengguna' && (() => {
+        const filtered = activeUsers.filter(
+          (u) =>
+            u.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            u.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            (u.branch && u.branch.toLowerCase().includes(searchQuery.toLowerCase()))
+        );
+
+        return (
+          <div className="space-y-4">
+            {/* Header Info Banner for Super Admin */}
+            {isSuperAdmin && (
+              <div className="p-3 rounded-lg bg-[#14181C] border border-[#262B30] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
+                <div className="flex items-center gap-2 text-neutral-300">
+                  <ShieldCheck className="w-4 h-4 text-amber-400 shrink-0" />
+                  <span>
+                    Otoritas Direksi: Super Admin dapat menyetujui (approve), mengaktifkan, atau menolak pendaftaran akun Admin baru.
                   </span>
-                  <Badge size="xs" variant="neutral">
-                    {user.role}
-                  </Badge>
                 </div>
-
-                <h3 className="text-sm font-bold text-white">{user.name}</h3>
-                <p className="text-xs text-neutral-400 font-mono mt-0.5">{user.email}</p>
-                <p className="text-xs text-neutral-400 font-mono mt-0.5">{user.phone}</p>
+                {activeUsers.some((u) => !u.aktif || u.aktif === 0) && (
+                  <Badge size="xs" variant="warning" dot className="animate-pulse">
+                    {activeUsers.filter((u) => !u.aktif || u.aktif === 0).length} Menunggu Persetujuan
+                  </Badge>
+                )}
               </div>
+            )}
 
-              <div className="mt-3 pt-2 border-t border-[#22262A] flex items-center justify-between text-[11px] text-neutral-400">
-                <Badge size="xs" variant="success" dot>Aktif</Badge>
-                <span className="font-mono text-[10px]">Gresik Hub</span>
+            {filtered.length === 0 ? (
+              <div className="p-8 text-center bg-[#131517] border border-[#24282C] rounded-lg">
+                <Users className="w-8 h-8 text-neutral-500 mx-auto mb-2 opacity-50" />
+                <p className="text-sm text-neutral-400">Tidak ada pengguna yang sesuai pencarian</p>
               </div>
-            </Card>
-          ))}
-        </div>
-      )}
+            ) : viewMode === 'list' ? (
+              <div className="bg-[#131517] border border-[#24282C] rounded-lg overflow-hidden shadow-xs">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-[#181B1E] text-neutral-400 font-semibold border-b border-[#24282C] font-mono text-[11px]">
+                      <tr>
+                        <th className="p-3">Pengguna</th>
+                        <th className="p-3">Role</th>
+                        <th className="p-3">Kontak & Unit</th>
+                        <th className="p-3">Status Akun</th>
+                        <th className="p-3">Terdaftar</th>
+                        {isSuperAdmin && <th className="p-3 text-center w-36">Otoritas Admin</th>}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#202326]">
+                      {filtered.map((user) => {
+                        const isPending = !user.aktif || user.aktif === 0;
+                        const isSuper = user.role === 'superadmin' || user.roleLabel === 'Super Admin';
+
+                        return (
+                          <tr key={user.id} className="hover:bg-[#181B1E]/60 transition-colors">
+                            <td className="p-3">
+                              <div className="flex items-center gap-2.5">
+                                <span className="w-7 h-7 rounded-full bg-[#F4511E]/20 text-[#F4511E] font-bold text-xs flex items-center justify-center font-mono shrink-0">
+                                  {user.name.split(' ').map((n) => n[0]).join('')}
+                                </span>
+                                <div>
+                                  <div className="font-bold text-white text-xs">{user.name}</div>
+                                  <div className="text-[11px] text-neutral-400 font-mono truncate">{user.email}</div>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="p-3">
+                              <Badge size="xs" variant={isSuper ? 'primary' : 'neutral'}>
+                                {user.roleLabel || user.role}
+                              </Badge>
+                            </td>
+                            <td className="p-3 font-mono text-neutral-300">
+                              <div>{user.phone || '-'}</div>
+                              {user.branch && <div className="text-[10px] text-neutral-400">{user.branch}</div>}
+                            </td>
+                            <td className="p-3">
+                              {isPending ? (
+                                <Badge size="xs" variant="warning" dot className="animate-pulse">
+                                  Menunggu Approval
+                                </Badge>
+                              ) : (
+                                <Badge size="xs" variant="success" dot>
+                                  Aktif
+                                </Badge>
+                              )}
+                            </td>
+                            <td className="p-3 font-mono text-[11px] text-neutral-400">
+                              {user.created_at ? new Date(user.created_at).toLocaleDateString('id-ID') : 'Gresik Hub'}
+                            </td>
+                            {isSuperAdmin && (
+                              <td className="p-3 text-center">
+                                {!isSuper && (
+                                  <div className="flex items-center justify-center gap-1.5">
+                                    {isPending ? (
+                                      <Button
+                                        size="xs"
+                                        variant="primary"
+                                        icon={CheckCircle2}
+                                        onClick={async () => {
+                                          const res = await approveUser(user.id);
+                                          if (res.success) {
+                                            addToast(`Akun Admin ${user.name} berhasil disetujui!`, 'success');
+                                          } else {
+                                            addToast(res.message, 'error');
+                                          }
+                                        }}
+                                        className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold"
+                                      >
+                                        Setujui
+                                      </Button>
+                                    ) : (
+                                      <Button
+                                        size="xs"
+                                        variant="neutral"
+                                        onClick={async () => {
+                                          const res = await toggleUserStatus(user.id);
+                                          if (res.success) {
+                                            addToast(
+                                              `Status akun ${user.name} diubah menjadi ${res.aktif ? 'Aktif' : 'Nonaktif'}.`,
+                                              'info'
+                                            );
+                                          }
+                                        }}
+                                        className="text-[10px] py-1 text-neutral-400 hover:text-white"
+                                      >
+                                        Nonaktifkan
+                                      </Button>
+                                    )}
+
+                                    <button
+                                      type="button"
+                                      onClick={async () => {
+                                        if (window.confirm(`Hapus akun ${user.name}?`)) {
+                                          const res = await deleteUser(user.id);
+                                          if (res.success) {
+                                            addToast(`Akun ${user.name} telah dihapus.`, 'info');
+                                          }
+                                        }
+                                      }}
+                                      className="p-1.5 rounded hover:bg-rose-500/20 text-neutral-500 hover:text-rose-400 transition-colors cursor-pointer"
+                                      title="Hapus Akun"
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                    </button>
+                                  </div>
+                                )}
+                              </td>
+                            )}
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3.5">
+                {filtered.map((user) => {
+                  const isPending = !user.aktif || user.aktif === 0;
+                  const isSuper = user.role === 'superadmin' || user.roleLabel === 'Super Admin';
+
+                  return (
+                    <Card
+                      key={user.id}
+                      hover
+                      className={`p-3.5 flex flex-col justify-between transition-all ${
+                        isPending ? 'border-amber-500/40 bg-amber-950/10' : ''
+                      }`}
+                    >
+                      <div>
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="w-7 h-7 rounded-full bg-[#F4511E]/20 text-[#F4511E] font-bold text-xs flex items-center justify-center font-mono">
+                            {user.name.split(' ').map((n) => n[0]).join('')}
+                          </span>
+                          <div className="flex items-center gap-1.5">
+                            <Badge size="xs" variant={isSuper ? 'primary' : 'neutral'}>
+                              {user.roleLabel || user.role}
+                            </Badge>
+                          </div>
+                        </div>
+
+                        <h3 className="text-sm font-bold text-white">{user.name}</h3>
+                        <p className="text-xs text-neutral-400 font-mono mt-0.5 truncate">{user.email}</p>
+                        <p className="text-xs text-neutral-400 font-mono mt-0.5">{user.phone || '-'}</p>
+                        {user.branch && (
+                          <p className="text-[11px] text-neutral-500 mt-1 flex items-center gap-1 font-mono">
+                            <span>Unit:</span>
+                            <span className="text-neutral-400 truncate">{user.branch}</span>
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="mt-3 pt-2.5 border-t border-[#22262A] space-y-2">
+                        <div className="flex items-center justify-between text-[11px]">
+                          {isPending ? (
+                            <Badge size="xs" variant="warning" dot className="animate-pulse">
+                              Menunggu Approval
+                            </Badge>
+                          ) : (
+                            <Badge size="xs" variant="success" dot>
+                              Aktif
+                            </Badge>
+                          )}
+                          <span className="font-mono text-[10px] text-neutral-500">
+                            {user.created_at ? new Date(user.created_at).toLocaleDateString('id-ID') : 'Gresik Hub'}
+                          </span>
+                        </div>
+
+                        {/* Super Admin Action Controls */}
+                        {isSuperAdmin && !isSuper && (
+                          <div className="pt-2 flex items-center gap-1.5 border-t border-[#1C2024]">
+                            {isPending ? (
+                              <Button
+                                size="xs"
+                                variant="primary"
+                                icon={CheckCircle2}
+                                onClick={async () => {
+                                  const res = await approveUser(user.id);
+                                  if (res.success) {
+                                    addToast(`Akun Admin ${user.name} berhasil disetujui!`, 'success');
+                                  } else {
+                                    addToast(res.message, 'error');
+                                  }
+                                }}
+                                className="w-full justify-center bg-emerald-600 hover:bg-emerald-500 text-white font-bold"
+                              >
+                                Setujui Akun
+                              </Button>
+                            ) : (
+                              <Button
+                                size="xs"
+                                variant="neutral"
+                                onClick={async () => {
+                                  const res = await toggleUserStatus(user.id);
+                                  if (res.success) {
+                                    addToast(
+                                      `Status akun ${user.name} diubah menjadi ${res.aktif ? 'Aktif' : 'Nonaktif'}.`,
+                                      'info'
+                                    );
+                                  }
+                                }}
+                                className="text-[10px] py-1 text-neutral-400 hover:text-white"
+                              >
+                                Nonaktifkan
+                              </Button>
+                            )}
+
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                if (window.confirm(`Hapus akun ${user.name}?`)) {
+                                  const res = await deleteUser(user.id);
+                                  if (res.success) {
+                                    addToast(`Akun ${user.name} telah dihapus.`, 'info');
+                                  }
+                                }
+                              }}
+                              className="p-1.5 rounded hover:bg-rose-500/20 text-neutral-500 hover:text-rose-400 transition-colors cursor-pointer"
+                              title="Hapus Akun"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </Card>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       {/* ======================================================== */}
       {/* 8. DATA MATA UANG */}
@@ -1105,6 +1933,8 @@ export default function MasterDataPage() {
           </div>
         </Card>
       )}
+        </motion.div>
+      </AnimatePresence>
 
       {/* Floating Action Button (FAB) */}
       {['supplier', 'material', 'armada', 'customer', 'bank', 'rekening'].includes(currentTab) && (

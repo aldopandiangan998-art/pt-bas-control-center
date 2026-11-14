@@ -90,12 +90,12 @@ export default function Sidebar() {
 
       {/* Industrial Sidebar Shell */}
       <aside
-        className={`fixed lg:static top-0 bottom-0 left-0 z-50 flex flex-col bg-[#111315] border-r border-[#22262A] transition-all duration-200 select-none ${
+        className={`fixed lg:static top-0 bottom-0 left-0 z-50 flex flex-col bg-[#111315] border-r border-[#22262A] transition-all duration-200 select-none shrink-0 h-full max-h-full min-h-0 overflow-hidden ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         } ${sidebarCollapsed ? 'lg:w-16' : 'w-60 lg:w-60'}`}
       >
         {/* Top Mini Section */}
-        <div className="flex items-center justify-between px-3.5 py-3 border-b border-[#22262A] bg-[#0E1012]">
+        <div className="shrink-0 flex items-center justify-between px-3.5 py-3 border-b border-[#22262A] bg-[#0E1012]">
           <div className="flex items-center gap-2 overflow-hidden">
             <span className="w-6 h-6 rounded bg-[#F4511E] text-white flex items-center justify-center font-bold text-xs shrink-0 font-mono shadow-xs">
               B
@@ -127,7 +127,7 @@ export default function Sidebar() {
         </div>
 
         {/* Categorized Navigation Item List */}
-        <nav className="flex-1 overflow-y-auto px-2 py-3 space-y-3.5 scrollbar-thin" aria-label="Menu Utama">
+        <nav className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-2 py-3 space-y-3.5 custom-scrollbar" aria-label="Menu Utama">
           {NAV_CATEGORIES.map((cat, catIdx) => (
             <div key={cat.category} className="space-y-1">
               {/* Category Header (when expanded) or divider (when collapsed) */}
@@ -167,9 +167,9 @@ export default function Sidebar() {
                           role="button"
                           tabIndex={0}
                           onKeyDown={(e) => e.key === 'Enter' && toggleSubmenu(link.path)}
-                          className={`flex items-center justify-between px-2.5 py-2 rounded text-xs font-medium transition-all duration-150 group cursor-pointer ${
+                          className={`sidebar-submenu-trigger flex items-center justify-between px-2.5 py-2 rounded text-xs font-medium transition-all duration-150 group cursor-pointer ${
                             isParentActive
-                              ? 'bg-[#1D2125] text-white font-semibold'
+                              ? 'sidebar-parent-active bg-[#1D2125] text-white font-semibold shadow-xs'
                               : 'text-neutral-400 hover:text-neutral-100 hover:bg-[#181B1E]'
                           }`}
                           title={sidebarCollapsed ? `${link.label} (${link.children.length} sub-item)` : link.description}
@@ -183,7 +183,7 @@ export default function Sidebar() {
 
                           {!sidebarCollapsed && (
                             <div className="flex items-center gap-1.5 shrink-0 ml-1">
-                              <span className="text-[10px] font-mono text-neutral-400 bg-[#151D28] px-1.5 py-0.2 rounded border border-[#1E2B3C]">
+                              <span className="sidebar-count-badge text-[10px] font-mono text-neutral-400 bg-[#151D28] px-1.5 py-0.2 rounded border border-[#1E2B3C]">
                                 {link.children.length}
                               </span>
                               <ChevronDown
@@ -197,7 +197,7 @@ export default function Sidebar() {
 
                         {/* Submenu Children List */}
                         {!sidebarCollapsed && hasChildren && isSubmenuOpen && (
-                          <div className="ml-3.5 pl-2.5 border-l border-[#1E2B3C] space-y-0.5 py-1">
+                          <div className="sidebar-child-container ml-3.5 pl-2.5 border-l border-[#1E2B3C] space-y-0.5 py-1">
                             {link.children.map((child) => {
                               const ChildIcon = ICON_MAP[child.icon] || Database;
                               const isChildActive = isParentActive && currentTab === child.tab;
@@ -210,9 +210,9 @@ export default function Sidebar() {
                                     navigate(child.path);
                                     closeMobileSidebar();
                                   }}
-                                  className={`w-full flex items-center justify-between px-2 py-1.5 rounded text-[11px] transition-all text-left group cursor-pointer ${
+                                  className={`sidebar-child-item w-full flex items-center justify-between px-2 py-1.5 rounded text-[11px] transition-all text-left group cursor-pointer ${
                                     isChildActive
-                                      ? 'bg-[#F4511E]/20 text-[#FF7043] font-semibold border-l-2 border-[#F4511E]'
+                                      ? 'active bg-[#F4511E]/20 text-[#FF7043] font-semibold border-l-2 border-[#F4511E]'
                                       : 'text-neutral-400 hover:text-neutral-200 hover:bg-[#151D28]'
                                   }`}
                                 >
@@ -266,7 +266,7 @@ export default function Sidebar() {
         </nav>
 
         {/* Bottom Role Switcher Panel (Strictly Admin and Superadmin) */}
-        <div className="p-2.5 border-t border-[#1E2B3C] bg-[#0B0F17]">
+        <div className="shrink-0 p-2.5 border-t border-[#1E2B3C] bg-[#0B0F17]">
           {!sidebarCollapsed ? (
             <div className="space-y-1">
               <div className="flex items-center gap-1.5 text-[10px] text-neutral-400 font-medium">

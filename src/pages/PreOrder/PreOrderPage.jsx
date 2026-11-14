@@ -80,6 +80,13 @@ const ITEM_NAMES_BY_JENIS = {
   ],
 };
 
+/* Material-only options (for "Tambah Item" on JASA ANGKUT + MATERIAL) */
+const MATERIAL_ONLY_OPTIONS = [
+  { value: 'SIRTU', label: 'SIRTU' },
+  { value: 'LIMESTONE', label: 'LIMESTONE' },
+  { value: 'TANAH', label: 'TANAH' },
+];
+
 /* ─────────────────────────── helpers ─────────────────────────── */
 function mkNomorRO() {
   return `RO-${new Date().getFullYear()}-${String(Date.now()).slice(-4)}`;
@@ -179,7 +186,12 @@ export default function PreOrderPage() {
   /* ── item management ── */
   const addItem = () => {
     if (itemsLocked) return;
-    setItems((prev) => [...prev, mkBlankItem(itemNameOptions)]);
+    // For JASA ANGKUT + MATERIAL: extra items (index > 0) default to first material, not JASA ANGKUT
+    const defaultOpts =
+      formData.jenisRO === 'JASA ANGKUT + MATERIAL'
+        ? MATERIAL_ONLY_OPTIONS
+        : itemNameOptions;
+    setItems((prev) => [...prev, mkBlankItem(defaultOpts)]);
   };
 
   const removeItem = (idx) => {

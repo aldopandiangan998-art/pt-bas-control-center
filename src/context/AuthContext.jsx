@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect } from 'react';
-import { INITIAL_USERS_DB, INITIAL_USER } from '../utils/constants';
+import { INITIAL_USERS_DB, INITIAL_USER, determineRoleByEmail } from '../utils/constants';
 
 const AuthContext = createContext(null);
 
@@ -116,6 +116,7 @@ export function AuthProvider({ children }) {
 
       return {
         success: false,
+        isPendingApproval: data.isPendingApproval || false,
         message: data.message || 'Email atau kata sandi tidak valid.',
       };
     } catch (err) {
@@ -125,8 +126,24 @@ export function AuthProvider({ children }) {
       );
 
       if (user) {
-        setCurrentUser(user);
-        return { success: true, user };
+        // Cek apakah akun aktif atau pending
+        if (user.aktif === 0 || user.aktif === false) {
+          return {
+            success: false,
+            isPendingApproval: true,
+            message: 'Akun Anda sedang menunggu persetujuan (approval) dari Super Admin. Silakan hubungi Super Admin untuk aktivasi.',
+          };
+        }
+
+        // Enforce auto-role determination based on email
+        const autoRole = determineRoleByEmail(cleanEmail);
+        const resolvedUser = {
+          ...user,
+          role: autoRole.role,
+          roleLabel: autoRole.roleLabel,
+        };
+        setCurrentUser(resolvedUser);
+        return { success: true, user: resolvedUser };
       }
 
       return {
@@ -137,12 +154,13 @@ export function AuthProvider({ children }) {
   };
 
   /**
-   * Register new user with Node.js SQLite API (strictly admin or superadmin)
+   * Register new user with Node.js SQLite API
+   * Admin baru selalu membutuhkan persetujuan (approval) dari Super Admin
    */
-  const register = async ({ name, email, password, role = 'admin', branch = 'Hub Gresik', phone = '-' }) => {
+  const register = async ({ name, email, password, branch = 'Hub Gresik', phone = '-' }) => {
     const cleanEmail = email.trim().toLowerCase();
-    const validRole = role === 'superadmin' ? 'superadmin' : 'admin';
-    const roleLabel = validRole === 'superadmin' ? 'Super Admin' : 'Admin';
+    const autoRole = determineRoleByEmail(cleanEmail);
+    const isSuper = autoRole.role === 'superadmin';
 
     try {
       const res = await fetch('/api/auth/register', {
@@ -152,7 +170,6 @@ export function AuthProvider({ children }) {
           name: name.trim(),
           email: cleanEmail,
           password,
-          role: validRole,
           branch,
           phone,
         }),
@@ -162,8 +179,16 @@ export function AuthProvider({ children }) {
 
       if (res.ok && data.success) {
         setUsers((prev) => [...prev, data.user]);
-        setCurrentUser(data.user);
-        return { success: true, user: data.user };
+        // Jangan auto-login jika butuh persetujuan Super Admin
+        if (!data.pendingApproval) {
+          setCurrentUser(data.user);
+        }
+        return {
+          success: true,
+          pendingApproval: data.pendingApproval,
+          user: data.user,
+          message: data.message,
+        };
       }
 
       return {
@@ -184,18 +209,83 @@ export function AuthProvider({ children }) {
         name: name.trim(),
         email: cleanEmail,
         password,
-        role: validRole,
-        roleLabel,
+        role: autoRole.role,
+        roleLabel: autoRole.roleLabel,
         branch: branch || 'Hub Gresik',
         phone: phone || '-',
-        aktif: true,
+        aktif: isSuper ? 1 : 0, // Admin butuh approval
         registeredAt: new Date().toISOString(),
       };
 
       setUsers((prev) => [...prev, newUser]);
-      setCurrentUser(newUser);
+      if (isSuper) {
+        setCurrentUser(newUser);
+      }
 
-      return { success: true, user: newUser };
+      return {
+        success: true,
+        pendingApproval: !isSuper,
+        user: newUser,
+        message: !isSuper
+          ? 'Pendaftaran berhasil! Akun Anda sedang menunggu persetujuan dari Super Admin.'
+          : 'Pendaftaran akun Super Admin berhasil!',
+      };
+    }
+  };
+
+  /**
+   * Super Admin approval: Aktifkan akun pengguna
+   */
+  const approveUser = async (userId) => {
+    try {
+      const res = await fetch(`/api/users/${userId}/approve`, { method: 'PUT' });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, aktif: 1 } : u)));
+        return { success: true, message: data.message };
+      }
+      return { success: false, message: data.message || 'Gagal menyetujui akun pengguna.' };
+    } catch (e) {
+      setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, aktif: 1 } : u)));
+      return { success: true, message: 'Akun berhasil disetujui (offline).' };
+    }
+  };
+
+  /**
+   * Super Admin toggle user active status
+   */
+  const toggleUserStatus = async (userId) => {
+    try {
+      const res = await fetch(`/api/users/${userId}/toggle-status`, { method: 'PUT' });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, aktif: data.aktif } : u)));
+        return { success: true, aktif: data.aktif };
+      }
+      return { success: false, message: data.message };
+    } catch (e) {
+      setUsers((prev) =>
+        prev.map((u) => (u.id === userId ? { ...u, aktif: u.aktif ? 0 : 1 } : u))
+      );
+      return { success: true };
+    }
+  };
+
+  /**
+   * Super Admin delete user
+   */
+  const deleteUser = async (userId) => {
+    try {
+      const res = await fetch(`/api/users/${userId}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setUsers((prev) => prev.filter((u) => u.id !== userId));
+        return { success: true };
+      }
+      return { success: false, message: data.message };
+    } catch (e) {
+      setUsers((prev) => prev.filter((u) => u.id !== userId));
+      return { success: true };
     }
   };
 
@@ -227,6 +317,9 @@ export function AuthProvider({ children }) {
         permissions,
         login,
         register,
+        approveUser,
+        toggleUserStatus,
+        deleteUser,
         logout,
         switchRole,
       }}

@@ -7,6 +7,34 @@ export const APP_CONFIG = {
   version: '1.1.12.rc220',
 };
 
+/**
+ * Otomatis menentukan role dan roleLabel berdasarkan email.
+ * - superadmin@ptbas.co.id / email pimpinan / prefix superadmin -> Super Admin
+ * - Email lainnya (termasuk dummy admin) -> Admin
+ */
+export function determineRoleByEmail(email) {
+  if (!email) return { role: 'admin', roleLabel: 'Admin' };
+  const cleanEmail = email.trim().toLowerCase();
+
+  const superAdminList = [
+    'superadmin@ptbas.co.id',
+    'direksi@ptbas.co.id',
+    'david.rusiah@ptbas.co.id',
+  ];
+
+  if (superAdminList.includes(cleanEmail) || cleanEmail.startsWith('superadmin')) {
+    return {
+      role: 'superadmin',
+      roleLabel: 'Super Admin',
+    };
+  }
+
+  return {
+    role: 'admin',
+    roleLabel: 'Admin',
+  };
+}
+
 // Initial user profiles and mock database (strictly limited to Admin and Super Admin)
 export const INITIAL_USERS_DB = [
   {
@@ -29,6 +57,17 @@ export const INITIAL_USERS_DB = [
     roleLabel: 'Admin',
     branch: 'Hub Gresik',
     phone: '0813-8899-112',
+    aktif: true,
+  },
+  {
+    id: 'usr-3',
+    name: 'Admin Dummy',
+    email: 'admin.dummy@ptbas.co.id',
+    password: 'admin123',
+    role: 'admin',
+    roleLabel: 'Admin',
+    branch: 'Hub Gresik',
+    phone: '0812-4567-8901',
     aktif: true,
   },
 ];

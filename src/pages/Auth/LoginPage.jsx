@@ -8,11 +8,8 @@ import {
   Eye,
   EyeOff,
   ShieldCheck,
-  CheckCircle2,
   AlertTriangle,
   ArrowRight,
-  HardHat,
-  KeyRound,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
@@ -29,21 +26,6 @@ export default function LoginPage() {
   const [rememberMe, setRememberMe] = useState(true);
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
-
-  // Quick Demo fill buttons for evaluation
-  const fillCredentials = (role) => {
-    if (role === 'superadmin') {
-      setEmail('superadmin@ptbas.co.id');
-      setPassword('superadmin123');
-      setErrorMessage('');
-      addToast('Kredensial Super Admin (Direksi) dimuat', 'info');
-    } else {
-      setEmail('admin@ptbas.co.id');
-      setPassword('admin123');
-      setErrorMessage('');
-      addToast('Kredensial Admin Operasional (Gresik) dimuat', 'info');
-    }
-  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -121,51 +103,6 @@ export default function LoginPage() {
           </div>
 
           <div className="p-5 sm:p-6 space-y-4">
-            {/* Role scope notification */}
-            <div className="p-2.5 rounded bg-[#181B1E] border border-[#262A2E] text-[11px] text-neutral-300 flex items-start gap-2">
-              <KeyRound className="w-4 h-4 text-[#F4511E] shrink-0 mt-0.5" />
-              <div>
-                Sistem ini dibatasi secara ketat untuk peran <strong>Admin</strong> (Operasional) dan <strong>Super Admin</strong> (Direksi).
-              </div>
-            </div>
-
-            {/* Quick Demo Credentials Pill Selectors */}
-            <div className="space-y-1.5">
-              <div className="text-[10px] font-mono uppercase text-neutral-400 tracking-wider flex items-center justify-between">
-                <span>Akses Cepat Pengujian:</span>
-                <span className="text-neutral-500">Klik untuk isi otomatis</span>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => fillCredentials('superadmin')}
-                  className="p-2 rounded bg-[#181B1E] hover:bg-[#202428] border border-[#2D3339] hover:border-[#F4511E] text-left transition-all cursor-pointer group"
-                >
-                  <div className="text-[11px] font-bold text-white group-hover:text-[#F4511E] flex items-center gap-1 font-mono">
-                    <ShieldCheck className="w-3.5 h-3.5 text-amber-400" />
-                    <span>Super Admin</span>
-                  </div>
-                  <div className="text-[10px] text-neutral-400 mt-0.5 truncate">
-                    David Rusiah (Direktur)
-                  </div>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => fillCredentials('admin')}
-                  className="p-2 rounded bg-[#181B1E] hover:bg-[#202428] border border-[#2D3339] hover:border-[#F4511E] text-left transition-all cursor-pointer group"
-                >
-                  <div className="text-[11px] font-bold text-white group-hover:text-[#F4511E] flex items-center gap-1 font-mono">
-                    <HardHat className="w-3.5 h-3.5 text-emerald-400" />
-                    <span>Admin</span>
-                  </div>
-                  <div className="text-[10px] text-neutral-400 mt-0.5 truncate">
-                    Rudi Hartono (Gresik)
-                  </div>
-                </button>
-              </div>
-            </div>
-
             {/* Error banner */}
             {errorMessage && (
               <motion.div
@@ -187,7 +124,7 @@ export default function LoginPage() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="superadmin@ptbas.co.id"
+                placeholder="nama@ptbas.co.id"
                 autoComplete="email"
               />
 

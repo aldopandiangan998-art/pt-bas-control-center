@@ -4,6 +4,7 @@ import {
   ArrowLeft,
   Monitor,
   Fingerprint,
+  Sun,
   Moon,
   HelpCircle,
   Headphones,
@@ -16,15 +17,16 @@ import {
   Send,
 } from 'lucide-react';
 import { useToast } from '../../context/ToastContext';
+import { useApp } from '../../context/AppContext';
 import { Button, Badge, Card, Modal, Input, Select } from '../../components/ui';
 
 export default function SettingsPage() {
   const navigate = useNavigate();
   const { addToast } = useToast();
+  const { isDark, toggleTheme } = useApp();
 
   // Settings states
   const [quickLoginEnabled, setQuickLoginEnabled] = useState(true);
-  const [selectedTheme, setSelectedTheme] = useState('Mode Mengikuti Sistem');
   const [deviceType] = useState('Web Desktop Console (Chrome)');
 
   // Modals for interactive exploration
@@ -126,30 +128,70 @@ export default function SettingsPage() {
             </button>
           </div>
 
-          {/* Tema */}
+          {/* Mode Tampilan (Dark & Light Mode Toggle) */}
           <div
             onClick={() => {
-              const themes = [
-                'Mode Mengikuti Sistem',
-                'Dark Industrial PT BAS',
-                'Kontras Tinggi Tambang',
-              ];
-              const nextIndex = (themes.indexOf(selectedTheme) + 1) % themes.length;
-              setSelectedTheme(themes[nextIndex]);
-              addToast(`Tema diubah: ${themes[nextIndex]}`, 'info');
+              toggleTheme();
+              addToast(`Tema diubah ke ${isDark ? 'Mode Terang (Light Mode)' : 'Mode Gelap (Dark Mode)'}`, 'info');
             }}
-            className="flex items-center justify-between p-3.5 hover:bg-[#181B1E] transition-colors cursor-pointer"
+            className="flex items-center justify-between p-3.5 hover:bg-[#181B1E] transition-colors cursor-pointer select-none"
           >
             <div className="flex items-center gap-3.5">
-              <div className="text-emerald-400">
-                <Moon className="w-5 h-5" />
+              <div className={!isDark ? 'text-amber-400' : 'text-slate-300'}>
+                {!isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
               </div>
               <div>
-                <div className="text-xs font-semibold text-white">Tema</div>
-                <div className="text-[11px] text-neutral-400">{selectedTheme}</div>
+                <div className="text-xs font-semibold text-white">Mode Tampilan (Tema)</div>
+                <div className="text-[11px] text-neutral-400">
+                  {!isDark ? 'Mode Terang (Light Mode Aktif)' : 'Mode Gelap (Dark Mode Aktif)'}
+                </div>
               </div>
             </div>
-            <span className="text-xs text-neutral-400 font-mono">Ubah &rsaquo;</span>
+
+            {/* Premium On/Off Switch Button */}
+            <div className="flex items-center gap-2.5">
+              <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-neutral-400 hidden sm:inline-block">
+                {!isDark ? 'Light' : 'Dark'}
+              </span>
+
+              <button
+                type="button"
+                role="switch"
+                aria-checked={!isDark}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggleTheme();
+                  addToast(`Tema diubah ke ${isDark ? 'Mode Terang (Light Mode)' : 'Mode Gelap (Dark Mode)'}`, 'info');
+                }}
+                className={`group relative inline-flex items-center h-6.5 w-13 shrink-0 cursor-pointer rounded-full p-0.5 border transition-all duration-300 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-[#F4511E] shadow-inner select-none ${
+                  !isDark
+                    ? 'bg-gradient-to-r from-amber-400 to-orange-400 border-amber-300 shadow-amber-500/20'
+                    : 'bg-[#151D28] border-[#2A3C56] shadow-black/40'
+                }`}
+                title={isDark ? 'Beralih ke Mode Terang' : 'Beralih ke Mode Gelap'}
+              >
+                <span className="sr-only">Toggle Mode Terang / Gelap</span>
+
+                {/* Track Icons */}
+                <div className="absolute inset-0 flex items-center justify-between px-1.5 pointer-events-none">
+                  <Moon className={`w-3 h-3 transition-opacity duration-200 ${isDark ? 'text-amber-300/80 opacity-100' : 'opacity-0'}`} />
+                  <Sun className={`w-3 h-3 transition-opacity duration-200 ${!isDark ? 'text-white opacity-100' : 'opacity-0'}`} />
+                </div>
+
+                {/* Sliding Knob */}
+                <span
+                  className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-md transition-transform duration-300 ease-in-out z-10 flex items-center justify-center ${
+                    !isDark ? 'translate-x-6.5' : 'translate-x-0'
+                  }`}
+                >
+                  {!isDark ? (
+                    <Sun className="w-3 h-3 text-amber-600" />
+                  ) : (
+                    <Moon className="w-3 h-3 text-slate-800" />
+                  )}
+                </span>
+              </button>
+            </div>
           </div>
         </div>
       </div>

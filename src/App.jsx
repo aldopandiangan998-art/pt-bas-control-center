@@ -46,10 +46,10 @@ function PublicOnlyRoute({ children }) {
 export default function App() {
   return (
     <BrowserRouter>
-      <ToastProvider>
-        <AuthProvider>
-          <DataProvider>
-            <AppProvider>
+      <AppProvider>
+        <ToastProvider>
+          <AuthProvider>
+            <DataProvider>
               <Routes>
                 {/* Guest Auth Routes */}
                 <Route
@@ -90,10 +90,10 @@ export default function App() {
                   <Route path="*" element={<NotFoundPage />} />
                 </Route>
               </Routes>
-            </AppProvider>
-          </DataProvider>
-        </AuthProvider>
-      </ToastProvider>
+            </DataProvider>
+          </AuthProvider>
+        </ToastProvider>
+      </AppProvider>
     </BrowserRouter>
   );
 }

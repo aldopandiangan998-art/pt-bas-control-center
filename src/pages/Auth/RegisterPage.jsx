@@ -9,12 +9,12 @@ import {
   Phone,
   Building2,
   ShieldCheck,
-  HardHat,
   Eye,
   EyeOff,
   AlertTriangle,
   ArrowLeft,
   CheckCircle2,
+  Clock,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
@@ -29,7 +29,6 @@ export default function RegisterPage() {
     name: '',
     email: '',
     phone: '',
-    role: 'admin', // strictly 'admin' | 'superadmin'
     branch: 'Hub Gresik (Operasional Tambang & Pabrik)',
     password: '',
     confirmPassword: '',
@@ -66,7 +65,6 @@ export default function RegisterPage() {
         name: formData.name,
         email: formData.email,
         phone: formData.phone,
-        role: formData.role,
         branch: formData.branch,
         password: formData.password,
       });
@@ -74,11 +72,15 @@ export default function RegisterPage() {
       setLoading(false);
 
       if (res && res.success) {
-        addToast(
-          `Akun ${res.user.roleLabel} berhasil dibuat untuk ${res.user.name}!`,
-          'success'
-        );
-        navigate('/');
+        if (res.pendingApproval) {
+          addToast(
+            'Pendaftaran berhasil! Akun Anda sedang menunggu persetujuan dari Super Admin.',
+            'info'
+          );
+        } else {
+          addToast('Pendaftaran akun berhasil!', 'success');
+        }
+        navigate('/login');
       } else {
         setErrorMessage(res?.message || 'Pendaftaran akun gagal.');
       }
@@ -185,90 +187,18 @@ export default function RegisterPage() {
                 </div>
               </div>
 
-              {/* Form Section 2: Pilih Peran / Role (EXCLUSIVELY ADMIN & SUPERADMIN) */}
-              <div className="space-y-2 pt-2 border-t border-[#202326]">
-                <div className="flex items-center justify-between">
-                  <div className="text-[11px] font-bold text-neutral-400 uppercase tracking-wider font-mono flex items-center gap-1.5">
-                    <ShieldCheck className="w-3.5 h-3.5 text-[#F4511E]" />
-                    <span>Pilih Peran Sistem (Hanya 2 Role)</span>
-                  </div>
-                  <Badge size="xs" variant="primary">Ketat</Badge>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                  {/* Option 1: Admin */}
-                  <div
-                    onClick={() => setFormData({ ...formData, role: 'admin' })}
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={(e) => e.key === 'Enter' && setFormData({ ...formData, role: 'admin' })}
-                    className={`p-3 rounded-lg border transition-all cursor-pointer text-left ${
-                      formData.role === 'admin'
-                        ? 'bg-[#181B1E] border-[#F4511E] ring-1 ring-[#F4511E]'
-                        : 'bg-[#131517] border-[#24282C] hover:border-[#383E46]'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between mb-1">
-                      <div className="flex items-center gap-1.5 font-bold text-xs text-white">
-                        <HardHat className="w-4 h-4 text-emerald-400" />
-                        <span>Admin</span>
-                      </div>
-                      <span
-                        className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center ${
-                          formData.role === 'admin'
-                            ? 'border-[#F4511E] bg-[#F4511E]'
-                            : 'border-neutral-500'
-                        }`}
-                      >
-                        {formData.role === 'admin' && (
-                          <span className="w-1.5 h-1.5 rounded-full bg-white" />
-                        )}
-                      </span>
-                    </div>
-                    <div className="text-[10px] text-amber-400 font-mono">Operasional & Dispatch</div>
-                    <p className="text-[10px] text-neutral-400 mt-1 leading-snug">
-                      Pencatatan Surat Jalan, ukur kubikasi, pengajuan BKK vendor, dan monitoring pengiriman.
-                    </p>
-                  </div>
-
-                  {/* Option 2: Super Admin */}
-                  <div
-                    onClick={() => setFormData({ ...formData, role: 'superadmin' })}
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={(e) => e.key === 'Enter' && setFormData({ ...formData, role: 'superadmin' })}
-                    className={`p-3 rounded-lg border transition-all cursor-pointer text-left ${
-                      formData.role === 'superadmin'
-                        ? 'bg-[#181B1E] border-[#F4511E] ring-1 ring-[#F4511E]'
-                        : 'bg-[#131517] border-[#24282C] hover:border-[#383E46]'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between mb-1">
-                      <div className="flex items-center gap-1.5 font-bold text-xs text-white">
-                        <ShieldCheck className="w-4 h-4 text-amber-400" />
-                        <span>Super Admin</span>
-                      </div>
-                      <span
-                        className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center ${
-                          formData.role === 'superadmin'
-                            ? 'border-[#F4511E] bg-[#F4511E]'
-                            : 'border-neutral-500'
-                        }`}
-                      >
-                        {formData.role === 'superadmin' && (
-                          <span className="w-1.5 h-1.5 rounded-full bg-white" />
-                        )}
-                      </span>
-                    </div>
-                    <div className="text-[10px] text-amber-400 font-mono">Direksi & Kontrol Penuh</div>
-                    <p className="text-[10px] text-neutral-400 mt-1 leading-snug">
-                      Otorisasi persetujuan PO, approval kas keluar, penerbitan invoice, dan master data.
-                    </p>
-                  </div>
+              {/* Notice Kebijakan Approval Super Admin */}
+              <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-xs text-amber-200/90 flex items-start gap-2.5">
+                <ShieldCheck className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                <div>
+                  <span className="font-bold text-white">Persetujuan Akun Diperlukan</span>
+                  <p className="text-[11px] text-neutral-300 mt-0.5 leading-relaxed">
+                    Setiap pendaftaran akun <strong>Admin</strong> baru memerlukan <strong>persetujuan (approval) dari Super Admin (Direksi)</strong> sebelum akun aktif dan dapat digunakan untuk masuk ke sistem.
+                  </p>
                 </div>
               </div>
 
-              {/* Form Section 3: Cabang & Kata Sandi */}
+              {/* Form Section 2: Cabang & Kata Sandi */}
               <div className="space-y-3 pt-2 border-t border-[#202326]">
                 <Select
                   label="Penugasan Cabang / Unit Operasi"

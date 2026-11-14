@@ -155,36 +155,59 @@ export function initDb() {
  * Seed Initial Records if empty
  */
 function seedInitialData() {
-  const userCount = db.prepare('SELECT COUNT(*) as count FROM users').get().count;
-  if (userCount === 0) {
-    const insertUser = db.prepare(`
-      INSERT INTO users (id, name, email, password, role, roleLabel, branch, phone, aktif, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?)
-    `);
+  const initialUsers = [
+    {
+      id: 'usr-1',
+      name: 'David Rusiah',
+      email: 'superadmin@ptbas.co.id',
+      password: 'superadmin123',
+      role: 'superadmin',
+      roleLabel: 'Super Admin',
+      branch: 'Pusat & Hub Gresik',
+      phone: '0811-3001-992',
+    },
+    {
+      id: 'usr-2',
+      name: 'Rudi Hartono',
+      email: 'admin@ptbas.co.id',
+      password: 'admin123',
+      role: 'admin',
+      roleLabel: 'Admin',
+      branch: 'Hub Gresik',
+      phone: '0813-8899-112',
+    },
+    {
+      id: 'usr-3',
+      name: 'Admin Dummy',
+      email: 'admin.dummy@ptbas.co.id',
+      password: 'admin123',
+      role: 'admin',
+      roleLabel: 'Admin',
+      branch: 'Hub Gresik',
+      phone: '0812-4567-8901',
+    },
+  ];
 
-    insertUser.run(
-      'usr-1',
-      'David Rusiah',
-      'superadmin@ptbas.co.id',
-      'superadmin123',
-      'superadmin',
-      'Super Admin',
-      'Pusat & Hub Gresik',
-      '0811-3001-992',
-      new Date().toISOString()
-    );
+  const insertUser = db.prepare(`
+    INSERT INTO users (id, name, email, password, role, roleLabel, branch, phone, aktif, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?)
+  `);
 
-    insertUser.run(
-      'usr-2',
-      'Rudi Hartono',
-      'admin@ptbas.co.id',
-      'admin123',
-      'admin',
-      'Admin',
-      'Hub Gresik',
-      '0813-8899-112',
-      new Date().toISOString()
-    );
+  for (const u of initialUsers) {
+    const existing = db.prepare('SELECT id FROM users WHERE LOWER(email) = ?').get(u.email.toLowerCase());
+    if (!existing) {
+      insertUser.run(
+        u.id,
+        u.name,
+        u.email.toLowerCase(),
+        u.password,
+        u.role,
+        u.roleLabel,
+        u.branch,
+        u.phone,
+        new Date().toISOString()
+      );
+    }
   }
 
   // Seed materials if empty

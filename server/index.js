@@ -25,6 +25,34 @@ app.get('/api/health', (req, res) => {
 // AUTHENTICATION ROUTES (Strictly Admin & Superadmin)
 // ==========================================
 
+/**
+ * Aturan Penentuan Role Otomatis Berdasarkan Email:
+ * - superadmin@ptbas.co.id / email pimpinan / awalan superadmin -> superadmin (Super Admin)
+ * - Email lainnya (dummy admin & user baru) -> admin (Admin)
+ */
+function determineRoleByEmail(email) {
+  if (!email) return { role: 'admin', roleLabel: 'Admin' };
+  const cleanEmail = email.trim().toLowerCase();
+
+  const superAdminList = [
+    'superadmin@ptbas.co.id',
+    'direksi@ptbas.co.id',
+    'david.rusiah@ptbas.co.id',
+  ];
+
+  if (superAdminList.includes(cleanEmail) || cleanEmail.startsWith('superadmin')) {
+    return {
+      role: 'superadmin',
+      roleLabel: 'Super Admin',
+    };
+  }
+
+  return {
+    role: 'admin',
+    roleLabel: 'Admin',
+  };
+}
+
 // Login
 app.post('/api/auth/login', (req, res) => {
   const { email, password } = req.body;
@@ -45,13 +73,34 @@ app.post('/api/auth/login', (req, res) => {
     });
   }
 
+  // Validasi persetujuan akun: Admin baru harus disetujui Super Admin (aktif = 1)
+  if (user.aktif === 0 || !user.aktif) {
+    return res.status(403).json({
+      success: false,
+      isPendingApproval: true,
+      message: 'Akun Anda sedang menunggu persetujuan (approval) dari Super Admin. Silakan hubungi Super Admin untuk aktivasi.',
+    });
+  }
+
+  // Sinkronisasi role otomatis sesuai kriteria email
+  const autoRole = determineRoleByEmail(cleanEmail);
+  if (user.role !== autoRole.role || user.roleLabel !== autoRole.roleLabel) {
+    db.prepare('UPDATE users SET role = ?, roleLabel = ? WHERE id = ?').run(
+      autoRole.role,
+      autoRole.roleLabel,
+      user.id
+    );
+    user.role = autoRole.role;
+    user.roleLabel = autoRole.roleLabel;
+  }
+
   const { password: _, ...safeUser } = user;
   res.json({ success: true, user: safeUser });
 });
 
-// Register
+// Register (Pendaftaran Admin baru wajib melalui approval Super Admin)
 app.post('/api/auth/register', (req, res) => {
-  const { name, email, password, role = 'admin', branch = 'Hub Gresik', phone = '-' } = req.body;
+  const { name, email, password, branch = 'Hub Gresik', phone = '-' } = req.body;
 
   if (!name || !email || !password) {
     return res.status(400).json({ success: false, message: 'Harap lengkapi seluruh field wajib.' });
@@ -68,35 +117,89 @@ app.post('/api/auth/register', (req, res) => {
     });
   }
 
-  const validRole = role === 'superadmin' ? 'superadmin' : 'admin';
-  const roleLabel = validRole === 'superadmin' ? 'Super Admin' : 'Admin';
+  // Penentuan role: superadmin email langsung aktif, akun Admin baru membutuhkan approval (aktif = 0)
+  const autoRole = determineRoleByEmail(cleanEmail);
+  const isSuper = autoRole.role === 'superadmin';
+  const aktif = isSuper ? 1 : 0; // Admin baru wajib butuh approval Super Admin
   const id = `usr-${Date.now()}`;
   const now = new Date().toISOString();
 
   db.prepare(`
     INSERT INTO users (id, name, email, password, role, roleLabel, branch, phone, aktif, created_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?)
-  `).run(id, name.trim(), cleanEmail, password, validRole, roleLabel, branch, phone, now);
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(id, name.trim(), cleanEmail, password, autoRole.role, autoRole.roleLabel, branch, phone, aktif, now);
 
   const newUser = {
     id,
     name: name.trim(),
     email: cleanEmail,
-    role: validRole,
-    roleLabel,
+    role: autoRole.role,
+    roleLabel: autoRole.roleLabel,
     branch,
     phone,
-    aktif: 1,
+    aktif,
     created_at: now,
   };
 
-  res.status(201).json({ success: true, user: newUser });
+  res.status(201).json({
+    success: true,
+    pendingApproval: !isSuper,
+    message: isSuper
+      ? 'Akun Super Admin berhasil dibuat!'
+      : 'Pendaftaran akun Admin berhasil! Akun Anda sedang menunggu persetujuan dari Super Admin.',
+    user: newUser,
+  });
 });
 
 // Get all users
 app.get('/api/users', (req, res) => {
   const users = db.prepare('SELECT id, name, email, role, roleLabel, branch, phone, aktif, created_at FROM users ORDER BY created_at DESC').all();
   res.json(users);
+});
+
+// Approve user (Super Admin approval)
+app.put('/api/users/:id/approve', (req, res) => {
+  const { id } = req.params;
+  const user = db.prepare('SELECT id, name, email, role, aktif FROM users WHERE id = ?').get(id);
+  if (!user) {
+    return res.status(404).json({ success: false, message: 'Pengguna tidak ditemukan.' });
+  }
+
+  db.prepare('UPDATE users SET aktif = 1 WHERE id = ?').run(id);
+  res.json({ success: true, message: `Akun ${user.name} berhasil disetujui dan aktif!` });
+});
+
+// Toggle user active status
+app.put('/api/users/:id/toggle-status', (req, res) => {
+  const { id } = req.params;
+  const user = db.prepare('SELECT id, name, role, aktif FROM users WHERE id = ?').get(id);
+  if (!user) {
+    return res.status(404).json({ success: false, message: 'Pengguna tidak ditemukan.' });
+  }
+
+  // Prevent disabling main superadmin
+  if (user.role === 'superadmin') {
+    return res.status(400).json({ success: false, message: 'Akun Super Admin utama tidak dapat dinonaktifkan.' });
+  }
+
+  const newStatus = user.aktif ? 0 : 1;
+  db.prepare('UPDATE users SET aktif = ? WHERE id = ?').run(newStatus, id);
+  res.json({ success: true, aktif: newStatus });
+});
+
+// Delete user
+app.delete('/api/users/:id', (req, res) => {
+  const { id } = req.params;
+  const user = db.prepare('SELECT id, role FROM users WHERE id = ?').get(id);
+  if (!user) {
+    return res.status(404).json({ success: false, message: 'Pengguna tidak ditemukan.' });
+  }
+  if (user.role === 'superadmin') {
+    return res.status(400).json({ success: false, message: 'Akun Super Admin tidak dapat dihapus.' });
+  }
+
+  db.prepare('DELETE FROM users WHERE id = ?').run(id);
+  res.json({ success: true, message: 'Pengguna berhasil dihapus.' });
 });
 
 // ==========================================

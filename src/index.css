@@ -991,3 +991,280 @@ body, aside, header, main, .card {
   color: #FFFFFF !important;
   box-shadow: 0 1px 3px rgba(244, 81, 30, 0.35) !important;
 }
+
+/* Master Data Stat Cards & Rich Item Cards */
+.master-header-card {
+  position: relative;
+  overflow: hidden;
+  border-radius: 1rem;
+  transition: all 0.2s ease;
+}
+
+.master-stat-card {
+  position: relative;
+  overflow: hidden;
+  border-radius: 0.875rem;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.master-stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.25);
+}
+
+.master-stat-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, rgba(244, 81, 30, 0.7) 0%, rgba(251, 140, 0, 0.2) 100%);
+  opacity: 0.8;
+}
+
+.master-stat-card.stat-emerald::before {
+  background: linear-gradient(90deg, rgba(16, 185, 129, 0.8) 0%, rgba(5, 150, 105, 0.2) 100%);
+}
+
+.master-stat-card.stat-amber::before {
+  background: linear-gradient(90deg, rgba(245, 158, 11, 0.8) 0%, rgba(217, 119, 6, 0.2) 100%);
+}
+
+.master-stat-card.stat-sky::before {
+  background: linear-gradient(90deg, rgba(14, 165, 233, 0.8) 0%, rgba(2, 132, 199, 0.2) 100%);
+}
+
+.master-stat-card.stat-rose::before {
+  background: linear-gradient(90deg, rgba(244, 63, 94, 0.8) 0%, rgba(225, 29, 72, 0.2) 100%);
+}
+
+.master-data-card {
+  border-radius: 0.875rem;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+}
+
+.master-data-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(244, 81, 30, 0.45) !important;
+  box-shadow: 0 12px 28px -6px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(244, 81, 30, 0.15) !important;
+}
+
+.master-table-container {
+  border-radius: 0.875rem;
+  overflow: hidden;
+  transition: all 0.2s ease;
+}
+
+.master-toolbar {
+  border-radius: 0.875rem;
+  transition: all 0.2s ease;
+}
+
+.master-empty-state {
+  border-radius: 1rem;
+  transition: all 0.2s ease;
+}
+
+.master-bulk-bar {
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+/* Light Mode Overrides for Master Data */
+[data-theme="light"] .master-header-card,
+.light .master-header-card {
+  background: linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%) !important;
+  border-color: #E2E8F0 !important;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05) !important;
+}
+
+[data-theme="light"] .master-header-card .text-white,
+.light .master-header-card .text-white {
+  color: #0F172A !important;
+}
+
+[data-theme="light"] .master-stat-card,
+.light .master-stat-card {
+  background: linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%) !important;
+  border-color: #E2E8F0 !important;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05) !important;
+}
+
+[data-theme="light"] .master-stat-card:hover,
+.light .master-stat-card:hover {
+  box-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.08) !important;
+}
+
+[data-theme="light"] .master-stat-card .text-white,
+.light .master-stat-card .text-white {
+  color: #0F172A !important;
+}
+
+[data-theme="light"] .master-toolbar,
+.light .master-toolbar {
+  background-color: #FFFFFF !important;
+  border-color: #E2E8F0 !important;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05) !important;
+}
+
+[data-theme="light"] .master-toolbar input,
+.light .master-toolbar input {
+  background-color: #F8FAFC !important;
+  border-color: #E2E8F0 !important;
+  color: #0F172A !important;
+}
+
+[data-theme="light"] .master-toolbar input::placeholder,
+.light .master-toolbar input::placeholder {
+  color: #94A3B8 !important;
+}
+
+[data-theme="light"] .master-toolbar select,
+.light .master-toolbar select {
+  background-color: #F8FAFC !important;
+  border-color: #E2E8F0 !important;
+  color: #0F172A !important;
+}
+
+[data-theme="light"] .master-table-container,
+.light .master-table-container {
+  background-color: #FFFFFF !important;
+  border-color: #E2E8F0 !important;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05) !important;
+}
+
+[data-theme="light"] .master-table-container thead,
+.light .master-table-container thead,
+[data-theme="light"] .master-table-container thead tr,
+.light .master-table-container thead tr {
+  background-color: #F8FAFC !important;
+  color: #475569 !important;
+  border-bottom-color: #E2E8F0 !important;
+}
+
+[data-theme="light"] .master-table-container thead th,
+.light .master-table-container thead th {
+  background-color: #F8FAFC !important;
+  color: #475569 !important;
+}
+
+[data-theme="light"] .master-table-container tbody,
+.light .master-table-container tbody {
+  background-color: #FFFFFF !important;
+}
+
+[data-theme="light"] .master-table-container tbody tr,
+.light .master-table-container tbody tr {
+  background-color: #FFFFFF !important;
+  border-color: #F1F5F9 !important;
+}
+
+[data-theme="light"] .master-table-container tbody tr:hover,
+.light .master-table-container tbody tr:hover {
+  background-color: rgba(244, 81, 30, 0.04) !important;
+}
+
+[data-theme="light"] .master-table-container td,
+.light .master-table-container td {
+  border-color: #F1F5F9 !important;
+}
+
+[data-theme="light"] .master-table-container .text-white,
+.light .master-table-container .text-white {
+  color: #0F172A !important;
+}
+
+[data-theme="light"] .master-data-card,
+.light .master-data-card {
+  background-color: #FFFFFF !important;
+  border-color: #E2E8F0 !important;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.04) !important;
+}
+
+[data-theme="light"] .master-data-card:hover,
+.light .master-data-card:hover {
+  border-color: rgba(244, 81, 30, 0.45) !important;
+  box-shadow: 0 10px 25px -4px rgba(244, 81, 30, 0.12), 0 4px 6px -2px rgba(0, 0, 0, 0.05) !important;
+}
+
+[data-theme="light"] .master-data-card .text-white,
+.light .master-data-card .text-white {
+  color: #0F172A !important;
+}
+
+[data-theme="light"] .master-data-card .bg-black\/25,
+[data-theme="light"] .master-data-card .bg-black\/30,
+[data-theme="light"] .master-data-card .bg-black\/40 {
+  background-color: #F8FAFC !important;
+  border-color: #E2E8F0 !important;
+}
+
+[data-theme="light"] .master-empty-state,
+.light .master-empty-state {
+  background-color: #F8FAFC !important;
+  border-color: #CBD5E1 !important;
+}
+
+[data-theme="light"] .master-empty-state .text-white,
+.light .master-empty-state .text-white {
+  color: #0F172A !important;
+}
+
+[data-theme="light"] .master-bulk-bar,
+.light .master-bulk-bar {
+  background-color: rgba(255, 255, 255, 0.95) !important;
+  border-color: rgba(244, 81, 30, 0.45) !important;
+  box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(244, 81, 30, 0.3) !important;
+}
+
+[data-theme="light"] .master-bulk-bar .text-white,
+.light .master-bulk-bar .text-white {
+  color: #0F172A !important;
+}
+
+/* ======================================================== */
+/* TITAN FLEET COMMAND - HIGH TECH MINING AUTH PORTAL       */
+/* ======================================================== */
+.titan-portal {
+  background-color: #06090F;
+  background-image: 
+    radial-gradient(circle at 50% 0%, rgba(244, 81, 30, 0.09) 0%, transparent 60%),
+    radial-gradient(circle at 85% 30%, rgba(14, 165, 233, 0.05) 0%, transparent 50%),
+    radial-gradient(circle at 15% 70%, rgba(245, 158, 11, 0.04) 0%, transparent 50%),
+    linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+  background-size: 100% 100%, 100% 100%, 100% 100%, 28px 28px, 28px 28px;
+}
+
+.titan-card {
+  background-color: #0B0F19;
+  border: 1px solid #1A2436;
+}
+
+.titan-input-box {
+  background-color: #070A12;
+  border: 1px solid #1A2436;
+  color: #FFFFFF;
+  transition: all 0.15s ease;
+}
+
+.titan-input-box:focus-within {
+  border-color: #F4511E;
+  box-shadow: 0 0 0 2px rgba(244, 81, 30, 0.25);
+}
+
+.titan-btn-gold {
+  background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%);
+  color: #0A0D14;
+  font-weight: 800;
+  transition: all 0.2s ease;
+}
+
+.titan-btn-gold:hover {
+  background: linear-gradient(135deg, #FBBF24 0%, #F59E0B 100%);
+  box-shadow: 0 4px 20px -2px rgba(245, 158, 11, 0.4);
+  transform: translateY(-1px);
+}
+

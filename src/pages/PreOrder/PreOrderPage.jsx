@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -6,15 +6,15 @@ import {
   XCircle,
   Plus,
   TrendingUp,
-  Receipt,
   FileText,
-  Hash,
   List,
   User,
   Monitor,
   DollarSign,
   Calendar,
   Layers,
+  Trash2,
+  Lock,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useData } from '../../context/DataContext';
@@ -62,15 +62,37 @@ const JENIS_RO_OPTIONS = [
   { value: 'JASA ANGKUT SAJA', label: 'JASA ANGKUT SAJA' },
 ];
 
-const SATUAN_OPTIONS = [
-  { value: 'm3', label: 'm³ (Kubik)' },
-  { value: 'ton', label: 'Ton' },
-  { value: 'rit', label: 'Rit' },
-];
+/* Item name options keyed by jenisRO */
+const ITEM_NAMES_BY_JENIS = {
+  'JASA ANGKUT + MATERIAL': [
+    { value: 'JASA ANGKUT', label: 'JASA ANGKUT' },
+    { value: 'SIRTU', label: 'SIRTU' },
+    { value: 'LIMESTONE', label: 'LIMESTONE' },
+    { value: 'TANAH', label: 'TANAH' },
+  ],
+  'MATERIAL SAJA': [
+    { value: 'SIRTU', label: 'SIRTU' },
+    { value: 'LIMESTONE', label: 'LIMESTONE' },
+    { value: 'TANAH', label: 'TANAH' },
+  ],
+  'JASA ANGKUT SAJA': [
+    { value: 'JASA ANGKUT', label: 'JASA ANGKUT' },
+  ],
+};
 
 /* ─────────────────────────── helpers ─────────────────────────── */
 function mkNomorRO() {
   return `RO-${new Date().getFullYear()}-${String(Date.now()).slice(-4)}`;
+}
+
+function mkBlankItem(nameOptions = []) {
+  return {
+    id: `item-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    nama: nameOptions[0]?.value || '',
+    kuantitas: '',
+    hargaJual: '',
+    hargaBeli: '',
+  };
 }
 
 function mkDefaultForm() {
@@ -85,11 +107,6 @@ function mkDefaultForm() {
     nomorRO: mkNomorRO(),
     jenisRO: '',
     hubungkanNomorPoMaterial: '',
-    materialId: 'mat-8',
-    satuan: 'm3',
-    totalOrder: 500,
-    hargaJual: 67233,
-    hargaBeli: 50765,
   };
 }
 
@@ -104,16 +121,31 @@ export default function PreOrderPage() {
   const [rejectionReason, setRejectionReason] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState({});
+  const [itemsLocked, setItemsLocked] = useState(false);
 
   const [formData, setFormData] = useState(mkDefaultForm());
+  const [items, setItems] = useState([]);
   const firstErrorRef = useRef(null);
-
-  /* derived */
-  const marginPerUnit = formData.hargaJual - formData.hargaBeli;
-  const totalMargin = marginPerUnit * formData.totalOrder;
 
   /* Show "Hubungkan Nomor PO Material" only when Jenis RO = JASA ANGKUT SAJA */
   const showHubungkanPo = formData.jenisRO === 'JASA ANGKUT SAJA';
+
+  /* Show Daftar Item section once a Jenis RO is selected */
+  const showDaftarItem = !!formData.jenisRO;
+
+  /* Item name options filtered by Jenis RO */
+  const itemNameOptions = ITEM_NAMES_BY_JENIS[formData.jenisRO] || [];
+
+  /* Computed totals */
+  const totalHargaJual = items.reduce(
+    (s, i) => s + (Number(i.kuantitas) || 0) * (Number(i.hargaJual) || 0),
+    0
+  );
+  const totalHargaBeli = items.reduce(
+    (s, i) => s + (Number(i.kuantitas) || 0) * (Number(i.hargaBeli) || 0),
+    0
+  );
+  const totalMargin = totalHargaJual - totalHargaBeli;
 
   /* Customer dropdown options */
   const customerOptions = customers.map((c) => ({
@@ -131,13 +163,35 @@ export default function PreOrderPage() {
   const setField = (key, val) => {
     setFormData((prev) => {
       const next = { ...prev, [key]: val };
-      // Clear conditional field when hidden
-      if (key === 'jenisRO' && val !== 'JASA ANGKUT SAJA') {
-        next.hubungkanNomorPoMaterial = '';
+      if (key === 'jenisRO') {
+        // Reset conditional field
+        if (val !== 'JASA ANGKUT SAJA') next.hubungkanNomorPoMaterial = '';
+        // Reset items when Jenis RO changes
+        const nameOpts = ITEM_NAMES_BY_JENIS[val] || [];
+        setItems(val ? [mkBlankItem(nameOpts)] : []);
+        setItemsLocked(false);
       }
       return next;
     });
     setErrors((prev) => ({ ...prev, [key]: '' }));
+  };
+
+  /* ── item management ── */
+  const addItem = () => {
+    if (itemsLocked) return;
+    setItems((prev) => [...prev, mkBlankItem(itemNameOptions)]);
+  };
+
+  const removeItem = (idx) => {
+    if (itemsLocked) return;
+    setItems((prev) => prev.filter((_, i) => i !== idx));
+  };
+
+  const updateItem = (idx, field, val) => {
+    if (itemsLocked) return;
+    setItems((prev) =>
+      prev.map((item, i) => (i === idx ? { ...item, [field]: val } : item))
+    );
   };
 
   /* ── validation ── */
@@ -147,11 +201,8 @@ export default function PreOrderPage() {
     if (!formData.jenis) e.jenis = 'Wajib diisi';
     if (!formData.mataUang) e.mataUang = 'Wajib diisi';
     if (!formData.customer) e.customer = 'Wajib diisi';
-    if (!formData.nomorRO) e.nomorRO = 'Wajib diisi';
     if (!formData.jenisRO) e.jenisRO = 'Wajib diisi';
-    if (!formData.totalOrder || formData.totalOrder <= 0) e.totalOrder = 'Harus lebih dari 0';
-    if (!formData.hargaJual || formData.hargaJual <= 0) e.hargaJual = 'Harus lebih dari 0';
-    if (!formData.hargaBeli || formData.hargaBeli <= 0) e.hargaBeli = 'Harus lebih dari 0';
+    if (items.length === 0) e.items = 'Tambahkan minimal 1 item';
     return e;
   };
 
@@ -161,7 +212,6 @@ export default function PreOrderPage() {
     const errs = validate();
     if (Object.keys(errs).length > 0) {
       setErrors(errs);
-      // scroll to first error
       setTimeout(() => {
         firstErrorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }, 50);
@@ -169,17 +219,24 @@ export default function PreOrderPage() {
     }
 
     setSubmitting(true);
-    const selectedMat = materials.find((m) => m.id === formData.materialId);
-
+    // Build payload: use first item's values for backward-compat fields
+    const firstItem = items[0] || {};
     createPreOrder({
       ...formData,
-      materialName: selectedMat?.name || 'SIRTU',
-      materialCategory: selectedMat?.category || 'Curah',
-      pphRate: selectedMat?.pphRate || 2.0,
+      items,
+      materialName: firstItem.nama || 'SIRTU',
+      materialCategory: 'Curah',
+      pphRate: 2.0,
+      totalOrder: Number(firstItem.kuantitas) || 0,
+      hargaJual: Number(firstItem.hargaJual) || 0,
+      hargaBeli: Number(firstItem.hargaBeli) || 0,
+      satuan: 'm3',
     });
 
     setFormData(mkDefaultForm());
+    setItems([]);
     setErrors({});
+    setItemsLocked(false);
     setSubmitting(false);
     setActiveTab('list');
   };
@@ -192,7 +249,6 @@ export default function PreOrderPage() {
     }
   };
 
-  /* ── reduced motion ── */
   const prefersReduced =
     typeof window !== 'undefined' &&
     window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -206,13 +262,7 @@ export default function PreOrderPage() {
       {/* ── Top Header Bar ── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#24282C]">
         <div className="flex items-center gap-2.5">
-          <Button
-            size="sm"
-            variant="ghost"
-            icon={ArrowLeft}
-            onClick={() => navigate('/')}
-            title="Kembali ke Dashboard"
-          />
+          <Button size="sm" variant="ghost" icon={ArrowLeft} onClick={() => navigate('/')} title="Kembali ke Dashboard" />
           <div>
             <h1 className="text-base sm:text-lg font-bold text-white tracking-tight">
               Pre Order &amp; Kontrak Pengiriman
@@ -223,21 +273,11 @@ export default function PreOrderPage() {
           </div>
         </div>
 
-        {/* Tab switcher */}
         <div className="flex items-center gap-1.5 bg-[#131517] p-1 rounded-md border border-[#24282C]">
-          <Button
-            size="xs"
-            variant={activeTab === 'list' ? 'primary' : 'ghost'}
-            onClick={() => setActiveTab('list')}
-          >
+          <Button size="xs" variant={activeTab === 'list' ? 'primary' : 'ghost'} onClick={() => setActiveTab('list')}>
             Daftar PO ({preOrders.length})
           </Button>
-          <Button
-            size="xs"
-            variant={activeTab === 'create' ? 'primary' : 'ghost'}
-            icon={Plus}
-            onClick={() => setActiveTab('create')}
-          >
+          <Button size="xs" variant={activeTab === 'create' ? 'primary' : 'ghost'} icon={Plus} onClick={() => setActiveTab('create')}>
             Input Pre Order
           </Button>
         </div>
@@ -260,7 +300,6 @@ export default function PreOrderPage() {
             {preOrders.map((po) => {
               const fulfillmentPct = Math.min(120, Math.round((po.terkirim / po.totalOrder) * 100));
               const isOverDelivered = fulfillmentPct > 100;
-
               return (
                 <Card key={po.id} hover className="p-4 space-y-3">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
@@ -277,7 +316,6 @@ export default function PreOrderPage() {
                         <span className="text-amber-400 font-medium">{po.materialName}</span>
                       </div>
                     </div>
-
                     <div>
                       {po.status === 'APPROVED' && <Badge variant="success" dot>APPROVED</Badge>}
                       {po.status === 'MENUNGGU_APPROVAL' && <Badge variant="warning" dot>MENUNGGU APPROVAL</Badge>}
@@ -285,13 +323,11 @@ export default function PreOrderPage() {
                     </div>
                   </div>
 
-                  {/* Progress & Fulfillment Bar */}
                   <div className="bg-[#181B1E] rounded-md p-2.5 border border-[#24282C] space-y-1.5 font-mono">
                     <div className="flex items-center justify-between text-xs">
                       <span className="text-neutral-400">
                         Realisasi Kirim:{' '}
-                        <strong className="text-white">{formatVolume(po.terkirim, po.satuan)}</strong> /{' '}
-                        {formatVolume(po.totalOrder, po.satuan)}
+                        <strong className="text-white">{formatVolume(po.terkirim, po.satuan)}</strong> / {formatVolume(po.totalOrder, po.satuan)}
                       </span>
                       <span className={`font-bold ${isOverDelivered ? 'text-amber-400' : 'text-neutral-300'}`}>
                         {fulfillmentPct}% {isOverDelivered && '(Peringatan Toleransi 20%)'}
@@ -305,29 +341,18 @@ export default function PreOrderPage() {
                     </div>
                   </div>
 
-                  {/* Pricing and Action Row */}
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-1 text-xs border-t border-[#202326]">
                     <div className="flex items-center gap-4 text-neutral-400 font-mono">
                       <span>Jual: <strong className="text-white">{formatCurrency(po.hargaJual)}</strong>/{po.satuan}</span>
                       <span>Beli: <strong className="text-neutral-300">{formatCurrency(po.hargaBeli)}</strong>/{po.satuan}</span>
                     </div>
-
                     <div className="flex items-center gap-2">
                       {po.status === 'MENUNGGU_APPROVAL' && (
                         <>
                           {permissions.canApprovePreOrder ? (
                             <>
-                              <Button size="xs" variant="danger" icon={XCircle} onClick={() => setRejectModalId(po.id)}>
-                                Tolak PO
-                              </Button>
-                              <Button
-                                size="xs"
-                                variant="primary"
-                                icon={CheckCircle2}
-                                onClick={() => approvePreOrder(po.id, `${currentUser.name} (Direktur)`)}
-                              >
-                                Setujui PO
-                              </Button>
+                              <Button size="xs" variant="danger" icon={XCircle} onClick={() => setRejectModalId(po.id)}>Tolak PO</Button>
+                              <Button size="xs" variant="primary" icon={CheckCircle2} onClick={() => approvePreOrder(po.id, `${currentUser.name} (Direktur)`)}>Setujui PO</Button>
                             </>
                           ) : (
                             <span className="text-[10px] text-amber-500/90 font-mono bg-amber-950/30 px-2 py-0.5 rounded border border-amber-900/40">
@@ -336,22 +361,16 @@ export default function PreOrderPage() {
                           )}
                         </>
                       )}
-
                       {po.status === 'APPROVED' && (
                         <div className="flex items-center gap-2">
                           <span className="text-[10px] text-neutral-400 font-mono">
                             Disetujui: <strong className="text-emerald-400">{po.approvedBy}</strong>
                           </span>
-                          <Button size="xs" variant="secondary" onClick={() => navigate('/surat-jalan')}>
-                            Buat Surat Jalan &rarr;
-                          </Button>
+                          <Button size="xs" variant="secondary" onClick={() => navigate('/surat-jalan')}>Buat Surat Jalan &rarr;</Button>
                         </div>
                       )}
-
                       {po.status === 'REJECTED' && (
-                        <span className="text-[10px] text-rose-400 font-mono">
-                          Alasan: {po.rejectionReason}
-                        </span>
+                        <span className="text-[10px] text-rose-400 font-mono">Alasan: {po.rejectionReason}</span>
                       )}
                     </div>
                   </div>
@@ -365,16 +384,12 @@ export default function PreOrderPage() {
       {/* ══════════ VIEW 2: FORM BUAT RO — Material-style ══════════ */}
       {activeTab === 'create' && (
         <div className="max-w-2xl mx-auto">
-          {/* App Bar */}
-          <FormAppBar
-            title="Buat Received Order (RO)"
-            onBack={() => setActiveTab('list')}
-          />
+          <FormAppBar title="Buat Received Order (RO)" onBack={() => setActiveTab('list')} />
 
-          <form onSubmit={handleCreate} noValidate className="space-y-0 pb-6">
+          <form onSubmit={handleCreate} noValidate className="pb-6">
 
             {/* ── Row 1: Tanggal | T.O.P. ── */}
-            <div className="grid grid-cols-2 min-[360px]:grid-cols-2 gap-px">
+            <div className="grid grid-cols-2 gap-px">
               <div ref={errors.tanggal ? firstErrorRef : null}>
                 <DateField
                   label="Tanggal"
@@ -394,7 +409,7 @@ export default function PreOrderPage() {
             </div>
 
             {/* ── Row 2: Jenis | Mata Uang ── */}
-            <div className="grid grid-cols-2 min-[360px]:grid-cols-2 gap-px">
+            <div className="grid grid-cols-2 gap-px">
               <div ref={errors.jenis ? firstErrorRef : null}>
                 <SelectField
                   icon={Monitor}
@@ -419,7 +434,7 @@ export default function PreOrderPage() {
               </div>
             </div>
 
-            {/* ── Row 3: Pilih Customer (full width, searchable) ── */}
+            {/* ── Row 3: Pilih Customer ── */}
             <div ref={errors.customer ? firstErrorRef : null}>
               <SelectField
                 icon={User}
@@ -428,12 +443,12 @@ export default function PreOrderPage() {
                 onChange={(v) => setField('customer', v)}
                 options={customerOptions}
                 required
-                searchable={customerOptions.length > 8}
+                searchable={customerOptions.length > 5}
                 error={errors.customer}
               />
             </div>
 
-            {/* ── Row 4: Jenis Wajib Pajak (full width) ── */}
+            {/* ── Row 4: Jenis Wajib Pajak ── */}
             <SelectField
               icon={Monitor}
               label="Jenis Wajib Pajak"
@@ -442,7 +457,7 @@ export default function PreOrderPage() {
               options={JENIS_PAJAK_OPTIONS}
             />
 
-            {/* ── Row 5: Nomor PO Customer (full width) ── */}
+            {/* ── Row 5: Nomor PO Customer ── */}
             <TextField
               icon={FileText}
               label="Nomor PO Customer"
@@ -452,17 +467,7 @@ export default function PreOrderPage() {
               autoComplete="off"
             />
 
-            {/* ── Row 6: Nomor RO (auto, readonly) ── */}
-            <TextField
-              icon={Hash}
-              label="Nomor RO (auto)"
-              value={formData.nomorRO}
-              readOnly
-              required
-              error={errors.nomorRO}
-            />
-
-            {/* ── Row 7: Pilih Jenis RO (full width) ── */}
+            {/* ── Row 6: Pilih Jenis RO ── */}
             <div ref={errors.jenisRO ? firstErrorRef : null}>
               <SelectField
                 icon={List}
@@ -475,9 +480,9 @@ export default function PreOrderPage() {
               />
             </div>
 
-            {/* ── Row 8 (Conditional): Hubungkan Nomor PO Material ── */}
+            {/* ── Row 7 (Conditional): Hubungkan Nomor PO Material ── */}
             <div
-              className="overflow-hidden transition-all"
+              className="overflow-hidden"
               style={
                 prefersReduced
                   ? { display: showHubungkanPo ? 'block' : 'none' }
@@ -499,80 +504,179 @@ export default function PreOrderPage() {
               />
             </div>
 
-            {/* ── Divider + Daftar Item heading ── */}
-            <div className="flex items-center gap-3 pt-5 pb-2 px-4">
-              <span className="text-[11px] font-semibold text-neutral-500 uppercase tracking-widest">
-                Detail Harga &amp; Volume
-              </span>
-              <div className="flex-1 h-px bg-[#2A2E35]" />
-            </div>
-
-            {/* ── Detail Harga & Volume ── */}
-            <div className="bg-[#181B1E] border-t border-b border-[#2A2E35]">
-              {/* Satuan + Target Volume */}
-              <div className="grid grid-cols-2 gap-px">
-                <SelectField
-                  label="Satuan"
-                  value={formData.satuan}
-                  onChange={(v) => setField('satuan', v)}
-                  options={SATUAN_OPTIONS}
-                />
-                <div ref={errors.totalOrder ? firstErrorRef : null}>
-                  <NumberField
-                    label="Target Volume"
-                    value={formData.totalOrder}
-                    onChange={(v) => setField('totalOrder', v)}
-                    required
-                    min={0}
-                    error={errors.totalOrder}
-                  />
-                </div>
-              </div>
-
-              {/* Harga Jual + Harga Beli */}
-              <div className="grid grid-cols-2 gap-px">
-                <div ref={errors.hargaJual ? firstErrorRef : null}>
-                  <NumberField
-                    label="Harga Jual"
-                    value={formData.hargaJual}
-                    onChange={(v) => setField('hargaJual', v)}
-                    required
-                    min={0}
-                    error={errors.hargaJual}
-                  />
-                </div>
-                <div ref={errors.hargaBeli ? firstErrorRef : null}>
-                  <NumberField
-                    label="Harga Beli"
-                    value={formData.hargaBeli}
-                    onChange={(v) => setField('hargaBeli', v)}
-                    required
-                    min={0}
-                    error={errors.hargaBeli}
-                  />
-                </div>
-              </div>
-
-              {/* Margin per unit chip */}
-              <div className="px-4 py-2 flex items-center justify-end">
-                <span className="text-[11px] font-mono text-emerald-400 bg-emerald-950/40 px-2 py-0.5 rounded">
-                  {formatCurrency(marginPerUnit)}/unit margin
+            {/* ══════════ DAFTAR ITEM — muncul setelah Jenis RO dipilih ══════════ */}
+            <div
+              className="overflow-hidden"
+              style={
+                prefersReduced
+                  ? { display: showDaftarItem ? 'block' : 'none' }
+                  : {
+                      maxHeight: showDaftarItem ? '9999px' : '0px',
+                      opacity: showDaftarItem ? 1 : 0,
+                      transition: prefersReduced ? 'none' : 'max-height 300ms ease, opacity 250ms ease',
+                    }
+              }
+              aria-hidden={!showDaftarItem}
+            >
+              {/* Section header */}
+              <div className="flex items-center justify-between px-1 pt-5 pb-2">
+                <span className="text-xs font-semibold text-neutral-400 tracking-widest uppercase">
+                  Daftar Item
                 </span>
+                {errors.items && (
+                  <span className="text-[11px] text-rose-400">{errors.items}</span>
+                )}
               </div>
+
+              {/* Column header (desktop only) */}
+              <div className="hidden md:flex items-center gap-2 px-10 pb-1 text-[10px] font-semibold text-neutral-500 uppercase tracking-widest">
+                <span className="flex-1 min-w-[140px]">Nama</span>
+                <span className="w-28">Kuantitas</span>
+                <span className="w-32">Harga Jual</span>
+                <span className="w-32">Harga Beli</span>
+                <span className="w-32">Total Harga Jual</span>
+                <span className="w-32">Total Harga Beli</span>
+              </div>
+
+              {/* Item rows */}
+              <div className="border-t border-[#2A2E35]">
+                {items.map((item, idx) => {
+                  const rowTotalJual = (Number(item.kuantitas) || 0) * (Number(item.hargaJual) || 0);
+                  const rowTotalBeli = (Number(item.kuantitas) || 0) * (Number(item.hargaBeli) || 0);
+                  return (
+                    <div
+                      key={item.id}
+                      className="flex items-stretch border-b border-[#2A2E35] group"
+                    >
+                      {/* Delete button */}
+                      <button
+                        type="button"
+                        onClick={() => removeItem(idx)}
+                        disabled={itemsLocked}
+                        aria-label={`Hapus item ${idx + 1}`}
+                        className={`shrink-0 w-10 flex items-center justify-center transition-colors
+                          ${itemsLocked
+                            ? 'text-neutral-700 cursor-not-allowed'
+                            : 'text-neutral-600 hover:text-rose-400 cursor-pointer'}`}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+
+                      {/* Scrollable field row */}
+                      <div className="flex-1 overflow-x-auto">
+                        <div className="flex items-stretch min-w-max md:min-w-0 md:flex-wrap">
+
+                          {/* Nama */}
+                          <div className="w-40 md:flex-1 md:min-w-[140px] border-l border-[#2A2E35]">
+                            <SelectField
+                              label="Nama"
+                              value={item.nama}
+                              onChange={(v) => updateItem(idx, 'nama', v)}
+                              options={itemNameOptions}
+                              disabled={itemsLocked}
+                            />
+                          </div>
+
+                          {/* Kuantitas */}
+                          <div className="w-32 border-l border-[#2A2E35]">
+                            <NumberField
+                              label="Kuantitas"
+                              value={item.kuantitas}
+                              onChange={(v) => updateItem(idx, 'kuantitas', v)}
+                              min={0}
+                              disabled={itemsLocked}
+                            />
+                          </div>
+
+                          {/* Harga Jual */}
+                          <div className="w-36 border-l border-[#2A2E35]">
+                            <NumberField
+                              label="Harga Jual"
+                              value={item.hargaJual}
+                              onChange={(v) => updateItem(idx, 'hargaJual', v)}
+                              min={0}
+                              disabled={itemsLocked}
+                            />
+                          </div>
+
+                          {/* Harga Beli */}
+                          <div className="w-36 border-l border-[#2A2E35]">
+                            <NumberField
+                              label="Harga Beli"
+                              value={item.hargaBeli}
+                              onChange={(v) => updateItem(idx, 'hargaBeli', v)}
+                              min={0}
+                              disabled={itemsLocked}
+                            />
+                          </div>
+
+                          {/* Total Harga Jual (computed, readonly) */}
+                          <div className="w-36 border-l border-[#2A2E35] bg-[#181B1E] flex flex-col justify-center px-4 pt-5 pb-1.5 min-h-[56px]">
+                            <span className="text-[11px] text-neutral-500 absolute mt-[-20px] text-[10px]">Total Harga Jual</span>
+                            <span className="text-[13px] text-neutral-200 font-mono mt-3">
+                              {rowTotalJual > 0 ? rowTotalJual.toLocaleString('id-ID', { minimumFractionDigits: 2 }) : '0.00'}
+                            </span>
+                          </div>
+
+                          {/* Total Harga Beli (computed, readonly) */}
+                          <div className="w-36 border-l border-[#2A2E35] bg-[#181B1E] flex flex-col justify-center px-4 pt-5 pb-1.5 min-h-[56px]">
+                            <span className="text-[11px] text-neutral-500 absolute mt-[-20px] text-[10px]">Total Harga Beli</span>
+                            <span className="text-[13px] text-neutral-200 font-mono mt-3">
+                              {rowTotalBeli > 0 ? rowTotalBeli.toLocaleString('id-ID', { minimumFractionDigits: 2 }) : '0.00'}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Tambah Item button */}
+              {!itemsLocked && (
+                <button
+                  type="button"
+                  onClick={addItem}
+                  className="flex items-center gap-1.5 px-4 py-3 text-[13px] text-[#F4511E] hover:text-[#E04418] font-semibold transition-colors"
+                >
+                  <Plus className="w-4 h-4" />
+                  Tambah Item
+                </button>
+              )}
+
+              {/* Gross margin summary */}
+              {items.length > 0 && (
+                <div className="flex items-center justify-between px-4 py-3 border-t border-[#2A2E35] mt-1">
+                  <div className="flex items-center gap-2 text-[12px] text-neutral-400">
+                    <TrendingUp className="w-4 h-4" />
+                    <span>Estimasi Total Gross Margin</span>
+                  </div>
+                  <strong className="text-white text-sm font-mono">{formatCurrency(totalMargin)}</strong>
+                </div>
+              )}
+
+              {/* KUNCI ITEM button */}
+              {items.length > 0 && (
+                <div className="flex justify-center py-4">
+                  <button
+                    type="button"
+                    onClick={() => setItemsLocked((v) => !v)}
+                    className={`
+                      flex items-center gap-2 px-8 py-3 rounded-full font-bold text-sm text-white
+                      transition-all shadow-lg active:scale-95
+                      ${itemsLocked
+                        ? 'bg-neutral-600 hover:bg-neutral-500 shadow-neutral-800/40'
+                        : 'bg-[#F4511E] hover:bg-[#E04418] shadow-[#F4511E]/30'}
+                    `}
+                  >
+                    <Lock className="w-4 h-4" />
+                    {itemsLocked ? 'BUKA KUNCI ITEM' : 'KUNCI ITEM'}
+                  </button>
+                </div>
+              )}
             </div>
 
-            {/* ── Estimasi Total Gross Margin ── */}
-            <div className="flex items-center justify-between px-4 py-3.5 border-b border-[#2A2E35]">
-              <div className="flex items-center gap-2 text-[12px] text-neutral-400">
-                <TrendingUp className="w-4 h-4" />
-                <span>Estimasi Total Gross Margin</span>
-              </div>
-              <strong className="text-white text-sm font-mono">
-                {formatCurrency(totalMargin)}
-              </strong>
-            </div>
-
-            {/* ── FAB Submit (sticky bottom) ── */}
+            {/* FAB Submit */}
             <FabSubmit loading={submitting} />
 
           </form>
@@ -595,12 +699,8 @@ export default function PreOrderPage() {
             className="w-full bg-[#181B1E] border border-[#2D3339] text-white rounded-md p-2.5 text-xs focus:outline-none focus:border-[#F4511E] placeholder-neutral-500"
           />
           <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#24282C]">
-            <Button variant="ghost" onClick={() => setRejectModalId(null)}>
-              Batal
-            </Button>
-            <Button variant="danger" icon={XCircle} onClick={handleConfirmReject}>
-              Konfirmasi Tolak
-            </Button>
+            <Button variant="ghost" onClick={() => setRejectModalId(null)}>Batal</Button>
+            <Button variant="danger" icon={XCircle} onClick={handleConfirmReject}>Konfirmasi Tolak</Button>
           </div>
         </div>
       </Modal>

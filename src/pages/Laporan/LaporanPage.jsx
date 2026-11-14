@@ -206,11 +206,10 @@ export default function LaporanPage() {
             setActiveTab('rekapan');
             setSearchQuery('');
           }}
-          className={`px-3.5 py-2 text-xs font-semibold border-b-2 transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer ${
-            activeTab === 'rekapan'
-              ? 'border-[#F4511E] text-white bg-[#1A1D20]/60'
-              : 'border-transparent text-neutral-400 hover:text-white'
-          }`}
+          className={`px-3.5 py-2 text-xs font-semibold border-b-2 transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer ${activeTab === 'rekapan'
+            ? 'border-[#F4511E] text-white bg-[#1A1D20]/60'
+            : 'border-transparent text-neutral-400 hover:text-white'
+            }`}
         >
           <Clock className="w-3.5 h-3.5 text-amber-400" />
           <span>Rekapan Belum Di-Invoice</span>
@@ -227,11 +226,10 @@ export default function LaporanPage() {
             setActiveTab('piutang');
             setSearchQuery('');
           }}
-          className={`px-3.5 py-2 text-xs font-semibold border-b-2 transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer ${
-            activeTab === 'piutang'
-              ? 'border-[#F4511E] text-white bg-[#1A1D20]/60'
-              : 'border-transparent text-neutral-400 hover:text-white'
-          }`}
+          className={`px-3.5 py-2 text-xs font-semibold border-b-2 transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer ${activeTab === 'piutang'
+            ? 'border-[#F4511E] text-white bg-[#1A1D20]/60'
+            : 'border-transparent text-neutral-400 hover:text-white'
+            }`}
         >
           <TrendingUp className="w-3.5 h-3.5 text-rose-400" />
           <span>Piutang Customer (AR)</span>
@@ -248,11 +246,10 @@ export default function LaporanPage() {
             setActiveTab('hutang');
             setSearchQuery('');
           }}
-          className={`px-3.5 py-2 text-xs font-semibold border-b-2 transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer ${
-            activeTab === 'hutang'
-              ? 'border-[#F4511E] text-white bg-[#1A1D20]/60'
-              : 'border-transparent text-neutral-400 hover:text-white'
-          }`}
+          className={`px-3.5 py-2 text-xs font-semibold border-b-2 transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer ${activeTab === 'hutang'
+            ? 'border-[#F4511E] text-white bg-[#1A1D20]/60'
+            : 'border-transparent text-neutral-400 hover:text-white'
+            }`}
         >
           <AlertCircle className="w-3.5 h-3.5 text-emerald-400" />
           <span>Hutang BKK Supplier (AP)</span>

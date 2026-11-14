@@ -17,7 +17,8 @@ import {
   Phone,
   Landmark,
   Save,
-  ArrowLeft,
+  Calendar,
+  Info,
 } from 'lucide-react';
 import { useData } from '../../context/DataContext';
 import { Button, Badge, Card, Input, Select, Modal } from '../../components/ui';
@@ -37,18 +38,22 @@ export default function MasterDataPage() {
     usersList,
     toggleMaterialStatus,
     addMaterial,
+    updateMaterial,
     deleteMaterial,
     toggleSupplierStatus,
     addSupplier,
+    updateSupplier,
     deleteSupplier,
     toggleCustomerStatus,
     addCustomer,
     deleteCustomer,
     toggleArmadaStatus,
     addArmada,
+    updateArmada,
     deleteArmada,
     toggleBankStatus,
     addBank,
+    updateBank,
     deleteBank,
     toggleBankAccountStatus,
     addBankAccount,
@@ -70,7 +75,21 @@ export default function MasterDataPage() {
     penerima: '',
     telepon: '',
     pkp: true,
-    bank: 'BCA',
+    bank: 'BCA - BANK CENTRAL ASIA',
+    noRekening: '',
+    rekeningAtasNama: '',
+  });
+
+  const [selectedSupplier, setSelectedSupplier] = useState(null);
+  const [editSupplierModal, setEditSupplierModal] = useState(false);
+  const [editSupplierForm, setEditSupplierForm] = useState({
+    id: '',
+    name: '',
+    idProgram: '',
+    penerima: '',
+    telepon: '',
+    pkp: false,
+    bank: 'BCA - BANK CENTRAL ASIA',
     noRekening: '',
     rekeningAtasNama: '',
   });
@@ -86,13 +105,41 @@ export default function MasterDataPage() {
     satuan: 'm3',
   });
 
+  const [selectedMaterial, setSelectedMaterial] = useState(null);
+  const [editMaterialModal, setEditMaterialModal] = useState(false);
+  const [editMaterialForm, setEditMaterialForm] = useState({
+    id: '',
+    name: '',
+    beli: '',
+    jual: '',
+    coa: '',
+    coaPiutang: '',
+    coaPendapatan: '',
+    aktif: true,
+  });
+
   const [armadaForm, setArmadaForm] = useState({
+    nopol: '',
+    panjangCm: 0,
+    lebarCm: 0,
+    tinggiCm: 0,
+    aktif: true,
+    merk: 'Hino',
+    vin: '',
+    mesin: '',
+    tahun: 2022,
+  });
+
+  const [selectedArmada, setSelectedArmada] = useState(null);
+  const [editArmadaModal, setEditArmadaModal] = useState(false);
+  const [editArmadaForm, setEditArmadaForm] = useState({
+    id: '',
     nopol: '',
     panjangCm: 650,
     lebarCm: 250,
     tinggiCm: 200,
     aktif: true,
-    merk: 'Hino Ranger FL',
+    merk: 'Hino',
     vin: '',
     mesin: '',
     tahun: 2022,
@@ -115,13 +162,50 @@ export default function MasterDataPage() {
     kodeBank: '',
   });
 
+  const [selectedBank, setSelectedBank] = useState(null);
+  const [editBankModal, setEditBankModal] = useState(false);
+  const [editBankForm, setEditBankForm] = useState({
+    id: '',
+    namaBank: '',
+    namaAlias: '',
+    kodeSwift: '',
+    kodeBank: '',
+  });
+
   const [rekeningForm, setRekeningForm] = useState({
-    bank: 'BCA',
-    jenisRekening: 'Giro Bisnis',
+    bank: '',
+    jenisRekening: '',
     nomorRekening: '',
-    rekeningAtasNama: 'PT Berkah Alam Semesta',
+    rekeningAtasNama: '',
     namaAlias: '',
   });
+
+  // Delete confirmation modal state
+  const [deleteConfirm, setDeleteConfirm] = useState({
+    open: false,
+    type: '',       // 'supplier' | 'material' | 'armada' | 'customer' | 'bank' | 'rekening'
+    id: null,
+    label: '',      // nama item untuk ditampilkan di modal
+  });
+
+  const handleAskDelete = (type, id, label) => {
+    setDeleteConfirm({ open: true, type, id, label });
+  };
+
+  const handleConfirmDelete = () => {
+    const { type, id } = deleteConfirm;
+    if (type === 'supplier') deleteSupplier(id);
+    else if (type === 'material') deleteMaterial(id);
+    else if (type === 'armada') deleteArmada(id);
+    else if (type === 'customer') deleteCustomer(id);
+    else if (type === 'bank') deleteBank(id);
+    else if (type === 'rekening') deleteBankAccount(id);
+    setDeleteConfirm({ open: false, type: '', id: null, label: '' });
+  };
+
+  const handleCancelDelete = () => {
+    setDeleteConfirm({ open: false, type: '', id: null, label: '' });
+  };
 
   // Handlers
   const handleSubmitSupplier = (e) => {
@@ -134,11 +218,55 @@ export default function MasterDataPage() {
       penerima: '',
       telepon: '',
       pkp: true,
-      bank: 'BCA',
+      bank: 'BCA - BANK CENTRAL ASIA',
       noRekening: '',
       rekeningAtasNama: '',
     });
     setModalOpen(false);
+  };
+
+  const handleOpenEditSupplier = (sup) => {
+    setSelectedSupplier(sup);
+    let matchedBank = sup.bank || 'BCA - BANK CENTRAL ASIA';
+    if (matchedBank === 'BCA' || matchedBank.toUpperCase().startsWith('BCA')) {
+      matchedBank = 'BCA - BANK CENTRAL ASIA';
+    } else if (matchedBank === 'Mandiri' || matchedBank.toUpperCase().startsWith('MANDIRI')) {
+      matchedBank = 'MANDIRI - BANK MANDIRI';
+    } else if (matchedBank === 'BRI' || matchedBank.toUpperCase().startsWith('BRI')) {
+      matchedBank = 'BRI - BANK RAKYAT INDONESIA';
+    } else if (matchedBank === 'BNI' || matchedBank.toUpperCase().startsWith('BNI')) {
+      matchedBank = 'BNI - BANK NEGARA INDONESIA';
+    }
+
+    setEditSupplierForm({
+      id: sup.id,
+      name: sup.name || '',
+      idProgram: sup.idProgram || '',
+      penerima: sup.penerima || '',
+      telepon: sup.telepon || '',
+      pkp: Boolean(sup.pkp),
+      bank: matchedBank,
+      noRekening: sup.noRekening || '',
+      rekeningAtasNama: sup.rekeningAtasNama || '',
+    });
+    setEditSupplierModal(true);
+  };
+
+  const handleUpdateSupplier = (e) => {
+    e.preventDefault();
+    if (!editSupplierForm.id) return;
+    updateSupplier(editSupplierForm.id, {
+      name: editSupplierForm.name,
+      idProgram: editSupplierForm.idProgram,
+      penerima: editSupplierForm.penerima,
+      telepon: editSupplierForm.telepon,
+      pkp: editSupplierForm.pkp,
+      bank: editSupplierForm.bank,
+      noRekening: editSupplierForm.noRekening,
+      rekeningAtasNama: editSupplierForm.rekeningAtasNama,
+    });
+    setEditSupplierModal(false);
+    setSelectedSupplier(null);
   };
 
   const handleSubmitMaterial = (e) => {
@@ -167,22 +295,88 @@ export default function MasterDataPage() {
     setModalOpen(false);
   };
 
+  const handleOpenEditMaterial = (mat) => {
+    setSelectedMaterial(mat);
+    setEditMaterialForm({
+      id: mat.id,
+      name: mat.name,
+      beli: mat.beli !== undefined ? Number(mat.beli).toFixed(1) : '',
+      jual: mat.jual !== undefined ? Number(mat.jual).toFixed(1) : '',
+      coa: mat.coa || '',
+      coaPiutang: mat.coaPiutang || '',
+      coaPendapatan: mat.coaPendapatan || '',
+      aktif: mat.aktif ?? true,
+    });
+    setEditMaterialModal(true);
+  };
+
+  const handleUpdateMaterial = (e) => {
+    e.preventDefault();
+    if (!editMaterialForm.id) return;
+    updateMaterial(editMaterialForm.id, {
+      name: editMaterialForm.name,
+      beli: Number(editMaterialForm.beli) || 0,
+      jual: Number(editMaterialForm.jual) || 0,
+      coa: editMaterialForm.coa,
+      coaPiutang: editMaterialForm.coaPiutang,
+      coaPendapatan: editMaterialForm.coaPendapatan,
+      aktif: editMaterialForm.aktif,
+    });
+    setEditMaterialModal(false);
+    setSelectedMaterial(null);
+  };
+
   const handleSubmitArmada = (e) => {
     e.preventDefault();
     if (!armadaForm.nopol) return;
     addArmada(armadaForm);
     setArmadaForm({
       nopol: '',
-      panjangCm: 650,
-      lebarCm: 250,
-      tinggiCm: 200,
+      panjangCm: 0,
+      lebarCm: 0,
+      tinggiCm: 0,
       aktif: true,
-      merk: 'Hino Ranger FL',
+      merk: 'Hino',
       vin: '',
       mesin: '',
       tahun: 2022,
     });
     setModalOpen(false);
+  };
+
+  const handleOpenEditArmada = (arm) => {
+    setSelectedArmada(arm);
+    setEditArmadaForm({
+      id: arm.id,
+      nopol: arm.nopol || '',
+      panjangCm: arm.panjangCm !== undefined ? arm.panjangCm : 0,
+      lebarCm: arm.lebarCm !== undefined ? arm.lebarCm : 0,
+      tinggiCm: arm.tinggiCm !== undefined ? arm.tinggiCm : 0,
+      aktif: arm.aktif ?? true,
+      merk: arm.merk || 'Hino',
+      vin: arm.vin || '',
+      mesin: arm.mesin || '',
+      tahun: arm.tahun || '',
+    });
+    setEditArmadaModal(true);
+  };
+
+  const handleUpdateArmada = (e) => {
+    e.preventDefault();
+    if (!editArmadaForm.id) return;
+    updateArmada(editArmadaForm.id, {
+      nopol: editArmadaForm.nopol.toUpperCase(),
+      panjangCm: Number(editArmadaForm.panjangCm) || 0,
+      lebarCm: Number(editArmadaForm.lebarCm) || 0,
+      tinggiCm: Number(editArmadaForm.tinggiCm) || 0,
+      aktif: editArmadaForm.aktif,
+      merk: editArmadaForm.merk,
+      vin: editArmadaForm.vin,
+      mesin: editArmadaForm.mesin,
+      tahun: Number(editArmadaForm.tahun) || 2022,
+    });
+    setEditArmadaModal(false);
+    setSelectedArmada(null);
   };
 
   const handleSubmitCustomer = (e) => {
@@ -217,15 +411,40 @@ export default function MasterDataPage() {
     setModalOpen(false);
   };
 
+  const handleOpenEditBank = (b) => {
+    setSelectedBank(b);
+    setEditBankForm({
+      id: b.id,
+      namaBank: b.namaBank || '',
+      namaAlias: b.namaBank || '',
+      kodeSwift: b.kodeSwift || '',
+      kodeBank: b.kodeBank || '',
+    });
+    setEditBankModal(true);
+  };
+
+  const handleUpdateBank = (e) => {
+    e.preventDefault();
+    if (!editBankForm.id) return;
+    updateBank(editBankForm.id, {
+      namaBank: editBankForm.namaBank.toUpperCase(),
+      namaAlias: editBankForm.namaBank.toUpperCase(),
+      kodeSwift: editBankForm.kodeSwift.toUpperCase(),
+      kodeBank: editBankForm.kodeBank,
+    });
+    setEditBankModal(false);
+    setSelectedBank(null);
+  };
+
   const handleSubmitRekening = (e) => {
     e.preventDefault();
-    if (!rekeningForm.nomorRekening) return;
+    if (!rekeningForm.nomorRekening || !rekeningForm.bank) return;
     addBankAccount(rekeningForm);
     setRekeningForm({
-      bank: 'BCA',
-      jenisRekening: 'Giro Bisnis',
+      bank: '',
+      jenisRekening: '',
       nomorRekening: '',
-      rekeningAtasNama: 'PT Berkah Alam Semesta',
+      rekeningAtasNama: '',
       namaAlias: '',
     });
     setModalOpen(false);
@@ -249,7 +468,7 @@ export default function MasterDataPage() {
       tag: 'Finansial',
       items: [
         { key: 'bank', label: 'Data Bank', shortLabel: 'Bank Mitra', count: banks.length, icon: Landmark },
-        { key: 'rekening', label: 'Data Rekening Bank', shortLabel: 'Rekening PT BAS', count: bankAccounts.length, icon: CreditCard },
+        { key: 'rekening', label: 'Data Rekening Bank', shortLabel: 'Rekening Bank', count: bankAccounts.length, icon: CreditCard },
         { key: 'mata-uang', label: 'Data Mata Uang', shortLabel: 'Mata Uang Basis', count: 1, icon: Coins },
       ],
     },
@@ -266,50 +485,24 @@ export default function MasterDataPage() {
   // Flattened for easy lookup
   const categories = masterSubgroups.flatMap((g) => g.items);
 
-  // Active item & active subgroup
+  // Active item
   const activeItem = categories.find((it) => it.key === currentTab) || categories[0];
   const ActiveIcon = activeItem?.icon || HardHat;
-  const activeSubgroup =
-    masterSubgroups.find((g) => g.items.some((it) => it.key === currentTab)) ||
-    masterSubgroups[0];
 
   return (
     <div className="space-y-3.5 pb-20 relative min-h-screen">
-      {/* 1. Sleek Compact Breadcrumb & Control Bar (Horizontal & Space-Saving) */}
+      {/* 1. Sleek Compact Control Bar (Horizontal & Space-Saving) */}
       <div className="bg-[#131A24] border border-[#1D2838] rounded-xl p-2.5 sm:px-3 sm:py-2 flex flex-col md:flex-row md:items-center justify-between gap-2.5 shadow-sm">
-        {/* Left: Breadcrumbs Trail */}
-        <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 flex-wrap text-xs">
-          <button
-            type="button"
-            onClick={() => navigate('/')}
-            className="flex items-center gap-1.5 text-neutral-400 hover:text-white transition-colors cursor-pointer group"
-            title="Kembali ke Dashboard"
-          >
-            <ArrowLeft className="w-3.5 h-3.5 text-neutral-500 group-hover:text-white transition-colors" />
-            <span className="font-medium">Dashboard</span>
-          </button>
-
-          <ChevronRight className="w-3.5 h-3.5 text-neutral-600 shrink-0" />
-
-          <span className="text-neutral-400 font-medium">Data Master</span>
-
-          <ChevronRight className="w-3.5 h-3.5 text-neutral-600 shrink-0" />
-
-          <span className="text-neutral-400 font-mono text-[11px] hidden sm:inline">
-            {activeSubgroup.label}
-          </span>
-
-          <ChevronRight className="w-3.5 h-3.5 text-neutral-600 shrink-0 hidden sm:inline" />
-
-          {/* Active Entity Badge */}
-          <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-[#F4511E]/20 text-[#FF7043] border border-[#F4511E]/40 font-bold text-xs shadow-2xs">
+        {/* Left: Active Entity Badge */}
+        <div className="flex items-center gap-2">
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-[#F4511E]/20 text-[#FF7043] border border-[#F4511E]/40 font-bold text-xs shadow-2xs">
             <ActiveIcon className="w-3.5 h-3.5 text-[#F4511E]" />
             <span>{activeItem.label}</span>
             <span className="font-mono text-[10px] bg-black/40 text-neutral-200 px-1.5 py-0.2 rounded ml-0.5 border border-white/10">
               {activeItem.count}
             </span>
           </div>
-        </nav>
+        </div>
 
         {/* Right: Compact Search & Add Button on the Same Horizontal Line */}
         <div className="flex items-center gap-2 w-full md:w-auto justify-between md:justify-end">
@@ -428,8 +621,9 @@ export default function MasterDataPage() {
 
                     <button
                       type="button"
+                      onClick={() => handleOpenEditSupplier(sup)}
                       className="w-7 h-7 rounded-full bg-[#F4511E] text-white flex items-center justify-center hover:opacity-90 transition-opacity cursor-pointer shadow-xs"
-                      title="Detail Supplier"
+                      title="Perbarui Data Supplier"
                     >
                       <ChevronRight className="w-4 h-4" />
                     </button>
@@ -461,7 +655,7 @@ export default function MasterDataPage() {
                     size="xs"
                     variant="ghost"
                     icon={Trash2}
-                    onClick={() => deleteSupplier(sup.id)}
+                    onClick={() => handleAskDelete('supplier', sup.id, sup.name)}
                     className="text-[#F4511E] hover:bg-[#F4511E]/10 border border-[#F4511E]/30"
                     title="Hapus Supplier"
                   />
@@ -507,8 +701,9 @@ export default function MasterDataPage() {
 
                     <button
                       type="button"
+                      onClick={() => handleOpenEditMaterial(mat)}
                       className="w-7 h-7 rounded-full bg-[#F4511E] text-white flex items-center justify-center hover:opacity-90 transition-opacity cursor-pointer shadow-xs"
-                      title="Detail Material"
+                      title="Perbarui Data Material"
                     >
                       <ChevronRight className="w-4 h-4" />
                     </button>
@@ -542,7 +737,7 @@ export default function MasterDataPage() {
                     size="xs"
                     variant="ghost"
                     icon={Trash2}
-                    onClick={() => deleteMaterial(mat.id)}
+                    onClick={() => handleAskDelete('material', mat.id, mat.name)}
                     className="text-[#F4511E] hover:bg-[#F4511E]/10 border border-[#F4511E]/30"
                     title="Hapus Material"
                   />
@@ -592,8 +787,9 @@ export default function MasterDataPage() {
 
                     <button
                       type="button"
+                      onClick={() => handleOpenEditArmada(arm)}
                       className="w-7 h-7 rounded-full bg-[#F4511E] text-white flex items-center justify-center hover:opacity-90 transition-opacity cursor-pointer shadow-xs"
-                      title="Detail Armada"
+                      title="Perbarui Data Armada"
                     >
                       <ChevronRight className="w-4 h-4" />
                     </button>
@@ -625,7 +821,7 @@ export default function MasterDataPage() {
                     size="xs"
                     variant="ghost"
                     icon={Trash2}
-                    onClick={() => deleteArmada(arm.id)}
+                    onClick={() => handleAskDelete('armada', arm.id, arm.nopol)}
                     className="text-[#F4511E] hover:bg-[#F4511E]/10 border border-[#F4511E]/30"
                     title="Hapus Armada"
                   />
@@ -704,7 +900,7 @@ export default function MasterDataPage() {
                     size="xs"
                     variant="ghost"
                     icon={Trash2}
-                    onClick={() => deleteCustomer(cust.id)}
+                    onClick={() => handleAskDelete('customer', cust.id, cust.name)}
                     className="text-[#F4511E] hover:bg-[#F4511E]/10 border border-[#F4511E]/30"
                     title="Hapus Customer"
                   />
@@ -754,8 +950,9 @@ export default function MasterDataPage() {
 
                     <button
                       type="button"
+                      onClick={() => handleOpenEditBank(bank)}
                       className="w-7 h-7 rounded-full bg-[#F4511E] text-white flex items-center justify-center hover:opacity-90 transition-opacity cursor-pointer shadow-xs"
-                      title="Detail Bank"
+                      title="Perbarui Data Bank"
                     >
                       <ChevronRight className="w-4 h-4" />
                     </button>
@@ -777,7 +974,7 @@ export default function MasterDataPage() {
                     size="xs"
                     variant="ghost"
                     icon={Trash2}
-                    onClick={() => deleteBank(bank.id)}
+                    onClick={() => handleAskDelete('bank', bank.id, bank.namaAlias || bank.namaBank)}
                     className="text-[#F4511E] hover:bg-[#F4511E]/10 border border-[#F4511E]/30"
                     title="Hapus Bank"
                   />
@@ -849,7 +1046,7 @@ export default function MasterDataPage() {
                     size="xs"
                     variant="ghost"
                     icon={Trash2}
-                    onClick={() => deleteBankAccount(acc.id)}
+                    onClick={() => handleAskDelete('rekening', acc.id, acc.nomorRekening)}
                     className="text-[#F4511E] hover:bg-[#F4511E]/10 border border-[#F4511E]/30"
                     title="Hapus Rekening"
                   />
@@ -941,8 +1138,9 @@ export default function MasterDataPage() {
               icon={User}
               required
               value={supplierForm.name}
-              onChange={(e) => setSupplierForm({ ...supplierForm, name: e.target.value })}
+              onChange={(e) => setSupplierForm({ ...supplierForm, name: e.target.value.toUpperCase() })}
               placeholder="Contoh: PT SOYO APIK, PAK TEGUH"
+              className="uppercase"
             />
 
             <Input
@@ -952,6 +1150,7 @@ export default function MasterDataPage() {
               value={supplierForm.idProgram}
               onChange={(e) => setSupplierForm({ ...supplierForm, idProgram: e.target.value })}
               placeholder="Contoh: SUP-009"
+              className="font-mono"
             />
 
             <Input
@@ -959,20 +1158,48 @@ export default function MasterDataPage() {
               icon={User}
               required
               value={supplierForm.penerima}
-              onChange={(e) => setSupplierForm({ ...supplierForm, penerima: e.target.value })}
+              onChange={(e) => setSupplierForm({ ...supplierForm, penerima: e.target.value.toUpperCase() })}
               placeholder="Nama kontak / pemilik rekening"
+              className="uppercase"
             />
 
             <Input
               label="Nomor Telepon Supplier"
               icon={Phone}
+              inputMode="numeric"
+              pattern="[0-9]*"
               value={supplierForm.telepon}
-              onChange={(e) => setSupplierForm({ ...supplierForm, telepon: e.target.value })}
+              onKeyDown={(e) => {
+                if (
+                  [
+                    'Backspace',
+                    'Tab',
+                    'Enter',
+                    'Delete',
+                    'Escape',
+                    'ArrowLeft',
+                    'ArrowRight',
+                    'ArrowUp',
+                    'ArrowDown',
+                    'Home',
+                    'End',
+                  ].includes(e.key) ||
+                  e.ctrlKey ||
+                  e.metaKey
+                ) {
+                  return;
+                }
+                if (!/^[0-9]$/.test(e.key)) {
+                  e.preventDefault();
+                }
+              }}
+              onChange={(e) => setSupplierForm({ ...supplierForm, telepon: e.target.value.replace(/\D/g, '') })}
               placeholder="0812-xxxx-xxxx"
+              className="font-mono"
             />
 
-            <div className="flex items-center justify-between bg-[#181B1E] border border-[#2D3339] rounded-md px-3 py-2">
-              <span className="text-xs font-semibold text-white">Status PKP</span>
+            <div className="flex items-center justify-between bg-[#181B1E] border border-[#2D3339] rounded-md px-3 py-2.5">
+              <span className="text-xs font-semibold text-white">PKP</span>
               <button
                 type="button"
                 onClick={() => setSupplierForm({ ...supplierForm, pkp: !supplierForm.pkp })}
@@ -1000,10 +1227,10 @@ export default function MasterDataPage() {
               value={supplierForm.bank}
               onChange={(e) => setSupplierForm({ ...supplierForm, bank: e.target.value })}
             >
-              <option value="BCA">BCA (Bank Central Asia)</option>
-              <option value="Mandiri">Bank Mandiri</option>
-              <option value="BRI">Bank Rakyat Indonesia (BRI)</option>
-              <option value="BNI">Bank Negara Indonesia (BNI)</option>
+              <option value="BCA - BANK CENTRAL ASIA">BCA - BANK CENTRAL ASIA</option>
+              <option value="MANDIRI - BANK MANDIRI">MANDIRI - BANK MANDIRI</option>
+              <option value="BRI - BANK RAKYAT INDONESIA">BRI - BANK RAKYAT INDONESIA</option>
+              <option value="BNI - BANK NEGARA INDONESIA">BNI - BANK NEGARA INDONESIA</option>
             </Select>
 
             <Input
@@ -1014,7 +1241,6 @@ export default function MasterDataPage() {
               pattern="[0-9]*"
               value={supplierForm.noRekening}
               onKeyDown={(e) => {
-                // Allow control keys (Backspace, Delete, Tab, Arrow keys, Ctrl shortcuts)
                 if (
                   [
                     'Backspace',
@@ -1034,7 +1260,6 @@ export default function MasterDataPage() {
                 ) {
                   return;
                 }
-                // Reject non-numeric input
                 if (!/^[0-9]$/.test(e.key)) {
                   e.preventDefault();
                 }
@@ -1053,8 +1278,9 @@ export default function MasterDataPage() {
               required
               value={supplierForm.rekeningAtasNama}
               onChange={(e) =>
-                setSupplierForm({ ...supplierForm, rekeningAtasNama: e.target.value })
+                setSupplierForm({ ...supplierForm, rekeningAtasNama: e.target.value.toUpperCase() })
               }
+              className="uppercase"
             />
           </div>
 
@@ -1064,6 +1290,224 @@ export default function MasterDataPage() {
             </Button>
             <Button type="submit" variant="primary" icon={Save}>
               Simpan Supplier
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* ======================================================== */}
+      {/* MODAL: PERBARUI DATA SUPPLIER */}
+      {/* ======================================================== */}
+      <Modal
+        isOpen={editSupplierModal}
+        onClose={() => {
+          setEditSupplierModal(false);
+          setSelectedSupplier(null);
+        }}
+        title="Perbarui Data Supplier"
+        subtitle="Edit parameter data vendor & rekening bank penerima"
+      >
+        <form onSubmit={handleUpdateSupplier} className="p-4 space-y-3.5">
+          <div className="space-y-3">
+            <div className="text-[11px] font-bold text-neutral-400 uppercase tracking-wider font-mono">
+              Detail Supplier
+            </div>
+
+            <Input
+              label="Nama Supplier"
+              icon={User}
+              required
+              value={editSupplierForm.name}
+              onChange={(e) =>
+                setEditSupplierForm({ ...editSupplierForm, name: e.target.value.toUpperCase() })
+              }
+              className="font-mono font-bold uppercase"
+              placeholder="Contoh: UKHY DIAN"
+            />
+
+            <Input
+              label="ID Supplier Program Keuangan"
+              icon={Hash}
+              required
+              value={editSupplierForm.idProgram}
+              onChange={(e) =>
+                setEditSupplierForm({ ...editSupplierForm, idProgram: e.target.value })
+              }
+              placeholder="Contoh: 00"
+              className="font-mono"
+            />
+
+            <Input
+              label="Nama Penerima"
+              icon={User}
+              required
+              value={editSupplierForm.penerima}
+              onChange={(e) =>
+                setEditSupplierForm({ ...editSupplierForm, penerima: e.target.value.toUpperCase() })
+              }
+              placeholder="Contoh: PAK UKHY"
+              className="uppercase"
+            />
+
+            <Input
+              label="Nomor Telepon Supplier"
+              icon={Phone}
+              inputMode="numeric"
+              pattern="[0-9]*"
+              value={editSupplierForm.telepon}
+              onKeyDown={(e) => {
+                if (
+                  [
+                    'Backspace',
+                    'Tab',
+                    'Enter',
+                    'Delete',
+                    'Escape',
+                    'ArrowLeft',
+                    'ArrowRight',
+                    'ArrowUp',
+                    'ArrowDown',
+                    'Home',
+                    'End',
+                  ].includes(e.key) ||
+                  e.ctrlKey ||
+                  e.metaKey
+                ) {
+                  return;
+                }
+                if (!/^[0-9]$/.test(e.key)) {
+                  e.preventDefault();
+                }
+              }}
+              onChange={(e) =>
+                setEditSupplierForm({
+                  ...editSupplierForm,
+                  telepon: e.target.value.replace(/\D/g, ''),
+                })
+              }
+              placeholder="Nomor Telepon Supplier"
+              className="font-mono"
+            />
+
+            <div className="flex items-center justify-between bg-[#181B1E] border border-[#2D3339] rounded-md px-3 py-2.5">
+              <span className="text-xs font-semibold text-white">PKP</span>
+              <button
+                type="button"
+                onClick={() =>
+                  setEditSupplierForm({ ...editSupplierForm, pkp: !editSupplierForm.pkp })
+                }
+                className={`w-9 h-5 flex items-center rounded-full p-0.5 transition-colors cursor-pointer ${
+                  editSupplierForm.pkp ? 'bg-[#F4511E]' : 'bg-[#2A2E33]'
+                }`}
+              >
+                <div
+                  className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${
+                    editSupplierForm.pkp ? 'translate-x-4' : 'translate-x-0'
+                  }`}
+                />
+              </button>
+            </div>
+          </div>
+
+          <div className="space-y-3 pt-3 border-t border-[#24282C]">
+            <div className="text-[11px] font-bold text-neutral-400 uppercase tracking-wider font-mono">
+              Detail Rekening Pembayaran
+            </div>
+
+            <Select
+              label="Pilih Bank"
+              icon={Landmark}
+              required
+              value={editSupplierForm.bank}
+              onChange={(e) =>
+                setEditSupplierForm({ ...editSupplierForm, bank: e.target.value })
+              }
+            >
+              <option value="BCA - BANK CENTRAL ASIA">BCA - BANK CENTRAL ASIA</option>
+              <option value="MANDIRI - BANK MANDIRI">MANDIRI - BANK MANDIRI</option>
+              <option value="BRI - BANK RAKYAT INDONESIA">BRI - BANK RAKYAT INDONESIA</option>
+              <option value="BNI - BANK NEGARA INDONESIA">BNI - BANK NEGARA INDONESIA</option>
+              {banks
+                .filter(
+                  (b) =>
+                    !['BCA', 'MANDIRI', 'BRI', 'BNI'].some((code) =>
+                      b.namaAlias.toUpperCase().includes(code)
+                    )
+                )
+                .map((b) => (
+                  <option key={b.id} value={`${b.namaAlias} - ${b.namaBank.toUpperCase()}`}>
+                    {b.namaAlias} - {b.namaBank.toUpperCase()}
+                  </option>
+                ))}
+            </Select>
+
+            <Input
+              label="Nomor Rekening"
+              icon={Hash}
+              required
+              inputMode="numeric"
+              pattern="[0-9]*"
+              value={editSupplierForm.noRekening}
+              onKeyDown={(e) => {
+                if (
+                  [
+                    'Backspace',
+                    'Tab',
+                    'Enter',
+                    'Delete',
+                    'Escape',
+                    'ArrowLeft',
+                    'ArrowRight',
+                    'ArrowUp',
+                    'ArrowDown',
+                    'Home',
+                    'End',
+                  ].includes(e.key) ||
+                  e.ctrlKey ||
+                  e.metaKey
+                ) {
+                  return;
+                }
+                if (!/^[0-9]$/.test(e.key)) {
+                  e.preventDefault();
+                }
+              }}
+              onChange={(e) => {
+                const numericOnly = e.target.value.replace(/\D/g, '');
+                setEditSupplierForm({ ...editSupplierForm, noRekening: numericOnly });
+              }}
+              placeholder="Contoh: 6150832452"
+              className="font-mono font-bold"
+            />
+
+            <Input
+              label="Rekening Atas Nama"
+              icon={User}
+              required
+              value={editSupplierForm.rekeningAtasNama}
+              onChange={(e) =>
+                setEditSupplierForm({
+                  ...editSupplierForm,
+                  rekeningAtasNama: e.target.value.toUpperCase(),
+                })
+              }
+              placeholder="Contoh: UKHY DIAN"
+              className="uppercase"
+            />
+          </div>
+
+          <div className="pt-3 border-t border-[#24282C] flex justify-end gap-2">
+            <Button
+              variant="ghost"
+              onClick={() => {
+                setEditSupplierModal(false);
+                setSelectedSupplier(null);
+              }}
+            >
+              Batal
+            </Button>
+            <Button type="submit" variant="primary" icon={Save}>
+              Perbarui Supplier
             </Button>
           </div>
         </form>
@@ -1083,7 +1527,7 @@ export default function MasterDataPage() {
             label="Nama Material"
             required
             value={materialForm.name}
-            onChange={(e) => setMaterialForm({ ...materialForm, name: e.target.value })}
+            onChange={(e) => setMaterialForm({ ...materialForm, name: e.target.value.toUpperCase() })}
             placeholder="Contoh: SIRTU AYAK, LIMESTONE"
           />
 
@@ -1162,101 +1606,337 @@ export default function MasterDataPage() {
       </Modal>
 
       {/* ======================================================== */}
+      {/* MODAL: PERBARUI DATA MATERIAL */}
+      {/* ======================================================== */}
+      <Modal
+        isOpen={editMaterialModal}
+        onClose={() => {
+          setEditMaterialModal(false);
+          setSelectedMaterial(null);
+        }}
+        title="Perbarui Data Material"
+        subtitle="Edit parameter harga, COA, dan status material"
+      >
+        <form onSubmit={handleUpdateMaterial} className="p-4 space-y-3.5">
+          <Input
+            label="Nama Material"
+            disabled
+            value={editMaterialForm.name}
+            onChange={(e) =>
+              setEditMaterialForm({ ...editMaterialForm, name: e.target.value.toUpperCase() })
+            }
+            className="font-mono font-bold uppercase cursor-not-allowed opacity-75"
+          />
+
+          <Input
+            label="Harga Beli"
+            type="number"
+            step="0.1"
+            required
+            rightElement="IDR"
+            value={editMaterialForm.beli}
+            onChange={(e) =>
+              setEditMaterialForm({ ...editMaterialForm, beli: e.target.value })
+            }
+            className="font-mono font-bold"
+          />
+
+          <Input
+            label="Harga Jual"
+            type="number"
+            step="0.1"
+            required
+            rightElement="IDR"
+            value={editMaterialForm.jual}
+            onChange={(e) =>
+              setEditMaterialForm({ ...editMaterialForm, jual: e.target.value })
+            }
+            className="font-mono font-bold"
+          />
+
+          <Input
+            label="COA Material"
+            value={editMaterialForm.coa}
+            onChange={(e) =>
+              setEditMaterialForm({ ...editMaterialForm, coa: e.target.value })
+            }
+            placeholder="COA Material"
+            className="font-mono"
+          />
+
+          <Input
+            label="COA Piutang Dagang"
+            value={editMaterialForm.coaPiutang}
+            onChange={(e) =>
+              setEditMaterialForm({ ...editMaterialForm, coaPiutang: e.target.value })
+            }
+            placeholder="COA Piutang Dagang"
+            className="font-mono"
+          />
+
+          <Input
+            label="COA Pendapatan"
+            value={editMaterialForm.coaPendapatan}
+            onChange={(e) =>
+              setEditMaterialForm({ ...editMaterialForm, coaPendapatan: e.target.value })
+            }
+            placeholder="COA Pendapatan"
+            className="font-mono"
+          />
+
+          <div>
+            <label className="block text-[11px] font-medium text-neutral-300 mb-1">
+              Status Material <span className="text-[#F4511E] font-bold">*</span>
+            </label>
+            <div className="border border-[#1E2B3C] bg-[#0E1520] rounded-md px-4 py-2.5 flex items-center gap-6">
+              <label className="flex items-center gap-2 cursor-pointer text-xs">
+                <input
+                  type="radio"
+                  name="statusMaterialEdit"
+                  checked={editMaterialForm.aktif === true}
+                  onChange={() =>
+                    setEditMaterialForm({ ...editMaterialForm, aktif: true })
+                  }
+                  className="accent-[#F4511E] w-4 h-4 cursor-pointer"
+                />
+                <span
+                  className={
+                    editMaterialForm.aktif ? 'text-white font-medium' : 'text-neutral-400'
+                  }
+                >
+                  Aktif
+                </span>
+              </label>
+
+              <label className="flex items-center gap-2 cursor-pointer text-xs">
+                <input
+                  type="radio"
+                  name="statusMaterialEdit"
+                  checked={editMaterialForm.aktif === false}
+                  onChange={() =>
+                    setEditMaterialForm({ ...editMaterialForm, aktif: false })
+                  }
+                  className="accent-[#F4511E] w-4 h-4 cursor-pointer"
+                />
+                <span
+                  className={
+                    !editMaterialForm.aktif ? 'text-white font-medium' : 'text-neutral-400'
+                  }
+                >
+                  Tidak Aktif
+                </span>
+              </label>
+            </div>
+          </div>
+
+          <div className="pt-3 border-t border-[#24282C] flex justify-end gap-2">
+            <Button
+              variant="ghost"
+              onClick={() => {
+                setEditMaterialModal(false);
+                setSelectedMaterial(null);
+              }}
+            >
+              Batal
+            </Button>
+            <Button type="submit" variant="primary" icon={Save}>
+              Perbarui Material
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* ======================================================== */}
       {/* MODAL: TAMBAH ARMADA */}
       {/* ======================================================== */}
       <Modal
         isOpen={modalOpen && currentTab === 'armada'}
         onClose={() => setModalOpen(false)}
-        title="Tambah Armada Truk"
+        title="Tambah Armada"
         subtitle="Pencatatan nomor polisi dan dimensi bak dump truck"
       >
         <form onSubmit={handleSubmitArmada} className="p-4 space-y-3">
           <Input
             label="Nomor Polisi (TNKB)"
+            icon={Hash}
             required
             value={armadaForm.nopol}
             onChange={(e) =>
               setArmadaForm({ ...armadaForm, nopol: e.target.value.toUpperCase() })
             }
             placeholder="Contoh: W 9821 UB"
-            className="font-mono font-bold"
+            className="font-mono font-bold uppercase"
           />
 
           <div>
             <label className="block text-[11px] font-medium text-neutral-300 mb-1">
-              Dimensi Bak Kendaraan (cm) <span className="text-[#F4511E] font-bold">*</span>
+              Dimensi Kendaraan <span className="text-[#F4511E] font-bold">*</span>
             </label>
             <div className="grid grid-cols-3 gap-2">
               <Input
                 label="Panjang (P)"
                 type="number"
                 required
+                rightElement="cm"
                 value={armadaForm.panjangCm}
-                onChange={(e) =>
-                  setArmadaForm({ ...armadaForm, panjangCm: Number(e.target.value) })
-                }
-                className="font-mono"
+                onFocus={(e) => {
+                  if (e.target.value === '0') e.target.select();
+                }}
+                onChange={(e) => {
+                  const raw = e.target.value;
+                  if (raw === '') {
+                    setArmadaForm({ ...armadaForm, panjangCm: '' });
+                  } else {
+                    const clean = raw.replace(/^0+(?=\d)/, '');
+                    setArmadaForm({ ...armadaForm, panjangCm: clean === '' ? 0 : Number(clean) });
+                  }
+                }}
+                onBlur={() => {
+                  if (armadaForm.panjangCm === '' || armadaForm.panjangCm === undefined) {
+                    setArmadaForm({ ...armadaForm, panjangCm: 0 });
+                  }
+                }}
+                className="font-mono font-bold"
               />
               <Input
                 label="Lebar (L)"
                 type="number"
                 required
+                rightElement="cm"
                 value={armadaForm.lebarCm}
-                onChange={(e) =>
-                  setArmadaForm({ ...armadaForm, lebarCm: Number(e.target.value) })
-                }
-                className="font-mono"
+                onFocus={(e) => {
+                  if (e.target.value === '0') e.target.select();
+                }}
+                onChange={(e) => {
+                  const raw = e.target.value;
+                  if (raw === '') {
+                    setArmadaForm({ ...armadaForm, lebarCm: '' });
+                  } else {
+                    const clean = raw.replace(/^0+(?=\d)/, '');
+                    setArmadaForm({ ...armadaForm, lebarCm: clean === '' ? 0 : Number(clean) });
+                  }
+                }}
+                onBlur={() => {
+                  if (armadaForm.lebarCm === '' || armadaForm.lebarCm === undefined) {
+                    setArmadaForm({ ...armadaForm, lebarCm: 0 });
+                  }
+                }}
+                className="font-mono font-bold"
               />
               <Input
                 label="Tinggi (T)"
                 type="number"
                 required
+                rightElement="cm"
                 value={armadaForm.tinggiCm}
-                onChange={(e) =>
-                  setArmadaForm({ ...armadaForm, tinggiCm: Number(e.target.value) })
-                }
-                className="font-mono"
+                onFocus={(e) => {
+                  if (e.target.value === '0') e.target.select();
+                }}
+                onChange={(e) => {
+                  const raw = e.target.value;
+                  if (raw === '') {
+                    setArmadaForm({ ...armadaForm, tinggiCm: '' });
+                  } else {
+                    const clean = raw.replace(/^0+(?=\d)/, '');
+                    setArmadaForm({ ...armadaForm, tinggiCm: clean === '' ? 0 : Number(clean) });
+                  }
+                }}
+                onBlur={() => {
+                  if (armadaForm.tinggiCm === '' || armadaForm.tinggiCm === undefined) {
+                    setArmadaForm({ ...armadaForm, tinggiCm: 0 });
+                  }
+                }}
+                className="font-mono font-bold"
               />
             </div>
 
             <div className="mt-1.5 text-xs text-amber-400 font-mono">
               Kapasitas Kubikasi Otomatis:{' '}
-              {((armadaForm.panjangCm * armadaForm.lebarCm * armadaForm.tinggiCm) / 1000000).toFixed(
+              {(((Number(armadaForm.panjangCm) || 0) * (Number(armadaForm.lebarCm) || 0) * (Number(armadaForm.tinggiCm) || 0)) / 1000000).toFixed(
                 2
               )}{' '}
               m³
             </div>
           </div>
 
-          <Input
-            label="Merk / Model Kendaraan"
-            value={armadaForm.merk}
-            onChange={(e) => setArmadaForm({ ...armadaForm, merk: e.target.value })}
-            placeholder="Contoh: Hino Dutro 130 HD"
-          />
+          <div>
+            <label className="block text-[11px] font-medium text-neutral-300 mb-1">
+              Status Kendaraan <span className="text-[#F4511E] font-bold">*</span>
+            </label>
+            <div className="border border-[#1E2B3C] bg-[#0E1520] rounded-md px-4 py-2.5 flex items-center gap-6">
+              <label className="flex items-center gap-2 cursor-pointer text-xs">
+                <input
+                  type="radio"
+                  name="statusKendaraan"
+                  checked={armadaForm.aktif === true}
+                  onChange={() => setArmadaForm({ ...armadaForm, aktif: true })}
+                  className="accent-[#F4511E] w-4 h-4 cursor-pointer"
+                />
+                <span className={armadaForm.aktif ? 'text-white font-medium' : 'text-neutral-400'}>
+                  Aktif
+                </span>
+              </label>
 
-          <div className="grid grid-cols-2 gap-2">
+              <label className="flex items-center gap-2 cursor-pointer text-xs">
+                <input
+                  type="radio"
+                  name="statusKendaraan"
+                  checked={armadaForm.aktif === false}
+                  onChange={() => setArmadaForm({ ...armadaForm, aktif: false })}
+                  className="accent-[#F4511E] w-4 h-4 cursor-pointer"
+                />
+                <span className={!armadaForm.aktif ? 'text-white font-medium' : 'text-neutral-400'}>
+                  Tidak Aktif
+                </span>
+              </label>
+            </div>
+          </div>
+
+          <div className="pt-2 border-t border-[#1E2B3C]/50 space-y-3">
+            <p className="text-[11px] font-medium text-neutral-400">Detail Lainnya (opsional)</p>
+            <Select
+              label="Merk Kendaraan"
+              icon={Info}
+              value={armadaForm.merk}
+              onChange={(e) => setArmadaForm({ ...armadaForm, merk: e.target.value })}
+            >
+              <option value="FAW">FAW</option>
+              <option value="Hino">Hino</option>
+              <option value="Isuzu">Isuzu</option>
+              <option value="Mitsubishi">Mitsubishi</option>
+              <option value="Nissan UD">Nissan UD</option>
+              <option value="Scania">Scania</option>
+              <option value="Tata">Tata</option>
+              <option value="Toyota">Toyota</option>
+              <option value="Volvo">Volvo</option>
+            </Select>
+
+            <div className="grid grid-cols-2 gap-2">
+              <Input
+                label="Nomor Rangka / VIN"
+                icon={Hash}
+                value={armadaForm.vin}
+                onChange={(e) => setArmadaForm({ ...armadaForm, vin: e.target.value })}
+                className="font-mono"
+              />
+              <Input
+                label="Nomor Mesin"
+                icon={Hash}
+                value={armadaForm.mesin}
+                onChange={(e) => setArmadaForm({ ...armadaForm, mesin: e.target.value })}
+                className="font-mono"
+              />
+            </div>
+
             <Input
-              label="Nomor Rangka / VIN"
-              value={armadaForm.vin}
-              onChange={(e) => setArmadaForm({ ...armadaForm, vin: e.target.value })}
-              className="font-mono"
-            />
-            <Input
-              label="Nomor Mesin"
-              value={armadaForm.mesin}
-              onChange={(e) => setArmadaForm({ ...armadaForm, mesin: e.target.value })}
+              label="Tahun Pembuatan"
+              icon={Calendar}
+              type="number"
+              value={armadaForm.tahun}
+              onChange={(e) => setArmadaForm({ ...armadaForm, tahun: Number(e.target.value) })}
               className="font-mono"
             />
           </div>
-
-          <Input
-            label="Tahun Pembuatan"
-            type="number"
-            value={armadaForm.tahun}
-            onChange={(e) => setArmadaForm({ ...armadaForm, tahun: Number(e.target.value) })}
-            className="font-mono"
-          />
 
           <div className="pt-3 border-t border-[#24282C] flex justify-end gap-2">
             <Button variant="ghost" onClick={() => setModalOpen(false)}>
@@ -1264,6 +1944,178 @@ export default function MasterDataPage() {
             </Button>
             <Button type="submit" variant="primary" icon={Save}>
               Simpan Armada
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* ======================================================== */}
+      {/* MODAL: PERBARUI DATA ARMADA */}
+      {/* ======================================================== */}
+      <Modal
+        isOpen={editArmadaModal}
+        onClose={() => {
+          setEditArmadaModal(false);
+          setSelectedArmada(null);
+        }}
+        title="Perbarui Data Armada"
+        subtitle="Edit parameter dimensi bak, status operasional, dan data kendaraan"
+      >
+        <form onSubmit={handleUpdateArmada} className="p-4 space-y-3">
+          <Input
+            label="Nomor Polisi (TNKB)"
+            icon={Hash}
+            required
+            value={editArmadaForm.nopol}
+            onChange={(e) =>
+              setEditArmadaForm({ ...editArmadaForm, nopol: e.target.value.toUpperCase() })
+            }
+            placeholder="Contoh: 21606"
+            className="font-mono font-bold uppercase"
+          />
+
+          <div>
+            <label className="block text-[11px] font-medium text-neutral-300 mb-1">
+              Dimensi Kendaraan <span className="text-[#F4511E] font-bold">*</span>
+            </label>
+            <div className="grid grid-cols-3 gap-2">
+              <Input
+                label="Panjang (P)"
+                type="number"
+                required
+                rightElement="cm"
+                value={editArmadaForm.panjangCm}
+                onChange={(e) =>
+                  setEditArmadaForm({ ...editArmadaForm, panjangCm: e.target.value })
+                }
+                className="font-mono font-bold"
+              />
+              <Input
+                label="Lebar (L)"
+                type="number"
+                required
+                rightElement="cm"
+                value={editArmadaForm.lebarCm}
+                onChange={(e) =>
+                  setEditArmadaForm({ ...editArmadaForm, lebarCm: e.target.value })
+                }
+                className="font-mono font-bold"
+              />
+              <Input
+                label="Tinggi (T)"
+                type="number"
+                required
+                rightElement="cm"
+                value={editArmadaForm.tinggiCm}
+                onChange={(e) =>
+                  setEditArmadaForm({ ...editArmadaForm, tinggiCm: e.target.value })
+                }
+                className="font-mono font-bold"
+              />
+            </div>
+
+            <div className="mt-1.5 text-xs text-amber-400 font-mono">
+              Kapasitas Kubikasi Otomatis:{' '}
+              {(((Number(editArmadaForm.panjangCm) || 0) * (Number(editArmadaForm.lebarCm) || 0) * (Number(editArmadaForm.tinggiCm) || 0)) / 1000000).toFixed(
+                2
+              )}{' '}
+              m³
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-[11px] font-medium text-neutral-300 mb-1">
+              Status Kendaraan <span className="text-[#F4511E] font-bold">*</span>
+            </label>
+            <div className="border border-[#1E2B3C] bg-[#0E1520] rounded-md px-4 py-2.5 flex items-center gap-6">
+              <label className="flex items-center gap-2 cursor-pointer text-xs">
+                <input
+                  type="radio"
+                  name="statusKendaraanEdit"
+                  checked={editArmadaForm.aktif === true}
+                  onChange={() => setEditArmadaForm({ ...editArmadaForm, aktif: true })}
+                  className="accent-[#F4511E] w-4 h-4 cursor-pointer"
+                />
+                <span className={editArmadaForm.aktif ? 'text-white font-medium' : 'text-neutral-400'}>
+                  Aktif
+                </span>
+              </label>
+
+              <label className="flex items-center gap-2 cursor-pointer text-xs">
+                <input
+                  type="radio"
+                  name="statusKendaraanEdit"
+                  checked={editArmadaForm.aktif === false}
+                  onChange={() => setEditArmadaForm({ ...editArmadaForm, aktif: false })}
+                  className="accent-[#F4511E] w-4 h-4 cursor-pointer"
+                />
+                <span className={!editArmadaForm.aktif ? 'text-white font-medium' : 'text-neutral-400'}>
+                  Tidak Aktif
+                </span>
+              </label>
+            </div>
+          </div>
+
+          <div className="pt-2 border-t border-[#1E2B3C]/50 space-y-3">
+            <p className="text-[11px] font-medium text-neutral-400">Detail Lainnya (opsional)</p>
+            <Select
+              label="Merk Kendaraan"
+              icon={Info}
+              value={editArmadaForm.merk}
+              onChange={(e) => setEditArmadaForm({ ...editArmadaForm, merk: e.target.value })}
+            >
+              <option value="FAW">FAW</option>
+              <option value="Hino">Hino</option>
+              <option value="Isuzu">Isuzu</option>
+              <option value="Mitsubishi">Mitsubishi</option>
+              <option value="Nissan UD">Nissan UD</option>
+              <option value="Scania">Scania</option>
+              <option value="Tata">Tata</option>
+              <option value="Toyota">Toyota</option>
+              <option value="Volvo">Volvo</option>
+            </Select>
+
+            <Input
+              label="Nomor Rangka/NIK/VIN"
+              icon={Hash}
+              value={editArmadaForm.vin}
+              onChange={(e) => setEditArmadaForm({ ...editArmadaForm, vin: e.target.value })}
+              placeholder="Nomor Rangka/NIK/VIN"
+              className="font-mono"
+            />
+
+            <Input
+              label="Nomor Mesin"
+              icon={Hash}
+              value={editArmadaForm.mesin}
+              onChange={(e) => setEditArmadaForm({ ...editArmadaForm, mesin: e.target.value })}
+              placeholder="Nomor Mesin"
+              className="font-mono"
+            />
+
+            <Input
+              label="Tahun Pembuatan"
+              icon={Calendar}
+              type="number"
+              value={editArmadaForm.tahun}
+              onChange={(e) => setEditArmadaForm({ ...editArmadaForm, tahun: e.target.value })}
+              placeholder="Tahun Pembuatan"
+              className="font-mono"
+            />
+          </div>
+
+          <div className="pt-3 border-t border-[#24282C] flex justify-end gap-2">
+            <Button
+              variant="ghost"
+              onClick={() => {
+                setEditArmadaModal(false);
+                setSelectedArmada(null);
+              }}
+            >
+              Batal
+            </Button>
+            <Button type="submit" variant="primary" icon={Save}>
+              Perbarui Armada
             </Button>
           </div>
         </form>
@@ -1331,17 +2183,80 @@ export default function MasterDataPage() {
           <div className="grid grid-cols-2 gap-2">
             <Input
               label="Nomor NPWP"
+              inputMode="numeric"
+              pattern="[0-9]*"
               value={customerForm.npwp}
-              onChange={(e) => setCustomerForm({ ...customerForm, npwp: e.target.value })}
+              onKeyDown={(e) => {
+                if (
+                  [
+                    'Backspace',
+                    'Tab',
+                    'Enter',
+                    'Delete',
+                    'Escape',
+                    'ArrowLeft',
+                    'ArrowRight',
+                    'ArrowUp',
+                    'ArrowDown',
+                    'Home',
+                    'End',
+                  ].includes(e.key) ||
+                  e.ctrlKey ||
+                  e.metaKey
+                ) {
+                  return;
+                }
+                if (!/^[0-9]$/.test(e.key)) {
+                  e.preventDefault();
+                }
+              }}
+              onChange={(e) =>
+                setCustomerForm({
+                  ...customerForm,
+                  npwp: e.target.value.replace(/\D/g, ''),
+                })
+              }
               className="font-mono"
+              placeholder="Hanya angka"
             />
             <Input
               label="Nomor Telepon Customer"
               icon={Phone}
+              inputMode="numeric"
+              pattern="[0-9]*"
               value={customerForm.telepon}
-              onChange={(e) => setCustomerForm({ ...customerForm, telepon: e.target.value })}
+              onKeyDown={(e) => {
+                if (
+                  [
+                    'Backspace',
+                    'Tab',
+                    'Enter',
+                    'Delete',
+                    'Escape',
+                    'ArrowLeft',
+                    'ArrowRight',
+                    'ArrowUp',
+                    'ArrowDown',
+                    'Home',
+                    'End',
+                  ].includes(e.key) ||
+                  e.ctrlKey ||
+                  e.metaKey
+                ) {
+                  return;
+                }
+                if (!/^[0-9]$/.test(e.key)) {
+                  e.preventDefault();
+                }
+              }}
+              onChange={(e) =>
+                setCustomerForm({
+                  ...customerForm,
+                  telepon: e.target.value.replace(/\D/g, ''),
+                })
+              }
               className="font-mono"
-              placeholder="Contoh: 081234567890"
+              placeholder="Contoh: 081234567890 (Hanya angka)"
             />
           </div>
 
@@ -1368,33 +2283,70 @@ export default function MasterDataPage() {
         <form onSubmit={handleSubmitBank} className="p-4 space-y-3">
           <Input
             label="Nama Bank"
+            icon={Landmark}
             required
             value={bankForm.namaBank}
-            onChange={(e) => setBankForm({ ...bankForm, namaBank: e.target.value })}
+            onChange={(e) => setBankForm({ ...bankForm, namaBank: e.target.value.toUpperCase(), namaAlias: e.target.value.toUpperCase() })}
             placeholder="Contoh: Bank Central Asia"
+            className="uppercase font-mono font-bold"
           />
 
           <Input
             label="Nama Alias Bank"
-            required
+            icon={Landmark}
+            disabled
             value={bankForm.namaAlias}
-            onChange={(e) => setBankForm({ ...bankForm, namaAlias: e.target.value })}
-            placeholder="Contoh: BCA - 014"
+            className="uppercase font-mono font-bold"
           />
 
           <div className="grid grid-cols-2 gap-2">
             <Input
               label="Kode SWIFT"
+              icon={Hash}
               value={bankForm.kodeSwift}
-              onChange={(e) => setBankForm({ ...bankForm, kodeSwift: e.target.value })}
-              className="font-mono"
+              onChange={(e) => setBankForm({ ...bankForm, kodeSwift: e.target.value.toUpperCase() })}
+              placeholder="Contoh: CENAIDJA"
+              className="font-mono uppercase"
             />
             <Input
               label="Kode Bank"
+              icon={Hash}
               required
+              inputMode="numeric"
+              pattern="[0-9]*"
               value={bankForm.kodeBank}
-              onChange={(e) => setBankForm({ ...bankForm, kodeBank: e.target.value })}
-              className="font-mono"
+              onKeyDown={(e) => {
+                if (
+                  [
+                    'Backspace',
+                    'Tab',
+                    'Enter',
+                    'Delete',
+                    'Escape',
+                    'ArrowLeft',
+                    'ArrowRight',
+                    'ArrowUp',
+                    'ArrowDown',
+                    'Home',
+                    'End',
+                  ].includes(e.key) ||
+                  e.ctrlKey ||
+                  e.metaKey
+                ) {
+                  return;
+                }
+                if (!/^[0-9]$/.test(e.key)) {
+                  e.preventDefault();
+                }
+              }}
+              onChange={(e) =>
+                setBankForm({
+                  ...bankForm,
+                  kodeBank: e.target.value.replace(/\D/g, ''),
+                })
+              }
+              placeholder="Contoh: 014 (Hanya angka)"
+              className="font-mono font-bold"
             />
           </div>
 
@@ -1410,38 +2362,135 @@ export default function MasterDataPage() {
       </Modal>
 
       {/* ======================================================== */}
+      {/* MODAL: PERBARUI DATA BANK */}
+      {/* ======================================================== */}
+      <Modal
+        isOpen={editBankModal}
+        onClose={() => {
+          setEditBankModal(false);
+          setSelectedBank(null);
+        }}
+        title="Perbarui Data Bank"
+        subtitle="Edit nama bank, nama alias, kode SWIFT, dan kode kliring bank"
+      >
+        <form onSubmit={handleUpdateBank} className="p-4 space-y-3">
+          <Input
+            label="Nama Bank"
+            icon={Landmark}
+            required
+            value={editBankForm.namaBank}
+            onChange={(e) => setEditBankForm({ ...editBankForm, namaBank: e.target.value.toUpperCase(), namaAlias: e.target.value.toUpperCase() })}
+            placeholder="Contoh: BANK CENTRAL ASIA"
+            className="uppercase font-mono font-bold"
+          />
+
+          <Input
+            label="Nama Alias Bank"
+            icon={Landmark}
+            disabled
+            value={editBankForm.namaAlias}
+            className="uppercase font-mono font-bold"
+          />
+
+          <Input
+            label="Kode Swift"
+            icon={Hash}
+            value={editBankForm.kodeSwift}
+            onChange={(e) => setEditBankForm({ ...editBankForm, kodeSwift: e.target.value.toUpperCase() })}
+            placeholder="Contoh: CENAIDJA"
+            className="font-mono uppercase"
+          />
+
+          <Input
+            label="Kode Bank"
+            icon={Hash}
+            required
+            inputMode="numeric"
+            pattern="[0-9]*"
+            value={editBankForm.kodeBank}
+            onKeyDown={(e) => {
+              if (
+                [
+                  'Backspace',
+                  'Tab',
+                  'Enter',
+                  'Delete',
+                  'Escape',
+                  'ArrowLeft',
+                  'ArrowRight',
+                  'ArrowUp',
+                  'ArrowDown',
+                  'Home',
+                  'End',
+                ].includes(e.key) ||
+                e.ctrlKey ||
+                e.metaKey
+              ) {
+                return;
+              }
+              if (!/^[0-9]$/.test(e.key)) {
+                e.preventDefault();
+              }
+            }}
+            onChange={(e) =>
+              setEditBankForm({
+                ...editBankForm,
+                kodeBank: e.target.value.replace(/\D/g, ''),
+              })
+            }
+            placeholder="Contoh: 014 (Hanya angka)"
+            className="font-mono font-bold"
+          />
+
+          <div className="pt-3 border-t border-[#24282C] flex justify-end gap-2">
+            <Button
+              variant="ghost"
+              onClick={() => {
+                setEditBankModal(false);
+                setSelectedBank(null);
+              }}
+            >
+              Batal
+            </Button>
+            <Button type="submit" variant="primary" icon={Save}>
+              Perbarui Bank
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* ======================================================== */}
       {/* MODAL: TAMBAH REKENING BANK */}
       {/* ======================================================== */}
       <Modal
         isOpen={modalOpen && currentTab === 'rekening'}
         onClose={() => setModalOpen(false)}
-        title="Tambah Rekening PT BAS"
+        title="Tambah Rekening Bank"
         subtitle="Pendaftaran rekening kas penampung & operasional proyek"
       >
         <form onSubmit={handleSubmitRekening} className="p-4 space-y-3">
           <Select
             label="Pilih Bank"
+            required
             value={rekeningForm.bank}
             onChange={(e) => setRekeningForm({ ...rekeningForm, bank: e.target.value })}
           >
-            {banks.map((b) => (
-              <option key={b.id} value={b.namaAlias}>
-                {b.namaAlias} - {b.namaBank}
-              </option>
-            ))}
+            <option value="" disabled>Pilih Bank</option>
+            <option value="bca -bank central asia">bca -bank central asia</option>
+            <option value="bmrii-bank mandiri">bmrii-bank mandiri</option>
           </Select>
 
           <Select
             label="Jenis Rekening"
+            required
             value={rekeningForm.jenisRekening}
             onChange={(e) =>
               setRekeningForm({ ...rekeningForm, jenisRekening: e.target.value })
             }
           >
-            <option value="Giro Bisnis">Giro Bisnis (Operasional)</option>
-            <option value="Giro Utama">Giro Utama (Penerimaan)</option>
-            <option value="Tabungan Escrow">Tabungan Escrow (Vendor)</option>
-            <option value="Deposito">Deposito Cadangan</option>
+            <option value="" disabled>Pilih Jenis Rekening</option>
+            <option value="perusahaan">perusahaan</option>
+            <option value="supplier">supplier</option>
           </Select>
 
           <Input
@@ -1507,6 +2556,45 @@ export default function MasterDataPage() {
             </Button>
           </div>
         </form>
+      </Modal>
+
+      {/* ======================================================== */}
+      {/* MODAL: KONFIRMASI HAPUS */}
+      {/* ======================================================== */}
+      <Modal
+        isOpen={deleteConfirm.open}
+        onClose={handleCancelDelete}
+        title="Konfirmasi Hapus"
+        subtitle="Tindakan ini tidak dapat dibatalkan"
+      >
+        <div className="p-4 space-y-4">
+          <div className="flex items-start gap-3 p-3 rounded-xl bg-rose-500/10 border border-rose-500/30">
+            <Trash2 className="w-5 h-5 text-rose-400 shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm text-neutral-200">
+                Apakah Anda yakin ingin menghapus data{' '}
+                <span className="font-bold text-white font-mono">{deleteConfirm.label}</span>?
+              </p>
+              <p className="text-xs text-rose-400 mt-1">
+                Data yang dihapus tidak dapat dikembalikan.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-2 pt-1">
+            <Button variant="ghost" onClick={handleCancelDelete}>
+              Batal
+            </Button>
+            <Button
+              variant="danger"
+              icon={Trash2}
+              onClick={handleConfirmDelete}
+              className="bg-rose-600 hover:bg-rose-700 text-white border-0"
+            >
+              Ya, Hapus
+            </Button>
+          </div>
+        </div>
       </Modal>
     </div>
   );

@@ -429,7 +429,6 @@ export default function InvoicePage() {
   // ── Selection & Modals
   const [selectedItems, setSelectedItems] = useState([]);
   const [infoModalItem, setInfoModalItem] = useState(null);
-  const [deleteTargetItem, setDeleteTargetItem] = useState(null);
 
   // ── Expanded groups (Set of group keys)
   const [expandedGroups, setExpandedGroups] = useState(new Set());
@@ -451,6 +450,22 @@ export default function InvoicePage() {
 
   const [filterHidden, setFilterHidden] = useState(false);
   const [invoiceGenerated, setInvoiceGenerated] = useState(false);
+
+  // Delete confirmation state (merged from user commit)
+  const [deleteConfirmInvoice, setDeleteConfirmInvoice] = useState({ open: false, id: null, label: '', item: null });
+
+  const handleAskDeleteInvoice = (id, label, item = null) => {
+    setDeleteConfirmInvoice({ open: true, id, label, item });
+  };
+
+  const handleConfirmDeleteInvoice = () => {
+    if (deleteConfirmInvoice.id) {
+      deleteInvoice(deleteConfirmInvoice.id);
+      setSelectedItems((prev) => prev.filter((i) => i !== deleteConfirmInvoice.id));
+      setDeleteConfirmInvoice({ open: false, id: null, label: '', item: null });
+      addToast('Faktur invoice berhasil dihapus', 'info');
+    }
+  };
 
   // Exact Tax calculations per Implementation Plan Section 2 (Aturan 28 - 31)
   const calculation = useMemo(() => {
@@ -566,15 +581,6 @@ export default function InvoicePage() {
   const totalSelected = invoiceList
     .filter((item) => selectedItems.includes(item.id))
     .reduce((sum, item) => sum + item.amount, 0);
-
-  const handleConfirmDelete = () => {
-    if (deleteTargetItem) {
-      deleteInvoice(deleteTargetItem.id);
-      setSelectedItems((prev) => prev.filter((id) => id !== deleteTargetItem.id));
-      setDeleteTargetItem(null);
-      addToast('Faktur invoice berhasil dihapus', 'info');
-    }
-  };
 
   const handleBatchMarkPaid = () => {
     markInvoicePaid(selectedItems);
@@ -826,7 +832,7 @@ export default function InvoicePage() {
             onToggleSelect={toggleSelect}
             onToggleGroupSelect={handleToggleGroupSelect}
             onInfo={setInfoModalItem}
-            onDelete={setDeleteTargetItem}
+            onDelete={(item) => handleAskDeleteInvoice(item.id, item.kodeTransaksi, item)}
             displayMode={displayMode}
           />
 
@@ -1153,41 +1159,49 @@ export default function InvoicePage() {
         )}
       </Modal>
 
-      {/* ── MODAL KONFIRMASI HAPUS INVOICE ── */}
+      {/* MODAL: KONFIRMASI HAPUS INVOICE */}
       <Modal
-        isOpen={Boolean(deleteTargetItem)}
-        onClose={() => setDeleteTargetItem(null)}
+        isOpen={deleteConfirmInvoice.open}
+        onClose={() => setDeleteConfirmInvoice({ open: false, id: null, label: '', item: null })}
         title="Konfirmasi Hapus Invoice"
-        subtitle={deleteTargetItem?.kodeTransaksi}
+        subtitle="Tindakan ini tidak dapat dibatalkan"
       >
-        {deleteTargetItem && (
-          <div className="p-4 space-y-4">
-            <div className="flex items-start gap-3 p-3 bg-rose-500/10 border border-rose-500/20 rounded-xl text-xs text-rose-200">
-              <AlertTriangle className="w-5 h-5 text-rose-500 shrink-0 mt-0.5" />
-              <div>
-                <p className="font-semibold text-rose-300">Apakah Anda yakin ingin menghapus invoice ini?</p>
-                <p className="mt-1 text-neutral-400 font-mono text-[11px]">
-                  Faktur <strong>{deleteTargetItem.kodeTransaksi}</strong> untuk customer{' '}
-                  <strong>{deleteTargetItem.perusahaan}</strong> senilai{' '}
-                  <strong className="text-white">{formatCurrency(deleteTargetItem.amount)}</strong> akan dihapus permanen dari daftar.
+        <div className="p-4 space-y-4">
+          <div className="flex items-start gap-3 p-3 rounded-xl bg-rose-500/10 border border-rose-500/30">
+            <Trash2 className="w-5 h-5 text-rose-400 shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm text-neutral-200">
+                Apakah Anda yakin ingin menghapus invoice{' '}
+                <span className="font-bold text-white font-mono">{deleteConfirmInvoice.label}</span>?
+              </p>
+              {deleteConfirmInvoice.item && (
+                <p className="text-xs text-neutral-400 font-mono mt-1">
+                  Customer: <strong className="text-white">{deleteConfirmInvoice.item.perusahaan}</strong> &bull; Total:{' '}
+                  <strong className="text-[#F4511E]">{formatCurrency(deleteConfirmInvoice.item.amount)}</strong>
                 </p>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#24282C]">
-              <Button variant="ghost" onClick={() => setDeleteTargetItem(null)}>
-                Batal
-              </Button>
-              <Button
-                variant="danger"
-                icon={Trash2}
-                onClick={handleConfirmDelete}
-              >
-                Ya, Hapus Invoice
-              </Button>
+              )}
+              <p className="text-xs text-rose-400 mt-1.5 font-medium">
+                Data yang dihapus tidak dapat dikembalikan.
+              </p>
             </div>
           </div>
-        )}
+          <div className="flex justify-end gap-2 pt-1">
+            <Button
+              variant="ghost"
+              onClick={() => setDeleteConfirmInvoice({ open: false, id: null, label: '', item: null })}
+            >
+              Batal
+            </Button>
+            <Button
+              variant="danger"
+              icon={Trash2}
+              onClick={handleConfirmDeleteInvoice}
+              className="bg-rose-600 hover:bg-rose-700 text-white border-0"
+            >
+              Ya, Hapus
+            </Button>
+          </div>
+        </div>
       </Modal>
     </div>
   );

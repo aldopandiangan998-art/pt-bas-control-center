@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -11,35 +11,430 @@ import {
   Printer,
   ChevronDown,
   ChevronUp,
+  ChevronRight,
   Search,
   Filter,
   Plus,
   Trash2,
   Info,
   CheckCircle2,
+  ArrowUpDown,
+  List,
+  LayoutGrid,
+  AlertTriangle,
 } from 'lucide-react';
 import { formatCurrency } from '../../utils/formatters';
 import { TAX_RATES } from '../../utils/constants';
 import { useData } from '../../context/DataContext';
 import { useToast } from '../../context/ToastContext';
+import { groupInvoices, groupCheckState } from '../../utils/cashOutGrouping';
 import { Button, Modal, Card, Input, Select } from '../../components/ui';
 
+// ─────────────────────────────────────────────────────────────────────────────
+// LocalStorage helpers
+// ─────────────────────────────────────────────────────────────────────────────
+function lsGet(key, fallback) {
+  try {
+    const v = localStorage.getItem(key);
+    return v !== null ? JSON.parse(v) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+function lsSet(key, value) {
+  try { localStorage.setItem(key, JSON.stringify(value)); } catch { /* noop */ }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// IndeterminateCheckbox
+// ─────────────────────────────────────────────────────────────────────────────
+function IndeterminateCheckbox({ checked, indeterminate, onChange, className = '' }) {
+  const ref = useRef(null);
+  useEffect(() => {
+    if (ref.current) ref.current.indeterminate = indeterminate;
+  }, [indeterminate]);
+  return (
+    <input
+      ref={ref}
+      type="checkbox"
+      checked={checked}
+      onChange={onChange}
+      className={`w-4 h-4 rounded accent-[#F4511E] cursor-pointer ${className}`}
+    />
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Status Badge
+// ─────────────────────────────────────────────────────────────────────────────
+function StatusBadge({ paid, small = false }) {
+  const size = small ? 'px-1.5 py-px text-[9px]' : 'px-2.5 py-0.5 text-[10px]';
+  if (paid) {
+    return (
+      <span className={`inline-block rounded-full font-bold font-mono tracking-wide bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 ${size}`}>
+        LUNAS
+      </span>
+    );
+  }
+  return (
+    <span className={`inline-block rounded-full font-bold font-mono tracking-wide bg-[#F4511E]/20 text-[#F4511E] border border-[#F4511E]/30 ${size}`}>
+      BELUM LUNAS
+    </span>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// InvoiceGroupHeader
+// ─────────────────────────────────────────────────────────────────────────────
+function InvoiceGroupHeader({ group, expanded, onToggle, checkState, onGroupCheckChange }) {
+  const { label, summary } = group;
+  const isAll = checkState === 'all';
+  const isSome = checkState === 'some';
+
+  return (
+    <div
+      className="flex items-center gap-2 px-3 py-2 bg-[#1A1D22] border border-[#2A2E33] rounded-xl cursor-pointer select-none hover:bg-[#1E2228] transition-colors"
+      onClick={onToggle}
+    >
+      {/* Checkbox pilih semua grup */}
+      <div onClick={(e) => e.stopPropagation()}>
+        <IndeterminateCheckbox
+          checked={isAll}
+          indeterminate={isSome}
+          onChange={onGroupCheckChange}
+        />
+      </div>
+
+      {/* Chevron */}
+      <div className="shrink-0 text-neutral-500">
+        {expanded ? (
+          <ChevronDown className="w-4 h-4" />
+        ) : (
+          <ChevronRight className="w-4 h-4" />
+        )}
+      </div>
+
+      {/* Group label */}
+      <span className="text-xs font-bold text-neutral-100 uppercase tracking-wide flex-1 truncate">
+        {label}
+      </span>
+
+      {/* Summary badges */}
+      <div className="flex items-center gap-1.5 shrink-0 flex-wrap justify-end">
+        <span className="text-[10px] font-mono text-neutral-500 bg-[#131517] border border-[#2A2E33] rounded px-1.5 py-0.5">
+          {summary.count} inv
+        </span>
+        {summary.unpaidCount > 0 && (
+          <span className="text-[10px] font-mono text-[#F4511E] bg-[#F4511E]/10 border border-[#F4511E]/30 rounded px-1.5 py-0.5">
+            {summary.unpaidCount} blm lunas
+          </span>
+        )}
+        {summary.paidCount > 0 && (
+          <span className="text-[10px] font-mono text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 rounded px-1.5 py-0.5">
+            {summary.paidCount} lunas
+          </span>
+        )}
+        <span className="text-[10px] font-mono text-neutral-300 font-bold">
+          {formatCurrency(summary.totalAmount)}
+        </span>
+        {summary.totalVolume !== null && (
+          <span className="text-[10px] font-mono text-neutral-500">
+            {summary.totalVolume.toFixed(2)} m³
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// InvoiceRow (tabular row for list view)
+// ─────────────────────────────────────────────────────────────────────────────
+function InvoiceRow({ item, isSelected, onSelect, onInfo, onDelete, isEven }) {
+  const isPaid = item.statusBayar === 'Lunas';
+  return (
+    <tr
+      className={`border-b border-[#24282C] transition-colors ${
+        isEven ? 'bg-[#131517]' : 'bg-[#15181C]'
+      } hover:bg-[#1C1F24] ${isSelected ? 'ring-1 ring-inset ring-[#F4511E]/40' : ''}`}
+    >
+      {/* Checkbox */}
+      <td className="pl-3 pr-1 py-2.5 w-8">
+        <input
+          type="checkbox"
+          checked={isSelected}
+          onChange={onSelect}
+          className="w-4 h-4 rounded accent-[#F4511E] cursor-pointer"
+        />
+      </td>
+
+      {/* Tanggal */}
+      <td className="px-3 py-2.5 text-[11px] font-mono text-neutral-400 whitespace-nowrap">
+        {item.timestamp ? item.timestamp.slice(0, 16) : '-'}
+      </td>
+
+      {/* No. Invoice */}
+      <td className="px-3 py-2.5 text-[11px] font-mono text-neutral-300 whitespace-nowrap">
+        {item.kodeTransaksi}
+      </td>
+
+      {/* Material + Jenis */}
+      <td className="px-3 py-2.5 text-[11px]">
+        <div className="font-bold text-white">{item.material}</div>
+        <div className="text-[9px] text-neutral-500 uppercase leading-tight">{item.jenis}</div>
+      </td>
+
+      {/* Volume */}
+      <td className="px-3 py-2.5 text-[11px] font-mono text-white text-right whitespace-nowrap">
+        {item.volume.toFixed(2)} m³
+      </td>
+
+      {/* Total Tagihan (IDR) */}
+      <td className="px-3 py-2.5 text-[11px] font-mono font-bold text-white text-right whitespace-nowrap">
+        {formatCurrency(item.amount)}
+      </td>
+
+      {/* Status */}
+      <td className="px-3 py-2.5 whitespace-nowrap">
+        <StatusBadge paid={isPaid} small />
+      </td>
+
+      {/* Periode */}
+      <td className="px-3 py-2.5 text-[11px] font-mono text-neutral-400 whitespace-nowrap">
+        {item.periode}
+      </td>
+
+      {/* Aksi (Trash & Info) */}
+      <td className="px-3 py-2.5 text-center whitespace-nowrap w-16">
+        <div className="inline-flex items-center gap-1.5">
+          <button
+            type="button"
+            onClick={onDelete}
+            className="text-rose-500/80 hover:text-rose-400 transition-colors cursor-pointer p-1"
+            title="Hapus Invoice"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
+          <button
+            type="button"
+            onClick={onInfo}
+            className="text-[#F4511E] hover:text-[#F4511E]/80 transition-colors cursor-pointer p-1"
+            title="Detail Informasi"
+          >
+            <Info className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      </td>
+    </tr>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// InvoiceGridCard (compact card for grid view)
+// ─────────────────────────────────────────────────────────────────────────────
+function InvoiceGridCard({ item, isSelected, onSelect, onInfo, onDelete }) {
+  const isPaid = item.statusBayar === 'Lunas';
+  return (
+    <div
+      className={`bg-[#15181C] border rounded-xl p-3 flex flex-col justify-between gap-2.5 transition-all hover:border-[#383E47] ${
+        isSelected
+          ? 'border-[#F4511E]/70 ring-1 ring-[#F4511E]/40 bg-[#1A1817]'
+          : 'border-[#24282C]'
+      }`}
+    >
+      {/* Top Header: Checkbox + Dokumen + Status + Aksi */}
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 min-w-0">
+          <input
+            type="checkbox"
+            checked={isSelected}
+            onChange={onSelect}
+            className="w-4 h-4 rounded accent-[#F4511E] cursor-pointer shrink-0"
+          />
+          <span className="text-[11px] font-mono font-bold text-neutral-200 truncate" title={item.kodeTransaksi}>
+            {item.kodeTransaksi}
+          </span>
+        </div>
+        <div className="flex items-center gap-1 shrink-0">
+          <StatusBadge paid={isPaid} small />
+          <button
+            type="button"
+            onClick={onDelete}
+            className="w-6 h-6 flex items-center justify-center rounded-lg text-neutral-400 hover:text-rose-400 hover:bg-[#1E2228] transition-colors cursor-pointer"
+            title="Hapus Invoice"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
+          <button
+            type="button"
+            onClick={onInfo}
+            className="w-6 h-6 flex items-center justify-center rounded-lg text-neutral-400 hover:text-[#F4511E] hover:bg-[#1E2228] transition-colors cursor-pointer"
+            title="Detail Informasi"
+          >
+            <Info className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      </div>
+
+      {/* Middle: Nominal & Volume */}
+      <div className="flex items-baseline justify-between gap-2 py-1 border-y border-[#24282C]/70">
+        <div>
+          <span className="text-[10px] text-neutral-500 uppercase font-mono block">Tagihan</span>
+          <span className="text-sm font-bold font-mono text-white">
+            {formatCurrency(item.amount)}
+          </span>
+        </div>
+        <div className="text-right">
+          <span className="text-[10px] text-neutral-500 uppercase font-mono block">Volume</span>
+          <span className="text-xs font-bold font-mono text-white">
+            {item.volume.toFixed(2)} m³
+          </span>
+        </div>
+      </div>
+
+      {/* Bottom: Material & Customer, Periode */}
+      <div className="space-y-1 text-[10px] font-mono">
+        <div className="flex items-center justify-between text-neutral-300">
+          <span className="font-bold text-neutral-200">{item.material}</span>
+          <span className="text-[9px] text-neutral-500 uppercase truncate max-w-[120px]">{item.jenis}</span>
+        </div>
+        <div className="flex items-center justify-between text-neutral-400">
+          <span className="truncate max-w-[150px]">{item.perusahaan}</span>
+          <span className="text-neutral-500">{item.timestamp ? item.timestamp.slice(0, 10) : '-'}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// InvoiceGroupedTable (full grouped-table view: supports 'list' and 'grid')
+// ─────────────────────────────────────────────────────────────────────────────
+function InvoiceGroupedTable({
+  groups,
+  expandedGroups,
+  onToggleGroup,
+  selectedItems,
+  onToggleSelect,
+  onToggleGroupSelect,
+  onInfo,
+  onDelete,
+  displayMode = 'list',
+}) {
+  if (groups.length === 0) {
+    return (
+      <div className="text-center py-16 text-neutral-500 text-xs">
+        Tidak ada data Invoice yang ditemukan.
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      {groups.map((group) => {
+        const isExpanded = expandedGroups.has(group.key);
+        const groupIds = group.items.map((i) => i.id);
+        const checkState = groupCheckState(groupIds, selectedItems);
+
+        return (
+          <div key={group.key}>
+            <InvoiceGroupHeader
+              group={group}
+              expanded={isExpanded}
+              onToggle={() => onToggleGroup(group.key)}
+              checkState={checkState}
+              onGroupCheckChange={() => onToggleGroupSelect(group)}
+            />
+
+            {isExpanded && (
+              displayMode === 'list' ? (
+                <div className="mt-1 w-full overflow-hidden rounded-xl border border-[#24282C]">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="bg-[#1A1D22] border-b border-[#2A2E33]">
+                        <th className="pl-3 pr-1 py-2 w-8" />
+                        <th className="px-3 py-2 text-[10px] font-semibold text-neutral-400 uppercase tracking-wide whitespace-nowrap">Tanggal</th>
+                        <th className="px-3 py-2 text-[10px] font-semibold text-neutral-400 uppercase tracking-wide whitespace-nowrap">No. Invoice</th>
+                        <th className="px-3 py-2 text-[10px] font-semibold text-neutral-400 uppercase tracking-wide">Material</th>
+                        <th className="px-3 py-2 text-[10px] font-semibold text-neutral-400 uppercase tracking-wide text-right whitespace-nowrap">Volume</th>
+                        <th className="px-3 py-2 text-[10px] font-semibold text-neutral-400 uppercase tracking-wide text-right whitespace-nowrap">Total Tagihan (IDR)</th>
+                        <th className="px-3 py-2 text-[10px] font-semibold text-neutral-400 uppercase tracking-wide whitespace-nowrap">Status</th>
+                        <th className="px-3 py-2 text-[10px] font-semibold text-neutral-400 uppercase tracking-wide whitespace-nowrap">Periode</th>
+                        <th className="px-3 py-2 text-[10px] font-semibold text-neutral-400 uppercase tracking-wide text-center w-16">Aksi</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {group.items.map((item, idx) => (
+                        <InvoiceRow
+                          key={item.id}
+                          item={item}
+                          isSelected={selectedItems.includes(item.id)}
+                          isEven={idx % 2 === 0}
+                          onSelect={() => onToggleSelect(item.id)}
+                          onInfo={() => onInfo(item)}
+                          onDelete={() => onDelete(item)}
+                        />
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="mt-2 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2.5">
+                  {group.items.map((item) => (
+                    <InvoiceGridCard
+                      key={item.id}
+                      item={item}
+                      isSelected={selectedItems.includes(item.id)}
+                      onSelect={() => onToggleSelect(item.id)}
+                      onInfo={() => onInfo(item)}
+                      onDelete={() => onDelete(item)}
+                    />
+                  ))}
+                </div>
+              )
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// InvoicePage (main page component)
+// ─────────────────────────────────────────────────────────────────────────────
 export default function InvoicePage() {
   const navigate = useNavigate();
   const { customers, bankAccounts, invoiceList, createInvoice, markInvoicePaid, deleteInvoice } = useData();
   const { addToast } = useToast();
 
-  // Tab State: 'list' (Data Invoice) | 'create' (Input Invoice)
+  // ── Tab: 'list' | 'create'
   const [activeTab, setActiveTab] = useState('list');
 
-  // Search & Filter state for List view
+  // ── View preferences (persisted to localStorage)
+  const [displayMode, setDisplayMode] = useState(() => lsGet('inv_displayMode', 'list')); // 'list' | 'grid'
+  const [groupBy, setGroupBy] = useState(() => lsGet('inv_groupBy', 'company')); // 'company'|'status'|'material'|'month'
+  const [sortOrder, setSortOrder] = useState(() => lsGet('inv_sortOrder', 'default')); // 'default'|'name'
+
+  // Persist preferences
+  useEffect(() => { lsSet('inv_displayMode', displayMode); }, [displayMode]);
+  useEffect(() => { lsSet('inv_groupBy', groupBy); }, [groupBy]);
+  useEffect(() => { lsSet('inv_sortOrder', sortOrder); }, [sortOrder]);
+
+  // ── Search & Filter
   const [showSearchInput, setShowSearchInput] = useState(false);
   const [searchFilter, setSearchFilter] = useState('');
-  const [statusFilter, setStatusFilter] = useState('ALL'); // 'ALL' | 'BELUM_BAYAR' | 'LUNAS'
+  const [statusFilter, setStatusFilter] = useState('ALL');
+
+  // ── Selection & Modals
   const [selectedItems, setSelectedItems] = useState([]);
   const [infoModalItem, setInfoModalItem] = useState(null);
+  const [deleteTargetItem, setDeleteTargetItem] = useState(null);
 
-  // Form state for creating invoice
+  // ── Expanded groups (Set of group keys)
+  const [expandedGroups, setExpandedGroups] = useState(new Set());
+
+  // ── Form state for creating invoice
   const [formData, setFormData] = useState({
     pelanggan: 'PT LION WINGS',
     kirimKeRekening: 'BCA - 0188920199 a/n PT Berkah Alam Semesta',
@@ -58,7 +453,6 @@ export default function InvoicePage() {
   const [invoiceGenerated, setInvoiceGenerated] = useState(false);
 
   // Exact Tax calculations per Implementation Plan Section 2 (Aturan 28 - 31)
-  // Aturan 30: PPH selalu dihitung atas semua jenis jasa tanpa syarat
   const calculation = useMemo(() => {
     const subtotal = formData.subtotalJasa;
     const ppnNominal = Math.round((subtotal * TAX_RATES.PPN_PERCENT) / 100);
@@ -88,39 +482,45 @@ export default function InvoicePage() {
       nomorInvoice: `${formData.nomorPoCustomer} - INV - ${String(Date.now()).slice(-5)}`,
       periode: `Periode: [${formData.tanggal}]`,
     });
+    addToast('Faktur invoice berhasil dibuat & disimpan!', 'success');
   };
 
   // Filtered Invoices for List View
-  const filteredInvoices = invoiceList.filter((item) => {
-    const q = searchFilter.toLowerCase();
-    const matchSearch =
-      !q ||
-      item.kodeTransaksi.toLowerCase().includes(q) ||
-      item.perusahaan.toLowerCase().includes(q) ||
-      item.material.toLowerCase().includes(q) ||
-      (item.periode && item.periode.toLowerCase().includes(q));
+  const filteredInvoices = useMemo(() => {
+    return invoiceList.filter((item) => {
+      const q = searchFilter.toLowerCase();
+      const matchSearch =
+        !q ||
+        item.kodeTransaksi.toLowerCase().includes(q) ||
+        item.perusahaan.toLowerCase().includes(q) ||
+        item.material.toLowerCase().includes(q) ||
+        (item.periode && item.periode.toLowerCase().includes(q));
 
-    const matchStatus =
-      statusFilter === 'ALL' ||
-      (statusFilter === 'BELUM_BAYAR' && item.statusBayar === 'Belum Dibayar') ||
-      (statusFilter === 'LUNAS' && item.statusBayar === 'Lunas');
+      const matchStatus =
+        statusFilter === 'ALL' ||
+        (statusFilter === 'BELUM_BAYAR' && item.statusBayar !== 'Lunas') ||
+        (statusFilter === 'LUNAS' && item.statusBayar === 'Lunas');
 
-    return matchSearch && matchStatus;
-  });
+      return matchSearch && matchStatus;
+    });
+  }, [invoiceList, searchFilter, statusFilter]);
 
-  // Toggle selection
-  const toggleSelect = (id) => {
-    setSelectedItems((prev) =>
-      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
-    );
-  };
+  // Grouped data (memoised)
+  const groups = useMemo(
+    () => groupInvoices(filteredInvoices, groupBy, sortOrder),
+    [filteredInvoices, groupBy, sortOrder]
+  );
 
-  // Calculate total selected amount
-  const totalSelected = invoiceList
-    .filter((item) => selectedItems.includes(item.id))
-    .reduce((sum, item) => sum + item.amount, 0);
+  // Auto-expand groups when they change
+  useEffect(() => {
+    if (groups.length <= 10) {
+      setExpandedGroups(new Set(groups.map((g) => g.key)));
+    } else {
+      setExpandedGroups(new Set(groups.length > 0 ? [groups[0].key] : []));
+    }
+  }, [groupBy, sortOrder]);
 
-  // Reset filter
+  // Handlers
   const handleReset = () => {
     setSearchFilter('');
     setStatusFilter('ALL');
@@ -128,8 +528,64 @@ export default function InvoicePage() {
     addToast('Data filter berhasil di-reset', 'info');
   };
 
+  const toggleSelect = useCallback((id) => {
+    setSelectedItems((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
+  }, []);
+
+  const handleToggleGroup = useCallback((key) => {
+    setExpandedGroups((prev) => {
+      const next = new Set(prev);
+      next.has(key) ? next.delete(key) : next.add(key);
+      return next;
+    });
+  }, []);
+
+  const handleToggleGroupSelect = useCallback((group) => {
+    const ids = group.items.map((i) => i.id);
+    const state = groupCheckState(ids, selectedItems);
+    if (state === 'all') {
+      setSelectedItems((prev) => prev.filter((id) => !ids.includes(id)));
+    } else {
+      setSelectedItems((prev) => {
+        const set = new Set(prev);
+        ids.forEach((id) => set.add(id));
+        return [...set];
+      });
+    }
+  }, [selectedItems]);
+
+  const handleExpandAll = () => {
+    setExpandedGroups(new Set(groups.map((g) => g.key)));
+  };
+  const handleCollapseAll = () => {
+    setExpandedGroups(new Set());
+  };
+
+  const totalSelected = invoiceList
+    .filter((item) => selectedItems.includes(item.id))
+    .reduce((sum, item) => sum + item.amount, 0);
+
+  const handleConfirmDelete = () => {
+    if (deleteTargetItem) {
+      deleteInvoice(deleteTargetItem.id);
+      setSelectedItems((prev) => prev.filter((id) => id !== deleteTargetItem.id));
+      setDeleteTargetItem(null);
+      addToast('Faktur invoice berhasil dihapus', 'info');
+    }
+  };
+
+  const handleBatchMarkPaid = () => {
+    markInvoicePaid(selectedItems);
+    setSelectedItems([]);
+    addToast(`${selectedItems.length} Invoice berhasil dicatat LUNAS!`, 'success');
+  };
+
+  // ─────────────────────────────────────────────────────────────────────────
   return (
-    <div className="space-y-4 max-w-2xl mx-auto pb-32">
+    <div className="space-y-4 w-full pb-32">
+
       {/* ── TOP HEADER WITH TAB SWITCHER ── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#24282C]">
         <div className="flex items-center gap-2.5">
@@ -159,7 +615,7 @@ export default function InvoicePage() {
           </div>
         </div>
 
-        {/* Tab switcher matching Image 2 */}
+        {/* Tab switcher */}
         <div className="flex items-center gap-1.5 bg-[#131517] p-1 rounded-md border border-[#24282C] self-start sm:self-auto">
           <Button
             size="xs"
@@ -180,20 +636,22 @@ export default function InvoicePage() {
       </div>
 
       {/* ════════════════════════════════════════════════════════════════════════
-          VIEW 1: DATA INVOICE (Strictly Matching Screenshot media_1794538112384_ea2f3289.jpg)
+          VIEW 1 — DAFTAR INVOICE (Matching Cash Out layout)
          ════════════════════════════════════════════════════════════════════════ */}
       {activeTab === 'list' && (
         <div className="space-y-3">
-          {/* Action icon bar right under header */}
+
+          {/* ── Toolbar Row 1: count + icon buttons ── */}
           <div className="flex items-center justify-between px-1">
             <span className="text-[11px] text-neutral-400 font-mono">
               Total {filteredInvoices.length} Faktur Tagihan
             </span>
 
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1">
+              {/* Search */}
               <button
                 type="button"
-                onClick={() => setShowSearchInput((prev) => !prev)}
+                onClick={() => setShowSearchInput((p) => !p)}
                 className={`w-8 h-8 flex items-center justify-center rounded-full transition-colors cursor-pointer ${
                   showSearchInput
                     ? 'bg-[#F4511E]/20 text-[#F4511E]'
@@ -203,15 +661,13 @@ export default function InvoicePage() {
               >
                 <Search className="w-4 h-4" />
               </button>
+
+              {/* Status filter cycle */}
               <button
                 type="button"
                 onClick={() =>
-                  setStatusFilter((prev) =>
-                    prev === 'ALL'
-                      ? 'BELUM_BAYAR'
-                      : prev === 'BELUM_BAYAR'
-                      ? 'LUNAS'
-                      : 'ALL'
+                  setStatusFilter((p) =>
+                    p === 'ALL' ? 'BELUM_BAYAR' : p === 'BELUM_BAYAR' ? 'LUNAS' : 'ALL'
                   )
                 }
                 className={`w-8 h-8 flex items-center justify-center rounded-full transition-colors cursor-pointer ${
@@ -223,6 +679,8 @@ export default function InvoicePage() {
               >
                 <Filter className="w-4 h-4" />
               </button>
+
+              {/* Date range */}
               <button
                 type="button"
                 onClick={() => addToast('Pilih rentang tanggal Invoice', 'info')}
@@ -231,6 +689,8 @@ export default function InvoicePage() {
               >
                 <Calendar className="w-4 h-4" />
               </button>
+
+              {/* Refresh */}
               <button
                 type="button"
                 onClick={handleReset}
@@ -242,7 +702,90 @@ export default function InvoicePage() {
             </div>
           </div>
 
-          {/* Expandable Search Input */}
+          {/* ── Toolbar Row 2: grid/list toggle + group-by + sort + expand/collapse ── */}
+          <div className="flex items-center gap-2 px-1 flex-wrap">
+            {/* Grid / List View Toggle */}
+            <div className="flex items-center bg-[#1C1F24] border border-[#2A2E33] rounded-lg p-0.5">
+              <button
+                type="button"
+                onClick={() => setDisplayMode('list')}
+                className={`p-1.5 rounded-md transition-colors cursor-pointer ${
+                  displayMode === 'list'
+                    ? 'bg-[#F4511E] text-white shadow-sm'
+                    : 'text-neutral-400 hover:text-white'
+                }`}
+                title="Tampilan Tabel (List)"
+              >
+                <List className="w-3.5 h-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setDisplayMode('grid')}
+                className={`p-1.5 rounded-md transition-colors cursor-pointer ${
+                  displayMode === 'grid'
+                    ? 'bg-[#F4511E] text-white shadow-sm'
+                    : 'text-neutral-400 hover:text-white'
+                }`}
+                title="Tampilan Grid"
+              >
+                <LayoutGrid className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
+            {/* Group By dropdown */}
+            <div className="relative">
+              <select
+                value={groupBy}
+                onChange={(e) => setGroupBy(e.target.value)}
+                className="bg-[#1C1F24] border border-[#2A2E33] rounded-lg pl-2.5 pr-7 py-1.5 text-[11px] text-neutral-300 focus:outline-none focus:border-[#F4511E] appearance-none cursor-pointer"
+                title="Kelompokkan Berdasarkan"
+              >
+                <option value="company">Perusahaan</option>
+                <option value="status">Status</option>
+                <option value="material">Material</option>
+                <option value="month">Bulan</option>
+              </select>
+              <ChevronDown className="w-3 h-3 text-neutral-500 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
+            </div>
+
+            {/* Sort order */}
+            <button
+              type="button"
+              onClick={() => setSortOrder((p) => (p === 'default' ? 'name' : 'default'))}
+              className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] border transition-colors cursor-pointer ${
+                sortOrder === 'name'
+                  ? 'bg-[#F4511E]/10 text-[#F4511E] border-[#F4511E]/30'
+                  : 'bg-[#1C1F24] text-neutral-400 border-[#2A2E33] hover:text-white'
+              }`}
+              title={sortOrder === 'name' ? 'Urut: A–Z' : 'Urut: Prioritas'}
+            >
+              <ArrowUpDown className="w-3.5 h-3.5" />
+              <span>{sortOrder === 'name' ? 'A–Z' : 'Prioritas'}</span>
+            </button>
+
+            {/* Expand / Collapse all */}
+            <div className="flex items-center gap-1 ml-auto">
+              <button
+                type="button"
+                onClick={handleExpandAll}
+                className="text-[11px] text-neutral-500 hover:text-neutral-200 transition-colors cursor-pointer px-1.5"
+                title="Buka Semua"
+              >
+                Buka semua
+              </button>
+              <span className="text-neutral-700 text-xs">|</span>
+              <button
+                type="button"
+                onClick={handleCollapseAll}
+                className="text-[11px] text-neutral-500 hover:text-neutral-200 transition-colors cursor-pointer px-1.5"
+                title="Tutup Semua"
+              >
+                Tutup semua
+              </button>
+            </div>
+          </div>
+
+          {/* Search input */}
           {showSearchInput && (
             <div className="relative">
               <input
@@ -256,126 +799,38 @@ export default function InvoicePage() {
             </div>
           )}
 
-          {/* Invoices List matching Screenshot media_1794538112384_ea2f3289.jpg */}
-          <div className="space-y-3">
-            {filteredInvoices.length === 0 ? (
-              <div className="text-center py-16 text-neutral-500 text-xs">
-                Tidak ada data Invoice yang ditemukan.
-              </div>
-            ) : (
-              filteredInvoices.map((item) => {
-                const isSelected = selectedItems.includes(item.id);
-                const isPaid = item.statusBayar === 'Lunas';
+          {/* Status filter chip */}
+          {statusFilter !== 'ALL' && (
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] text-neutral-500">Filter aktif:</span>
+              <span
+                className={`text-[10px] font-mono px-2 py-0.5 rounded-full border cursor-pointer ${
+                  statusFilter === 'LUNAS'
+                    ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30'
+                    : 'text-[#F4511E] bg-[#F4511E]/10 border-[#F4511E]/30'
+                }`}
+                onClick={() => setStatusFilter('ALL')}
+                title="Klik untuk hapus filter"
+              >
+                {statusFilter === 'LUNAS' ? 'LUNAS' : 'BELUM LUNAS'} ✕
+              </span>
+            </div>
+          )}
 
-                return (
-                  <div
-                    key={item.id}
-                    className={`bg-[#131517] border rounded-xl overflow-hidden transition-all ${
-                      isSelected
-                        ? 'border-[#F4511E]/60 ring-1 ring-[#F4511E]/40'
-                        : 'border-[#24282C]'
-                    }`}
-                  >
-                    {/* Main Card Body */}
-                    <div className="p-3.5 flex items-start justify-between gap-3">
-                      {/* Left: Volume & Material */}
-                      <div className="w-28 shrink-0">
-                        <div className="text-xl font-black font-mono text-white leading-none">
-                          {item.volume.toFixed(2)}
-                        </div>
-                        <div className="text-sm font-black font-mono text-white leading-tight mt-0.5">
-                          m³
-                        </div>
-                        <div className="text-xs font-bold text-white mt-2">
-                          {item.material}
-                        </div>
-                        <div className="text-[9px] text-neutral-400 font-medium leading-snug mt-0.5 uppercase">
-                          {item.jenis}
-                        </div>
-                      </div>
+          {/* ── Main Grouped Table List ── */}
+          <InvoiceGroupedTable
+            groups={groups}
+            expandedGroups={expandedGroups}
+            onToggleGroup={handleToggleGroup}
+            selectedItems={selectedItems}
+            onToggleSelect={toggleSelect}
+            onToggleGroupSelect={handleToggleGroupSelect}
+            onInfo={setInfoModalItem}
+            onDelete={setDeleteTargetItem}
+            displayMode={displayMode}
+          />
 
-                      {/* Middle: Details, Amount, Status Badge */}
-                      <div className="flex-1 min-w-0 space-y-1">
-                        {/* Timestamp */}
-                        <div className="text-[11px] text-neutral-400 font-mono">
-                          {item.timestamp}
-                        </div>
-
-                        {/* Amount */}
-                        <div className="text-xs font-bold font-mono text-white">
-                          IDR{' '}
-                          {item.amount.toLocaleString('en-US', {
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 2,
-                          })}
-                        </div>
-
-                        {/* Invoice Code */}
-                        <div className="text-[11px] text-neutral-300 font-mono">
-                          {item.kodeTransaksi}
-                        </div>
-
-                        {/* Customer */}
-                        <div className="text-[11px] text-neutral-200 font-medium truncate">
-                          {item.perusahaan}
-                        </div>
-
-                        {/* Periode */}
-                        <div className="text-[10px] text-neutral-500 font-mono">
-                          {item.periode}
-                        </div>
-
-                        {/* Status Badge */}
-                        <div className="pt-0.5">
-                          {isPaid ? (
-                            <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold font-mono tracking-wide bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                              LUNAS
-                            </span>
-                          ) : (
-                            <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold font-mono tracking-wide bg-[#F4511E]/20 text-[#F4511E] border border-[#F4511E]/30">
-                              BELUM LUNAS
-                            </span>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Right: Checkbox */}
-                      <div className="shrink-0 pt-0.5">
-                        <input
-                          type="checkbox"
-                          checked={isSelected}
-                          onChange={() => toggleSelect(item.id)}
-                          className="w-4 h-4 rounded accent-[#F4511E] cursor-pointer"
-                        />
-                      </div>
-                    </div>
-
-                    {/* Bottom: 2 Buttons split 50/50 (Trash & Info) matching Screenshot */}
-                    <div className="grid grid-cols-2 border-t border-[#24282C] bg-[#16191D]/50">
-                      <button
-                        type="button"
-                        onClick={() => deleteInvoice(item.id)}
-                        className="py-2.5 flex items-center justify-center border-r border-[#24282C] text-[#E53935] hover:bg-[#E53935]/10 transition-colors cursor-pointer"
-                        title="Hapus Invoice"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setInfoModalItem(item)}
-                        className="py-2.5 flex items-center justify-center text-[#F4511E] hover:bg-[#F4511E]/10 transition-colors cursor-pointer"
-                        title="Detail Informasi"
-                      >
-                        <Info className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-                );
-              })
-            )}
-          </div>
-
-          {/* Floating Action Button (FAB) at bottom right matching Screenshot */}
+          {/* FAB */}
           <button
             type="button"
             onClick={() => setActiveTab('create')}
@@ -388,10 +843,10 @@ export default function InvoicePage() {
       )}
 
       {/* ════════════════════════════════════════════════════════════════════════
-          VIEW 2: INPUT INVOICE (Formulir Buat Invoice)
+          VIEW 2 — INPUT INVOICE (Formulir Buat Invoice)
          ════════════════════════════════════════════════════════════════════════ */}
       {activeTab === 'create' && (
-        <div className="space-y-4">
+        <div className="max-w-2xl mx-auto space-y-4">
           <Card className="p-4 sm:p-5">
             <form onSubmit={handleApply} className="space-y-3.5">
               {!filterHidden && (
@@ -595,7 +1050,7 @@ export default function InvoicePage() {
       {/* ── STICKY BATCH ACTIONS BAR (When items are checked) ── */}
       {selectedItems.length > 0 && (
         <div className="fixed bottom-0 left-0 right-0 z-40 bg-[#111315]/95 backdrop-blur-md border-t border-[#262A2F] p-3 shadow-2xl">
-          <div className="max-w-2xl mx-auto flex items-center justify-between gap-3">
+          <div className="w-full max-w-7xl mx-auto flex items-center justify-between gap-3 px-2">
             <div className="flex items-center gap-2 min-w-0">
               <span className="w-2 h-2 rounded-full bg-[#F4511E] animate-pulse shrink-0" />
               <div className="text-xs font-mono text-neutral-300 truncate">
@@ -617,10 +1072,7 @@ export default function InvoicePage() {
 
               <button
                 type="button"
-                onClick={() => {
-                  markInvoicePaid(selectedItems);
-                  setSelectedItems([]);
-                }}
+                onClick={handleBatchMarkPaid}
                 className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 transition-colors shadow-md shadow-emerald-600/20 flex items-center gap-1.5 cursor-pointer"
               >
                 <CheckCircle2 className="w-3.5 h-3.5" />
@@ -695,6 +1147,43 @@ export default function InvoicePage() {
                 onClick={() => setInfoModalItem(null)}
               >
                 Tutup
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* ── MODAL KONFIRMASI HAPUS INVOICE ── */}
+      <Modal
+        isOpen={Boolean(deleteTargetItem)}
+        onClose={() => setDeleteTargetItem(null)}
+        title="Konfirmasi Hapus Invoice"
+        subtitle={deleteTargetItem?.kodeTransaksi}
+      >
+        {deleteTargetItem && (
+          <div className="p-4 space-y-4">
+            <div className="flex items-start gap-3 p-3 bg-rose-500/10 border border-rose-500/20 rounded-xl text-xs text-rose-200">
+              <AlertTriangle className="w-5 h-5 text-rose-500 shrink-0 mt-0.5" />
+              <div>
+                <p className="font-semibold text-rose-300">Apakah Anda yakin ingin menghapus invoice ini?</p>
+                <p className="mt-1 text-neutral-400 font-mono text-[11px]">
+                  Faktur <strong>{deleteTargetItem.kodeTransaksi}</strong> untuk customer{' '}
+                  <strong>{deleteTargetItem.perusahaan}</strong> senilai{' '}
+                  <strong className="text-white">{formatCurrency(deleteTargetItem.amount)}</strong> akan dihapus permanen dari daftar.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#24282C]">
+              <Button variant="ghost" onClick={() => setDeleteTargetItem(null)}>
+                Batal
+              </Button>
+              <Button
+                variant="danger"
+                icon={Trash2}
+                onClick={handleConfirmDelete}
+              >
+                Ya, Hapus Invoice
               </Button>
             </div>
           </div>

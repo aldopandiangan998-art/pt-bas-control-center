@@ -57,10 +57,8 @@ const JENIS_PAJAK_OPTIONS = [
 ];
 
 const JENIS_RO_OPTIONS = [
-  { value: 'Regular', label: 'Regular' },
-  { value: 'Prioritas', label: 'Prioritas' },
-  { value: 'Kontrak Tahunan', label: 'Kontrak Tahunan' },
-  { value: 'Spot Order', label: 'Spot Order' },
+  { value: 'JASA ANGKUT + MATERIAL', label: 'JASA ANGKUT + MATERIAL' },
+  { value: 'MATERIAL SAJA', label: 'MATERIAL SAJA' },
   { value: 'JASA ANGKUT SAJA', label: 'JASA ANGKUT SAJA' },
 ];
 

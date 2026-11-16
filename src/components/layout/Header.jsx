@@ -5,29 +5,7 @@ import { APP_CONFIG } from '../../utils/constants';
 
 export default function Header() {
   const navigate = useNavigate();
-<<<<<<< HEAD
-  const { currentUser, roleLabel, logout, isSuperAdmin } = useAuth();
-  const { toggleMobileSidebar, isDark, toggleTheme } = useApp();
-  const { addToast } = useToast();
-
-  const handleLogout = () => {
-    logout();
-    addToast('Sesi akun telah diakhiri. Silakan masuk kembali.', 'info');
-    navigate('/login');
-  };
-
-  const handleToggleTheme = () => {
-    toggleTheme();
-    addToast(
-      `Tema diubah ke ${isDark ? 'Mode Terang (Light Mode)' : 'Mode Gelap (Dark Mode)'}`,
-      'info'
-    );
-  };
-
-  const displayRole = roleLabel || (currentUser?.role === 'superadmin' ? 'Super Admin' : 'Admin');
-=======
   const { toggleMobileSidebar } = useApp();
->>>>>>> b52121451a3349f72db7aadcaff001e92b54f019
 
   return (
     <header className="timber-header text-white shadow-md relative z-20 select-none shrink-0">
@@ -62,87 +40,11 @@ export default function Header() {
             </div>
           </div>
 
-<<<<<<< HEAD
-          {/* Right: Account bar matching screenshot 4 + Functional shortcuts */}
-          <div className="flex items-center gap-2 sm:gap-3">
-            {/* User Profile Block from Screenshot 4 */}
-            <div
-              onClick={() => navigate('/pengaturan')}
-              role="button"
-              tabIndex={0}
-              onKeyDown={(e) => e.key === 'Enter' && navigate('/pengaturan')}
-              className="flex items-center gap-2 bg-black/25 px-2.5 py-1 rounded border border-white/15 hover:bg-black/35 hover:border-amber-400/40 transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-amber-400"
-              title="Buka Pengaturan Akun"
-            >
-              <div className="w-6 h-6 rounded-full border border-sky-400/30 bg-[#162B45] flex items-center justify-center text-[10px] font-bold text-sky-300">
-                {currentUser?.name ? currentUser.name.split(' ').map((n) => n[0]).join('') : 'U'}
-              </div>
-
-              <div className="text-left hidden md:block">
-                <div className="text-xs font-semibold text-white leading-tight">
-                  {currentUser?.name || 'Pengguna'}
-                </div>
-                <div className="text-[10px] text-sky-200/70 font-mono leading-none">
-                  {currentUser?.email || '-'}
-                </div>
-              </div>
-
-              <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.2 rounded bg-[#F4511E] text-white ml-1 shadow-xs font-mono">
-                {displayRole}
-              </span>
-
-              <ChevronRight className="w-3.5 h-3.5 text-white/50 hidden sm:block" />
-            </div>
-
-            {/* Functional Tool Icons */}
-            <div className="flex items-center gap-1.5 border-l border-white/15 pl-2">
-              {!isSuperAdmin && (
-                <button
-                  type="button"
-                  onClick={handleToggleTheme}
-                  className="p-1.5 rounded bg-black/20 hover:bg-black/35 text-white/90 hover:text-white transition-colors focus-visible:ring-2 focus-visible:ring-amber-400 cursor-pointer"
-                  title={isDark ? 'Beralih ke Mode Terang (Light Mode)' : 'Beralih ke Mode Gelap (Dark Mode)'}
-                  aria-label={isDark ? 'Beralih ke Mode Terang' : 'Beralih ke Mode Gelap'}
-                >
-                  {isDark ? (
-                    <Sun className="w-3.5 h-3.5 text-amber-300" />
-                  ) : (
-                    <Moon className="w-3.5 h-3.5 text-amber-500" />
-                  )}
-                </button>
-              )}
-              <button
-                type="button"
-                onClick={() => navigate('/rekapan')}
-                className="p-1.5 rounded bg-black/20 hover:bg-black/35 text-white/90 hover:text-white transition-colors focus-visible:ring-2 focus-visible:ring-amber-400 cursor-pointer"
-                title="Riwayat Transaksi (Jurnal GI)"
-              >
-                <RotateCcw className="w-3.5 h-3.5" />
-              </button>
-              <button
-                type="button"
-                onClick={() => navigate('/pengaturan')}
-                className="p-1.5 rounded bg-black/20 hover:bg-black/35 text-white/90 hover:text-white transition-colors focus-visible:ring-2 focus-visible:ring-amber-400 cursor-pointer"
-                title="Konfigurasi Sistem & Pengaturan"
-              >
-                <Settings className="w-3.5 h-3.5" />
-              </button>
-              <button
-                type="button"
-                onClick={handleLogout}
-                className="p-1.5 rounded bg-black/20 hover:bg-rose-900/60 text-rose-300 hover:text-white transition-colors focus-visible:ring-2 focus-visible:ring-rose-400 cursor-pointer ml-0.5"
-                title="Keluar dari Akun (Logout)"
-              >
-                <LogOut className="w-3.5 h-3.5" />
-              </button>
-            </div>
-=======
           {/* Right: Operational Status Indicator */}
           <div className="flex items-center gap-2 bg-black/25 px-2.5 py-1 rounded border border-white/10 text-xs font-mono select-none">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_6px_rgba(52,211,153,0.7)]" />
             <span className="text-neutral-300 hidden sm:inline">Sistem Operasional</span>
             <span className="text-emerald-400 font-bold uppercase tracking-wider text-[11px]">Online</span>
->>>>>>> b52121451a3349f72db7aadcaff001e92b54f019
           </div>
 
         </div>

@@ -1,10 +1,5 @@
-<<<<<<< HEAD
 import { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
-=======
-import { useState } from 'react';
-import { useNavigate, Navigate } from 'react-router-dom';
->>>>>>> b52121451a3349f72db7aadcaff001e92b54f019
+import { useNavigate, useSearchParams, Navigate } from 'react-router-dom';
 import {
   ArrowLeft,
   Monitor,
@@ -38,21 +33,19 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { useApp } from '../../context/AppContext';
-import { useAuth } from '../../context/AuthContext';
 import { Button, Badge, Modal, Input, Select } from '../../components/ui';
 
 export default function SettingsPage() {
   const navigate = useNavigate();
-<<<<<<< HEAD
   const [searchParams, setSearchParams] = useSearchParams();
-=======
-  const { isSuperAdmin } = useAuth();
->>>>>>> b52121451a3349f72db7aadcaff001e92b54f019
   const { addToast } = useToast();
   const { isDark, toggleTheme } = useApp();
   const { currentUser, isSuperAdmin, updateProfile, changePassword, requestPasswordReset } = useAuth();
 
-<<<<<<< HEAD
+  if (!isSuperAdmin) {
+    return <Navigate to="/" replace />;
+  }
+
   // Active Tab: 'profile' or 'system'
   const activeTab = searchParams.get('tab') || 'profile';
   const setActiveTab = (tab) => {
@@ -98,14 +91,6 @@ export default function SettingsPage() {
   const [latestResetUrl, setLatestResetUrl] = useState('');
 
   // System settings states
-=======
-  if (!isSuperAdmin) {
-    return <Navigate to="/" replace />;
-  }
-
-  // Settings states
->>>>>>> b52121451a3349f72db7aadcaff001e92b54f019
-  const [quickLoginEnabled, setQuickLoginEnabled] = useState(true);
   const [deviceType] = useState('Web Desktop Console (Chrome)');
   const [activeModal, setActiveModal] = useState(null);
 

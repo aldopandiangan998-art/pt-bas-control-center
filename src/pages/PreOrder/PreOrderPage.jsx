@@ -261,6 +261,21 @@ export default function PreOrderPage() {
     }
   };
 
+  const handleBuatSuratJalan = (po) => {
+    navigate('/surat-jalan', {
+      state: {
+        fromPreOrder: true,
+        preOrderId: po.id,
+        customer: po.customer,
+        nomorPo: po.nomorPo || po.id,
+        materialId: po.materialId,
+        materialName: po.materialName,
+        jenis: po.jenis || 'Jasa Angkut + Material',
+        nomorRo: po.nomorRo || `RO-${po.id}`,
+      },
+    });
+  };
+
   const prefersReduced =
     typeof window !== 'undefined' &&
     window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -358,7 +373,7 @@ export default function PreOrderPage() {
                       <span>Jual: <strong className="text-white">{formatCurrency(po.hargaJual)}</strong>/{po.satuan}</span>
                       <span>Beli: <strong className="text-neutral-300">{formatCurrency(po.hargaBeli)}</strong>/{po.satuan}</span>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       {po.status === 'MENUNGGU_APPROVAL' && (
                         <>
                           {permissions.canApprovePreOrder ? (
@@ -368,22 +383,30 @@ export default function PreOrderPage() {
                             </>
                           ) : (
                             <span className="text-[10px] text-amber-500/90 font-mono bg-amber-950/30 px-2 py-0.5 rounded border border-amber-900/40">
-                              Memerlukan persetujuan Super Admin (Direktur)
+                              Memerlukan persetujuan Direktur
                             </span>
                           )}
                         </>
                       )}
                       {po.status === 'APPROVED' && (
-                        <div className="flex items-center gap-2">
-                          <span className="text-[10px] text-neutral-400 font-mono">
-                            Disetujui: <strong className="text-emerald-400">{po.approvedBy}</strong>
-                          </span>
-                          <Button size="xs" variant="secondary" onClick={() => navigate('/surat-jalan')}>Buat Surat Jalan &rarr;</Button>
-                        </div>
+                        <span className="text-[10px] text-neutral-400 font-mono">
+                          Disetujui: <strong className="text-emerald-400">{po.approvedBy}</strong>
+                        </span>
                       )}
                       {po.status === 'REJECTED' && (
                         <span className="text-[10px] text-rose-400 font-mono">Alasan: {po.rejectionReason}</span>
                       )}
+
+                      {/* Fitur Buat Surat Jalan GI untuk setiap data Pre Order */}
+                      <Button
+                        size="xs"
+                        variant={po.status === 'APPROVED' ? 'primary' : 'secondary'}
+                        icon={FileText}
+                        onClick={() => handleBuatSuratJalan(po)}
+                        title={`Buat Surat Jalan GI untuk ${po.customer}`}
+                      >
+                        Buat Surat Jalan GI &rarr;
+                      </Button>
                     </div>
                   </div>
                 </Card>

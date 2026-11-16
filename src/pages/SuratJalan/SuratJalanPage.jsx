@@ -1,5 +1,5 @@
-import { useState, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useMemo, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
   ArrowLeft,
   User,
@@ -23,18 +23,33 @@ import { Button, Badge, Card, CardHeader, CardTitle, Input, Select } from '../..
 
 export default function SuratJalanPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { preOrders, createSuratJalan, materials, armadaList, customers } = useData();
 
   const approvedPos = preOrders.filter((po) => po.status === 'APPROVED');
+  const preOrderState = location.state || {};
+
+  // Resolve initial data from preOrderState if navigated from PreOrder
+  const targetCustomer = preOrderState.customer || (customers[0]?.name || 'PT LION WINGS');
+  const targetPoNumber = preOrderState.nomorPo || preOrderState.preOrderId || (approvedPos[0]?.nomorPo || 'PO-LW-2026-089');
+
+  let targetMaterialId = preOrderState.materialId;
+  if (!targetMaterialId && preOrderState.materialName) {
+    const match = materials.find(
+      (m) => m.name.toLowerCase() === preOrderState.materialName.toLowerCase()
+    );
+    if (match) targetMaterialId = match.id;
+  }
+  if (!targetMaterialId) targetMaterialId = materials[0]?.id || 'mat-8';
 
   // Form state faithfully matching Screenshot 1 ("Buat Good Issue")
   const [formData, setFormData] = useState({
     nomorSj: `296${Math.floor(70 + Math.random() * 29)}`,
-    customer: 'PT LION WINGS',
-    poNumber: approvedPos[0]?.nomorPo || 'PO-LW-2026-089',
-    nomorRo: 'RO-202611-00042',
-    materialId: 'mat-8',
-    jenis: 'Jasa Angkut + Material',
+    customer: targetCustomer,
+    poNumber: targetPoNumber,
+    nomorRo: preOrderState.nomorRo || 'RO-202611-00042',
+    materialId: targetMaterialId,
+    jenis: preOrderState.jenis || 'Jasa Angkut + Material',
     tanggal: new Date().toISOString().split('T')[0],
     waktu: '09:43',
     nomorNota: 'NT-88921',
@@ -48,6 +63,51 @@ export default function SuratJalanPage() {
     tinggiCm: 200,
     koreksiTinggiCm: 0,
   });
+
+  // Sync state if location.state changes
+  useEffect(() => {
+    if (location.state?.customer) {
+      const selectedCust = location.state.customer;
+      const targetPo = location.state.nomorPo || location.state.preOrderId;
+      let targetMat = location.state.materialId;
+      if (!targetMat && location.state.materialName) {
+        const match = materials.find(
+          (m) => m.name.toLowerCase() === location.state.materialName.toLowerCase()
+        );
+        if (match) targetMat = match.id;
+      }
+
+      setFormData((prev) => ({
+        ...prev,
+        customer: selectedCust,
+        poNumber: targetPo || prev.poNumber,
+        materialId: targetMat || prev.materialId,
+        jenis: location.state.jenis || prev.jenis,
+        nomorRo: location.state.nomorRo || prev.nomorRo,
+      }));
+    }
+  }, [location.state, materials]);
+
+  const handleCustomerChange = (newCustomer) => {
+    const custPos = preOrders.filter((po) => po.customer === newCustomer);
+    const firstPo = custPos[0];
+    let newMatId = formData.materialId;
+    if (firstPo?.materialId) {
+      newMatId = firstPo.materialId;
+    } else if (firstPo?.materialName) {
+      const match = materials.find(
+        (m) => m.name.toLowerCase() === firstPo.materialName.toLowerCase()
+      );
+      if (match) newMatId = match.id;
+    }
+
+    setFormData((prev) => ({
+      ...prev,
+      customer: newCustomer,
+      poNumber: firstPo?.nomorPo || firstPo?.id || prev.poNumber,
+      materialId: newMatId || prev.materialId,
+    }));
+  };
 
   const kubikasi = useMemo(() => {
     return calculateKubikasi(
@@ -150,6 +210,21 @@ export default function SuratJalanPage() {
         </div>
       </div>
 
+      {/* Banner Informasi Asal Pre Order */}
+      {location.state?.fromPreOrder && (
+        <div className="p-3 rounded-xl bg-orange-500/10 border border-[#F4511E]/40 text-[#F4511E] text-xs flex items-center justify-between font-mono shadow-sm">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-[#F4511E] shrink-0" />
+            <span>
+              Penerbitan Surat Jalan GI dari Pre Order: <strong>{formData.customer}</strong> {formData.poNumber ? `(${formData.poNumber})` : ''}
+            </span>
+          </div>
+          <span className="text-[11px] text-neutral-400 font-sans hidden sm:inline">
+            Customer & PO terpilih otomatis
+          </span>
+        </div>
+      )}
+
       {/* Main 2-Column Responsive Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
         {/* Left Form Column (7 cols) - Replicating Screenshot 1 */}
@@ -161,13 +236,16 @@ export default function SuratJalanPage() {
               icon={User}
               required
               value={formData.customer}
-              onChange={(e) => setFormData({ ...formData, customer: e.target.value })}
+              onChange={(e) => handleCustomerChange(e.target.value)}
             >
               {customers.map((c) => (
-                <option key={c.id} value={c.name}>
+                <option key={c.id || c.name} value={c.name}>
                   {c.kodePrefix ? `${c.kodePrefix} - ` : ''}{c.name}
                 </option>
               ))}
+              {!customers.some((c) => c.name === formData.customer) && formData.customer && (
+                <option value={formData.customer}>{formData.customer}</option>
+              )}
             </Select>
 
             {/* Field 2: Nomor PO Customer */}
@@ -177,11 +255,21 @@ export default function SuratJalanPage() {
               value={formData.poNumber}
               onChange={(e) => setFormData({ ...formData, poNumber: e.target.value })}
             >
-              {approvedPos.map((po) => (
-                <option key={po.id} value={po.nomorPo || po.id}>
-                  {po.nomorPo || '(Menunggu SJ Pertama)'} - {po.customer} ({po.materialName})
-                </option>
-              ))}
+              {/* Show POs for selected customer first */}
+              {preOrders
+                .filter((po) => !formData.customer || po.customer === formData.customer)
+                .map((po) => (
+                  <option key={po.id} value={po.nomorPo || po.id}>
+                    {po.nomorPo || `(Draft ${po.id})`} - {po.customer} ({po.materialName})
+                  </option>
+                ))}
+              {/* Fallback to approved POs if no POs found for customer */}
+              {preOrders.filter((po) => !formData.customer || po.customer === formData.customer).length === 0 &&
+                approvedPos.map((po) => (
+                  <option key={po.id} value={po.nomorPo || po.id}>
+                    {po.nomorPo || `(Draft ${po.id})`} - {po.customer} ({po.materialName})
+                  </option>
+                ))}
             </Select>
 
             {/* Field 3: Nomor Surat Jalan & Nomor RO */}

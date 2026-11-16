@@ -107,16 +107,16 @@ export default function Sidebar() {
       <aside
         className={`fixed lg:static top-0 bottom-0 left-0 z-50 flex flex-col bg-[#111315] border-r border-[#22262A] transition-all duration-200 select-none shrink-0 h-full max-h-full min-h-0 overflow-hidden ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
-        } ${sidebarCollapsed ? 'lg:w-16' : 'w-60 lg:w-60'}`}
+        } ${sidebarCollapsed ? 'lg:w-16' : 'w-64 lg:w-64'}`}
       >
         {/* Top Mini Section */}
-        <div className="shrink-0 flex items-center justify-between px-3.5 py-3 border-b border-[#22262A] bg-[#0E1012]">
-          <div className="flex items-center gap-2 overflow-hidden">
-            <span className="w-6 h-6 rounded bg-[#F4511E] text-white flex items-center justify-center font-bold text-xs shrink-0 font-mono shadow-xs">
+        <div className="shrink-0 flex items-center justify-between h-13 px-3.5 border-b border-[#22262A] bg-[#0E1012]">
+          <div className="flex items-center gap-2.5 overflow-hidden">
+            <span className="w-7 h-7 rounded-md bg-[#F4511E] text-white flex items-center justify-center font-bold text-xs shrink-0 font-mono shadow-xs">
               B
             </span>
             {!sidebarCollapsed && (
-              <span className="text-xs font-bold text-neutral-300 tracking-wider uppercase font-mono">
+              <span className="text-xs font-semibold text-neutral-200 tracking-wider uppercase font-mono truncate">
                 Modul Operasi
               </span>
             )}
@@ -125,7 +125,7 @@ export default function Sidebar() {
           <button
             type="button"
             onClick={closeMobileSidebar}
-            className="lg:hidden p-1 text-neutral-400 hover:text-white cursor-pointer"
+            className="lg:hidden p-1.5 rounded-md text-neutral-400 hover:text-white cursor-pointer"
             aria-label="Tutup Menu"
           >
             <X className="w-4 h-4" />
@@ -134,25 +134,22 @@ export default function Sidebar() {
           <button
             type="button"
             onClick={toggleCollapseSidebar}
-            className="hidden lg:flex p-1 rounded text-neutral-400 hover:text-white hover:bg-neutral-800 transition-colors cursor-pointer"
+            className="hidden lg:flex p-1.5 rounded-md text-neutral-400 hover:text-white hover:bg-neutral-800 transition-colors cursor-pointer"
             title={sidebarCollapsed ? 'Perluas Sidebar' : 'Persempit Sidebar'}
           >
-            {sidebarCollapsed ? <ChevronRight className="w-3.5 h-3.5" /> : <ChevronLeft className="w-3.5 h-3.5" />}
+            {sidebarCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
           </button>
         </div>
 
         {/* Categorized Navigation Item List */}
-        <nav className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-2 py-3 space-y-3.5 custom-scrollbar" aria-label="Menu Utama">
+        <nav className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-2.5 py-3 space-y-4 custom-scrollbar" aria-label="Menu Utama">
           {filteredNavCategories.map((cat, catIdx) => (
             <div key={cat.category} className="space-y-1">
               {/* Category Header (when expanded) or divider (when collapsed) */}
               {!sidebarCollapsed ? (
-                <div className="flex items-center justify-between px-2.5 py-1">
-                  <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-neutral-400">
+                <div className="px-2.5 py-1">
+                  <span className="text-[11px] font-mono font-semibold uppercase tracking-wider text-neutral-400">
                     {cat.category}
-                  </span>
-                  <span className="text-[9px] font-mono text-neutral-600 bg-[#16181B] px-1.5 py-0.2 rounded">
-                    {cat.items.length}
                   </span>
                 </div>
               ) : (
@@ -160,7 +157,7 @@ export default function Sidebar() {
               )}
 
               {/* Items in Category */}
-              <div className="space-y-0.5">
+              <div className="space-y-1">
                 {cat.items.map((link) => {
                   const Icon = ICON_MAP[link.icon] || LayoutDashboard;
                   const hasChildren = Boolean(link.children && link.children.length > 0);
@@ -170,7 +167,7 @@ export default function Sidebar() {
                   // 1. Render item with submenu (e.g. Data Master)
                   if (hasChildren) {
                     return (
-                      <div key={link.path} className="space-y-0.5">
+                      <div key={link.path} className="space-y-1">
                         <div
                           onClick={() => {
                             if (sidebarCollapsed) {
@@ -182,27 +179,26 @@ export default function Sidebar() {
                           role="button"
                           tabIndex={0}
                           onKeyDown={(e) => e.key === 'Enter' && toggleSubmenu(link.path)}
-                          className={`sidebar-submenu-trigger flex items-center justify-between px-2.5 py-2 rounded text-xs font-medium transition-all duration-150 group cursor-pointer ${
+                          className={`sidebar-submenu-trigger flex items-center justify-between rounded-md text-[13px] font-medium transition-all duration-150 group cursor-pointer ${
+                            sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'px-3 py-2.5'
+                          } ${
                             isParentActive
                               ? 'sidebar-parent-active bg-[#1D2125] text-white font-semibold shadow-xs'
                               : 'text-neutral-400 hover:text-neutral-100 hover:bg-[#181B1E]'
                           }`}
-                          title={sidebarCollapsed ? `${link.label} (${link.children.length} sub-item)` : link.description}
+                          title={sidebarCollapsed ? link.label : link.description}
                         >
-                          <div className="flex items-center gap-2.5 min-w-0">
-                            <Icon className={`w-4 h-4 shrink-0 transition-colors ${isParentActive ? 'text-[#F4511E]' : 'group-hover:scale-105'}`} />
+                          <div className={`flex items-center gap-3 min-w-0 ${sidebarCollapsed ? 'justify-center' : ''}`}>
+                            <Icon className={`w-4.5 h-4.5 shrink-0 transition-colors ${isParentActive ? 'text-[#F4511E]' : 'group-hover:scale-105'}`} />
                             {!sidebarCollapsed && (
-                              <span className="truncate leading-none tracking-tight">{link.label}</span>
+                              <span className="truncate leading-tight tracking-tight">{link.label}</span>
                             )}
                           </div>
 
                           {!sidebarCollapsed && (
-                            <div className="flex items-center gap-1.5 shrink-0 ml-1">
-                              <span className="sidebar-count-badge text-[10px] font-mono text-neutral-400 bg-[#151D28] px-1.5 py-0.2 rounded border border-[#1E2B3C]">
-                                {link.children.length}
-                              </span>
+                            <div className="flex items-center shrink-0 ml-1">
                               <ChevronDown
-                                className={`w-3.5 h-3.5 text-neutral-400 transition-transform duration-200 ${
+                                className={`w-4 h-4 text-neutral-400 transition-transform duration-200 ${
                                   isSubmenuOpen ? 'rotate-180 text-white' : ''
                                 }`}
                               />
@@ -212,7 +208,7 @@ export default function Sidebar() {
 
                         {/* Submenu Children List */}
                         {!sidebarCollapsed && hasChildren && isSubmenuOpen && (
-                          <div className="sidebar-child-container ml-3.5 pl-2.5 border-l border-[#1E2B3C] space-y-0.5 py-1">
+                          <div className="sidebar-child-container ml-4 pl-2.5 border-l border-[#1E2B3C] space-y-1 py-1">
                             {link.children.map((child) => {
                               const ChildIcon = ICON_MAP[child.icon] || Database;
                               const isChildActive = isParentActive && currentTab === child.tab;
@@ -225,15 +221,15 @@ export default function Sidebar() {
                                     navigate(child.path);
                                     closeMobileSidebar();
                                   }}
-                                  className={`sidebar-child-item w-full flex items-center justify-between px-2 py-1.5 rounded text-[11px] transition-all text-left group cursor-pointer ${
+                                  className={`sidebar-child-item w-full flex items-center justify-between px-2.5 py-2 rounded-md text-xs font-medium transition-all text-left group cursor-pointer ${
                                     isChildActive
                                       ? 'active bg-[#F4511E]/20 text-[#FF7043] font-semibold border-l-2 border-[#F4511E]'
                                       : 'text-neutral-400 hover:text-neutral-200 hover:bg-[#151D28]'
                                   }`}
                                 >
-                                  <div className="flex items-center gap-2 truncate">
+                                  <div className="flex items-center gap-2.5 truncate">
                                     <ChildIcon
-                                      className={`w-3.5 h-3.5 shrink-0 ${
+                                      className={`w-4 h-4 shrink-0 ${
                                         isChildActive
                                           ? 'text-[#FF7043]'
                                           : 'text-neutral-500 group-hover:text-neutral-300'
@@ -260,7 +256,9 @@ export default function Sidebar() {
                       to={link.path}
                       onClick={closeMobileSidebar}
                       className={({ isActive }) =>
-                        `flex items-center gap-2.5 px-2.5 py-2 rounded text-xs font-medium transition-all duration-150 group cursor-pointer ${
+                        `flex items-center gap-3 rounded-md text-[13px] font-medium transition-all duration-150 group cursor-pointer ${
+                          sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'px-3 py-2.5'
+                        } ${
                           isActive
                             ? 'bg-[#151D28] text-[#FF7043] font-semibold border-l-2 border-[#F4511E] shadow-xs'
                             : 'text-neutral-400 hover:text-neutral-100 hover:bg-[#151D28]'
@@ -268,9 +266,9 @@ export default function Sidebar() {
                       }
                       title={sidebarCollapsed ? `${cat.category}: ${link.label}` : link.description}
                     >
-                      <Icon className="w-4 h-4 shrink-0 transition-colors group-hover:scale-105" />
+                      <Icon className="w-4.5 h-4.5 shrink-0 transition-colors group-hover:scale-105" />
                       {!sidebarCollapsed && (
-                        <span className="truncate leading-none tracking-tight">{link.label}</span>
+                        <span className="truncate leading-tight tracking-tight">{link.label}</span>
                       )}
                     </NavLink>
                   );
@@ -281,25 +279,25 @@ export default function Sidebar() {
         </nav>
 
         {/* Bottom Role Switcher Panel (Strictly Admin and Superadmin) */}
-        <div className="shrink-0 p-2.5 border-t border-[#1E2B3C] bg-[#0B0F17]">
+        <div className="shrink-0 p-3 border-t border-[#1E2B3C] bg-[#0B0F17]">
           {!sidebarCollapsed ? (
-            <div className="space-y-1">
-              <div className="flex items-center gap-1.5 text-[10px] text-neutral-400 font-medium">
-                <UserCheck className="w-3 h-3 text-[#F4511E]" />
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-1.5 text-xs text-neutral-400 font-medium">
+                <UserCheck className="w-3.5 h-3.5 text-[#F4511E]" />
                 <span>Simulasi Peran Aktif:</span>
               </div>
               <select
                 value={currentUser?.role === 'superadmin' ? 'superadmin' : 'admin'}
                 onChange={(e) => switchRole(e.target.value)}
-                className="w-full text-[11px] bg-[#131B26] border border-[#1E2B3C] text-neutral-200 rounded px-2 py-1.5 focus:outline-none focus:border-[#F4511E] font-medium cursor-pointer"
+                className="w-full text-xs bg-[#131B26] border border-[#1E2B3C] text-neutral-200 rounded-md px-2.5 py-2 focus:outline-none focus:border-[#F4511E] font-medium cursor-pointer"
               >
                 <option value="superadmin">Super Admin (Direktur)</option>
                 <option value="admin">Admin (Operasional Gresik)</option>
               </select>
             </div>
           ) : (
-            <div className="text-center py-1" title={`Role aktif: ${currentUser?.role}`}>
-              <span className="text-[10px] font-bold text-[#FF7043] font-mono px-1.5 py-0.5 rounded bg-black/40 border border-[#1E2B3C]">
+            <div className="text-center py-1.5" title={`Role aktif: ${currentUser?.role}`}>
+              <span className="text-[11px] font-bold text-[#FF7043] font-mono px-2 py-1 rounded-md bg-black/40 border border-[#1E2B3C]">
                 {currentUser?.role === 'superadmin' ? 'SA' : 'AD'}
               </span>
             </div>

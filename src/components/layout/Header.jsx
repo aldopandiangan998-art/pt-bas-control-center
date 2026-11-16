@@ -1,12 +1,11 @@
 import { useNavigate } from 'react-router-dom';
-import { Menu, RotateCcw, Settings, ChevronRight, Activity, LogOut, Sun, Moon } from 'lucide-react';
-import { useAuth } from '../../context/AuthContext';
+import { Menu } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
-import { useToast } from '../../context/ToastContext';
 import { APP_CONFIG } from '../../utils/constants';
 
 export default function Header() {
   const navigate = useNavigate();
+<<<<<<< HEAD
   const { currentUser, roleLabel, logout, isSuperAdmin } = useAuth();
   const { toggleMobileSidebar, isDark, toggleTheme } = useApp();
   const { addToast } = useToast();
@@ -26,18 +25,21 @@ export default function Header() {
   };
 
   const displayRole = roleLabel || (currentUser?.role === 'superadmin' ? 'Super Admin' : 'Admin');
+=======
+  const { toggleMobileSidebar } = useApp();
+>>>>>>> b52121451a3349f72db7aadcaff001e92b54f019
 
   return (
     <header className="timber-header text-white shadow-md relative z-20 select-none shrink-0">
       <div className="w-full px-3 sm:px-5 py-2.5">
         <div className="flex items-center justify-between gap-3">
-          
+
           {/* Left: Mobile trigger & Corporate Brand */}
           <div className="flex items-center gap-2.5">
             <button
               type="button"
               onClick={toggleMobileSidebar}
-              className="lg:hidden p-1.5 rounded bg-black/25 hover:bg-black/40 text-neutral-200 transition-colors focus-visible:ring-2 focus-visible:ring-amber-400"
+              className="lg:hidden p-1.5 rounded bg-black/25 hover:bg-black/40 text-neutral-200 transition-colors focus-visible:ring-2 focus-visible:ring-amber-400 cursor-pointer"
               aria-label="Buka Menu Navigasi"
             >
               <Menu className="w-4 h-4" />
@@ -60,6 +62,7 @@ export default function Header() {
             </div>
           </div>
 
+<<<<<<< HEAD
           {/* Right: Account bar matching screenshot 4 + Functional shortcuts */}
           <div className="flex items-center gap-2 sm:gap-3">
             {/* User Profile Block from Screenshot 4 */}
@@ -133,6 +136,13 @@ export default function Header() {
                 <LogOut className="w-3.5 h-3.5" />
               </button>
             </div>
+=======
+          {/* Right: Operational Status Indicator */}
+          <div className="flex items-center gap-2 bg-black/25 px-2.5 py-1 rounded border border-white/10 text-xs font-mono select-none">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_6px_rgba(52,211,153,0.7)]" />
+            <span className="text-neutral-300 hidden sm:inline">Sistem Operasional</span>
+            <span className="text-emerald-400 font-bold uppercase tracking-wider text-[11px]">Online</span>
+>>>>>>> b52121451a3349f72db7aadcaff001e92b54f019
           </div>
 
         </div>

@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { Menu, RotateCcw, Settings, ChevronRight, Activity, LogOut } from 'lucide-react';
+import { Menu, RotateCcw, Settings, ChevronRight, Activity, LogOut, Sun, Moon } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useApp } from '../../context/AppContext';
 import { useToast } from '../../context/ToastContext';
@@ -8,13 +8,21 @@ import { APP_CONFIG } from '../../utils/constants';
 export default function Header() {
   const navigate = useNavigate();
   const { currentUser, roleLabel, logout } = useAuth();
-  const { toggleMobileSidebar } = useApp();
+  const { toggleMobileSidebar, isDark, toggleTheme } = useApp();
   const { addToast } = useToast();
 
   const handleLogout = () => {
     logout();
     addToast('Sesi akun telah diakhiri. Silakan masuk kembali.', 'info');
     navigate('/login');
+  };
+
+  const handleToggleTheme = () => {
+    toggleTheme();
+    addToast(
+      `Tema diubah ke ${isDark ? 'Mode Terang (Light Mode)' : 'Mode Gelap (Dark Mode)'}`,
+      'info'
+    );
   };
 
   const displayRole = roleLabel || (currentUser?.role === 'superadmin' ? 'Super Admin' : 'Admin');
@@ -85,6 +93,19 @@ export default function Header() {
 
             {/* Functional Tool Icons */}
             <div className="flex items-center gap-1.5 border-l border-white/15 pl-2">
+              <button
+                type="button"
+                onClick={handleToggleTheme}
+                className="p-1.5 rounded bg-black/20 hover:bg-black/35 text-white/90 hover:text-white transition-colors focus-visible:ring-2 focus-visible:ring-amber-400 cursor-pointer"
+                title={isDark ? 'Beralih ke Mode Terang (Light Mode)' : 'Beralih ke Mode Gelap (Dark Mode)'}
+                aria-label={isDark ? 'Beralih ke Mode Terang' : 'Beralih ke Mode Gelap'}
+              >
+                {isDark ? (
+                  <Sun className="w-3.5 h-3.5 text-amber-300" />
+                ) : (
+                  <Moon className="w-3.5 h-3.5 text-amber-500" />
+                )}
+              </button>
               <button
                 type="button"
                 onClick={() => navigate('/rekapan')}

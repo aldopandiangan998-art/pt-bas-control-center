@@ -90,8 +90,9 @@ export function AuthProvider({ children }) {
     canCreateBkk: true,               // Admin & Superadmin
     canRecordPayment: isSuperAdmin,   // Superadmin only (disbursement authorization)
     canManageUsers: isSuperAdmin,     // Superadmin only
-    canManageMasterData: true,        // Both
-    canExportReports: true,           // Both
+    canManageMasterData: isSuperAdmin, // Superadmin only (dihapus untuk role admin)
+    canExportReports: isSuperAdmin,   // Superadmin only (dihapus untuk role admin)
+    canViewReports: isSuperAdmin,     // Superadmin only (dihapus untuk role admin)
   };
 
   /**

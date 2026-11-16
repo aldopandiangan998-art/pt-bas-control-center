@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import {
@@ -51,7 +51,22 @@ export default function Sidebar() {
   const location = useLocation();
   const navigate = useNavigate();
   const { sidebarOpen, closeMobileSidebar, sidebarCollapsed, toggleCollapseSidebar } = useApp();
-  const { currentUser, switchRole } = useAuth();
+  const { currentUser, switchRole, isSuperAdmin } = useAuth();
+
+  // Filter navigation items by role: Sembunyikan Pusat Laporan dan Data Master untuk role Admin
+  const filteredNavCategories = useMemo(() => {
+    return NAV_CATEGORIES.map((cat) => ({
+      ...cat,
+      items: cat.items.filter((item) => {
+        if (!isSuperAdmin) {
+          if (item.path === '/laporan' || item.path === '/master-data') {
+            return false;
+          }
+        }
+        return true;
+      }),
+    })).filter((cat) => cat.items.length > 0);
+  }, [isSuperAdmin]);
 
   // Track expanded state for expandable submenus
   const [openSubmenus, setOpenSubmenus] = useState(() => ({
@@ -128,7 +143,7 @@ export default function Sidebar() {
 
         {/* Categorized Navigation Item List */}
         <nav className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-2 py-3 space-y-3.5 custom-scrollbar" aria-label="Menu Utama">
-          {NAV_CATEGORIES.map((cat, catIdx) => (
+          {filteredNavCategories.map((cat, catIdx) => (
             <div key={cat.category} className="space-y-1">
               {/* Category Header (when expanded) or divider (when collapsed) */}
               {!sidebarCollapsed ? (

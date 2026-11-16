@@ -22,10 +22,33 @@ import {
 import { formatCurrency, formatVolume } from '../../utils/formatters';
 import { Button, Badge, Card, Input } from '../../components/ui';
 import { useToast } from '../../context/ToastContext';
+import { useAuth } from '../../context/AuthContext';
 
 export default function LaporanPage() {
   const navigate = useNavigate();
   const { addToast } = useToast();
+  const { isSuperAdmin } = useAuth();
+
+  // Guard: Pusat Laporan hanya untuk Super Admin
+  if (!isSuperAdmin) {
+    return (
+      <div className="p-8 text-center font-mono space-y-4">
+        <div className="p-6 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-300 max-w-md mx-auto">
+          <AlertCircle className="w-8 h-8 text-rose-400 mx-auto mb-3" />
+          <h2 className="text-base font-bold text-white mb-2">Akses Dibatasi</h2>
+          <p className="text-xs text-neutral-300">
+            Fitur Pusat Laporan hanya dapat diakses oleh Super Admin / Pimpinan Direksi.
+          </p>
+          <button
+            onClick={() => navigate('/')}
+            className="mt-4 px-4 py-2 rounded-lg bg-[#F4511E] text-white text-xs font-bold cursor-pointer hover:bg-[#D84315] transition-colors"
+          >
+            Kembali ke Dashboard
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   const [activeTab, setActiveTab] = useState('rekapan'); // 'rekapan' | 'piutang' | 'hutang'
   const [searchQuery, setSearchQuery] = useState('');

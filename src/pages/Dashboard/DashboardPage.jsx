@@ -69,17 +69,21 @@ export default function DashboardPage() {
   const activePreOrders = preOrders.filter((po) => po.status === 'APPROVED');
   const pendingPreOrders = preOrders.filter((po) => po.status === 'MENUNGGU_APPROVAL');
 
-  // 9 Operational Modules
+  // Operational Modules (Fitur Laporan hanya untuk Super Admin)
   const operationalModules = [
     { title: 'Received Order', path: '/pre-orders', icon: ReceivedOrderIcon },
     { title: 'Good Issue', path: '/surat-jalan', icon: GoodIssueIcon },
     { title: 'Jurnal Good Issue', path: '/rekapan', icon: JurnalGoodIssueIcon },
     { title: 'Cash Out', path: '/bkk', icon: CashOutIcon },
     { title: 'Invoice', path: '/invoices', icon: InvoiceIcon },
-    { title: 'Laporan Pajak', path: '/laporan', icon: LaporanPajakIcon },
-    { title: 'Laporan All-in-One', path: '/laporan', icon: LaporanAllInOneIcon },
-    { title: 'Laporan Supplier', path: '/laporan', icon: LaporanSupplierIcon },
-    { title: 'Pusat Statistik', path: '/laporan', icon: PusatStatistikIcon },
+    ...(isSuperAdmin
+      ? [
+          { title: 'Laporan Pajak', path: '/laporan', icon: LaporanPajakIcon },
+          { title: 'Laporan All-in-One', path: '/laporan', icon: LaporanAllInOneIcon },
+          { title: 'Laporan Supplier', path: '/laporan', icon: LaporanSupplierIcon },
+          { title: 'Pusat Statistik', path: '/laporan', icon: PusatStatistikIcon },
+        ]
+      : []),
   ];
 
   // 8 Master Data Modules
@@ -384,14 +388,16 @@ export default function DashboardPage() {
               </p>
             </div>
 
-            <button
-              type="button"
-              onClick={() => navigate(isExecView ? '/master-data?tab=customer' : '/master-data?tab=material')}
-              className="text-xs font-medium text-[#FF7043] hover:text-[#FFA726] flex items-center gap-1 transition-colors cursor-pointer shrink-0"
-            >
-              <span>{isExecView ? 'Kelola Customer' : 'Kelola Material'}</span>
-              <span className="text-sm">→</span>
-            </button>
+            {isSuperAdmin && (
+              <button
+                type="button"
+                onClick={() => navigate(isExecView ? '/master-data?tab=customer' : '/master-data?tab=material')}
+                className="text-xs font-medium text-[#FF7043] hover:text-[#FFA726] flex items-center gap-1 transition-colors cursor-pointer shrink-0"
+              >
+                <span>{isExecView ? 'Kelola Customer' : 'Kelola Material'}</span>
+                <span className="text-sm">→</span>
+              </button>
+            )}
           </div>
 
           {/* Donut Chart with Centered Total */}
@@ -762,10 +768,12 @@ export default function DashboardPage() {
           <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-neutral-300">
             Akses Cepat Modul Operasional
           </h3>
-          <span className="text-[11px] text-neutral-500 font-mono">9 Alur Kerja Terintegrasi</span>
+          <span className="text-[11px] text-neutral-500 font-mono">
+            {operationalModules.length} Alur Kerja Terintegrasi
+          </span>
         </div>
 
-        <div className="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-9 gap-2">
+        <div className={`grid grid-cols-3 sm:grid-cols-5 ${isSuperAdmin ? 'md:grid-cols-9' : 'md:grid-cols-5'} gap-2`}>
           {operationalModules.map((item) => {
             const Icon = item.icon;
             return (
@@ -788,37 +796,39 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* DATA MASTER REPOSITORY */}
-      <div className="pt-1">
-        <div className="flex items-center justify-between mb-2.5">
-          <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-neutral-300">
-            Pusat Repositori Data Master
-          </h3>
-          <span className="text-[11px] text-neutral-500 font-mono">8 Entitas Tambang & Logistik</span>
-        </div>
+      {/* DATA MASTER REPOSITORY - Hanya untuk Super Admin */}
+      {isSuperAdmin && (
+        <div className="pt-1">
+          <div className="flex items-center justify-between mb-2.5">
+            <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-neutral-300">
+              Pusat Repositori Data Master
+            </h3>
+            <span className="text-[11px] text-neutral-500 font-mono">8 Entitas Tambang & Logistik</span>
+          </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-8 gap-2">
-          {masterData.map((item) => {
-            const Icon = item.icon;
-            return (
-              <button
-                key={item.title}
-                type="button"
-                onClick={() => navigate(`/master-data?tab=${item.tab}`)}
-                className="bg-[#131B26] hover:bg-[#182332] border border-[#1D2838] hover:border-[#F4511E]/60 rounded-xl p-2.5 aspect-square flex flex-col items-center justify-center text-center group cursor-pointer transition-all duration-150 shadow-xs"
-                title={item.title}
-              >
-                <div className="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center mb-1 group-hover:scale-110 transition-transform shrink-0">
-                  <Icon className="w-full h-full" />
-                </div>
-                <span className="text-[10px] font-medium text-neutral-300 group-hover:text-white leading-tight line-clamp-2">
-                  {item.title}
-                </span>
-              </button>
-            );
-          })}
+          <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-8 gap-2">
+            {masterData.map((item) => {
+              const Icon = item.icon;
+              return (
+                <button
+                  key={item.title}
+                  type="button"
+                  onClick={() => navigate(`/master-data?tab=${item.tab}`)}
+                  className="bg-[#131B26] hover:bg-[#182332] border border-[#1D2838] hover:border-[#F4511E]/60 rounded-xl p-2.5 aspect-square flex flex-col items-center justify-center text-center group cursor-pointer transition-all duration-150 shadow-xs"
+                  title={item.title}
+                >
+                  <div className="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center mb-1 group-hover:scale-110 transition-transform shrink-0">
+                    <Icon className="w-full h-full" />
+                  </div>
+                  <span className="text-[10px] font-medium text-neutral-300 group-hover:text-white leading-tight line-clamp-2">
+                    {item.title}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

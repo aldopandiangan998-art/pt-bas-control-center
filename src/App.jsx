@@ -43,6 +43,20 @@ function PublicOnlyRoute({ children }) {
   return children;
 }
 
+/**
+ * Route protector strictly for Super Admin (Restricted for Admin)
+ */
+function SuperAdminOnlyRoute({ children }) {
+  const { isAuthenticated, isSuperAdmin } = useAuth();
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+  if (!isSuperAdmin) {
+    return <Navigate to="/" replace />;
+  }
+  return children;
+}
+
 export default function App() {
   return (
     <BrowserRouter>
@@ -84,8 +98,22 @@ export default function App() {
                   <Route path="rekapan" element={<RekapanPage />} />
                   <Route path="bkk" element={<BkkPage />} />
                   <Route path="invoices" element={<InvoicePage />} />
-                  <Route path="laporan" element={<LaporanPage />} />
-                  <Route path="master-data" element={<MasterDataPage />} />
+                  <Route
+                    path="laporan"
+                    element={
+                      <SuperAdminOnlyRoute>
+                        <LaporanPage />
+                      </SuperAdminOnlyRoute>
+                    }
+                  />
+                  <Route
+                    path="master-data"
+                    element={
+                      <SuperAdminOnlyRoute>
+                        <MasterDataPage />
+                      </SuperAdminOnlyRoute>
+                    }
+                  />
                   <Route path="pengaturan" element={<SettingsPage />} />
                   <Route path="*" element={<NotFoundPage />} />
                 </Route>

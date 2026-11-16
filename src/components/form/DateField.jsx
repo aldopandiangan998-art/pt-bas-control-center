@@ -1,10 +1,11 @@
 import { useState, useId } from 'react';
 import { Calendar } from 'lucide-react';
 import FilledField from './FilledField';
+import { useApp } from '../../context/AppContext';
 
 /**
  * DateField – date input using FilledField Material style.
- * Uses <input type="date"> with color-scheme: dark.
+ * Uses <input type="date"> with adaptive color-scheme.
  */
 export default function DateField({
   label = 'Tanggal',
@@ -16,6 +17,7 @@ export default function DateField({
   helper = '',
   className = '',
 }) {
+  const { isDark } = useApp();
   const [focused, setFocused] = useState(false);
   const uid = useId();
 
@@ -43,8 +45,10 @@ export default function DateField({
         disabled={disabled}
         aria-required={required}
         aria-describedby={error || helper ? `${uid}-hint` : undefined}
-        style={{ colorScheme: 'dark' }}
-        className="w-full bg-transparent focus:outline-none text-[14px] text-white font-mono"
+        style={{ colorScheme: isDark ? 'dark' : 'light' }}
+        className={`w-full bg-transparent focus:outline-none text-[14px] font-mono ${
+          isDark ? 'text-white' : 'text-slate-900 font-medium'
+        }`}
       />
     </FilledField>
   );

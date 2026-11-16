@@ -1,5 +1,6 @@
 import { useState, useId } from 'react';
 import FilledField from './FilledField';
+import { useApp } from '../../context/AppContext';
 
 /**
  * NumberField – numeric input that stores a raw number in state but can display formatted value.
@@ -19,6 +20,7 @@ export default function NumberField({
   step,
   className = '',
 }) {
+  const { isDark } = useApp();
   const [focused, setFocused] = useState(false);
   const uid = useId();
 
@@ -50,7 +52,9 @@ export default function NumberField({
         step={step}
         aria-required={required}
         aria-describedby={error || helper ? `${uid}-hint` : undefined}
-        className="w-full bg-transparent focus:outline-none text-[14px] text-white font-mono"
+        className={`w-full bg-transparent focus:outline-none text-[14px] font-mono ${
+          isDark ? 'text-white' : 'text-slate-900 font-medium'
+        }`}
       />
     </FilledField>
   );

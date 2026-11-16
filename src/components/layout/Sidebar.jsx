@@ -124,22 +124,23 @@ export default function Sidebar() {
 
       {/* Industrial Sidebar Shell */}
       <aside
-        className={`fixed lg:static top-0 bottom-0 left-0 z-50 flex flex-col bg-[#111315] border-r border-[#22262A] transition-all duration-200 select-none shrink-0 h-full max-h-full min-h-0 overflow-hidden ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
-          } ${sidebarCollapsed ? 'lg:w-16' : 'w-60 lg:w-60'}`}
+        className={`fixed lg:static top-0 bottom-0 left-0 z-50 flex flex-col bg-[#111315] border-r border-[#22262A] transition-all duration-200 select-none shrink-0 h-full max-h-full min-h-0 overflow-hidden ${
+          sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+        } ${sidebarCollapsed ? 'lg:w-16' : 'w-64 lg:w-64'}`}
       >
         {/* Top Mini Section */}
         <div
           className={`shrink-0 flex items-center border-b border-[#22262A] bg-[#0E1012] ${
-            sidebarCollapsed ? 'justify-center p-2.5' : 'justify-between px-3.5 py-3'
+            sidebarCollapsed ? 'justify-center p-2.5 h-13' : 'justify-between px-3.5 h-13'
           }`}
         >
           {!sidebarCollapsed ? (
             <>
-              <div className="flex items-center gap-2 overflow-hidden">
-                <span className="w-6 h-6 rounded bg-[#F4511E] text-white flex items-center justify-center font-bold text-xs shrink-0 font-mono shadow-xs">
+              <div className="flex items-center gap-2.5 overflow-hidden">
+                <span className="w-7 h-7 rounded-md bg-[#F4511E] text-white flex items-center justify-center font-bold text-xs shrink-0 font-mono shadow-xs">
                   B
                 </span>
-                <span className="text-xs font-bold text-neutral-300 tracking-wider uppercase font-mono truncate">
+                <span className="text-xs font-semibold text-neutral-200 tracking-wider uppercase font-mono truncate">
                   Modul Operasi
                 </span>
               </div>
@@ -148,7 +149,7 @@ export default function Sidebar() {
                 <button
                   type="button"
                   onClick={closeMobileSidebar}
-                  className="lg:hidden p-1 text-neutral-400 hover:text-white cursor-pointer"
+                  className="lg:hidden p-1.5 rounded-md text-neutral-400 hover:text-white cursor-pointer"
                   aria-label="Tutup Menu"
                 >
                   <X className="w-4 h-4" />
@@ -157,10 +158,10 @@ export default function Sidebar() {
                 <button
                   type="button"
                   onClick={toggleCollapseSidebar}
-                  className="hidden lg:flex p-1 rounded text-neutral-400 hover:text-white hover:bg-neutral-800 transition-colors cursor-pointer"
+                  className="hidden lg:flex p-1.5 rounded-md text-neutral-400 hover:text-white hover:bg-neutral-800 transition-colors cursor-pointer"
                   title="Persempit Sidebar"
                 >
-                  <ChevronLeft className="w-3.5 h-3.5" />
+                  <ChevronLeft className="w-4 h-4" />
                 </button>
               </div>
             </>
@@ -177,17 +178,14 @@ export default function Sidebar() {
         </div>
 
         {/* Categorized Navigation Item List */}
-        <nav className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-2 py-3 space-y-3.5 custom-scrollbar" aria-label="Menu Utama">
+        <nav className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-2.5 py-3 space-y-4 custom-scrollbar" aria-label="Menu Utama">
           {filteredNavCategories.map((cat, catIdx) => (
             <div key={cat.category} className="space-y-1">
               {/* Category Header (when expanded) or divider (when collapsed) */}
               {!sidebarCollapsed ? (
-                <div className="flex items-center justify-between px-2.5 py-1">
-                  <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-neutral-400">
+                <div className="px-2.5 py-1">
+                  <span className="text-[11px] font-mono font-semibold uppercase tracking-wider text-neutral-400">
                     {cat.category}
-                  </span>
-                  <span className="text-[9px] font-mono text-neutral-600 bg-[#16181B] px-1.5 py-0.2 rounded">
-                    {cat.items.length}
                   </span>
                 </div>
               ) : (
@@ -195,7 +193,7 @@ export default function Sidebar() {
               )}
 
               {/* Items in Category */}
-              <div className="space-y-0.5">
+              <div className="space-y-1">
                 {cat.items.map((link) => {
                   const Icon = ICON_MAP[link.icon] || LayoutDashboard;
                   const hasChildren = Boolean(link.children && link.children.length > 0);
@@ -205,7 +203,7 @@ export default function Sidebar() {
                   // 1. Render item with submenu (e.g. Data Master)
                   if (hasChildren) {
                     return (
-                      <div key={link.path} className="space-y-0.5">
+                      <div key={link.path} className="space-y-1">
                         <div
                           onClick={() => {
                             if (sidebarCollapsed) {
@@ -217,32 +215,30 @@ export default function Sidebar() {
                           role="button"
                           tabIndex={0}
                           onKeyDown={(e) => e.key === 'Enter' && toggleSubmenu(link.path)}
-                          className={`sidebar-submenu-trigger flex items-center rounded text-xs font-medium transition-all duration-150 group cursor-pointer ${
+                          className={`sidebar-submenu-trigger flex items-center rounded-md text-[13px] font-medium transition-all duration-150 group cursor-pointer ${
                             sidebarCollapsed
                               ? 'justify-center w-10 h-10 mx-auto'
-                              : 'justify-between px-2.5 py-2'
+                              : 'justify-between px-3 py-2.5'
                           } ${
                             isParentActive
                               ? 'sidebar-parent-active bg-[#1D2125] text-white font-semibold shadow-xs'
                               : 'text-neutral-400 hover:text-neutral-100 hover:bg-[#181B1E]'
                           }`}
-                          title={sidebarCollapsed ? `${link.label} (${link.children.length} sub-item)` : link.description}
+                          title={sidebarCollapsed ? link.label : link.description}
                         >
-                          <div className={`flex items-center ${sidebarCollapsed ? 'justify-center' : 'gap-2.5 min-w-0'}`}>
-                            <Icon className={`w-4 h-4 shrink-0 transition-colors ${isParentActive ? 'text-[#F4511E]' : 'group-hover:scale-105'}`} />
+                          <div className={`flex items-center ${sidebarCollapsed ? 'justify-center' : 'gap-3 min-w-0'}`}>
+                            <Icon className={`w-4.5 h-4.5 shrink-0 transition-colors ${isParentActive ? 'text-[#F4511E]' : 'group-hover:scale-105'}`} />
                             {!sidebarCollapsed && (
-                              <span className="truncate leading-none tracking-tight">{link.label}</span>
+                              <span className="truncate leading-tight tracking-tight">{link.label}</span>
                             )}
                           </div>
 
                           {!sidebarCollapsed && (
-                            <div className="flex items-center gap-1.5 shrink-0 ml-1">
-                              <span className="sidebar-count-badge text-[10px] font-mono text-neutral-400 bg-[#151D28] px-1.5 py-0.2 rounded border border-[#1E2B3C]">
-                                {link.children.length}
-                              </span>
+                            <div className="flex items-center shrink-0 ml-1">
                               <ChevronDown
-                                className={`w-3.5 h-3.5 text-neutral-400 transition-transform duration-200 ${isSubmenuOpen ? 'rotate-180 text-white' : ''
-                                  }`}
+                                className={`w-4 h-4 text-neutral-400 transition-transform duration-200 ${
+                                  isSubmenuOpen ? 'rotate-180 text-white' : ''
+                                }`}
                               />
                             </div>
                           )}
@@ -250,7 +246,7 @@ export default function Sidebar() {
 
                         {/* Submenu Children List */}
                         {!sidebarCollapsed && hasChildren && isSubmenuOpen && (
-                          <div className="sidebar-child-container ml-3.5 pl-2.5 border-l border-[#1E2B3C] space-y-0.5 py-1">
+                          <div className="sidebar-child-container ml-4 pl-2.5 border-l border-[#1E2B3C] space-y-1 py-1">
                             {link.children.map((child) => {
                               const ChildIcon = ICON_MAP[child.icon] || Database;
                               const isChildActive = isParentActive && currentTab === child.tab;
@@ -263,17 +259,19 @@ export default function Sidebar() {
                                     navigate(child.path);
                                     closeMobileSidebar();
                                   }}
-                                  className={`sidebar-child-item w-full flex items-center justify-between px-2 py-1.5 rounded text-[11px] transition-all text-left group cursor-pointer ${isChildActive
-                                    ? 'active bg-[#F4511E]/20 text-[#FF7043] font-semibold border-l-2 border-[#F4511E]'
-                                    : 'text-neutral-400 hover:text-neutral-200 hover:bg-[#151D28]'
-                                    }`}
+                                  className={`sidebar-child-item w-full flex items-center justify-between px-2.5 py-2 rounded-md text-xs font-medium transition-all text-left group cursor-pointer ${
+                                    isChildActive
+                                      ? 'active bg-[#F4511E]/20 text-[#FF7043] font-semibold border-l-2 border-[#F4511E]'
+                                      : 'text-neutral-400 hover:text-neutral-200 hover:bg-[#151D28]'
+                                  }`}
                                 >
-                                  <div className="flex items-center gap-2 truncate">
+                                  <div className="flex items-center gap-2.5 truncate">
                                     <ChildIcon
-                                      className={`w-3.5 h-3.5 shrink-0 ${isChildActive
-                                        ? 'text-[#FF7043]'
-                                        : 'text-neutral-500 group-hover:text-neutral-300'
-                                        }`}
+                                      className={`w-4 h-4 shrink-0 ${
+                                        isChildActive
+                                          ? 'text-[#FF7043]'
+                                          : 'text-neutral-500 group-hover:text-neutral-300'
+                                      }`}
                                     />
                                     <span className="truncate">{child.label}</span>
                                   </div>
@@ -296,10 +294,10 @@ export default function Sidebar() {
                       to={link.path}
                       onClick={closeMobileSidebar}
                       className={({ isActive }) =>
-                        `flex items-center rounded text-xs font-medium transition-all duration-150 group cursor-pointer ${
+                        `flex items-center rounded-md text-[13px] font-medium transition-all duration-150 group cursor-pointer ${
                           sidebarCollapsed
                             ? 'justify-center w-10 h-10 mx-auto'
-                            : 'gap-2.5 px-2.5 py-2'
+                            : 'gap-3 px-3 py-2.5'
                         } ${
                           isActive
                             ? 'bg-[#151D28] text-[#FF7043] font-semibold border-l-2 border-[#F4511E] shadow-xs'
@@ -308,9 +306,9 @@ export default function Sidebar() {
                       }
                       title={sidebarCollapsed ? `${cat.category}: ${link.label}` : link.description}
                     >
-                      <Icon className="w-4 h-4 shrink-0 transition-colors group-hover:scale-105" />
+                      <Icon className="w-4.5 h-4.5 shrink-0 transition-colors group-hover:scale-105" />
                       {!sidebarCollapsed && (
-                        <span className="truncate leading-none tracking-tight">{link.label}</span>
+                        <span className="truncate leading-tight tracking-tight">{link.label}</span>
                       )}
                     </NavLink>
                   );
@@ -332,7 +330,7 @@ export default function Sidebar() {
                 }`}
                 title={isSuperAdmin ? 'Buka Pengaturan Akun' : `Profil: ${currentUser?.name || 'Admin'}`}
               >
-                <div className="flex items-center gap-2 min-w-0">
+                <div className="flex items-center gap-2.5 min-w-0">
                   <div className="w-7 h-7 rounded-full border border-sky-400/30 bg-[#162B45] flex items-center justify-center text-[10px] font-bold text-sky-300 shrink-0">
                     {currentUser?.name ? currentUser.name.split(' ').map((n) => n[0]).join('').slice(0, 2) : 'U'}
                   </div>

@@ -1291,5 +1291,419 @@ body, aside, header, main, .card {
   box-shadow: 0 0 0 2px rgba(244, 81, 30, 0.2) !important;
 }
 
+/* ======================================================== */
+/* COMPREHENSIVE LIGHT / DARK MODE FOR ALL MODIFY FEATURES  */
+/* (Modals, Forms, Dialogs, Inputs, Selects, RO/PO Builder)  */
+/* ======================================================== */
+
+/* --- 1. MODAL DIALOGS & POPUPS --- */
+[data-theme="light"] [role="dialog"],
+.light [role="dialog"],
+[data-theme="light"] .modal-box,
+.light .modal-box {
+  background-color: #FFFFFF !important;
+  border-color: #E2E8F0 !important;
+  color: #0F172A !important;
+  box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.18) !important;
+}
+
+[data-theme="light"] [role="dialog"] > div:first-child,
+.light [role="dialog"] > div:first-child,
+[data-theme="light"] .modal-header,
+.light .modal-header {
+  background-color: #F8FAFC !important;
+  border-bottom-color: #E2E8F0 !important;
+}
+
+[data-theme="light"] [role="dialog"] h3,
+.light [role="dialog"] h3,
+[data-theme="light"] .modal-title,
+.light .modal-title {
+  color: #0F172A !important;
+}
+
+[data-theme="light"] [role="dialog"] p,
+.light [role="dialog"] p,
+[data-theme="light"] .modal-subtitle,
+.light .modal-subtitle {
+  color: #64748B !important;
+}
+
+[data-theme="light"] [role="dialog"] label,
+.light [role="dialog"] label {
+  color: #334155 !important;
+}
+
+[data-theme="light"] [role="dialog"] .border-t,
+.light [role="dialog"] .border-t {
+  border-top-color: #E2E8F0 !important;
+}
+
+/* Detail modal data blocks inside Modal (BKK, Invoice, Master Data) */
+[data-theme="light"] [role="dialog"] .bg-\[\#181B1E\],
+.light [role="dialog"] .bg-\[\#181B1E\] {
+  background-color: #F8FAFC !important;
+  border-color: #E2E8F0 !important;
+}
+
+[data-theme="light"] [role="dialog"] .bg-\[\#181B1E\] .text-white,
+.light [role="dialog"] .bg-\[\#181B1E\] .text-white {
+  color: #0F172A !important;
+}
+
+[data-theme="light"] [role="dialog"] .bg-\[\#181B1E\] .text-neutral-200,
+.light [role="dialog"] .bg-\[\#181B1E\] .text-neutral-200,
+[data-theme="light"] [role="dialog"] .bg-\[\#181B1E\] .text-neutral-300,
+.light [role="dialog"] .bg-\[\#181B1E\] .text-neutral-300 {
+  color: #334155 !important;
+}
+
+[data-theme="light"] [role="dialog"] .bg-\[\#181B1E\] .text-neutral-500,
+.light [role="dialog"] .bg-\[\#181B1E\] .text-neutral-500 {
+  color: #64748B !important;
+}
+
+/* --- 2. FORM INPUTS, TEXTAREAS & SELECTS (MODIFY FEATURES) --- */
+[data-theme="light"] input:not([type="checkbox"]):not([type="radio"]):not([type="submit"]):not([type="button"]),
+.light input:not([type="checkbox"]):not([type="radio"]):not([type="submit"]):not([type="button"]),
+[data-theme="light"] select,
+.light select,
+[data-theme="light"] textarea,
+.light textarea {
+  background-color: #FFFFFF !important;
+  border-color: #CBD5E1 !important;
+  color: #0F172A !important;
+}
+
+[data-theme="light"] input[type="date"],
+.light input[type="date"] {
+  color-scheme: light !important;
+}
+
+[data-theme="dark"] input[type="date"],
+.dark input[type="date"] {
+  color-scheme: dark !important;
+}
+
+[data-theme="light"] input::placeholder,
+.light input::placeholder,
+[data-theme="light"] textarea::placeholder,
+.light textarea::placeholder {
+  color: #94A3B8 !important;
+}
+
+[data-theme="light"] select option,
+.light select option {
+  background-color: #FFFFFF !important;
+  color: #0F172A !important;
+}
+
+/* --- 3. MATERIAL FILLED FORM FIELDS (PRE-ORDER / RO / PO CREATION & EDIT) --- */
+[data-theme="light"] .bg-\[\#1E2126\],
+.light .bg-\[\#1E2126\] {
+  background-color: #F1F5F9 !important;
+}
+
+[data-theme="light"] .border-\[\#3A3E45\],
+.light .border-\[\#3A3E45\] {
+  border-color: #CBD5E1 !important;
+}
+
+[data-theme="light"] .border-\[\#2A2E35\],
+.light .border-\[\#2A2E35\] {
+  border-color: #E2E8F0 !important;
+}
+
+[data-theme="light"] .bg-\[\#2A2E35\],
+.light .bg-\[\#2A2E35\] {
+  background-color: #E2E8F0 !important;
+  color: #0F172A !important;
+}
+
+[data-theme="light"] .hover\:bg-\[\#262A30\]:hover,
+.light .hover\:bg-\[\#262A30\]:hover {
+  background-color: #F1F5F9 !important;
+}
+
+[data-theme="light"] .text-white.font-mono,
+.light .text-white.font-mono {
+  color: #0F172A !important;
+}
+
+/* Form App Bar sticky top */
+[data-theme="light"] .bg-\[\#0B111E\],
+.light .bg-\[\#0B111E\] {
+  background-color: #FFFFFF !important;
+  border-color: #E2E8F0 !important;
+}
+
+/* Pre-order item table row computed columns in light mode */
+[data-theme="light"] .bg-\[\#181B1E\],
+.light .bg-\[\#181B1E\] {
+  background-color: #F8FAFC !important;
+}
+
+/* --- 4. SURAT JALAN & DIMENSION MODIFIER CONTROLS --- */
+[data-theme="light"] .bg-\[\#101214\],
+.light .bg-\[\#101214\] {
+  background-color: #F8FAFC !important;
+  border-color: #CBD5E1 !important;
+}
+
+[data-theme="light"] .bg-\[\#16181B\],
+.light .bg-\[\#16181B\] {
+  background-color: #F1F5F9 !important;
+  border-color: #CBD5E1 !important;
+  color: #334155 !important;
+}
+
+[data-theme="light"] .bg-\[\#1E2227\],
+.light .bg-\[\#1E2227\] {
+  background-color: #F1F5F9 !important;
+  border-color: #CBD5E1 !important;
+  color: #334155 !important;
+}
+
+[data-theme="light"] .hover\:bg-\[\#282D34\]:hover,
+.light .hover\:bg-\[\#282D34\]:hover {
+  background-color: #E2E8F0 !important;
+}
+
+/* PPN format switcher box */
+[data-theme="light"] .bg-\[\#2A2E33\],
+.light .bg-\[\#2A2E33\] {
+  background-color: #CBD5E1 !important;
+}
+
+/* --- 5. CONFIRMATION DIALOGS (DELETE & REJECT) --- */
+[data-theme="light"] .bg-rose-500\/10,
+.light .bg-rose-500\/10 {
+  background-color: #FEF2F2 !important;
+  border-color: #FECDD3 !important;
+}
+
+[data-theme="light"] .text-rose-400,
+.light .text-rose-400 {
+  color: #E11D48 !important;
+}
+
+[data-theme="light"] .bg-orange-500\/10,
+.light .bg-orange-500\/10 {
+  background-color: #FFF7ED !important;
+  border-color: #FFEDD5 !important;
+}
+
+/* --- 6. CRITICAL PRESERVATION: BUTTON ACCENTS & WHITE TEXT --- */
+[data-theme="light"] .bg-\[\#F4511E\],
+.light .bg-\[\#F4511E\],
+[data-theme="light"] button.bg-\[\#F4511E\],
+.light button.bg-\[\#F4511E\],
+[data-theme="light"] .bg-\[\#F4511E\] *,
+.light .bg-\[\#F4511E\] *,
+[data-theme="light"] button[type="submit"]:not(.btn-secondary),
+.light button[type="submit"]:not(.btn-secondary),
+[data-theme="light"] button[type="submit"]:not(.btn-secondary) * {
+  color: #FFFFFF !important;
+}
+
+/* ======================================================== */
+/* MODULE PAGES LIGHT THEME (PRE-ORDER, SURAT JALAN,        */
+/* REKAPAN, BKK CASH OUT, INVOICE, PUSAT LAPORAN)           */
+/* ======================================================== */
+
+/* 1. Primary Component Surfaces & Cards */
+[data-theme="light"] .bg-\[\#1A1D22\],
+.light .bg-\[\#1A1D22\],
+[data-theme="light"] .bg-\[\#15181C\],
+.light .bg-\[\#15181C\],
+[data-theme="light"] .bg-\[\#141618\],
+.light .bg-\[\#141618\],
+[data-theme="light"] .bg-\[\#141619\],
+.light .bg-\[\#141619\],
+[data-theme="light"] .bg-\[\#181B1E\],
+.light .bg-\[\#181B1E\],
+[data-theme="light"] .bg-\[\#131517\],
+.light .bg-\[\#131517\] {
+  background-color: #FFFFFF !important;
+  color: #0F172A !important;
+}
+
+/* 2. Sub-containers, Badges & Chips */
+[data-theme="light"] .bg-\[\#1C1F22\],
+.light .bg-\[\#1C1F22\],
+[data-theme="light"] .bg-\[\#1C1F24\],
+.light .bg-\[\#1C1F24\],
+[data-theme="light"] .bg-\[\#1C1F24\]\/50,
+.light .bg-\[\#1C1F24\]\/50,
+[data-theme="light"] .bg-\[\#1E2228\],
+.light .bg-\[\#1E2228\],
+[data-theme="light"] .bg-\[\#0A0C0E\],
+.light .bg-\[\#0A0C0E\],
+[data-theme="light"] .bg-\[\#0C0D0E\],
+.light .bg-\[\#0C0D0E\] {
+  background-color: #F8FAFC !important;
+  color: #0F172A !important;
+}
+
+/* 3. Table Headers & Alternating Rows */
+[data-theme="light"] tr.bg-\[\#1A1D22\],
+.light tr.bg-\[\#1A1D22\],
+[data-theme="light"] thead.bg-\[\#181B1E\],
+.light thead.bg-\[\#181B1E\],
+[data-theme="light"] thead tr.bg-\[\#1A1D22\],
+.light thead tr.bg-\[\#1A1D22\] {
+  background-color: #F8FAFC !important;
+  color: #475569 !important;
+  border-color: #E2E8F0 !important;
+}
+
+[data-theme="light"] tbody tr.bg-\[\#15181C\],
+.light tbody tr.bg-\[\#15181C\],
+[data-theme="light"] tr.bg-\[\#15181C\],
+.light tr.bg-\[\#15181C\] {
+  background-color: #F8FAFC !important;
+  color: #0F172A !important;
+}
+
+[data-theme="light"] tbody tr.bg-\[\#131517\],
+.light tbody tr.bg-\[\#131517\],
+[data-theme="light"] tr.bg-\[\#131517\],
+.light tr.bg-\[\#131517\] {
+  background-color: #FFFFFF !important;
+  color: #0F172A !important;
+}
+
+/* 4. Controls, Inputs, Selects & Options */
+[data-theme="light"] select.bg-\[\#1C1F24\],
+.light select.bg-\[\#1C1F24\],
+[data-theme="light"] input.bg-\[\#1C1F24\],
+.light input.bg-\[\#1C1F24\],
+[data-theme="light"] textarea.bg-\[\#1C1F24\],
+.light textarea.bg-\[\#1C1F24\],
+[data-theme="light"] textarea.bg-\[\#181B1E\],
+.light textarea.bg-\[\#181B1E\] {
+  background-color: #FFFFFF !important;
+  color: #0F172A !important;
+  border-color: #CBD5E1 !important;
+}
+
+[data-theme="light"] option.bg-\[\#1C1F24\],
+.light option.bg-\[\#1C1F24\],
+[data-theme="light"] select option,
+.light select option {
+  background-color: #FFFFFF !important;
+  color: #0F172A !important;
+}
+
+/* 5. Toolbars & Control Bars */
+[data-theme="light"] div.bg-\[\#1C1F24\],
+.light div.bg-\[\#1C1F24\],
+[data-theme="light"] div.bg-\[\#181B1E\],
+.light div.bg-\[\#181B1E\] {
+  background-color: #F8FAFC !important;
+  border-color: #E2E8F0 !important;
+  color: #0F172A !important;
+}
+
+/* 6. Active Tabs & Selected Cards */
+[data-theme="light"] .bg-\[\#1A1D20\]\/60,
+.light .bg-\[\#1A1D20\]\/60 {
+  background-color: #FFF7ED !important;
+  color: #C2410C !important;
+  border-color: #F4511E !important;
+}
+
+[data-theme="light"] .bg-\[\#1A1817\],
+.light .bg-\[\#1A1817\] {
+  background-color: #FFF7ED !important;
+  border-color: #F4511E !important;
+}
+
+[data-theme="light"] .bg-\[\#1A1D22\].border-\[\#F4511E\],
+.light .bg-\[\#1A1D22\].border-\[\#F4511E\] {
+  background-color: #FFF7ED !important;
+  color: #C2410C !important;
+  border-color: #F4511E !important;
+}
+
+[data-theme="light"] .bg-\[\#1A1D22\]:not(.border-\[\#F4511E\]),
+.light .bg-\[\#1A1D22\]:not(.border-\[\#F4511E\]) {
+  background-color: #FFFFFF !important;
+  color: #64748B !important;
+  border-color: #E2E8F0 !important;
+}
+
+/* 7. Special Boxes (Surat Jalan Margin, Blueprint CAD, Toggle Tracks) */
+[data-theme="light"] .bg-\[\#1C1511\],
+.light .bg-\[\#1C1511\] {
+  background-color: #FFF7ED !important;
+  border-color: #FED7AA !important;
+  color: #9A3412 !important;
+}
+
+[data-theme="light"] .bg-\[\#2A2E33\],
+.light .bg-\[\#2A2E33\] {
+  background-color: #CBD5E1 !important;
+}
+
+/* 8. Bottom Floating Action Bar in BKK & Invoice */
+[data-theme="light"] .bg-\[\#111315\]\/95,
+.light .bg-\[\#111315\]\/95 {
+  background-color: rgba(255, 255, 255, 0.96) !important;
+  border-color: #E2E8F0 !important;
+  color: #0F172A !important;
+  box-shadow: 0 -4px 20px -2px rgba(0, 0, 0, 0.08) !important;
+}
+
+/* 9. Light Mode Borders */
+[data-theme="light"] .border-\[\#2A2E33\],
+.light .border-\[\#2A2E33\],
+[data-theme="light"] .border-\[\#2B3036\],
+.light .border-\[\#2B3036\],
+[data-theme="light"] .border-\[\#262A2F\],
+.light .border-\[\#262A2F\],
+[data-theme="light"] .border-\[\#333940\],
+.light .border-\[\#333940\],
+[data-theme="light"] .border-\[\#2C3136\],
+.light .border-\[\#2C3136\],
+[data-theme="light"] .border-\[\#3E454F\],
+.light .border-\[\#3E454F\],
+[data-theme="light"] .border-\[\#2A2E35\],
+.light .border-\[\#2A2E35\],
+[data-theme="light"] .border-\[\#2A2E33\]\/70,
+.light .border-\[\#2A2E33\]\/70,
+[data-theme="light"] .border-\[\#24282C\]\/70,
+.light .border-\[\#24282C\]\/70 {
+  border-color: #E2E8F0 !important;
+}
+
+/* 10. Hover Transitions in Light Mode */
+[data-theme="light"] .hover\:bg-\[\#1C1F24\]:hover,
+.light .hover\:bg-\[\#1C1F24\]:hover,
+[data-theme="light"] .hover\:bg-\[\#1E2228\]:hover,
+.light .hover\:bg-\[\#1E2228\]:hover,
+[data-theme="light"] .hover\:bg-\[\#181B1E\]:hover,
+.light .hover\:bg-\[\#181B1E\]:hover,
+[data-theme="light"] .hover\:bg-\[\#131517\]:hover,
+.light .hover\:bg-\[\#131517\]:hover,
+[data-theme="light"] .hover\:bg-neutral-800:hover,
+.light .hover\:bg-neutral-800:hover,
+[data-theme="light"] .hover\:bg-neutral-800\/50:hover,
+.light .hover\:bg-neutral-800\/50:hover {
+  background-color: #F1F5F9 !important;
+  color: #0F172A !important;
+}
+
+/* 11. Text Contrast inside Cards & Badges in Light Mode */
+[data-theme="light"] .text-neutral-200,
+.light .text-neutral-200 {
+  color: #334155 !important;
+}
+
+[data-theme="light"] .text-neutral-300,
+.light .text-neutral-300 {
+  color: #475569 !important;
+}
+
 
 

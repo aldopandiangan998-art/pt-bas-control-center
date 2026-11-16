@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X } from 'lucide-react';
 import clsx from 'clsx';
+import { useApp } from '../../context/AppContext';
 
 export default function Modal({
   isOpen,
@@ -12,6 +13,8 @@ export default function Modal({
   maxWidth = 'max-w-lg',
   showClose = true,
 }) {
+  const { isDark } = useApp();
+
   // Listen for Escape key
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -42,7 +45,10 @@ export default function Modal({
             exit={{ opacity: 0 }}
             transition={{ duration: 0.15 }}
             onClick={onClose}
-            className="fixed inset-0 bg-black/80 backdrop-blur-xs"
+            className={clsx(
+              'fixed inset-0 backdrop-blur-xs transition-colors',
+              isDark ? 'bg-black/80' : 'bg-slate-900/40'
+            )}
             aria-hidden="true"
           />
 
@@ -53,7 +59,10 @@ export default function Modal({
             exit={{ opacity: 0, scale: 0.97, y: 8 }}
             transition={{ duration: 0.18, ease: 'easeOut' }}
             className={clsx(
-              'relative w-full bg-[#131517] border border-[#2D3339] rounded-xl overflow-hidden shadow-2xl z-10 my-auto',
+              'relative w-full rounded-xl overflow-hidden shadow-2xl z-10 my-auto transition-colors modal-box',
+              isDark
+                ? 'bg-[#131517] border border-[#2D3339] text-white'
+                : 'bg-white border border-slate-200 text-slate-900 shadow-2xl',
               maxWidth
             )}
             role="dialog"
@@ -61,17 +70,47 @@ export default function Modal({
           >
             {/* Header */}
             {(title || showClose) && (
-              <div className="flex items-center justify-between px-4 py-3 bg-[#181B1E] border-b border-[#24282C]">
+              <div
+                className={clsx(
+                  'flex items-center justify-between px-4 py-3 border-b transition-colors',
+                  isDark
+                    ? 'bg-[#181B1E] border-[#24282C]'
+                    : 'bg-slate-50 border-slate-200'
+                )}
+              >
                 <div>
-                  {title && <h3 className="text-sm font-bold text-white tracking-wide">{title}</h3>}
-                  {subtitle && <p className="text-[11px] text-neutral-400 mt-0.5">{subtitle}</p>}
+                  {title && (
+                    <h3
+                      className={clsx(
+                        'text-sm font-bold tracking-wide',
+                        isDark ? 'text-white' : 'text-slate-900'
+                      )}
+                    >
+                      {title}
+                    </h3>
+                  )}
+                  {subtitle && (
+                    <p
+                      className={clsx(
+                        'text-[11px] mt-0.5',
+                        isDark ? 'text-neutral-400' : 'text-slate-500'
+                      )}
+                    >
+                      {subtitle}
+                    </p>
+                  )}
                 </div>
 
                 {showClose && (
                   <button
                     type="button"
                     onClick={onClose}
-                    className="p-1 rounded text-neutral-400 hover:text-white hover:bg-[#22272C] transition-colors cursor-pointer"
+                    className={clsx(
+                      'p-1 rounded transition-colors cursor-pointer',
+                      isDark
+                        ? 'text-neutral-400 hover:text-white hover:bg-[#22272C]'
+                        : 'text-slate-400 hover:text-slate-700 hover:bg-slate-200/70'
+                    )}
                     aria-label="Tutup"
                   >
                     <X className="w-4 h-4" />
@@ -81,11 +120,17 @@ export default function Modal({
             )}
 
             {/* Content */}
-            <div className="max-h-[80vh] overflow-y-auto">{children}</div>
+            <div
+              className={clsx(
+                'max-h-[80vh] overflow-y-auto',
+                isDark ? 'text-neutral-200' : 'text-slate-800'
+              )}
+            >
+              {children}
+            </div>
           </motion.div>
         </div>
       )}
     </AnimatePresence>
   );
 }
-

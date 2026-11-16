@@ -1,6 +1,7 @@
 import { Trash2 } from 'lucide-react';
 import NumberField from './NumberField';
 import SelectField from './SelectField';
+import { useApp } from '../../context/AppContext';
 
 /**
  * ItemRow – single row in "Daftar Item" section.
@@ -9,6 +10,7 @@ import SelectField from './SelectField';
  * On desktop (md+), all in one flex row.
  */
 export default function ItemRow({ item, index, materials = [], onChange, onDelete }) {
+  const { isDark } = useApp();
   const materialOptions = materials.map((m) => ({
     value: m.id,
     label: m.name || m.nama || m.id,
@@ -23,7 +25,11 @@ export default function ItemRow({ item, index, materials = [], onChange, onDelet
         type="button"
         onClick={() => onDelete?.(index)}
         aria-label={`Hapus item ${index + 1}`}
-        className="shrink-0 snap-start w-10 flex items-center justify-center text-neutral-600 hover:text-rose-400 transition-colors self-stretch"
+        className={`shrink-0 snap-start w-10 flex items-center justify-center transition-colors self-stretch ${
+          isDark
+            ? 'text-neutral-600 hover:text-rose-400'
+            : 'text-slate-400 hover:text-rose-600 hover:bg-rose-50'
+        }`}
       >
         <Trash2 className="w-4 h-4" />
       </button>

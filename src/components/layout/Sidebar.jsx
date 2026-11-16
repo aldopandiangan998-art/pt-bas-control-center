@@ -1,4 +1,6 @@
-import { NavLink } from 'react-router-dom';
+import { useState, useEffect, useMemo } from 'react';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'motion/react';
 import {
   LayoutDashboard,
   ClipboardList,
@@ -8,14 +10,23 @@ import {
   Receipt,
   BarChart3,
   Database,
+  Settings,
   X,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   UserCheck,
+  HardHat,
+  Mountain,
+  Building2,
+  Landmark,
+  CreditCard,
+  Users,
+  Coins,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { useAuth } from '../../context/AuthContext';
-import { NAV_LINKS } from '../../utils/constants';
+import { NAV_CATEGORIES } from '../../utils/constants';
 
 const ICON_MAP = {
   LayoutDashboard,
@@ -26,37 +37,86 @@ const ICON_MAP = {
   Receipt,
   BarChart3,
   Database,
+  Settings,
+  HardHat,
+  Mountain,
+  Building2,
+  Landmark,
+  CreditCard,
+  Users,
+  Coins,
 };
 
 export default function Sidebar() {
+  const location = useLocation();
+  const navigate = useNavigate();
   const { sidebarOpen, closeMobileSidebar, sidebarCollapsed, toggleCollapseSidebar } = useApp();
-  const { currentUser, switchRole } = useAuth();
+  const { currentUser, switchRole, isSuperAdmin } = useAuth();
+
+  // Filter navigation items by role: Sembunyikan Pusat Laporan dan Data Master untuk role Admin
+  const filteredNavCategories = useMemo(() => {
+    return NAV_CATEGORIES.map((cat) => ({
+      ...cat,
+      items: cat.items.filter((item) => {
+        if (!isSuperAdmin) {
+          if (item.path === '/laporan' || item.path === '/master-data') {
+            return false;
+          }
+        }
+        return true;
+      }),
+    })).filter((cat) => cat.items.length > 0);
+  }, [isSuperAdmin]);
+
+  // Track expanded state for expandable submenus
+  const [openSubmenus, setOpenSubmenus] = useState(() => ({
+    '/master-data': location.pathname === '/master-data',
+  }));
+
+  // Automatically expand submenu if on /master-data
+  useEffect(() => {
+    if (location.pathname === '/master-data') {
+      setOpenSubmenus((prev) => ({ ...prev, '/master-data': true }));
+    }
+  }, [location.pathname]);
+
+  const toggleSubmenu = (path) => {
+    setOpenSubmenus((prev) => ({ ...prev, [path]: !prev[path] }));
+  };
+
+  const currentTab = new URLSearchParams(location.search).get('tab') || 'supplier';
 
   return (
     <>
-      {/* Mobile Backdrop */}
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 bg-black/75 z-40 lg:hidden"
-          onClick={closeMobileSidebar}
-          aria-hidden="true"
-        />
-      )}
+      {/* Mobile Backdrop with Motion */}
+      <AnimatePresence>
+        {sidebarOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            className="fixed inset-0 bg-black/80 backdrop-blur-xs z-40 lg:hidden"
+            onClick={closeMobileSidebar}
+            aria-hidden="true"
+          />
+        )}
+      </AnimatePresence>
 
       {/* Industrial Sidebar Shell */}
       <aside
-        className={`fixed lg:static top-0 bottom-0 left-0 z-50 flex flex-col bg-[#141414] border-r border-[#242424] transition-all duration-200 select-none ${
+        className={`fixed lg:static top-0 bottom-0 left-0 z-50 flex flex-col bg-[#111315] border-r border-[#22262A] transition-all duration-200 select-none shrink-0 h-full max-h-full min-h-0 overflow-hidden ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
-        } ${sidebarCollapsed ? 'lg:w-16' : 'w-56 lg:w-56'}`}
+        } ${sidebarCollapsed ? 'lg:w-16' : 'w-64 lg:w-64'}`}
       >
         {/* Top Mini Section */}
-        <div className="flex items-center justify-between px-3 py-3 border-b border-[#222222]">
-          <div className="flex items-center gap-2 overflow-hidden">
-            <span className="w-6 h-6 rounded bg-[#F4511E] text-white flex items-center justify-center font-bold text-xs shrink-0 font-mono">
+        <div className="shrink-0 flex items-center justify-between h-13 px-3.5 border-b border-[#22262A] bg-[#0E1012]">
+          <div className="flex items-center gap-2.5 overflow-hidden">
+            <span className="w-7 h-7 rounded-md bg-[#F4511E] text-white flex items-center justify-center font-bold text-xs shrink-0 font-mono shadow-xs">
               B
             </span>
             {!sidebarCollapsed && (
-              <span className="text-xs font-semibold text-neutral-300 tracking-wide uppercase">
+              <span className="text-xs font-semibold text-neutral-200 tracking-wider uppercase font-mono truncate">
                 Modul Operasi
               </span>
             )}
@@ -65,7 +125,8 @@ export default function Sidebar() {
           <button
             type="button"
             onClick={closeMobileSidebar}
-            className="lg:hidden p-1 text-neutral-400 hover:text-white"
+            className="lg:hidden p-1.5 rounded-md text-neutral-400 hover:text-white cursor-pointer"
+            aria-label="Tutup Menu"
           >
             <X className="w-4 h-4" />
           </button>
@@ -73,64 +134,171 @@ export default function Sidebar() {
           <button
             type="button"
             onClick={toggleCollapseSidebar}
-            className="hidden lg:flex p-1 rounded text-neutral-400 hover:text-white hover:bg-neutral-800 transition-colors"
-            title={sidebarCollapsed ? 'Perluas' : 'Persempit'}
+            className="hidden lg:flex p-1.5 rounded-md text-neutral-400 hover:text-white hover:bg-neutral-800 transition-colors cursor-pointer"
+            title={sidebarCollapsed ? 'Perluas Sidebar' : 'Persempit Sidebar'}
           >
-            {sidebarCollapsed ? <ChevronRight className="w-3.5 h-3.5" /> : <ChevronLeft className="w-3.5 h-3.5" />}
+            {sidebarCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
           </button>
         </div>
 
-        {/* Navigation Item List */}
-        <nav className="flex-1 overflow-y-auto px-2 py-3 space-y-0.5">
-          {NAV_LINKS.map((link) => {
-            const Icon = ICON_MAP[link.icon] || LayoutDashboard;
+        {/* Categorized Navigation Item List */}
+        <nav className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-2.5 py-3 space-y-4 custom-scrollbar" aria-label="Menu Utama">
+          {filteredNavCategories.map((cat, catIdx) => (
+            <div key={cat.category} className="space-y-1">
+              {/* Category Header (when expanded) or divider (when collapsed) */}
+              {!sidebarCollapsed ? (
+                <div className="px-2.5 py-1">
+                  <span className="text-[11px] font-mono font-semibold uppercase tracking-wider text-neutral-400">
+                    {cat.category}
+                  </span>
+                </div>
+              ) : (
+                catIdx > 0 && <div className="border-t border-[#22262A] my-2 mx-1" />
+              )}
 
-            return (
-              <NavLink
-                key={link.path}
-                to={link.path}
-                onClick={closeMobileSidebar}
-                className={({ isActive }) =>
-                  `flex items-center gap-2.5 px-2.5 py-2 rounded text-xs font-medium transition-colors group ${
-                    isActive
-                      ? 'bg-[#222222] text-[#F4511E] font-semibold border-l-2 border-[#F4511E]'
-                      : 'text-neutral-400 hover:text-neutral-100 hover:bg-[#1A1A1A]'
-                  }`
-                }
-                title={sidebarCollapsed ? link.label : undefined}
-              >
-                <Icon className="w-4 h-4 shrink-0 transition-colors" />
-                {!sidebarCollapsed && (
-                  <span className="truncate leading-none tracking-tight">{link.label}</span>
-                )}
-              </NavLink>
-            );
-          })}
+              {/* Items in Category */}
+              <div className="space-y-1">
+                {cat.items.map((link) => {
+                  const Icon = ICON_MAP[link.icon] || LayoutDashboard;
+                  const hasChildren = Boolean(link.children && link.children.length > 0);
+                  const isSubmenuOpen = Boolean(openSubmenus[link.path]);
+                  const isParentActive = location.pathname === link.path;
+
+                  // 1. Render item with submenu (e.g. Data Master)
+                  if (hasChildren) {
+                    return (
+                      <div key={link.path} className="space-y-1">
+                        <div
+                          onClick={() => {
+                            if (sidebarCollapsed) {
+                              navigate(link.path);
+                            } else {
+                              toggleSubmenu(link.path);
+                            }
+                          }}
+                          role="button"
+                          tabIndex={0}
+                          onKeyDown={(e) => e.key === 'Enter' && toggleSubmenu(link.path)}
+                          className={`sidebar-submenu-trigger flex items-center justify-between rounded-md text-[13px] font-medium transition-all duration-150 group cursor-pointer ${
+                            sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'px-3 py-2.5'
+                          } ${
+                            isParentActive
+                              ? 'sidebar-parent-active bg-[#1D2125] text-white font-semibold shadow-xs'
+                              : 'text-neutral-400 hover:text-neutral-100 hover:bg-[#181B1E]'
+                          }`}
+                          title={sidebarCollapsed ? link.label : link.description}
+                        >
+                          <div className={`flex items-center gap-3 min-w-0 ${sidebarCollapsed ? 'justify-center' : ''}`}>
+                            <Icon className={`w-4.5 h-4.5 shrink-0 transition-colors ${isParentActive ? 'text-[#F4511E]' : 'group-hover:scale-105'}`} />
+                            {!sidebarCollapsed && (
+                              <span className="truncate leading-tight tracking-tight">{link.label}</span>
+                            )}
+                          </div>
+
+                          {!sidebarCollapsed && (
+                            <div className="flex items-center shrink-0 ml-1">
+                              <ChevronDown
+                                className={`w-4 h-4 text-neutral-400 transition-transform duration-200 ${
+                                  isSubmenuOpen ? 'rotate-180 text-white' : ''
+                                }`}
+                              />
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Submenu Children List */}
+                        {!sidebarCollapsed && hasChildren && isSubmenuOpen && (
+                          <div className="sidebar-child-container ml-4 pl-2.5 border-l border-[#1E2B3C] space-y-1 py-1">
+                            {link.children.map((child) => {
+                              const ChildIcon = ICON_MAP[child.icon] || Database;
+                              const isChildActive = isParentActive && currentTab === child.tab;
+
+                              return (
+                                <button
+                                  key={child.path}
+                                  type="button"
+                                  onClick={() => {
+                                    navigate(child.path);
+                                    closeMobileSidebar();
+                                  }}
+                                  className={`sidebar-child-item w-full flex items-center justify-between px-2.5 py-2 rounded-md text-xs font-medium transition-all text-left group cursor-pointer ${
+                                    isChildActive
+                                      ? 'active bg-[#F4511E]/20 text-[#FF7043] font-semibold border-l-2 border-[#F4511E]'
+                                      : 'text-neutral-400 hover:text-neutral-200 hover:bg-[#151D28]'
+                                  }`}
+                                >
+                                  <div className="flex items-center gap-2.5 truncate">
+                                    <ChildIcon
+                                      className={`w-4 h-4 shrink-0 ${
+                                        isChildActive
+                                          ? 'text-[#FF7043]'
+                                          : 'text-neutral-500 group-hover:text-neutral-300'
+                                      }`}
+                                    />
+                                    <span className="truncate">{child.label}</span>
+                                  </div>
+                                  {isChildActive && (
+                                    <span className="w-1.5 h-1.5 rounded-full bg-[#F4511E] shrink-0" />
+                                  )}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  }
+
+                  // 2. Normal Single NavLink
+                  return (
+                    <NavLink
+                      key={link.path}
+                      to={link.path}
+                      onClick={closeMobileSidebar}
+                      className={({ isActive }) =>
+                        `flex items-center gap-3 rounded-md text-[13px] font-medium transition-all duration-150 group cursor-pointer ${
+                          sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'px-3 py-2.5'
+                        } ${
+                          isActive
+                            ? 'bg-[#151D28] text-[#FF7043] font-semibold border-l-2 border-[#F4511E] shadow-xs'
+                            : 'text-neutral-400 hover:text-neutral-100 hover:bg-[#151D28]'
+                        }`
+                      }
+                      title={sidebarCollapsed ? `${cat.category}: ${link.label}` : link.description}
+                    >
+                      <Icon className="w-4.5 h-4.5 shrink-0 transition-colors group-hover:scale-105" />
+                      {!sidebarCollapsed && (
+                        <span className="truncate leading-tight tracking-tight">{link.label}</span>
+                      )}
+                    </NavLink>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
         </nav>
 
-        {/* Bottom Role Simulator Panel */}
-        <div className="p-2.5 border-t border-[#222222] bg-[#111111]">
+        {/* Bottom Role Switcher Panel (Strictly Admin and Superadmin) */}
+        <div className="shrink-0 p-3 border-t border-[#1E2B3C] bg-[#0B0F17]">
           {!sidebarCollapsed ? (
-            <div className="space-y-1">
-              <div className="flex items-center gap-1.5 text-[10px] text-neutral-400 font-medium">
-                <UserCheck className="w-3 h-3 text-[#F4511E]" />
-                <span>Simulasi Role:</span>
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-1.5 text-xs text-neutral-400 font-medium">
+                <UserCheck className="w-3.5 h-3.5 text-[#F4511E]" />
+                <span>Simulasi Peran Aktif:</span>
               </div>
               <select
-                value={currentUser.role}
+                value={currentUser?.role === 'superadmin' ? 'superadmin' : 'admin'}
                 onChange={(e) => switchRole(e.target.value)}
-                className="w-full text-[11px] bg-[#181818] border border-[#2E2E2E] text-neutral-200 rounded px-2 py-1 focus:outline-none focus:border-[#F4511E] font-medium"
+                className="w-full text-xs bg-[#131B26] border border-[#1E2B3C] text-neutral-200 rounded-md px-2.5 py-2 focus:outline-none focus:border-[#F4511E] font-medium cursor-pointer"
               >
-                <option value="Super Admin">Super Admin (Direktur)</option>
-                <option value="Staff Pusat">Staff Pusat</option>
-                <option value="Kadiv Pusat">Kadiv Pusat</option>
-                <option value="Admin Gresik">Admin Gresik</option>
+                <option value="superadmin">Super Admin (Direktur)</option>
+                <option value="admin">Admin (Operasional Gresik)</option>
               </select>
             </div>
           ) : (
-            <div className="text-center" title={`Role aktif: ${currentUser.role}`}>
-              <span className="text-[10px] font-bold text-[#F4511E] font-mono">
-                {currentUser.role[0]}
+            <div className="text-center py-1.5" title={`Role aktif: ${currentUser?.role}`}>
+              <span className="text-[11px] font-bold text-[#FF7043] font-mono px-2 py-1 rounded-md bg-black/40 border border-[#1E2B3C]">
+                {currentUser?.role === 'superadmin' ? 'SA' : 'AD'}
               </span>
             </div>
           )}

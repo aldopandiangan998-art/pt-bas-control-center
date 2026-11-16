@@ -1,5 +1,6 @@
 import { useState, useId } from 'react';
 import FilledField from './FilledField';
+import { useApp } from '../../context/AppContext';
 
 /**
  * TextField – single-line text input using FilledField styling.
@@ -19,6 +20,7 @@ export default function TextField({
   autoComplete,
   className = '',
 }) {
+  const { isDark } = useApp();
   const [focused, setFocused] = useState(false);
   const uid = useId();
 
@@ -51,8 +53,16 @@ export default function TextField({
         aria-describedby={error || helper ? `${uid}-hint` : undefined}
         className={`
           w-full bg-transparent focus:outline-none text-[14px]
-          placeholder-neutral-600
-          ${readOnly ? 'text-neutral-400 cursor-not-allowed font-mono' : 'text-white'}
+          ${isDark ? 'placeholder-neutral-600' : 'placeholder-slate-400'}
+          ${
+            readOnly
+              ? isDark
+                ? 'text-neutral-400 font-mono cursor-not-allowed'
+                : 'text-slate-400 font-mono cursor-not-allowed'
+              : isDark
+              ? 'text-white'
+              : 'text-slate-900 font-medium'
+          }
         `}
       />
     </FilledField>

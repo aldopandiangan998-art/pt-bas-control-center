@@ -1,4 +1,5 @@
 import { useId } from 'react';
+import { useApp } from '../../context/AppContext';
 
 /**
  * FilledField – base wrapper for all Material-style filled fields.
@@ -19,6 +20,7 @@ export default function FilledField({
   id,
   className = '',
 }) {
+  const { isDark } = useApp();
   const labelUp = focused || hasValue;
 
   return (
@@ -29,17 +31,19 @@ export default function FilledField({
       <div
         className={`
           relative flex items-center gap-0
-          bg-[#1E2126] rounded-t-[4px]
+          rounded-t-[4px]
           border-b-2 transition-colors duration-150
           min-h-[56px] px-0
+          ${isDark ? 'bg-[#1E2126]' : 'bg-slate-100/90'}
           ${disabled ? 'opacity-50 cursor-not-allowed' : onClick ? 'cursor-pointer' : ''}
-          ${error ? 'border-rose-500' : focused ? 'border-[#F4511E]' : 'border-[#3A3E45]'}
+          ${error ? 'border-rose-500' : focused ? 'border-[#F4511E]' : isDark ? 'border-[#3A3E45]' : 'border-slate-300'}
         `}
       >
         {/* Left icon */}
         {Icon && (
-          <div className={`flex-none w-14 flex items-center justify-center transition-colors duration-150
-            ${error ? 'text-rose-400' : focused ? 'text-[#F4511E]' : 'text-neutral-500'}`}
+          <div
+            className={`flex-none w-14 flex items-center justify-center transition-colors duration-150
+            ${error ? 'text-rose-400' : focused ? 'text-[#F4511E]' : isDark ? 'text-neutral-500' : 'text-slate-400'}`}
           >
             <Icon className="w-5 h-5" />
           </div>
@@ -57,7 +61,7 @@ export default function FilledField({
                 ? 'top-1.5 text-[11px] font-semibold tracking-wide'
                 : 'top-1/2 -translate-y-1/2 text-[14px] font-normal'
               }
-              ${error ? 'text-rose-400' : focused ? 'text-[#F4511E]' : labelUp ? 'text-neutral-400' : 'text-neutral-500'}
+              ${error ? 'text-rose-400' : focused ? 'text-[#F4511E]' : labelUp ? (isDark ? 'text-neutral-400' : 'text-slate-600') : (isDark ? 'text-neutral-500' : 'text-slate-400')}
             `}
           >
             {label}
@@ -67,14 +71,14 @@ export default function FilledField({
           </label>
 
           {/* Input slot */}
-          <div className="text-[14px] text-white leading-tight">
+          <div className={`text-[14px] leading-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
             {children}
           </div>
         </div>
 
         {/* Right slot (chevron, etc.) */}
         {rightSlot && (
-          <div className="flex-none pr-3 text-neutral-500">
+          <div className={`flex-none pr-3 ${isDark ? 'text-neutral-500' : 'text-slate-400'}`}>
             {rightSlot}
           </div>
         )}
@@ -84,7 +88,7 @@ export default function FilledField({
       {(error || helper) && (
         <p
           id={id ? `${id}-hint` : undefined}
-          className={`text-[11px] mt-1 px-4 leading-snug ${error ? 'text-rose-400' : 'text-neutral-500'}`}
+          className={`text-[11px] mt-1 px-4 leading-snug ${error ? 'text-rose-400' : isDark ? 'text-neutral-500' : 'text-slate-500'}`}
         >
           {error || helper}
         </p>

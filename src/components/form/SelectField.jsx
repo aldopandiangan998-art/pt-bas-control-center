@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useId, useCallback } from 'react';
 import { ChevronDown, ChevronUp, Search, Check } from 'lucide-react';
 import FilledField from './FilledField';
+import { useApp } from '../../context/AppContext';
 
 /**
  * SelectField – custom dropdown replacing native <select>.
@@ -20,6 +21,7 @@ export default function SelectField({
   placeholder = '',
   className = '',
 }) {
+  const { isDark } = useApp();
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [highlightIdx, setHighlightIdx] = useState(-1);
@@ -169,7 +171,9 @@ export default function SelectField({
           className="w-full text-left bg-transparent focus:outline-none text-[14px] leading-tight cursor-pointer"
         >
           {hasValue ? (
-            <span className="text-white">{selectedLabel}</span>
+            <span className={isDark ? 'text-white' : 'text-slate-900 font-medium'}>
+              {selectedLabel}
+            </span>
           ) : (
             <span className="text-transparent select-none">{placeholder || label}</span>
           )}
@@ -180,8 +184,8 @@ export default function SelectField({
       {open && (
         <div
           className={`
-            absolute z-50 w-full bg-[#1E2126] border border-[#3A3E45]
-            shadow-xl overflow-hidden
+            absolute z-50 w-full shadow-2xl overflow-hidden
+            ${isDark ? 'bg-[#1E2126] border border-[#3A3E45]' : 'bg-white border border-slate-200'}
             ${openUp ? 'bottom-full mb-1 rounded-t-lg rounded-b-sm' : 'top-full mt-0 rounded-b-lg rounded-t-sm'}
           `}
           style={{ maxHeight: '40vh' }}
@@ -189,15 +193,15 @@ export default function SelectField({
         >
           {/* Search box */}
           {searchable && (
-            <div className="flex items-center gap-2 px-3 py-2 border-b border-[#2A2E35]">
-              <Search className="w-4 h-4 text-neutral-500 shrink-0" />
+            <div className={`flex items-center gap-2 px-3 py-2 border-b ${isDark ? 'border-[#2A2E35]' : 'border-slate-200 bg-slate-50'}`}>
+              <Search className={`w-4 h-4 shrink-0 ${isDark ? 'text-neutral-500' : 'text-slate-400'}`} />
               <input
                 ref={searchRef}
                 type="text"
                 value={search}
                 onChange={(e) => { setSearch(e.target.value); setHighlightIdx(0); }}
                 placeholder="Cari..."
-                className="flex-1 bg-transparent text-sm text-white focus:outline-none placeholder-neutral-500"
+                className={`flex-1 bg-transparent text-sm focus:outline-none ${isDark ? 'text-white placeholder-neutral-500' : 'text-slate-900 placeholder-slate-400'}`}
               />
             </div>
           )}
@@ -212,7 +216,7 @@ export default function SelectField({
             style={{ maxHeight: searchable ? 'calc(40vh - 48px)' : '40vh' }}
           >
             {filtered.length === 0 && (
-              <li className="px-4 py-3 text-sm text-neutral-500 text-center">Tidak ditemukan</li>
+              <li className={`px-4 py-3 text-sm text-center ${isDark ? 'text-neutral-500' : 'text-slate-400'}`}>Tidak ditemukan</li>
             )}
             {filtered.map((opt, idx) => {
               const isSelected = opt.value === value;
@@ -226,8 +230,12 @@ export default function SelectField({
                   onMouseEnter={() => setHighlightIdx(idx)}
                   className={`
                     flex items-center justify-between px-4 h-12 text-sm cursor-pointer select-none transition-colors
-                    ${isHighlighted ? 'bg-[#2A2E35]' : 'hover:bg-[#262A30]'}
-                    ${isSelected ? 'text-[#F4511E]' : 'text-neutral-200'}
+                    ${isDark
+                      ? (isHighlighted ? 'bg-[#2A2E35]' : 'hover:bg-[#262A30]')
+                      : (isHighlighted ? 'bg-slate-100' : 'hover:bg-slate-50')}
+                    ${isSelected
+                      ? 'text-[#F4511E] font-semibold'
+                      : (isDark ? 'text-neutral-200' : 'text-slate-800')}
                   `}
                 >
                   <span className="truncate">{opt.label}</span>

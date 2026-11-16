@@ -325,7 +325,7 @@ export default function Sidebar() {
         </nav>
 
         {/* Bottom Consolidated User Profile & Control Toggles */}
-        <div className="shrink-0 border-t border-[#1E2B3C] bg-[#0B0F17]">
+        <div className="shrink-0 border-t border-[#22262A] bg-[#0E1012]">
           {!sidebarCollapsed ? (
             <div className="p-3 space-y-2.5">
               {/* User Profile Block */}
@@ -336,7 +336,7 @@ export default function Sidebar() {
                 title={isSuperAdmin ? 'Buka Pengaturan Akun' : `Profil: ${currentUser?.name || 'Admin'}`}
               >
                 <div className="flex items-center gap-2.5 min-w-0">
-                  <div className="w-7 h-7 rounded-full border border-sky-400/30 bg-[#162B45] flex items-center justify-center text-[10px] font-bold text-sky-300 shrink-0">
+                  <div className="w-7 h-7 rounded-full border border-[#333940] bg-[#16181B] flex items-center justify-center text-[10px] font-bold text-neutral-200 shrink-0">
                     {currentUser?.name ? currentUser.name.split(' ').map((n) => n[0]).join('').slice(0, 2) : 'U'}
                   </div>
                   <div className="min-w-0">
@@ -359,13 +359,13 @@ export default function Sidebar() {
               </div>
 
               {/* Consolidated Functional Tool Toggles */}
-              <div className="flex items-center justify-between pt-2 border-t border-[#1E2B3C]/80">
+              <div className="flex items-center justify-between pt-2 border-t border-[#22262A]">
                 <div className="flex items-center gap-1">
                   {/* Theme Mode Toggle */}
                   <button
                     type="button"
                     onClick={handleToggleTheme}
-                    className="p-1.5 rounded bg-[#131B26] hover:bg-[#1A2332] text-neutral-300 hover:text-white transition-colors cursor-pointer border border-[#1E2838]"
+                    className="p-1.5 rounded bg-[#16181B] hover:bg-[#1D2125] text-neutral-300 hover:text-white transition-colors cursor-pointer border border-[#22262A]"
                     title={isDark ? 'Beralih ke Mode Terang (Light Mode)' : 'Beralih ke Mode Gelap (Dark Mode)'}
                     aria-label="Ubah Tema Tampilan"
                   >
@@ -380,7 +380,7 @@ export default function Sidebar() {
                   <button
                     type="button"
                     onClick={() => navigate('/rekapan')}
-                    className="p-1.5 rounded bg-[#131B26] hover:bg-[#1A2332] text-neutral-300 hover:text-white transition-colors cursor-pointer border border-[#1E2838]"
+                    className="p-1.5 rounded bg-[#16181B] hover:bg-[#1D2125] text-neutral-300 hover:text-white transition-colors cursor-pointer border border-[#22262A]"
                     title="Riwayat Transaksi (Jurnal GI)"
                     aria-label="Riwayat Transaksi"
                   >
@@ -392,7 +392,7 @@ export default function Sidebar() {
                     <button
                       type="button"
                       onClick={() => navigate('/pengaturan')}
-                      className="p-1.5 rounded bg-[#131B26] hover:bg-[#1A2332] text-neutral-300 hover:text-white transition-colors cursor-pointer border border-[#1E2838]"
+                      className="p-1.5 rounded bg-[#16181B] hover:bg-[#1D2125] text-neutral-300 hover:text-white transition-colors cursor-pointer border border-[#22262A]"
                       title="Konfigurasi Sistem & Pengaturan"
                       aria-label="Pengaturan"
                     >
@@ -405,7 +405,7 @@ export default function Sidebar() {
                 <button
                   type="button"
                   onClick={handleLogout}
-                  className="p-1.5 rounded bg-[#131B26] hover:bg-rose-900/60 text-rose-300 hover:text-white transition-colors cursor-pointer border border-[#1E2838]"
+                  className="p-1.5 rounded bg-[#16181B] hover:bg-rose-900/60 text-rose-300 hover:text-white transition-colors cursor-pointer border border-[#22262A]"
                   title="Keluar dari Akun (Logout)"
                   aria-label="Keluar"
                 >
@@ -419,14 +419,14 @@ export default function Sidebar() {
               {/* Avatar with Role Tooltip */}
               <div
                 onClick={() => isSuperAdmin && navigate('/pengaturan')}
-                className={`w-8 h-8 rounded-full border border-sky-400/40 bg-[#162B45] flex items-center justify-center text-[11px] font-bold text-sky-300 shrink-0 shadow-xs ${isSuperAdmin ? 'cursor-pointer hover:border-amber-400/60' : 'cursor-default'
+                className={`w-8 h-8 rounded-full border border-[#333940] bg-[#16181B] flex items-center justify-center text-[11px] font-bold text-neutral-200 shrink-0 shadow-xs ${isSuperAdmin ? 'cursor-pointer hover:border-amber-400/60' : 'cursor-default'
                   }`}
                 title={`${currentUser?.name || 'Pengguna'} (${isSuperAdmin ? 'Super Admin' : 'Admin'})`}
               >
                 {currentUser?.name ? currentUser.name.split(' ').map((n) => n[0]).join('').slice(0, 2) : 'U'}
               </div>
 
-              <div className="w-6 border-t border-[#1E2B3C] my-0.5" />
+              <div className="w-6 border-t border-[#22262A] my-0.5" />
 
               {/* Vertical Stack of Toggles */}
               <button

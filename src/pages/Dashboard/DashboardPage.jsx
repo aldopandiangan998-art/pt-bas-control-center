@@ -166,7 +166,7 @@ export default function DashboardPage() {
   return (
     <div className="space-y-4 sm:space-y-5">
       {/* Top Console Strip: Role Identification & Perspective Switcher */}
-      <div className="bg-[#131A24] border border-[#1D2838] rounded-xl p-3 sm:p-3.5 flex flex-col md:flex-row items-start md:items-center justify-between gap-3 shadow-sm">
+      <div className="bg-[#14171A] border border-[#22262A] rounded-xl p-3 sm:p-3.5 flex flex-col md:flex-row items-start md:items-center justify-between gap-3 shadow-sm">
         <div className="flex items-center gap-2.5 flex-wrap">
           <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_8px_rgba(52,211,153,0.6)]" />
           <span className="text-xs font-mono font-bold text-white uppercase tracking-wider">
@@ -187,7 +187,7 @@ export default function DashboardPage() {
         {/* ==================================================================== */}
         {/* WIDGET 1: Analisis Ritase / Arus Kas                                 */}
         {/* ==================================================================== */}
-        <div className="lg:col-span-7 bg-[#131B26] border border-[#1D2838] rounded-xl p-4 sm:p-5 flex flex-col justify-between shadow-sm">
+        <div className="lg:col-span-7 bg-[#16181B] border border-[#22262A] rounded-xl p-4 sm:p-5 flex flex-col justify-between shadow-sm">
           {/* Card Header with Top Right Orange Pill Button */}
           <div className="flex items-start justify-between gap-2 mb-3">
             <div>
@@ -252,7 +252,7 @@ export default function DashboardPage() {
                     y1={grid.y}
                     x2="530"
                     y2={grid.y}
-                    stroke="#1D2838"
+                    stroke="#22262A"
                     strokeWidth="1"
                     strokeDasharray={idx === 5 ? 'none' : '3 3'}
                   />
@@ -327,13 +327,13 @@ export default function DashboardPage() {
             {/* Hover Tooltip Overlay */}
             {hoveredPoint !== null && (
               <div
-                className="absolute z-10 bg-[#0B0F17] border border-[#FF7043]/60 text-white text-[11px] p-2 rounded shadow-xl pointer-events-none transform -translate-x-1/2 -translate-y-full"
+                className="absolute z-10 bg-[#0E1012] border border-[#FF7043]/60 text-white text-[11px] p-2 rounded shadow-xl pointer-events-none transform -translate-x-1/2 -translate-y-full"
                 style={{
                   left: `${(hoveredPoint / (chartDays.length - 1)) * 90 + 5}%`,
                   top: '30%',
                 }}
               >
-                <div className="font-mono font-bold text-neutral-300 border-b border-[#1D2838] pb-1 mb-1">
+                <div className="font-mono font-bold text-neutral-300 border-b border-[#22262A] pb-1 mb-1">
                   {activityData[hoveredPoint].day}
                 </div>
                 <div className="flex items-center gap-1.5 text-[#F4511E] font-semibold">
@@ -355,7 +355,7 @@ export default function DashboardPage() {
           </div>
 
           {/* Bottom Legend matching PT BAS Domain */}
-          <div className="flex items-center justify-center gap-6 pt-3 border-t border-[#1D2838]/80 text-xs font-medium">
+          <div className="flex items-center justify-center gap-6 pt-3 border-t border-[#22262A]/80 text-xs font-medium">
             <div className="flex items-center gap-2">
               <span className="w-2.5 h-2.5 rounded-full bg-[#F4511E]" />
               <span className="text-neutral-300">
@@ -374,7 +374,7 @@ export default function DashboardPage() {
         {/* ==================================================================== */}
         {/* WIDGET 2: Distribusi Material Tambang / Kontrak Customer             */}
         {/* ==================================================================== */}
-        <div className="lg:col-span-5 bg-[#131B26] border border-[#1D2838] rounded-xl p-4 sm:p-5 flex flex-col justify-between shadow-sm">
+        <div className="lg:col-span-5 bg-[#16181B] border border-[#22262A] rounded-xl p-4 sm:p-5 flex flex-col justify-between shadow-sm">
           {/* Header with Link to Master Data */}
           <div className="flex items-start justify-between gap-2 mb-3">
             <div>
@@ -410,7 +410,7 @@ export default function DashboardPage() {
                   cy="80"
                   r="56"
                   fill="none"
-                  stroke="#1D2838"
+                  stroke="#22262A"
                   strokeWidth="20"
                 />
 
@@ -486,7 +486,7 @@ export default function DashboardPage() {
           </div>
 
           {/* Breakdown List matching PT BAS Material & Contract Types */}
-          <div className="space-y-2 mt-2 pt-2 border-t border-[#1D2838]/60 text-xs">
+          <div className="space-y-2 mt-2 pt-2 border-t border-[#22262A]/60 text-xs">
             {materialAndCustomerTypes.map((item, idx) => (
               <div key={idx} className="flex items-center justify-between text-neutral-300">
                 <div className="flex items-center gap-2 truncate pr-2">
@@ -529,7 +529,7 @@ export default function DashboardPage() {
             <button
               type="button"
               onClick={() => navigate('/pre-orders')}
-              className="group bg-[#131B26] hover:bg-[#182332] border border-[#1D2838] hover:border-[#F4511E]/50 rounded-xl p-4 text-left transition-all duration-200 shadow-sm cursor-pointer"
+              className="group bg-[#16181B] hover:bg-[#1D2125] border border-[#22262A] hover:border-[#F4511E]/50 rounded-xl p-4 text-left transition-all duration-200 shadow-sm cursor-pointer"
             >
               <div className="flex items-start justify-between mb-3">
                 <div className="w-10 h-10 rounded-lg bg-[#F4511E]/10 border border-[#F4511E]/20 flex items-center justify-center group-hover:bg-[#F4511E]/20 transition-colors">
@@ -541,7 +541,7 @@ export default function DashboardPage() {
               <div className="text-[11px] text-neutral-400 leading-snug mb-3">
                 Kelola pesanan masuk & approval PO dari customer
               </div>
-              <div className="flex items-center justify-between pt-2 border-t border-[#1D2838]">
+              <div className="flex items-center justify-between pt-2 border-t border-[#22262A]">
                 <span className="text-[10px] font-mono text-neutral-500 uppercase tracking-wide">PO Aktif</span>
                 <span className="text-sm font-bold font-mono text-[#F4511E]">{activePreOrders.length}</span>
               </div>
@@ -551,7 +551,7 @@ export default function DashboardPage() {
             <button
               type="button"
               onClick={() => navigate('/surat-jalan')}
-              className="group bg-[#131B26] hover:bg-[#182332] border border-[#1D2838] hover:border-[#FB8C00]/50 rounded-xl p-4 text-left transition-all duration-200 shadow-sm cursor-pointer"
+              className="group bg-[#16181B] hover:bg-[#1D2125] border border-[#22262A] hover:border-[#FB8C00]/50 rounded-xl p-4 text-left transition-all duration-200 shadow-sm cursor-pointer"
             >
               <div className="flex items-start justify-between mb-3">
                 <div className="w-10 h-10 rounded-lg bg-[#FB8C00]/10 border border-[#FB8C00]/20 flex items-center justify-center group-hover:bg-[#FB8C00]/20 transition-colors">
@@ -563,7 +563,7 @@ export default function DashboardPage() {
               <div className="text-[11px] text-neutral-400 leading-snug mb-3">
                 Penerbitan surat jalan & monitoring pengiriman armada
               </div>
-              <div className="flex items-center justify-between pt-2 border-t border-[#1D2838]">
+              <div className="flex items-center justify-between pt-2 border-t border-[#22262A]">
                 <span className="text-[10px] font-mono text-neutral-500 uppercase tracking-wide">Total GI</span>
                 <span className="text-sm font-bold font-mono text-[#FB8C00]">{suratJalanList.length}</span>
               </div>
@@ -573,7 +573,7 @@ export default function DashboardPage() {
             <button
               type="button"
               onClick={() => navigate('/bkk')}
-              className="group bg-[#131B26] hover:bg-[#182332] border border-[#1D2838] hover:border-[#F59E0B]/50 rounded-xl p-4 text-left transition-all duration-200 shadow-sm cursor-pointer"
+              className="group bg-[#16181B] hover:bg-[#1D2125] border border-[#22262A] hover:border-[#F59E0B]/50 rounded-xl p-4 text-left transition-all duration-200 shadow-sm cursor-pointer"
             >
               <div className="flex items-start justify-between mb-3">
                 <div className="w-10 h-10 rounded-lg bg-[#F59E0B]/10 border border-[#F59E0B]/20 flex items-center justify-center group-hover:bg-[#F59E0B]/20 transition-colors">
@@ -585,7 +585,7 @@ export default function DashboardPage() {
               <div className="text-[11px] text-neutral-400 leading-snug mb-3">
                 Pencatatan & otorisasi kas keluar BKK operasional
               </div>
-              <div className="flex items-center justify-between pt-2 border-t border-[#1D2838]">
+              <div className="flex items-center justify-between pt-2 border-t border-[#22262A]">
                 <span className="text-[10px] font-mono text-neutral-500 uppercase tracking-wide">Belum Bayar</span>
                 <span className="text-sm font-bold font-mono text-[#F59E0B]">
                   {bkkList.filter((b) => b.statusBayar === 'Belum Dibayar').length}
@@ -597,7 +597,7 @@ export default function DashboardPage() {
             <button
               type="button"
               onClick={() => navigate('/invoices')}
-              className="group bg-[#131B26] hover:bg-[#182332] border border-[#1D2838] hover:border-emerald-500/50 rounded-xl p-4 text-left transition-all duration-200 shadow-sm cursor-pointer"
+              className="group bg-[#16181B] hover:bg-[#1D2125] border border-[#22262A] hover:border-emerald-500/50 rounded-xl p-4 text-left transition-all duration-200 shadow-sm cursor-pointer"
             >
               <div className="flex items-start justify-between mb-3">
                 <div className="w-10 h-10 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center group-hover:bg-emerald-500/20 transition-colors">
@@ -609,7 +609,7 @@ export default function DashboardPage() {
               <div className="text-[11px] text-neutral-400 leading-snug mb-3">
                 Penerbitan tagihan & monitoring piutang customer
               </div>
-              <div className="flex items-center justify-between pt-2 border-t border-[#1D2838]">
+              <div className="flex items-center justify-between pt-2 border-t border-[#22262A]">
                 <span className="text-[10px] font-mono text-neutral-500 uppercase tracking-wide">Total Tagihan</span>
                 <span className="text-sm font-bold font-mono text-emerald-400">{suratJalanList.length}</span>
               </div>
@@ -624,7 +624,7 @@ export default function DashboardPage() {
         {/* ==================================================================== */}
         {/* WIDGET 3: Tingkat Kepatuhan SOP Timbangan / Otorisasi Finansial       */}
         {/* ==================================================================== */}
-        <div className="lg:col-span-7 bg-[#131B26] border border-[#1D2838] rounded-xl p-4 sm:p-5 flex flex-col justify-between shadow-sm">
+        <div className="lg:col-span-7 bg-[#16181B] border border-[#22262A] rounded-xl p-4 sm:p-5 flex flex-col justify-between shadow-sm">
           {/* Header with Target Pill */}
           <div className="flex items-start justify-between gap-2 mb-3">
             <div>
@@ -639,7 +639,7 @@ export default function DashboardPage() {
             </div>
 
             {/* Target SOP Pill */}
-            <div className="px-2.5 py-1 text-[11px] font-mono text-neutral-300 bg-[#0B0F17] border border-[#1D2838] rounded-md shrink-0 shadow-xs">
+            <div className="px-2.5 py-1 text-[11px] font-mono text-neutral-300 bg-[#0E1012] border border-[#22262A] rounded-md shrink-0 shadow-xs">
               {isExecView ? 'Target Otorisasi: 100%' : 'Target SOP: 100%'}
             </div>
           </div>
@@ -654,7 +654,7 @@ export default function DashboardPage() {
                   <path
                     d="M 20 85 A 60 60 0 0 1 140 85"
                     fill="none"
-                    stroke="#1D2838"
+                    stroke="#22262A"
                     strokeWidth="16"
                     strokeLinecap="round"
                   />
@@ -682,7 +682,7 @@ export default function DashboardPage() {
             {/* Right: Achievement Box & Stats Counters */}
             <div className="sm:col-span-7 space-y-3">
               {/* Highlight Card */}
-              <div className="bg-[#0B0F17] border border-[#1D2838] rounded-lg p-3">
+              <div className="bg-[#0E1012] border border-[#22262A] rounded-lg p-3">
                 <div className="flex items-center gap-1.5 text-xs font-semibold text-[#FF7043] mb-1">
                   <span>{isExecView ? '💼' : '🚚'}</span>
                   <span>{isExecView ? 'Likuiditas & Otorisasi Sehat!' : 'Ritase Lapangan Berjalan Tertib!'}</span>
@@ -694,7 +694,7 @@ export default function DashboardPage() {
 
               {/* Bottom 2 Key Stats */}
               <div className="grid grid-cols-2 gap-2 text-center pt-1">
-                <div className="bg-[#0B0F17]/70 border border-[#1D2838]/60 rounded-lg p-2">
+                <div className="bg-[#0E1012]/70 border border-[#22262A]/60 rounded-lg p-2">
                   <div className="text-[10px] font-mono uppercase tracking-wider text-neutral-400">
                     {isExecView ? 'DOKUMEN TERTIB' : 'TOTAL ARMADA SIAP'}
                   </div>
@@ -703,7 +703,7 @@ export default function DashboardPage() {
                   </div>
                 </div>
 
-                <div className="bg-[#0B0F17]/70 border border-[#1D2838]/60 rounded-lg p-2">
+                <div className="bg-[#0E1012]/70 border border-[#22262A]/60 rounded-lg p-2">
                   <div className="text-[10px] font-mono uppercase tracking-wider text-neutral-400">
                     {isExecView ? 'REKANAN KONTRAK AKTIF' : 'RUTE PROYEK AKTIF'}
                   </div>
@@ -719,7 +719,7 @@ export default function DashboardPage() {
         {/* ==================================================================== */}
         {/* WIDGET 4: Proyek & Rute Teraktif / Rekanan Finansial Terbesar         */}
         {/* ==================================================================== */}
-        <div className="lg:col-span-5 bg-[#131B26] border border-[#1D2838] rounded-xl p-4 sm:p-5 flex flex-col justify-between shadow-sm">
+        <div className="lg:col-span-5 bg-[#16181B] border border-[#22262A] rounded-xl p-4 sm:p-5 flex flex-col justify-between shadow-sm">
           {/* Header with Top 4 Badge */}
           <div className="flex items-start justify-between gap-2 mb-3">
             <div>
@@ -733,7 +733,7 @@ export default function DashboardPage() {
               </p>
             </div>
 
-            <div className="px-2 py-0.5 text-[11px] font-mono text-neutral-300 bg-[#0B0F17] border border-[#1D2838] rounded shrink-0">
+            <div className="px-2 py-0.5 text-[11px] font-mono text-neutral-300 bg-[#0E1012] border border-[#22262A] rounded shrink-0">
               {isExecView ? 'Top 4 Rekanan' : 'Top 4 Proyek'}
             </div>
           </div>
@@ -750,7 +750,7 @@ export default function DashboardPage() {
                     {item.count} ({item.percent})
                   </span>
                 </div>
-                <div className="w-full bg-[#1D2838] h-1.5 rounded-full overflow-hidden">
+                <div className="w-full bg-[#22262A] h-1.5 rounded-full overflow-hidden">
                   <div
                     className={`h-full ${item.color} rounded-full transition-all duration-500`}
                     style={{ width: item.barWidth }}
@@ -781,7 +781,7 @@ export default function DashboardPage() {
                 key={item.title}
                 type="button"
                 onClick={() => navigate(item.path)}
-                className="bg-[#131B26] hover:bg-[#182332] border border-[#1D2838] hover:border-[#F4511E]/60 rounded-xl p-2.5 aspect-square flex flex-col items-center justify-center text-center group cursor-pointer transition-all duration-150 shadow-xs"
+                className="bg-[#16181B] hover:bg-[#1D2125] border border-[#22262A] hover:border-[#F4511E]/60 rounded-xl p-2.5 aspect-square flex flex-col items-center justify-center text-center group cursor-pointer transition-all duration-150 shadow-xs"
                 title={item.title}
               >
                 <div className="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center mb-1 group-hover:scale-110 transition-transform shrink-0">
@@ -814,7 +814,7 @@ export default function DashboardPage() {
                   key={item.title}
                   type="button"
                   onClick={() => navigate(`/master-data?tab=${item.tab}`)}
-                  className="bg-[#131B26] hover:bg-[#182332] border border-[#1D2838] hover:border-[#F4511E]/60 rounded-xl p-2.5 aspect-square flex flex-col items-center justify-center text-center group cursor-pointer transition-all duration-150 shadow-xs"
+                  className="bg-[#16181B] hover:bg-[#1D2125] border border-[#22262A] hover:border-[#F4511E]/60 rounded-xl p-2.5 aspect-square flex flex-col items-center justify-center text-center group cursor-pointer transition-all duration-150 shadow-xs"
                   title={item.title}
                 >
                   <div className="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center mb-1 group-hover:scale-110 transition-transform shrink-0">

@@ -54,7 +54,7 @@ const Input = forwardRef(function Input(
           className={clsx(
             'w-full border rounded-md px-3 py-2 text-xs transition-colors',
             isDark
-              ? 'bg-[#0E1520] text-neutral-100 placeholder-neutral-500 disabled:bg-[#0B0F17]'
+              ? 'bg-[#14171A] text-neutral-100 placeholder-neutral-500 disabled:bg-[#0E1012]'
               : 'bg-white text-slate-900 placeholder-slate-400 disabled:bg-slate-100 disabled:text-slate-400',
             'focus:outline-none focus:border-[#F4511E] focus:ring-1 focus:ring-[#F4511E]',
             'disabled:opacity-60 disabled:cursor-not-allowed',
@@ -63,7 +63,7 @@ const Input = forwardRef(function Input(
             error
               ? 'border-rose-500 focus:border-rose-500 focus:ring-rose-500'
               : isDark
-              ? 'border-[#1E2B3C]'
+              ? 'border-[#22262A]'
               : 'border-slate-300',
             className
           )}

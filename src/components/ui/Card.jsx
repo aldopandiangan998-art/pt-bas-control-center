@@ -8,11 +8,11 @@ export function Card({ children, className = '', hover = false, ...props }) {
       className={clsx(
         'rounded-lg transition-all duration-150',
         isDark
-          ? 'bg-[#131D2D] border border-[#1E2B3E]'
+          ? 'bg-[#16181B] border border-[#22262A]'
           : 'bg-white border border-slate-200 shadow-sm text-slate-800',
         hover &&
           (isDark
-            ? 'hover:border-[#2A3C56] hover:bg-[#18253A]'
+            ? 'hover:border-[#333940] hover:bg-[#1D2125]'
             : 'hover:border-slate-300 hover:shadow-md'),
         className
       )}
@@ -29,7 +29,7 @@ export function CardHeader({ children, className = '', ...props }) {
     <div
       className={clsx(
         'px-4 py-3 border-b flex items-center justify-between transition-colors',
-        isDark ? 'border-[#1E2B3E]' : 'border-slate-200',
+        isDark ? 'border-[#22262A]' : 'border-slate-200',
         className
       )}
       {...props}
@@ -85,7 +85,7 @@ export function CardFooter({ children, className = '', ...props }) {
     <div
       className={clsx(
         'px-4 py-2.5 border-t rounded-b-lg flex items-center justify-between transition-colors',
-        isDark ? 'bg-[#0F172A] border-[#1E2B3E]' : 'bg-slate-50 border-slate-200',
+        isDark ? 'bg-[#111315] border-[#22262A]' : 'bg-slate-50 border-slate-200',
         className
       )}
       {...props}

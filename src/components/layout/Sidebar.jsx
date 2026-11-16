@@ -178,14 +178,17 @@ export default function Sidebar() {
         </div>
 
         {/* Categorized Navigation Item List */}
-        <nav className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-2.5 py-3 space-y-4 custom-scrollbar" aria-label="Menu Utama">
+        <nav className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-2 py-3 space-y-3.5 custom-scrollbar" aria-label="Menu Utama">
           {filteredNavCategories.map((cat, catIdx) => (
             <div key={cat.category} className="space-y-1">
               {/* Category Header (when expanded) or divider (when collapsed) */}
               {!sidebarCollapsed ? (
-                <div className="px-2.5 py-1">
-                  <span className="text-[11px] font-mono font-semibold uppercase tracking-wider text-neutral-400">
+                <div className="flex items-center justify-between px-2.5 py-1">
+                  <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-neutral-400">
                     {cat.category}
+                  </span>
+                  <span className="text-[9px] font-mono text-neutral-600 bg-[#16181B] px-1.5 py-0.2 rounded">
+                    {cat.items.length}
                   </span>
                 </div>
               ) : (
@@ -193,7 +196,7 @@ export default function Sidebar() {
               )}
 
               {/* Items in Category */}
-              <div className="space-y-1">
+              <div className="space-y-0.5">
                 {cat.items.map((link) => {
                   const Icon = ICON_MAP[link.icon] || LayoutDashboard;
                   const hasChildren = Boolean(link.children && link.children.length > 0);
@@ -203,7 +206,7 @@ export default function Sidebar() {
                   // 1. Render item with submenu (e.g. Data Master)
                   if (hasChildren) {
                     return (
-                      <div key={link.path} className="space-y-1">
+                      <div key={link.path} className="space-y-0.5">
                         <div
                           onClick={() => {
                             if (sidebarCollapsed) {
@@ -223,18 +226,21 @@ export default function Sidebar() {
                             isParentActive
                               ? 'sidebar-parent-active bg-[#1D2125] text-white font-semibold shadow-xs'
                               : 'text-neutral-400 hover:text-neutral-100 hover:bg-[#181B1E]'
-                          }`}
-                          title={sidebarCollapsed ? link.label : link.description}
+                            }`}
+                          title={sidebarCollapsed ? `${link.label} (${link.children.length} sub-item)` : link.description}
                         >
                           <div className={`flex items-center ${sidebarCollapsed ? 'justify-center' : 'gap-3 min-w-0'}`}>
                             <Icon className={`w-4.5 h-4.5 shrink-0 transition-colors ${isParentActive ? 'text-[#F4511E]' : 'group-hover:scale-105'}`} />
                             {!sidebarCollapsed && (
-                              <span className="truncate leading-tight tracking-tight">{link.label}</span>
+                              <span className="truncate leading-none tracking-tight">{link.label}</span>
                             )}
                           </div>
 
                           {!sidebarCollapsed && (
-                            <div className="flex items-center shrink-0 ml-1">
+                            <div className="flex items-center gap-1.5 shrink-0 ml-1">
+                              <span className="sidebar-count-badge text-[10px] font-mono text-neutral-400 bg-[#151D28] px-1.5 py-0.2 rounded border border-[#1E2B3C]">
+                                {link.children.length}
+                              </span>
                               <ChevronDown
                                 className={`w-4 h-4 text-neutral-400 transition-transform duration-200 ${
                                   isSubmenuOpen ? 'rotate-180 text-white' : ''
@@ -246,7 +252,7 @@ export default function Sidebar() {
 
                         {/* Submenu Children List */}
                         {!sidebarCollapsed && hasChildren && isSubmenuOpen && (
-                          <div className="sidebar-child-container ml-4 pl-2.5 border-l border-[#1E2B3C] space-y-1 py-1">
+                          <div className="sidebar-child-container ml-3.5 pl-2.5 border-l border-[#1E2B3C] space-y-0.5 py-1">
                             {link.children.map((child) => {
                               const ChildIcon = ICON_MAP[child.icon] || Database;
                               const isChildActive = isParentActive && currentTab === child.tab;
@@ -265,7 +271,7 @@ export default function Sidebar() {
                                       : 'text-neutral-400 hover:text-neutral-200 hover:bg-[#151D28]'
                                   }`}
                                 >
-                                  <div className="flex items-center gap-2.5 truncate">
+                                  <div className="flex items-center gap-2 truncate">
                                     <ChildIcon
                                       className={`w-4 h-4 shrink-0 ${
                                         isChildActive
@@ -306,9 +312,9 @@ export default function Sidebar() {
                       }
                       title={sidebarCollapsed ? `${cat.category}: ${link.label}` : link.description}
                     >
-                      <Icon className="w-4.5 h-4.5 shrink-0 transition-colors group-hover:scale-105" />
+                      <Icon className="w-4 h-4 shrink-0 transition-colors group-hover:scale-105" />
                       {!sidebarCollapsed && (
-                        <span className="truncate leading-tight tracking-tight">{link.label}</span>
+                        <span className="truncate leading-none tracking-tight">{link.label}</span>
                       )}
                     </NavLink>
                   );
@@ -325,9 +331,8 @@ export default function Sidebar() {
               {/* User Profile Block */}
               <div
                 onClick={() => isSuperAdmin && navigate('/pengaturan')}
-                className={`flex items-center justify-between gap-2 ${
-                  isSuperAdmin ? 'cursor-pointer group' : 'cursor-default'
-                }`}
+                className={`flex items-center justify-between gap-2 ${isSuperAdmin ? 'cursor-pointer group' : 'cursor-default'
+                  }`}
                 title={isSuperAdmin ? 'Buka Pengaturan Akun' : `Profil: ${currentUser?.name || 'Admin'}`}
               >
                 <div className="flex items-center gap-2.5 min-w-0">
@@ -344,11 +349,10 @@ export default function Sidebar() {
                   </div>
                 </div>
                 <span
-                  className={`text-[9px] font-bold font-mono px-1.5 py-0.5 rounded uppercase tracking-wider shrink-0 ${
-                    isSuperAdmin
-                      ? 'bg-[#F4511E]/20 text-[#FF7043] border border-[#F4511E]/40'
-                      : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
-                  }`}
+                  className={`text-[9px] font-bold font-mono px-1.5 py-0.5 rounded uppercase tracking-wider shrink-0 ${isSuperAdmin
+                    ? 'bg-[#F4511E]/20 text-[#FF7043] border border-[#F4511E]/40'
+                    : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
+                    }`}
                 >
                   {isSuperAdmin ? 'Super Admin' : 'Admin'}
                 </span>
@@ -415,9 +419,8 @@ export default function Sidebar() {
               {/* Avatar with Role Tooltip */}
               <div
                 onClick={() => isSuperAdmin && navigate('/pengaturan')}
-                className={`w-8 h-8 rounded-full border border-sky-400/40 bg-[#162B45] flex items-center justify-center text-[11px] font-bold text-sky-300 shrink-0 shadow-xs ${
-                  isSuperAdmin ? 'cursor-pointer hover:border-amber-400/60' : 'cursor-default'
-                }`}
+                className={`w-8 h-8 rounded-full border border-sky-400/40 bg-[#162B45] flex items-center justify-center text-[11px] font-bold text-sky-300 shrink-0 shadow-xs ${isSuperAdmin ? 'cursor-pointer hover:border-amber-400/60' : 'cursor-default'
+                  }`}
                 title={`${currentUser?.name || 'Pengguna'} (${isSuperAdmin ? 'Super Admin' : 'Admin'})`}
               >
                 {currentUser?.name ? currentUser.name.split(' ').map((n) => n[0]).join('').slice(0, 2) : 'U'}

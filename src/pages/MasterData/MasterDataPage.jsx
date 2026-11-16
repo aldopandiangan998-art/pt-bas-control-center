@@ -3309,7 +3309,12 @@ export default function MasterDataPage() {
                             </td>
                             <td className="p-3 font-mono text-neutral-300">
                               <div>{user.phone || '-'}</div>
-                              {user.branch && <div className="text-[10px] text-neutral-400">{user.branch}</div>}
+                              {(user.gender || user.birth_date) && (
+                                <div className="text-[10px] text-neutral-400">
+                                  {[user.gender, user.birth_date ? `Lahir: ${user.birth_date}` : null].filter(Boolean).join(' • ')}
+                                </div>
+                              )}
+                              {user.branch && <div className="text-[10px] text-neutral-500">{user.branch}</div>}
                             </td>
                             <td className="p-3">
                               {isPending ? (

@@ -7,7 +7,7 @@ import { APP_CONFIG } from '../../utils/constants';
 
 export default function Header() {
   const navigate = useNavigate();
-  const { currentUser, roleLabel, logout } = useAuth();
+  const { currentUser, roleLabel, logout, isSuperAdmin } = useAuth();
   const { toggleMobileSidebar, isDark, toggleTheme } = useApp();
   const { addToast } = useToast();
 
@@ -93,19 +93,21 @@ export default function Header() {
 
             {/* Functional Tool Icons */}
             <div className="flex items-center gap-1.5 border-l border-white/15 pl-2">
-              <button
-                type="button"
-                onClick={handleToggleTheme}
-                className="p-1.5 rounded bg-black/20 hover:bg-black/35 text-white/90 hover:text-white transition-colors focus-visible:ring-2 focus-visible:ring-amber-400 cursor-pointer"
-                title={isDark ? 'Beralih ke Mode Terang (Light Mode)' : 'Beralih ke Mode Gelap (Dark Mode)'}
-                aria-label={isDark ? 'Beralih ke Mode Terang' : 'Beralih ke Mode Gelap'}
-              >
-                {isDark ? (
-                  <Sun className="w-3.5 h-3.5 text-amber-300" />
-                ) : (
-                  <Moon className="w-3.5 h-3.5 text-amber-500" />
-                )}
-              </button>
+              {!isSuperAdmin && (
+                <button
+                  type="button"
+                  onClick={handleToggleTheme}
+                  className="p-1.5 rounded bg-black/20 hover:bg-black/35 text-white/90 hover:text-white transition-colors focus-visible:ring-2 focus-visible:ring-amber-400 cursor-pointer"
+                  title={isDark ? 'Beralih ke Mode Terang (Light Mode)' : 'Beralih ke Mode Gelap (Dark Mode)'}
+                  aria-label={isDark ? 'Beralih ke Mode Terang' : 'Beralih ke Mode Gelap'}
+                >
+                  {isDark ? (
+                    <Sun className="w-3.5 h-3.5 text-amber-300" />
+                  ) : (
+                    <Moon className="w-3.5 h-3.5 text-amber-500" />
+                  )}
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => navigate('/rekapan')}

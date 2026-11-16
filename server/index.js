@@ -1,5 +1,7 @@
 import express from 'express';
 import cors from 'cors';
+import crypto from 'node:crypto';
+import nodemailer from 'nodemailer';
 import db, { initDb } from './db.js';
 
 // Initialize SQLite database
@@ -63,7 +65,7 @@ app.post('/api/auth/login', (req, res) => {
 
   const cleanEmail = email.trim().toLowerCase();
   const user = db
-    .prepare('SELECT id, name, email, password, role, roleLabel, branch, phone, aktif FROM users WHERE LOWER(email) = ?')
+    .prepare('SELECT id, name, email, password, role, roleLabel, branch, phone, birth_date, gender, aktif FROM users WHERE LOWER(email) = ?')
     .get(cleanEmail);
 
   if (!user || user.password !== password) {
@@ -100,7 +102,7 @@ app.post('/api/auth/login', (req, res) => {
 
 // Register (Pendaftaran Admin baru wajib melalui approval Super Admin)
 app.post('/api/auth/register', (req, res) => {
-  const { name, email, password, branch = 'Hub Gresik', phone = '-' } = req.body;
+  const { name, email, password, branch = 'Hub Gresik', phone = '-', birth_date = null, gender = 'Laki-laki' } = req.body;
 
   if (!name || !email || !password) {
     return res.status(400).json({ success: false, message: 'Harap lengkapi seluruh field wajib.' });
@@ -125,9 +127,9 @@ app.post('/api/auth/register', (req, res) => {
   const now = new Date().toISOString();
 
   db.prepare(`
-    INSERT INTO users (id, name, email, password, role, roleLabel, branch, phone, aktif, created_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(id, name.trim(), cleanEmail, password, autoRole.role, autoRole.roleLabel, branch, phone, aktif, now);
+    INSERT INTO users (id, name, email, password, role, roleLabel, branch, phone, birth_date, gender, aktif, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(id, name.trim(), cleanEmail, password, autoRole.role, autoRole.roleLabel, branch, phone, birth_date, gender, aktif, now);
 
   const newUser = {
     id,
@@ -137,6 +139,8 @@ app.post('/api/auth/register', (req, res) => {
     roleLabel: autoRole.roleLabel,
     branch,
     phone,
+    birth_date,
+    gender,
     aktif,
     created_at: now,
   };
@@ -151,9 +155,260 @@ app.post('/api/auth/register', (req, res) => {
   });
 });
 
+// ==========================================
+// PASSWORD RESET / FORGOT PASSWORD (OPTION B)
+// ==========================================
+
+// Request password reset link (sent via Gmail / dev fallback)
+app.post('/api/auth/forgot-password', async (req, res) => {
+  const { email } = req.body;
+
+  if (!email) {
+    return res.status(400).json({ success: false, message: 'Alamat email wajib diisi.' });
+  }
+
+  const cleanEmail = email.trim().toLowerCase();
+  const user = db.prepare('SELECT id, name, email FROM users WHERE LOWER(email) = ?').get(cleanEmail);
+
+  if (!user) {
+    return res.status(404).json({
+      success: false,
+      message: `Email ${cleanEmail} tidak terdaftar dalam sistem PT BAS.`,
+    });
+  }
+
+  const token = crypto.randomBytes(32).toString('hex');
+  const expires = Date.now() + 15 * 60 * 1000; // 15 menit
+
+  db.prepare('UPDATE users SET reset_token = ?, reset_token_expires = ? WHERE id = ?').run(
+    token,
+    expires,
+    user.id
+  );
+
+  // Dapatkan frontend URL dari origin atau referer
+  let origin = req.headers.origin || (req.headers.referer ? new URL(req.headers.referer).origin : '');
+  if (!origin) {
+    origin = `http://localhost:${process.env.VITE_PORT || 5173}`;
+  }
+  const resetUrl = `${origin}/reset-password?token=${token}`;
+
+  let emailSent = false;
+  let emailNotice = '';
+
+  const gmailUser = process.env.GMAIL_USER;
+  const gmailPass = process.env.GMAIL_PASS || process.env.GMAIL_APP_PASSWORD;
+
+  if (gmailUser && gmailPass) {
+    try {
+      const transporter = nodemailer.createTransport({
+        service: 'gmail',
+        auth: {
+          user: gmailUser,
+          pass: gmailPass,
+        },
+      });
+
+      const mailOptions = {
+        from: `"PT Berkah Alam Semesta Dispatch" <${gmailUser}>`,
+        to: user.email,
+        subject: 'Permintaan Reset Kata Sandi Akun PT BAS Dispatch ERP',
+        html: `
+          <div style="font-family: Arial, sans-serif; background-color: #0f172a; color: #f8fafc; padding: 24px; border-radius: 8px; max-width: 600px; margin: auto;">
+            <div style="text-align: center; margin-bottom: 24px;">
+              <h2 style="color: #f4511e; margin: 0;">PT BERKAH ALAM SEMESTA</h2>
+              <p style="color: #94a3b8; font-size: 13px; margin: 4px 0 0 0;">Logistics & Mining Dispatch Control Center</p>
+            </div>
+            <div style="background-color: #1e293b; padding: 20px; border-radius: 8px; border: 1px solid #334155;">
+              <h3 style="color: #ffffff; margin-top: 0;">Halo, ${user.name}</h3>
+              <p style="color: #cbd5e1; font-size: 14px; line-height: 1.6;">
+                Kami menerima permintaan untuk mereset kata sandi akun Anda di Portal PT BAS Control Center.
+                Silakan klik tautan tombol di bawah ini untuk mengatur ulang kata sandi Anda:
+              </p>
+              <div style="text-align: center; margin: 24px 0;">
+                <a href="${resetUrl}" style="background-color: #f4511e; color: #ffffff; text-decoration: none; padding: 12px 24px; border-radius: 6px; font-weight: bold; font-size: 14px; display: inline-block;">
+                  Reset Kata Sandi Sekarang
+                </a>
+              </div>
+              <p style="color: #94a3b8; font-size: 12px; line-height: 1.5;">
+                Tautan ini berlaku selama <strong>15 menit</strong>. Jika Anda tidak meminta reset kata sandi ini, abaikan email ini dan akun Anda tetap aman.
+              </p>
+              <div style="margin-top: 16px; padding-top: 12px; border-top: 1px solid #334155; font-size: 11px; color: #64748b;">
+                Atau salin tautan berikut ke browser Anda:<br/>
+                <a href="${resetUrl}" style="color: #f4511e; word-break: break-all;">${resetUrl}</a>
+              </div>
+            </div>
+            <p style="text-align: center; color: #64748b; font-size: 11px; margin-top: 20px;">
+              © ${new Date().getFullYear()} PT Berkah Alam Semesta. Hub Dispatch Hauling Gresik.
+            </p>
+          </div>
+        `,
+      };
+
+      await transporter.sendMail(mailOptions);
+      emailSent = true;
+      console.log(`[EMAIL DISPATCH] Email reset kata sandi berhasil dikirim ke ${user.email}`);
+    } catch (mailErr) {
+      console.error('[EMAIL DISPATCH ERROR]', mailErr.message);
+      emailNotice = 'Gagal mengirim email via SMTP Gmail (cek konfigurasi credential). Tautan dev telah digenerate.';
+    }
+  } else {
+    console.log(`[EMAIL DEV LINK] SMTP Gmail belum dikonfigurasi. Tautan reset untuk ${user.email}:\n${resetUrl}`);
+    emailNotice = 'Mode development/testing aktif. Tautan reset URL telah tersedia.';
+  }
+
+  res.json({
+    success: true,
+    message: emailSent
+      ? `Tautan reset kata sandi telah dikirimkan ke Gmail Anda (${user.email}). Silakan periksa kotak masuk atau folder spam.`
+      : `Permintaan reset kata sandi diproses untuk ${user.email}. Tautan reset telah digenerate.`,
+    emailSent,
+    emailNotice,
+    resetUrl,
+    expiresInMinutes: 15,
+  });
+});
+
+// Verify reset token validity
+app.get('/api/auth/verify-reset-token', (req, res) => {
+  const { token } = req.query;
+
+  if (!token) {
+    return res.status(400).json({ success: false, message: 'Token reset tidak ditemukan.' });
+  }
+
+  const now = Date.now();
+  const user = db.prepare('SELECT id, name, email, reset_token_expires FROM users WHERE reset_token = ?').get(token);
+
+  if (!user) {
+    return res.status(400).json({
+      success: false,
+      message: 'Tautan reset kata sandi tidak valid atau telah digunakan.',
+    });
+  }
+
+  if (user.reset_token_expires && user.reset_token_expires < now) {
+    return res.status(400).json({
+      success: false,
+      message: 'Tautan reset kata sandi telah kedaluwarsa (melebihi 15 menit). Silakan ajukan permohonan reset ulang.',
+    });
+  }
+
+  res.json({
+    success: true,
+    email: user.email,
+    name: user.name,
+  });
+});
+
+// Reset password with verified token
+app.post('/api/auth/reset-password', (req, res) => {
+  const { token, newPassword } = req.body;
+
+  if (!token || !newPassword) {
+    return res.status(400).json({ success: false, message: 'Token dan kata sandi baru wajib disertakan.' });
+  }
+
+  if (newPassword.length < 6) {
+    return res.status(400).json({ success: false, message: 'Kata sandi baru minimal 6 karakter.' });
+  }
+
+  const now = Date.now();
+  const user = db.prepare('SELECT id, name, email, reset_token_expires FROM users WHERE reset_token = ?').get(token);
+
+  if (!user) {
+    return res.status(400).json({
+      success: false,
+      message: 'Tautan reset kata sandi tidak valid atau telah digunakan.',
+    });
+  }
+
+  if (user.reset_token_expires && user.reset_token_expires < now) {
+    return res.status(400).json({
+      success: false,
+      message: 'Tautan reset kata sandi telah kedaluwarsa. Silakan ajukan permohonan reset ulang.',
+    });
+  }
+
+  db.prepare('UPDATE users SET password = ?, reset_token = NULL, reset_token_expires = NULL WHERE id = ?').run(
+    newPassword,
+    user.id
+  );
+
+  res.json({
+    success: true,
+    message: 'Kata sandi akun Anda berhasil diubah! Silakan login menggunakan kata sandi baru Anda.',
+  });
+});
+
+// ==========================================
+// USER MANAGEMENT & PROFILE ROUTES
+// ==========================================
+
+// Update user profile (Super Admin / Admin self-profile)
+app.put('/api/users/profile/:id', (req, res) => {
+  const { id } = req.params;
+  const { name, phone, birth_date, gender } = req.body;
+
+  if (!name || !name.trim()) {
+    return res.status(400).json({ success: false, message: 'Nama lengkap wajib diisi.' });
+  }
+
+  const user = db.prepare('SELECT id FROM users WHERE id = ?').get(id);
+  if (!user) {
+    return res.status(404).json({ success: false, message: 'Pengguna tidak ditemukan.' });
+  }
+
+  db.prepare(`
+    UPDATE users
+    SET name = ?, phone = ?, birth_date = ?, gender = ?
+    WHERE id = ?
+  `).run(name.trim(), phone || '-', birth_date || null, gender || 'Laki-laki', id);
+
+  const updatedUser = db
+    .prepare('SELECT id, name, email, role, roleLabel, branch, phone, birth_date, gender, aktif, created_at FROM users WHERE id = ?')
+    .get(id);
+
+  res.json({
+    success: true,
+    message: 'Profil akun berhasil diperbarui.',
+    user: updatedUser,
+  });
+});
+
+// Change password for logged-in user
+app.put('/api/users/change-password/:id', (req, res) => {
+  const { id } = req.params;
+  const { oldPassword, newPassword } = req.body;
+
+  if (!oldPassword || !newPassword) {
+    return res.status(400).json({ success: false, message: 'Kata sandi lama dan kata sandi baru wajib diisi.' });
+  }
+
+  if (newPassword.length < 6) {
+    return res.status(400).json({ success: false, message: 'Kata sandi baru minimal 6 karakter.' });
+  }
+
+  const user = db.prepare('SELECT id, password FROM users WHERE id = ?').get(id);
+  if (!user) {
+    return res.status(404).json({ success: false, message: 'Pengguna tidak ditemukan.' });
+  }
+
+  if (user.password !== oldPassword) {
+    return res.status(400).json({ success: false, message: 'Kata sandi lama yang Anda masukkan tidak sesuai.' });
+  }
+
+  db.prepare('UPDATE users SET password = ? WHERE id = ?').run(newPassword, id);
+
+  res.json({
+    success: true,
+    message: 'Kata sandi akun Anda berhasil diperbarui.',
+  });
+});
+
 // Get all users
 app.get('/api/users', (req, res) => {
-  const users = db.prepare('SELECT id, name, email, role, roleLabel, branch, phone, aktif, created_at FROM users ORDER BY created_at DESC').all();
+  const users = db.prepare('SELECT id, name, email, role, roleLabel, branch, phone, birth_date, gender, aktif, created_at FROM users ORDER BY created_at DESC').all();
   res.json(users);
 });
 

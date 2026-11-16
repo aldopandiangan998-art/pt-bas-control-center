@@ -41,11 +41,16 @@ import {
   CheckSquare,
   Square,
   X,
+  Calculator,
+  Receipt,
+  DollarSign,
+  Globe,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useData } from '../../context/DataContext';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
+import { formatCurrency, formatVolume } from '../../utils/formatters';
 import { Button, Badge, Card, Input, Select, Modal } from '../../components/ui';
 
 const staggerContainerVariants = {
@@ -213,13 +218,55 @@ export default function MasterDataPage() {
       name: 'Rupiah Indonesia',
       englishName: 'Indonesian Rupiah',
       symbol: 'Rp',
+      country: 'Indonesia (Bank Indonesia)',
       pemisahRibuan: 'Titik (.)',
-      formatSample: 'Rp 1.000.000',
+      pemisahDesimal: 'Koma (,)',
+      formatSample: 'Rp 18.712.800,00',
       presisi: '2 Digit Koma',
       formatPresisi: '24,50 m³',
       pajak: 'PPN 11% & PPh 22 (0.25% - 1.5%)',
       isBase: true,
       aktif: true,
+      deskripsi: 'Mata uang basis resmi pembukuan akuntansi, buku besar (GL), kas operasional (BKK), dan faktur customer PT BAS.',
+      lingkupModul: ['Buku Besar (GL)', 'BKK (Cash Out)', 'Faktur Invoice', 'Surat Jalan', 'RO'],
+    },
+    {
+      id: 'curr-usd',
+      code: 'USD',
+      isoCode: '840',
+      name: 'Dolar Amerika Serikat',
+      englishName: 'United States Dollar',
+      symbol: '$',
+      country: 'Amerika Serikat (Federal Reserve)',
+      pemisahRibuan: 'Koma (,)',
+      pemisahDesimal: 'Titik (.)',
+      formatSample: '$ 1,250.00',
+      presisi: '2 Digit Desimal',
+      formatPresisi: '24.50 m³',
+      pajak: 'Non-PPN / Transaksi Valas',
+      isBase: false,
+      aktif: true,
+      deskripsi: 'Valuta asing pendukung untuk kontrak pengadaan material internasional dan order customer berbasis Dolar AS.',
+      lingkupModul: ['Pre Order Customer', 'Kontrak Vendor Valas'],
+    },
+    {
+      id: 'curr-eur',
+      code: 'EUR',
+      isoCode: '978',
+      name: 'Euro Uni Eropa',
+      englishName: 'Euro',
+      symbol: '€',
+      country: 'Uni Eropa (European Central Bank)',
+      pemisahRibuan: 'Titik (.)',
+      pemisahDesimal: 'Koma (,)',
+      formatSample: '€ 1.100,00',
+      presisi: '2 Digit Desimal',
+      formatPresisi: '24,50 m³',
+      pajak: 'Non-PPN / Transaksi Valas',
+      isBase: false,
+      aktif: false,
+      deskripsi: 'Valuta asing cadangan untuk impor suku cadang dump truck dan mesin pemecah batu (stone crusher).',
+      lingkupModul: ['Pengadaan Suku Cadang Alat'],
     },
   ]);
 
@@ -229,6 +276,10 @@ export default function MasterDataPage() {
     );
     addToast('Status mata uang berhasil diperbarui', 'info');
   };
+
+  // Interactive Simulator State for Data Mata Uang
+  const [simAmount, setSimAmount] = useState(18712800);
+  const [simPphRate, setSimPphRate] = useState(0.25);
 
   // Form States
   const [supplierForm, setSupplierForm] = useState({
@@ -3473,6 +3524,53 @@ export default function MasterDataPage() {
           animate="visible"
           className="space-y-4"
         >
+          {/* Top Quick Stat Banners */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            <div className="master-stat-card p-3.5 rounded-xl bg-[#121822]/90 border border-[#1E2938] shadow-xs">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-mono text-neutral-400 uppercase tracking-wider">Basis Akuntansi</span>
+                <div className="w-6 h-6 rounded-lg bg-[#F4511E]/15 border border-[#F4511E]/30 text-[#F4511E] flex items-center justify-center">
+                  <Coins className="w-3.5 h-3.5" />
+                </div>
+              </div>
+              <div className="text-xl font-bold font-mono text-white mt-1">IDR (Rp)</div>
+              <div className="text-[11px] text-neutral-400 mt-0.5">Indonesian Rupiah • ISO 360</div>
+            </div>
+
+            <div className="master-stat-card stat-amber p-3.5 rounded-xl bg-[#121822]/90 border border-[#1E2938] shadow-xs">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-mono text-neutral-400 uppercase tracking-wider">Format Angka</span>
+                <div className="w-6 h-6 rounded-lg bg-amber-500/15 border border-amber-500/30 text-amber-400 flex items-center justify-center">
+                  <Calculator className="w-3.5 h-3.5" />
+                </div>
+              </div>
+              <div className="text-xl font-bold font-mono text-amber-400 mt-1">Titik (.)</div>
+              <div className="text-[11px] text-neutral-400 mt-0.5">Format: Rp 18.712.800,00</div>
+            </div>
+
+            <div className="master-stat-card stat-emerald p-3.5 rounded-xl bg-[#121822]/90 border border-[#1E2938] shadow-xs">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-mono text-neutral-400 uppercase tracking-wider">Presisi Kubikasi</span>
+                <div className="w-6 h-6 rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 flex items-center justify-center">
+                  <Layers className="w-3.5 h-3.5" />
+                </div>
+              </div>
+              <div className="text-xl font-bold font-mono text-emerald-400 mt-1">2 Digit Koma</div>
+              <div className="text-[11px] text-neutral-400 mt-0.5">Standar Dump Truck: 155,94 m³</div>
+            </div>
+
+            <div className="master-stat-card p-3.5 rounded-xl bg-[#121822]/90 border border-[#1E2938] shadow-xs">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-mono text-neutral-400 uppercase tracking-wider">Regulasi Pajak</span>
+                <div className="w-6 h-6 rounded-lg bg-sky-500/15 border border-sky-500/30 text-sky-400 flex items-center justify-center">
+                  <Receipt className="w-3.5 h-3.5" />
+                </div>
+              </div>
+              <div className="text-xl font-bold font-mono text-sky-400 mt-1">PPN 11% + PPh 22</div>
+              <div className="text-[11px] text-neutral-400 mt-0.5">Tarif: 0,25% (Industri) - 1,5%</div>
+            </div>
+          </div>
+
           {filteredCurrencies.length === 0 ? (
             <MasterEmptyState
               icon={Coins}
@@ -3487,6 +3585,9 @@ export default function MasterDataPage() {
               entityLabel="Mata Uang"
             />
           ) : viewMode === 'list' ? (
+            /* ======================================================== */
+            /* TAMPILAN LIST: BARIS LIST TABEL LENGKAP */
+            /* ======================================================== */
             <motion.div
               variants={cardItemVariants}
               initial="hidden"
@@ -3513,6 +3614,7 @@ export default function MasterDataPage() {
                       <th className="p-3">Pemisah Ribuan</th>
                       <th className="p-3">Presisi Kubikasi</th>
                       <th className="p-3">Perhitungan Pajak</th>
+                      <th className="p-3">Lingkup Modul Terintegrasi</th>
                       <th className="p-3 text-center w-32">Basis Akuntansi</th>
                     </tr>
                   </thead>
@@ -3550,7 +3652,13 @@ export default function MasterDataPage() {
                         </td>
                         <td className="p-3">
                           <div className="flex items-center gap-2.5">
-                            <div className="w-8 h-8 rounded-lg bg-[#F4511E]/10 border border-[#F4511E]/20 flex items-center justify-center font-mono font-bold text-[#F4511E]">
+                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-mono font-bold text-sm ${
+                              curr.isBase
+                                ? 'bg-[#F4511E]/15 border border-[#F4511E]/30 text-[#F4511E]'
+                                : curr.code === 'USD'
+                                ? 'bg-emerald-500/15 border border-emerald-500/30 text-emerald-400'
+                                : 'bg-sky-500/15 border border-sky-500/30 text-sky-400'
+                            }`}>
                               {curr.symbol}
                             </div>
                             <div>
@@ -3561,7 +3669,7 @@ export default function MasterDataPage() {
                         </td>
                         <td className="p-3">
                           <div className="font-semibold text-white">{curr.name}</div>
-                          <div className="text-[11px] text-neutral-400">{curr.englishName}</div>
+                          <div className="text-[11px] text-neutral-400">{curr.country}</div>
                         </td>
                         <td className="p-3 font-mono text-neutral-300">
                           <span className="px-2 py-0.5 rounded bg-black/40 border border-white/5 font-semibold text-white">
@@ -3581,11 +3689,31 @@ export default function MasterDataPage() {
                             {curr.pajak}
                           </span>
                         </td>
+                        <td className="p-3">
+                          <div className="flex flex-wrap gap-1">
+                            {curr.lingkupModul?.slice(0, 3).map((mod, mi) => (
+                              <span key={mi} className="px-1.5 py-0.5 rounded bg-[#1C2430] text-neutral-300 text-[10px] font-mono border border-white/5">
+                                {mod}
+                              </span>
+                            ))}
+                            {(curr.lingkupModul?.length || 0) > 3 && (
+                              <span className="text-[10px] text-neutral-500 font-mono self-center">
+                                +{(curr.lingkupModul?.length || 0) - 3}
+                              </span>
+                            )}
+                          </div>
+                        </td>
                         <td className="p-3 text-center">
-                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-mono font-semibold bg-emerald-950/40 text-emerald-400 border border-emerald-800/40">
-                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                            Basis Sistem
-                          </span>
+                          {curr.isBase ? (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-mono font-semibold bg-emerald-950/40 text-emerald-400 border border-emerald-800/40">
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                              Basis Utama
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono text-neutral-400 bg-neutral-800/50 border border-neutral-700">
+                              Valas Pendukung
+                            </span>
+                          )}
                         </td>
                       </tr>
                     ))}
@@ -3594,45 +3722,317 @@ export default function MasterDataPage() {
               </div>
             </motion.div>
           ) : (
-            <div className="space-y-4 max-w-3xl">
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div className="master-stat-card p-3.5 rounded-xl bg-[#121822]/90 border border-[#1E2938] shadow-xs">
-                  <div className="text-[10px] font-mono text-neutral-400 uppercase">Mata Uang Basis</div>
-                  <div className="text-xl font-bold font-mono text-white mt-0.5">IDR (Rp)</div>
-                  <div className="text-[10px] text-neutral-400 mt-0.5">Indonesian Rupiah</div>
-                </div>
-                <div className="master-stat-card stat-amber p-3.5 rounded-xl bg-[#121822]/90 border border-[#1E2938] shadow-xs">
-                  <div className="text-[10px] font-mono text-neutral-400 uppercase">Pemisah Ribuan</div>
-                  <div className="text-xl font-bold font-mono text-amber-400 mt-0.5">Titik (.)</div>
-                  <div className="text-[10px] text-neutral-400 mt-0.5">Format: Rp 1.000.000</div>
-                </div>
-                <div className="master-stat-card stat-emerald p-3.5 rounded-xl bg-[#121822]/90 border border-[#1E2938] shadow-xs">
-                  <div className="text-[10px] font-mono text-neutral-400 uppercase">Presisi Kubikasi</div>
-                  <div className="text-xl font-bold font-mono text-emerald-400 mt-0.5">2 Digit Koma</div>
-                  <div className="text-[10px] text-neutral-400 mt-0.5">Format: 24,50 m³</div>
-                </div>
+            /* ======================================================== */
+            /* TAMPILAN GRID: KARTU MULTI-KOLOM & WIDGET FITUR LENGKAP */
+            /* ======================================================== */
+            <div className="space-y-5">
+              {/* Grid 3 Kartu Mata Uang */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {filteredCurrencies.map((curr) => (
+                  <motion.div
+                    key={curr.id}
+                    variants={cardItemVariants}
+                    className={`master-data-card p-5 rounded-2xl border flex flex-col justify-between transition-all duration-200 ${
+                      curr.isBase
+                        ? 'bg-gradient-to-br from-[#141B26]/95 via-[#121822]/90 to-[#16181F]/90 border-[#F4511E]/40 shadow-lg shadow-[#F4511E]/5 ring-1 ring-[#F4511E]/20'
+                        : 'bg-[#121822]/90 border-[#1E2938] hover:border-[#2C3B4E]'
+                    }`}
+                  >
+                    <div>
+                      {/* Top Bar: Icon, Badges, & Switch */}
+                      <div className="flex items-start justify-between gap-3 mb-4">
+                        <div className="flex items-center gap-3">
+                          <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-mono font-bold text-lg shadow-inner ${
+                            curr.isBase
+                              ? 'bg-gradient-to-br from-[#F4511E]/25 to-amber-500/10 border border-[#F4511E]/40 text-[#F4511E]'
+                              : curr.code === 'USD'
+                              ? 'bg-gradient-to-br from-emerald-500/25 to-teal-500/10 border border-emerald-500/40 text-emerald-400'
+                              : 'bg-gradient-to-br from-sky-500/25 to-indigo-500/10 border border-sky-500/40 text-sky-400'
+                          }`}>
+                            {curr.symbol}
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="font-mono text-base font-bold text-white tracking-wide">
+                                {curr.code}
+                              </span>
+                              <span className="text-[11px] font-mono px-1.5 py-0.5 rounded bg-black/40 text-neutral-400 border border-white/5">
+                                ISO {curr.isoCode}
+                              </span>
+                            </div>
+                            <div className="text-xs font-semibold text-neutral-200 mt-0.5">
+                              {curr.name}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Status Toggle Button */}
+                        <div className="flex flex-col items-end gap-1">
+                          <button
+                            type="button"
+                            onClick={() => toggleCurrencyStatus(curr.id)}
+                            className={`w-9 h-5 flex items-center rounded-full p-0.5 transition-colors cursor-pointer ${
+                              curr.aktif ? 'bg-[#F4511E]' : 'bg-[#2A2E33]'
+                            }`}
+                            title={curr.aktif ? 'Klik untuk non-aktifkan' : 'Klik untuk aktifkan'}
+                          >
+                            <div
+                              className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${
+                                curr.aktif ? 'translate-x-4' : 'translate-x-0'
+                              }`}
+                            />
+                          </button>
+                          <span className={`text-[10px] font-mono ${curr.aktif ? 'text-emerald-400' : 'text-neutral-500'}`}>
+                            {curr.aktif ? 'Aktif' : 'Non-aktif'}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Currency Tag */}
+                      <div className="mb-3">
+                        {curr.isBase ? (
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-mono font-bold bg-[#F4511E]/15 text-[#FF7043] border border-[#F4511E]/30">
+                            <span className="w-1.5 h-1.5 rounded-full bg-[#F4511E] animate-pulse" />
+                            MATA UANG BASIS BUKU BESAR
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-mono text-neutral-400 bg-[#171E28] border border-[#232F3E]">
+                            <Globe className="w-3 h-3 text-neutral-400" />
+                            VALUTA ASING PENDUKUNG (VALAS)
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Deskripsi */}
+                      <p className="text-xs text-neutral-400 leading-relaxed mb-4">
+                        {curr.deskripsi}
+                      </p>
+
+                      {/* Detail Format Box */}
+                      <div className="p-3 bg-black/35 rounded-xl border border-white/5 space-y-2 text-xs font-mono mb-4">
+                        <div className="flex items-center justify-between text-neutral-400">
+                          <span>Pemisah Ribuan:</span>
+                          <span className="text-amber-400 font-semibold">{curr.pemisahRibuan}</span>
+                        </div>
+                        <div className="flex items-center justify-between text-neutral-400 pt-1.5 border-t border-white/5">
+                          <span>Pemisah Desimal:</span>
+                          <span className="text-neutral-200 font-semibold">{curr.pemisahDesimal}</span>
+                        </div>
+                        <div className="flex items-center justify-between text-neutral-400 pt-1.5 border-t border-white/5">
+                          <span>Contoh Tampilan:</span>
+                          <span className="text-white font-bold">{curr.formatSample}</span>
+                        </div>
+                        <div className="flex items-center justify-between text-neutral-400 pt-1.5 border-t border-white/5">
+                          <span>Ketentuan Pajak:</span>
+                          <span className="text-sky-300 font-medium">{curr.pajak}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Integrated Modules Footer */}
+                    <div className="pt-3 border-t border-white/5">
+                      <div className="text-[10px] font-mono text-neutral-500 uppercase tracking-wider mb-1.5">
+                        Modul Terintegrasi:
+                      </div>
+                      <div className="flex flex-wrap gap-1">
+                        {curr.lingkupModul?.map((mod, mi) => (
+                          <span key={mi} className="px-2 py-0.5 rounded-md bg-[#161D27] text-neutral-300 text-[10px] font-mono border border-white/5">
+                            {mod}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </motion.div>
+                ))}
               </div>
 
-              <Card className="master-data-card p-5 space-y-4 border-[#1E2938] bg-[#121822]/90">
-                <h2 className="text-sm font-bold text-white tracking-wide uppercase flex items-center gap-2">
-                  <Coins className="w-4 h-4 text-[#F4511E]" />
-                  <span>Standar Finansial & Basis Mata Uang PT BAS</span>
-                </h2>
-                <div className="p-3.5 bg-black/30 border border-white/5 rounded-xl space-y-2 text-xs">
-                  <div className="flex items-center justify-between text-neutral-300">
-                    <span>Kode Mata Uang ISO 4217:</span>
-                    <span className="font-mono font-bold text-white">IDR (360)</span>
+              {/* Bottom Row: 2 Big Feature Cards (Standar Finansial + Interactive Simulator) */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {/* 1. Standar Finansial & Regulasi Akuntansi PT BAS */}
+                <Card className="master-data-card p-5 border-[#1E2938] bg-[#121822]/90 flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center justify-between pb-3 border-b border-white/5 mb-4">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-lg bg-[#F4511E]/15 border border-[#F4511E]/30 text-[#F4511E] flex items-center justify-center">
+                          <Landmark className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <h3 className="text-sm font-bold text-white tracking-wide">
+                            Standar Finansial & Basis Akuntansi PT BAS
+                          </h3>
+                          <p className="text-[11px] text-neutral-400">
+                            Ketentuan buku besar akuntansi, faktur, dan perpajakan tambang
+                          </p>
+                        </div>
+                      </div>
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-950/40 text-emerald-400 border border-emerald-800/40">
+                        Aktif • Baku
+                      </span>
+                    </div>
+
+                    <div className="space-y-2.5 text-xs">
+                      <div className="p-3 bg-black/25 rounded-xl border border-white/5 flex items-start gap-2.5">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                        <div className="flex-1">
+                          <span className="text-neutral-200 font-semibold">Single-Currency Ledger (IDR)</span>
+                          <p className="text-[11px] text-neutral-400 mt-0.5">
+                            Seluruh buku kas keluar (BKK), piutang customer, dan hutang supplier wajib dibukukan dalam mata uang basis Rupiah Indonesia.
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="p-3 bg-black/25 rounded-xl border border-white/5 flex items-start gap-2.5">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                        <div className="flex-1">
+                          <span className="text-neutral-200 font-semibold">Regulasi Perpajakan Bahan Galian Tambang</span>
+                          <p className="text-[11px] text-neutral-400 mt-0.5">
+                            Penerapan PPN 11% (UU HPP) dan PPh 22 bahan galian C / industri tambang tarif 0,25% (industri semen) hingga 1,5% (umum).
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="p-3 bg-black/25 rounded-xl border border-white/5 flex items-start gap-2.5">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                        <div className="flex-1">
+                          <span className="text-neutral-200 font-semibold">Standar Penulisan & Pembulatan EYD</span>
+                          <p className="text-[11px] text-neutral-400 mt-0.5">
+                            Format formal: <code className="text-amber-400 font-mono">Rp 18.712.800,00</code> dengan pemisah ribuan titik (.) dan desimal koma (,). Toleransi pembulatan maksimal Rp 100,- per batch.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex items-center justify-between text-neutral-300 pt-1.5 border-t border-white/5">
-                    <span>Simbol Mata Uang:</span>
-                    <span className="font-mono font-bold text-white">Rp</span>
+
+                  <div className="mt-4 pt-3 border-t border-white/5 flex items-center justify-between text-[11px] font-mono text-neutral-400">
+                    <span>Otoritas Pengaturan: <strong className="text-white">Direksi & Super Admin</strong></span>
+                    <span className="text-emerald-400">Tersinkronisasi ke Seluruh Modul</span>
                   </div>
-                  <div className="flex items-center justify-between text-neutral-300 pt-1.5 border-t border-white/5">
-                    <span>Perhitungan Pajak:</span>
-                    <span className="font-mono font-bold text-amber-400">PPN 11% & PPh 22 (0.25% - 1.5%)</span>
+                </Card>
+
+                {/* 2. Simulator Interaktif Perhitungan & Format Finansial */}
+                <Card className="master-data-card p-5 border-[#1E2938] bg-[#121822]/90 flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center justify-between pb-3 border-b border-white/5 mb-3.5">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-lg bg-amber-500/15 border border-amber-500/30 text-amber-400 flex items-center justify-center">
+                          <Calculator className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <h3 className="text-sm font-bold text-white tracking-wide">
+                            Simulator Format Finansial & Pajak
+                          </h3>
+                          <p className="text-[11px] text-neutral-400">
+                            Uji langsung kalkulasi DPP, PPN 11%, dan PPh 22 transaksi PT BAS
+                          </p>
+                        </div>
+                      </div>
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-500/15 text-amber-400 border border-amber-500/30">
+                        Uji Langsung
+                      </span>
+                    </div>
+
+                    {/* Inputs */}
+                    <div className="space-y-3 mb-3.5">
+                      <div>
+                        <label className="text-[11px] font-mono text-neutral-300 block mb-1">
+                          Nominal Transaksi Dasar / DPP (IDR):
+                        </label>
+                        <div className="relative">
+                          <span className="absolute left-3 top-2.5 text-xs font-mono font-bold text-neutral-400">Rp</span>
+                          <input
+                            type="number"
+                            value={simAmount}
+                            onChange={(e) => setSimAmount(Math.max(0, Number(e.target.value) || 0))}
+                            className="w-full bg-[#0D121A] border border-[#232F3E] focus:border-[#F4511E] rounded-xl pl-9 pr-3 py-2 text-xs font-mono text-white outline-none transition-colors"
+                            placeholder="18712800"
+                          />
+                        </div>
+
+                        {/* Preset buttons */}
+                        <div className="flex items-center gap-1.5 mt-1.5">
+                          <span className="text-[10px] text-neutral-500 font-mono">Preset:</span>
+                          {[
+                            { label: '5 Juta', val: 5000000 },
+                            { label: '18,7 Juta (Contoh CO)', val: 18712800 },
+                            { label: '50 Juta', val: 50000000 },
+                            { label: '100 Juta', val: 100000000 },
+                          ].map((p, pi) => (
+                            <button
+                              key={pi}
+                              type="button"
+                              onClick={() => setSimAmount(p.val)}
+                              className={`px-2 py-0.5 rounded text-[10px] font-mono transition-colors cursor-pointer ${
+                                simAmount === p.val
+                                  ? 'bg-[#F4511E] text-white font-bold'
+                                  : 'bg-[#18202A] text-neutral-400 hover:text-white border border-white/5'
+                              }`}
+                            >
+                              {p.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* PPh 22 Rate Selector */}
+                      <div>
+                        <label className="text-[11px] font-mono text-neutral-300 block mb-1">
+                          Tarif PPh Pasal 22:
+                        </label>
+                        <div className="grid grid-cols-2 gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setSimPphRate(0.25)}
+                            className={`p-2 rounded-xl text-left border transition-all cursor-pointer ${
+                              simPphRate === 0.25
+                                ? 'bg-[#F4511E]/15 border-[#F4511E] text-white'
+                                : 'bg-[#0D121A] border-[#232F3E] text-neutral-400 hover:text-white'
+                            }`}
+                          >
+                            <div className="font-mono text-xs font-bold text-white">0,25%</div>
+                            <div className="text-[10px] text-neutral-400">Industri Semen / BUMN</div>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setSimPphRate(1.5)}
+                            className={`p-2 rounded-xl text-left border transition-all cursor-pointer ${
+                              simPphRate === 1.5
+                                ? 'bg-[#F4511E]/15 border-[#F4511E] text-white'
+                                : 'bg-[#0D121A] border-[#232F3E] text-neutral-400 hover:text-white'
+                            }`}
+                          >
+                            <div className="font-mono text-xs font-bold text-white">1,50%</div>
+                            <div className="text-[10px] text-neutral-400">Pengadaan Material Umum</div>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Calculation Results Card */}
+                    <div className="p-3.5 bg-gradient-to-br from-[#0B1017] to-[#121924] rounded-xl border border-white/10 space-y-2 text-xs font-mono">
+                      <div className="flex items-center justify-between text-neutral-400">
+                        <span>DPP (Nilai Material):</span>
+                        <span className="text-white font-semibold">{formatCurrency(simAmount)}</span>
+                      </div>
+                      <div className="flex items-center justify-between text-neutral-400 pt-1.5 border-t border-white/5">
+                        <span>PPN 11% (Pertambahan Nilai):</span>
+                        <span className="text-amber-400 font-semibold">{formatCurrency(simAmount * 0.11)}</span>
+                      </div>
+                      <div className="flex items-center justify-between text-neutral-400 pt-1.5 border-t border-white/5">
+                        <span>PPh 22 ({simPphRate}%):</span>
+                        <span className="text-sky-400 font-semibold">{formatCurrency(simAmount * (simPphRate / 100))}</span>
+                      </div>
+                      <div className="flex items-center justify-between pt-2 border-t border-white/10">
+                        <span className="text-white font-bold">Total Faktur (DPP + PPN):</span>
+                        <span className="text-base font-bold text-[#FF7043]">{formatCurrency(simAmount * 1.11)}</span>
+                      </div>
+                    </div>
                   </div>
-                </div>
-              </Card>
+
+                  <div className="mt-3 text-[10px] font-mono text-neutral-500 text-right">
+                    *Formula ini otomatis diaplikasikan pada modul Invoice dan Rekapan BKK PT BAS.
+                  </div>
+                </Card>
+              </div>
             </div>
           )}
         </motion.div>

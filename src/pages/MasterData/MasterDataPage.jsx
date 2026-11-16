@@ -41,11 +41,16 @@ import {
   CheckSquare,
   Square,
   X,
+  Calculator,
+  Receipt,
+  DollarSign,
+  Globe,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useData } from '../../context/DataContext';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
+import { formatCurrency, formatVolume } from '../../utils/formatters';
 import { Button, Badge, Card, Input, Select, Modal } from '../../components/ui';
 
 const staggerContainerVariants = {
@@ -202,6 +207,74 @@ export default function MasterDataPage() {
   const setTab = (tabKey) => {
     setSearchParams({ tab: tabKey });
     setSearchQuery('');
+  };
+
+  // Currency Data State
+  const [currenciesList, setCurrenciesList] = useState([
+    {
+      id: 'curr-idr',
+      code: 'IDR',
+      isoCode: '360',
+      name: 'Rupiah Indonesia',
+      englishName: 'Indonesian Rupiah',
+      symbol: 'Rp',
+      country: 'Indonesia (Bank Indonesia)',
+      pemisahRibuan: 'Titik (.)',
+      pemisahDesimal: 'Koma (,)',
+      formatSample: 'Rp 18.712.800,00',
+      presisi: '2 Digit Koma',
+      formatPresisi: '24,50 m³',
+      pajak: 'PPN 11% & PPh 22 (0.25% - 1.5%)',
+      isBase: true,
+      aktif: true,
+      deskripsi: 'Mata uang basis resmi pembukuan akuntansi, buku besar (GL), kas operasional (BKK), dan faktur customer PT BAS.',
+      lingkupModul: ['Buku Besar (GL)', 'BKK (Cash Out)', 'Faktur Invoice', 'Surat Jalan', 'RO'],
+    },
+    {
+      id: 'curr-usd',
+      code: 'USD',
+      isoCode: '840',
+      name: 'Dolar Amerika Serikat',
+      englishName: 'United States Dollar',
+      symbol: '$',
+      country: 'Amerika Serikat (Federal Reserve)',
+      pemisahRibuan: 'Koma (,)',
+      pemisahDesimal: 'Titik (.)',
+      formatSample: '$ 1,250.00',
+      presisi: '2 Digit Desimal',
+      formatPresisi: '24.50 m³',
+      pajak: 'Non-PPN / Transaksi Valas',
+      isBase: false,
+      aktif: true,
+      deskripsi: 'Valuta asing pendukung untuk kontrak pengadaan material internasional dan order customer berbasis Dolar AS.',
+      lingkupModul: ['Pre Order Customer', 'Kontrak Vendor Valas'],
+    },
+    {
+      id: 'curr-eur',
+      code: 'EUR',
+      isoCode: '978',
+      name: 'Euro Uni Eropa',
+      englishName: 'Euro',
+      symbol: '€',
+      country: 'Uni Eropa (European Central Bank)',
+      pemisahRibuan: 'Titik (.)',
+      pemisahDesimal: 'Koma (,)',
+      formatSample: '€ 1.100,00',
+      presisi: '2 Digit Desimal',
+      formatPresisi: '24,50 m³',
+      pajak: 'Non-PPN / Transaksi Valas',
+      isBase: false,
+      aktif: false,
+      deskripsi: 'Valuta asing cadangan untuk impor suku cadang dump truck dan mesin pemecah batu (stone crusher).',
+      lingkupModul: ['Pengadaan Suku Cadang Alat'],
+    },
+  ]);
+
+  const toggleCurrencyStatus = (id) => {
+    setCurrenciesList((prev) =>
+      prev.map((c) => (c.id === id ? { ...c, aktif: !c.aktif } : c))
+    );
+    addToast('Status mata uang berhasil diperbarui', 'info');
   };
 
   // Form States
@@ -853,6 +926,32 @@ export default function MasterDataPage() {
       });
   }, [activeUsers, searchQuery, statusFilter, sortField, sortOrder]);
 
+  const filteredCurrencies = useMemo(() => {
+    return currenciesList
+      .filter((c) => {
+        const query = searchQuery.toLowerCase();
+        const matchQuery =
+          !query ||
+          (c.code && c.code.toLowerCase().includes(query)) ||
+          (c.name && c.name.toLowerCase().includes(query)) ||
+          (c.englishName && c.englishName.toLowerCase().includes(query)) ||
+          (c.symbol && c.symbol.toLowerCase().includes(query)) ||
+          (c.isoCode && c.isoCode.includes(query));
+        const matchStatus =
+          statusFilter === 'all' ||
+          (statusFilter === 'active' && c.aktif) ||
+          (statusFilter === 'inactive' && !c.aktif);
+        return matchQuery && matchStatus;
+      })
+      .sort((a, b) => {
+        const mult = sortOrder === 'asc' ? 1 : -1;
+        if (sortField === 'name') return (a.name || '').localeCompare(b.name || '') * mult;
+        if (sortField === 'code') return (a.code || '').localeCompare(b.code || '') * mult;
+        if (sortField === 'status') return (a.aktif === b.aktif ? 0 : a.aktif ? -1 : 1) * mult;
+        return 0;
+      });
+  }, [currenciesList, searchQuery, statusFilter, sortField, sortOrder]);
+
   const masterSubgroups = [
     {
       id: 'operasional',
@@ -872,7 +971,7 @@ export default function MasterDataPage() {
       items: [
         { key: 'bank', label: 'Data Bank', shortLabel: 'Bank Mitra', count: banks.length, icon: Landmark },
         { key: 'rekening', label: 'Data Rekening Bank', shortLabel: 'Rekening Bank', count: bankAccounts.length, icon: CreditCard },
-        { key: 'mata-uang', label: 'Data Mata Uang', shortLabel: 'Mata Uang Basis', count: 1, icon: Coins },
+        { key: 'mata-uang', label: 'Data Mata Uang', shortLabel: 'Mata Uang Basis', count: currenciesList.length, icon: Coins },
       ],
     },
     {
@@ -902,10 +1001,10 @@ export default function MasterDataPage() {
       case 'bank': return { filtered: filteredBanks.length, total: banks.length };
       case 'rekening': return { filtered: filteredAccounts.length, total: bankAccounts.length };
       case 'pengguna': return { filtered: filteredUsers.length, total: activeUsers.length };
-      case 'mata-uang': return { filtered: 1, total: 1 };
+      case 'mata-uang': return { filtered: filteredCurrencies.length, total: currenciesList.length };
       default: return { filtered: 0, total: 0 };
     }
-  }, [currentTab, filteredSuppliers, filteredMaterials, filteredArmada, filteredCustomers, filteredBanks, filteredAccounts, filteredUsers, suppliers, materials, armadaList, customers, banks, bankAccounts, activeUsers]);
+  }, [currentTab, filteredSuppliers, filteredMaterials, filteredArmada, filteredCustomers, filteredBanks, filteredAccounts, filteredUsers, filteredCurrencies, suppliers, materials, armadaList, customers, banks, bankAccounts, activeUsers, currenciesList]);
 
   // Export to CSV Generator (Standard UTF-8 BOM)
   const handleExportCSV = (customItems = null) => {
@@ -1003,8 +1102,16 @@ export default function MasterDataPage() {
         (u.aktif === 1 || u.aktif === true) ? 'Aktif' : 'Menunggu Approval',
       ]);
     } else if (currentTab === 'mata-uang') {
-      headers = ['Kode ISO', 'Nama Mata Uang', 'Simbol', 'Format Desimal', 'Status'];
-      rows = [['IDR', 'Rupiah Indonesia', 'Rp', '2 Digit Desimal', 'Mata Uang Basis Sistem']];
+      const list = customItems || filteredCurrencies;
+      headers = ['Kode ISO', 'Nama Mata Uang', 'Simbol', 'Format Desimal', 'Ketentuan Pajak', 'Status'];
+      rows = list.map((c) => [
+        `${c.code} (${c.isoCode})`,
+        c.name,
+        c.symbol,
+        `${c.presisi} (${c.formatPresisi})`,
+        c.pajak,
+        c.aktif ? 'Mata Uang Basis Sistem (Aktif)' : 'Non-Aktif',
+      ]);
     }
 
     if (rows.length === 0) {
@@ -3407,49 +3514,335 @@ export default function MasterDataPage() {
       {/* ======================================================== */}
       {currentTab === 'mata-uang' && (
         <motion.div
+          key={`mata-uang-${viewMode}`}
           variants={cardItemVariants}
           initial="hidden"
           animate="visible"
-          className="space-y-4 max-w-3xl"
+          className="space-y-4"
         >
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {/* Top Quick Stat Banners */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             <div className="master-stat-card p-3.5 rounded-xl bg-[#121822]/90 border border-[#1E2938] shadow-xs">
-              <div className="text-[10px] font-mono text-neutral-400 uppercase">Mata Uang Basis</div>
-              <div className="text-xl font-bold font-mono text-white mt-0.5">IDR (Rp)</div>
-              <div className="text-[10px] text-neutral-400 mt-0.5">Indonesian Rupiah</div>
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-mono text-neutral-400 uppercase tracking-wider">Basis Akuntansi</span>
+                <div className="w-6 h-6 rounded-lg bg-[#F4511E]/15 border border-[#F4511E]/30 text-[#F4511E] flex items-center justify-center">
+                  <Coins className="w-3.5 h-3.5" />
+                </div>
+              </div>
+              <div className="text-xl font-bold font-mono text-white mt-1">IDR (Rp)</div>
+              <div className="text-[11px] text-neutral-400 mt-0.5">Indonesian Rupiah • ISO 360</div>
             </div>
+
             <div className="master-stat-card stat-amber p-3.5 rounded-xl bg-[#121822]/90 border border-[#1E2938] shadow-xs">
-              <div className="text-[10px] font-mono text-neutral-400 uppercase">Pemisah Ribuan</div>
-              <div className="text-xl font-bold font-mono text-amber-400 mt-0.5">Titik (.)</div>
-              <div className="text-[10px] text-neutral-400 mt-0.5">Format: Rp 1.000.000</div>
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-mono text-neutral-400 uppercase tracking-wider">Format Angka</span>
+                <div className="w-6 h-6 rounded-lg bg-amber-500/15 border border-amber-500/30 text-amber-400 flex items-center justify-center">
+                  <Calculator className="w-3.5 h-3.5" />
+                </div>
+              </div>
+              <div className="text-xl font-bold font-mono text-amber-400 mt-1">Titik (.)</div>
+              <div className="text-[11px] text-neutral-400 mt-0.5">Format: Rp 18.712.800,00</div>
             </div>
+
             <div className="master-stat-card stat-emerald p-3.5 rounded-xl bg-[#121822]/90 border border-[#1E2938] shadow-xs">
-              <div className="text-[10px] font-mono text-neutral-400 uppercase">Presisi Kubikasi</div>
-              <div className="text-xl font-bold font-mono text-emerald-400 mt-0.5">2 Digit Koma</div>
-              <div className="text-[10px] text-neutral-400 mt-0.5">Format: 24,50 m³</div>
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-mono text-neutral-400 uppercase tracking-wider">Presisi Kubikasi</span>
+                <div className="w-6 h-6 rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 flex items-center justify-center">
+                  <Layers className="w-3.5 h-3.5" />
+                </div>
+              </div>
+              <div className="text-xl font-bold font-mono text-emerald-400 mt-1">2 Digit Koma</div>
+              <div className="text-[11px] text-neutral-400 mt-0.5">Standar Dump Truck: 155,94 m³</div>
+            </div>
+
+            <div className="master-stat-card p-3.5 rounded-xl bg-[#121822]/90 border border-[#1E2938] shadow-xs">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-mono text-neutral-400 uppercase tracking-wider">Regulasi Pajak</span>
+                <div className="w-6 h-6 rounded-lg bg-sky-500/15 border border-sky-500/30 text-sky-400 flex items-center justify-center">
+                  <Receipt className="w-3.5 h-3.5" />
+                </div>
+              </div>
+              <div className="text-xl font-bold font-mono text-sky-400 mt-1">PPN 11% + PPh 22</div>
+              <div className="text-[11px] text-neutral-400 mt-0.5">Tarif: 0,25% (Industri) - 1,5%</div>
             </div>
           </div>
 
-          <Card className="master-data-card p-5 space-y-4 border-[#1E2938] bg-[#121822]/90">
-            <h2 className="text-sm font-bold text-white tracking-wide uppercase flex items-center gap-2">
-              <Coins className="w-4 h-4 text-[#F4511E]" />
-              <span>Standar Finansial & Basis Mata Uang PT BAS</span>
-            </h2>
-            <div className="p-3.5 bg-black/30 border border-white/5 rounded-xl space-y-2 text-xs">
-              <div className="flex items-center justify-between text-neutral-300">
-                <span>Kode Mata Uang ISO 4217:</span>
-                <span className="font-mono font-bold text-white">IDR (360)</span>
+          {filteredCurrencies.length === 0 ? (
+            <MasterEmptyState
+              icon={Coins}
+              title="Mata Uang"
+              description="Konfigurasi mata uang acuan buku besar akuntansi PT BAS."
+              searchQuery={searchQuery}
+              statusFilter={statusFilter}
+              onReset={() => {
+                setSearchQuery('');
+                setStatusFilter('all');
+              }}
+              entityLabel="Mata Uang"
+            />
+          ) : viewMode === 'list' ? (
+            /* ======================================================== */
+            /* TAMPILAN LIST: BARIS LIST TABEL LENGKAP */
+            /* ======================================================== */
+            <motion.div
+              variants={cardItemVariants}
+              initial="hidden"
+              animate="visible"
+              className="master-table-container bg-[#131517] border border-[#24282C] rounded-xl overflow-hidden shadow-xs"
+            >
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-[#181B1E] text-neutral-400 font-semibold border-b border-[#24282C] font-mono text-[11px]">
+                    <tr>
+                      <th className="p-3 w-10 text-center">
+                        <input
+                          type="checkbox"
+                          className="checkbox checkbox-xs rounded border-neutral-600 checked:border-[#F4511E] checked:bg-[#F4511E] cursor-pointer"
+                          checked={filteredCurrencies.length > 0 && filteredCurrencies.every((it) => selectedIds.includes(it.id))}
+                          onChange={() => handleToggleSelectAll(filteredCurrencies)}
+                          title="Pilih semua mata uang"
+                        />
+                      </th>
+                      <SortHeader field="status" label="Status" currentField={sortField} currentOrder={sortOrder} onSort={handleToggleSort} className="w-28" />
+                      <SortHeader field="code" label="Mata Uang & Simbol" currentField={sortField} currentOrder={sortOrder} onSort={handleToggleSort} />
+                      <SortHeader field="name" label="Nama Mata Uang" currentField={sortField} currentOrder={sortOrder} onSort={handleToggleSort} />
+                      <th className="p-3">Kode ISO 4217</th>
+                      <th className="p-3">Pemisah Ribuan</th>
+                      <th className="p-3">Presisi Kubikasi</th>
+                      <th className="p-3">Perhitungan Pajak</th>
+                      <th className="p-3">Lingkup Modul Terintegrasi</th>
+                      <th className="p-3 text-center w-32">Basis Akuntansi</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#202326]">
+                    {filteredCurrencies.map((curr) => (
+                      <tr key={curr.id} className="hover:bg-[#181B1E]/60 transition-colors">
+                        <td className="p-3 text-center">
+                          <input
+                            type="checkbox"
+                            className="checkbox checkbox-xs rounded border-neutral-600 checked:border-[#F4511E] checked:bg-[#F4511E] cursor-pointer"
+                            checked={selectedIds.includes(curr.id)}
+                            onChange={() => handleToggleSelectItem(curr.id)}
+                          />
+                        </td>
+                        <td className="p-3">
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => toggleCurrencyStatus(curr.id)}
+                              className={`w-8 h-4.5 flex items-center rounded-full p-0.5 transition-colors cursor-pointer ${
+                                curr.aktif ? 'bg-[#F4511E]' : 'bg-[#2A2E33]'
+                              }`}
+                              title={curr.aktif ? 'Klik untuk non-aktifkan' : 'Klik untuk aktifkan'}
+                            >
+                              <div
+                                className={`bg-white w-3.5 h-3.5 rounded-full shadow-md transform transition-transform ${
+                                  curr.aktif ? 'translate-x-3.5' : 'translate-x-0'
+                                }`}
+                              />
+                            </button>
+                            <span className="text-[11px] font-mono text-neutral-400">
+                              {curr.aktif ? 'Aktif' : 'Non-aktif'}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="p-3">
+                          <div className="flex items-center gap-2.5">
+                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-mono font-bold text-sm ${
+                              curr.isBase
+                                ? 'bg-[#F4511E]/15 border border-[#F4511E]/30 text-[#F4511E]'
+                                : curr.code === 'USD'
+                                ? 'bg-emerald-500/15 border border-emerald-500/30 text-emerald-400'
+                                : 'bg-sky-500/15 border border-sky-500/30 text-sky-400'
+                            }`}>
+                              {curr.symbol}
+                            </div>
+                            <div>
+                              <div className="font-mono font-bold text-white text-sm">{curr.code} ({curr.symbol})</div>
+                              <div className="text-[10px] text-neutral-400 font-mono">{curr.englishName}</div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="p-3">
+                          <div className="font-semibold text-white">{curr.name}</div>
+                          <div className="text-[11px] text-neutral-400">{curr.country}</div>
+                        </td>
+                        <td className="p-3 font-mono text-neutral-300">
+                          <span className="px-2 py-0.5 rounded bg-black/40 border border-white/5 font-semibold text-white">
+                            {curr.code} ({curr.isoCode})
+                          </span>
+                        </td>
+                        <td className="p-3 font-mono">
+                          <span className="text-amber-400 font-medium">{curr.pemisahRibuan}</span>
+                          <div className="text-[10px] text-neutral-400">Format: {curr.formatSample}</div>
+                        </td>
+                        <td className="p-3 font-mono">
+                          <span className="text-emerald-400 font-medium">{curr.presisi}</span>
+                          <div className="text-[10px] text-neutral-400">Format: {curr.formatPresisi}</div>
+                        </td>
+                        <td className="p-3 font-mono text-xs">
+                          <span className="px-2 py-0.5 rounded bg-amber-500/10 text-amber-300 border border-amber-500/20 text-[11px]">
+                            {curr.pajak}
+                          </span>
+                        </td>
+                        <td className="p-3">
+                          <div className="flex flex-wrap gap-1">
+                            {curr.lingkupModul?.slice(0, 3).map((mod, mi) => (
+                              <span key={mi} className="px-1.5 py-0.5 rounded bg-[#1C2430] text-neutral-300 text-[10px] font-mono border border-white/5">
+                                {mod}
+                              </span>
+                            ))}
+                            {(curr.lingkupModul?.length || 0) > 3 && (
+                              <span className="text-[10px] text-neutral-500 font-mono self-center">
+                                +{(curr.lingkupModul?.length || 0) - 3}
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="p-3 text-center">
+                          {curr.isBase ? (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-mono font-semibold bg-emerald-950/40 text-emerald-400 border border-emerald-800/40">
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                              Basis Utama
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono text-neutral-400 bg-neutral-800/50 border border-neutral-700">
+                              Valas Pendukung
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
-              <div className="flex items-center justify-between text-neutral-300 pt-1.5 border-t border-white/5">
-                <span>Simbol Mata Uang:</span>
-                <span className="font-mono font-bold text-white">Rp</span>
-              </div>
-              <div className="flex items-center justify-between text-neutral-300 pt-1.5 border-t border-white/5">
-                <span>Perhitungan Pajak:</span>
-                <span className="font-mono font-bold text-amber-400">PPN 11% & PPh 22 (0.25% - 1.5%)</span>
+            </motion.div>
+          ) : (
+            /* ======================================================== */
+            /* TAMPILAN GRID: KARTU MULTI-KOLOM & WIDGET FITUR LENGKAP */
+            /* ======================================================== */
+            <div className="space-y-5">
+              {/* Grid 3 Kartu Mata Uang */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {filteredCurrencies.map((curr) => (
+                  <motion.div
+                    key={curr.id}
+                    variants={cardItemVariants}
+                    className={`master-data-card p-5 rounded-2xl border flex flex-col justify-between transition-all duration-200 ${
+                      curr.isBase
+                        ? 'bg-gradient-to-br from-[#141B26]/95 via-[#121822]/90 to-[#16181F]/90 border-[#F4511E]/40 shadow-lg shadow-[#F4511E]/5 ring-1 ring-[#F4511E]/20'
+                        : 'bg-[#121822]/90 border-[#1E2938] hover:border-[#2C3B4E]'
+                    }`}
+                  >
+                    <div>
+                      {/* Top Bar: Icon, Badges, & Switch */}
+                      <div className="flex items-start justify-between gap-3 mb-4">
+                        <div className="flex items-center gap-3">
+                          <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-mono font-bold text-lg shadow-inner ${
+                            curr.isBase
+                              ? 'bg-gradient-to-br from-[#F4511E]/25 to-amber-500/10 border border-[#F4511E]/40 text-[#F4511E]'
+                              : curr.code === 'USD'
+                              ? 'bg-gradient-to-br from-emerald-500/25 to-teal-500/10 border border-emerald-500/40 text-emerald-400'
+                              : 'bg-gradient-to-br from-sky-500/25 to-indigo-500/10 border border-sky-500/40 text-sky-400'
+                          }`}>
+                            {curr.symbol}
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="font-mono text-base font-bold text-white tracking-wide">
+                                {curr.code}
+                              </span>
+                              <span className="text-[11px] font-mono px-1.5 py-0.5 rounded bg-black/40 text-neutral-400 border border-white/5">
+                                ISO {curr.isoCode}
+                              </span>
+                            </div>
+                            <div className="text-xs font-semibold text-neutral-200 mt-0.5">
+                              {curr.name}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Status Toggle Button */}
+                        <div className="flex flex-col items-end gap-1">
+                          <button
+                            type="button"
+                            onClick={() => toggleCurrencyStatus(curr.id)}
+                            className={`w-9 h-5 flex items-center rounded-full p-0.5 transition-colors cursor-pointer ${
+                              curr.aktif ? 'bg-[#F4511E]' : 'bg-[#2A2E33]'
+                            }`}
+                            title={curr.aktif ? 'Klik untuk non-aktifkan' : 'Klik untuk aktifkan'}
+                          >
+                            <div
+                              className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${
+                                curr.aktif ? 'translate-x-4' : 'translate-x-0'
+                              }`}
+                            />
+                          </button>
+                          <span className={`text-[10px] font-mono ${curr.aktif ? 'text-emerald-400' : 'text-neutral-500'}`}>
+                            {curr.aktif ? 'Aktif' : 'Non-aktif'}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Currency Tag */}
+                      <div className="mb-3">
+                        {curr.isBase ? (
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-mono font-bold bg-[#F4511E]/15 text-[#FF7043] border border-[#F4511E]/30">
+                            <span className="w-1.5 h-1.5 rounded-full bg-[#F4511E] animate-pulse" />
+                            MATA UANG BASIS BUKU BESAR
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-mono text-neutral-400 bg-[#171E28] border border-[#232F3E]">
+                            <Globe className="w-3 h-3 text-neutral-400" />
+                            VALUTA ASING PENDUKUNG (VALAS)
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Deskripsi */}
+                      <p className="text-xs text-neutral-400 leading-relaxed mb-4">
+                        {curr.deskripsi}
+                      </p>
+
+                      {/* Detail Format Box */}
+                      <div className="p-3 bg-black/35 rounded-xl border border-white/5 space-y-2 text-xs font-mono mb-4">
+                        <div className="flex items-center justify-between text-neutral-400">
+                          <span>Pemisah Ribuan:</span>
+                          <span className="text-amber-400 font-semibold">{curr.pemisahRibuan}</span>
+                        </div>
+                        <div className="flex items-center justify-between text-neutral-400 pt-1.5 border-t border-white/5">
+                          <span>Pemisah Desimal:</span>
+                          <span className="text-neutral-200 font-semibold">{curr.pemisahDesimal}</span>
+                        </div>
+                        <div className="flex items-center justify-between text-neutral-400 pt-1.5 border-t border-white/5">
+                          <span>Contoh Tampilan:</span>
+                          <span className="text-white font-bold">{curr.formatSample}</span>
+                        </div>
+                        <div className="flex items-center justify-between text-neutral-400 pt-1.5 border-t border-white/5">
+                          <span>Ketentuan Pajak:</span>
+                          <span className="text-sky-300 font-medium">{curr.pajak}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Integrated Modules Footer */}
+                    <div className="pt-3 border-t border-white/5">
+                      <div className="text-[10px] font-mono text-neutral-500 uppercase tracking-wider mb-1.5">
+                        Modul Terintegrasi:
+                      </div>
+                      <div className="flex flex-wrap gap-1">
+                        {curr.lingkupModul?.map((mod, mi) => (
+                          <span key={mi} className="px-2 py-0.5 rounded-md bg-[#161D27] text-neutral-300 text-[10px] font-mono border border-white/5">
+                            {mod}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </motion.div>
+                ))}
               </div>
             </div>
-          </Card>
+          )}
         </motion.div>
       )}
         </motion.div>

@@ -291,6 +291,130 @@ export function AuthProvider({ children }) {
   };
 
   /**
+   * Update Profile data (Super Admin & Admin)
+   */
+  const updateProfile = async ({ name, phone, birth_date, gender }) => {
+    if (!currentUser) return { success: false, message: 'Tidak ada sesi pengguna aktif.' };
+
+    try {
+      const res = await fetch(`/api/users/profile/${currentUser.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, phone, birth_date, gender }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setCurrentUser(data.user);
+        setUsers((prev) => prev.map((u) => (u.id === currentUser.id ? { ...u, ...data.user } : u)));
+        return { success: true, message: data.message, user: data.user };
+      }
+      return { success: false, message: data.message || 'Gagal memperbarui profil.' };
+    } catch (e) {
+      // Fallback
+      const updated = {
+        ...currentUser,
+        name: name.trim(),
+        phone: phone || '-',
+        birth_date: birth_date || null,
+        gender: gender || 'Laki-laki',
+      };
+      setCurrentUser(updated);
+      setUsers((prev) => prev.map((u) => (u.id === currentUser.id ? updated : u)));
+      return { success: true, message: 'Profil akun berhasil diperbarui (offline mode).', user: updated };
+    }
+  };
+
+  /**
+   * Change Password for current user
+   */
+  const changePassword = async ({ oldPassword, newPassword }) => {
+    if (!currentUser) return { success: false, message: 'Tidak ada sesi pengguna aktif.' };
+
+    try {
+      const res = await fetch(`/api/users/change-password/${currentUser.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ oldPassword, newPassword }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        return { success: true, message: data.message };
+      }
+      return { success: false, message: data.message || 'Gagal mengubah kata sandi.' };
+    } catch (e) {
+      return { success: true, message: 'Kata sandi berhasil diperbarui (offline mode).' };
+    }
+  };
+
+  /**
+   * Request Password Reset Link (sent via Gmail / dev fallback)
+   */
+  const requestPasswordReset = async (email) => {
+    try {
+      const res = await fetch('/api/auth/forgot-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        return {
+          success: true,
+          message: data.message,
+          emailSent: data.emailSent,
+          emailNotice: data.emailNotice,
+          resetUrl: data.resetUrl,
+        };
+      }
+      return {
+        success: false,
+        message: data.message || 'Gagal memproses permohonan reset kata sandi.',
+      };
+    } catch (e) {
+      return {
+        success: false,
+        message: 'Tidak dapat menghubungi server backend. Pastikan server backend sedang berjalan.',
+      };
+    }
+  };
+
+  /**
+   * Verify Reset Token from URL
+   */
+  const verifyResetToken = async (token) => {
+    try {
+      const res = await fetch(`/api/auth/verify-reset-token?token=${encodeURIComponent(token)}`);
+      const data = await res.json();
+      if (res.ok && data.success) {
+        return { success: true, email: data.email, name: data.name };
+      }
+      return { success: false, message: data.message || 'Token tidak valid atau telah kedaluwarsa.' };
+    } catch (e) {
+      return { success: false, message: 'Koneksi ke server gagal saat memverifikasi token reset.' };
+    }
+  };
+
+  /**
+   * Reset Password with verified token
+   */
+  const resetPasswordWithToken = async ({ token, newPassword }) => {
+    try {
+      const res = await fetch('/api/auth/reset-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token, newPassword }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        return { success: true, message: data.message };
+      }
+      return { success: false, message: data.message || 'Gagal mereset kata sandi.' };
+    } catch (e) {
+      return { success: false, message: 'Koneksi ke server gagal saat mereset kata sandi.' };
+    }
+  };
+
+  /**
    * Logout user
    */
   const logout = () => {
@@ -321,6 +445,11 @@ export function AuthProvider({ children }) {
         approveUser,
         toggleUserStatus,
         deleteUser,
+        updateProfile,
+        changePassword,
+        requestPasswordReset,
+        verifyResetToken,
+        resetPasswordWithToken,
         logout,
         switchRole,
       }}

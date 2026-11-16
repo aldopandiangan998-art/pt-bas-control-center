@@ -46,6 +46,8 @@ export const INITIAL_USERS_DB = [
     roleLabel: 'Super Admin',
     branch: 'Pusat & Hub Gresik',
     phone: '0811-3001-992',
+    birth_date: '1985-06-15',
+    gender: 'Laki-laki',
     aktif: true,
   },
   {
@@ -57,6 +59,8 @@ export const INITIAL_USERS_DB = [
     roleLabel: 'Admin',
     branch: 'Hub Gresik',
     phone: '0813-8899-112',
+    birth_date: '1990-03-22',
+    gender: 'Laki-laki',
     aktif: true,
   },
   {
@@ -68,6 +72,8 @@ export const INITIAL_USERS_DB = [
     roleLabel: 'Admin',
     branch: 'Hub Gresik',
     phone: '0812-4567-8901',
+    birth_date: '1995-11-08',
+    gender: 'Perempuan',
     aktif: true,
   },
 ];

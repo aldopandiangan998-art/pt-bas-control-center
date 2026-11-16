@@ -8,6 +8,7 @@ import MainLayout from './components/layout/MainLayout';
 // Auth Pages
 import LoginPage from './pages/Auth/LoginPage';
 import RegisterPage from './pages/Auth/RegisterPage';
+import ResetPasswordPage from './pages/Auth/ResetPasswordPage';
 
 // Module Pages
 import DashboardPage from './pages/Dashboard/DashboardPage';
@@ -79,6 +80,14 @@ export default function App() {
                   element={
                     <PublicOnlyRoute>
                       <RegisterPage />
+                    </PublicOnlyRoute>
+                  }
+                />
+                <Route
+                  path="/reset-password"
+                  element={
+                    <PublicOnlyRoute>
+                      <ResetPasswordPage />
                     </PublicOnlyRoute>
                   }
                 />

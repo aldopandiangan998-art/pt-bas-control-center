@@ -19,6 +19,9 @@ import {
   Calendar,
   Phone,
   ChevronLeft,
+  KeyRound,
+  Copy,
+  ExternalLink,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
@@ -28,7 +31,7 @@ import MiningPitInteractiveBg from '../../components/common/MiningPitInteractive
 export default function LoginPage({ defaultMode = null }) {
   const navigate = useNavigate();
   const location = useLocation();
-  const { login, register } = useAuth();
+  const { login, register, requestPasswordReset } = useAuth();
   const { addToast } = useToast();
   const { isDark, setTheme, toggleTheme } = useApp();
 
@@ -66,6 +69,39 @@ export default function LoginPage({ defaultMode = null }) {
 
   // Modals
   const [showForgotPasswordModal, setShowForgotPasswordModal] = useState(false);
+  const [resetEmail, setResetEmail] = useState('');
+  const [resetSubmitting, setResetSubmitting] = useState(false);
+  const [resetSentInfo, setResetSentInfo] = useState(null);
+  const [resetError, setResetError] = useState('');
+
+  const handleForgotSubmit = async (e) => {
+    e.preventDefault();
+    setResetError('');
+    if (!resetEmail.trim()) {
+      setResetError('Harap masukkan alamat email akun Anda.');
+      return;
+    }
+
+    setResetSubmitting(true);
+    try {
+      const res = await requestPasswordReset(resetEmail.trim());
+      setResetSubmitting(false);
+
+      if (res && res.success) {
+        setResetSentInfo({
+          message: res.message,
+          resetUrl: res.resetUrl,
+          emailSent: res.emailSent,
+          emailNotice: res.emailNotice,
+        });
+      } else {
+        setResetError(res?.message || 'Gagal memproses permohonan reset sandi.');
+      }
+    } catch (err) {
+      setResetSubmitting(false);
+      setResetError('Kendala koneksi ke server dispatch.');
+    }
+  };
 
   // Registration Form State matching reference UI
   const [regData, setRegData] = useState({
@@ -365,7 +401,12 @@ export default function LoginPage({ defaultMode = null }) {
                     </label>
                     <button
                       type="button"
-                      onClick={() => setShowForgotPasswordModal(true)}
+                      onClick={() => {
+                        setResetEmail(loginEmail || '');
+                        setResetSentInfo(null);
+                        setResetError('');
+                        setShowForgotPasswordModal(true);
+                      }}
                       className="text-[#F4511E] hover:text-[#FB8C00] font-bold text-[11px] transition-colors cursor-pointer"
                     >
                       Lupa Sandi?
@@ -690,7 +731,7 @@ export default function LoginPage({ defaultMode = null }) {
         </main>
 
         {/* ======================================================== */}
-        {/* MODAL: LUPA KATA SANDI / BANTUAN DISPATCH                */}
+        {/* MODAL: RESET KATA SANDI VIA GMAIL (OPSI B)               */}
         {/* ======================================================== */}
         <AnimatePresence>
           {showForgotPasswordModal && (
@@ -699,69 +740,208 @@ export default function LoginPage({ defaultMode = null }) {
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.95 }}
-                className={`w-full max-w-md rounded-2xl border shadow-2xl overflow-hidden font-sans transition-colors ${isDark ? 'bg-[#0B0F19] border-[#22314A] text-neutral-200' : 'bg-white border-slate-200 text-slate-800'
-                  }`}
+                className={`w-full max-w-md rounded-2xl border shadow-2xl overflow-hidden font-sans transition-colors ${
+                  isDark
+                    ? 'bg-[#0B0F19] border-[#22314A] text-neutral-200'
+                    : 'bg-white border-slate-200 text-slate-800'
+                }`}
               >
-                <div className={`p-4 border-b flex items-center justify-between ${isDark ? 'bg-[#080C14] border-[#182336]' : 'bg-slate-50 border-slate-200'}`}>
+                {/* Header */}
+                <div
+                  className={`p-4 border-b flex items-center justify-between ${
+                    isDark ? 'bg-[#080C14] border-[#182336]' : 'bg-slate-50 border-slate-200'
+                  }`}
+                >
                   <div className="flex items-center gap-2">
-                    <HelpCircle className="w-4 h-4 text-[#F4511E]" />
-                    <span className={`text-xs font-bold uppercase tracking-wider font-mono ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                      Reset Sandi & Bantuan Akses Dispatch
+                    <Mail className="w-4 h-4 text-[#F4511E]" />
+                    <span
+                      className={`text-xs font-bold uppercase tracking-wider font-mono ${
+                        isDark ? 'text-white' : 'text-slate-900'
+                      }`}
+                    >
+                      Reset Kata Sandi via Gmail (Opsi B)
                     </span>
                   </div>
                   <button
                     type="button"
                     onClick={() => setShowForgotPasswordModal(false)}
-                    className={`p-1 rounded transition-colors cursor-pointer ${isDark ? 'text-neutral-400 hover:text-white' : 'text-slate-400 hover:text-slate-700'}`}
+                    className={`p-1 rounded transition-colors cursor-pointer ${
+                      isDark
+                        ? 'text-neutral-400 hover:text-white'
+                        : 'text-slate-400 hover:text-slate-700'
+                    }`}
                   >
                     <X className="w-4 h-4" />
                   </button>
                 </div>
 
+                {/* Content */}
                 <div className="p-5 space-y-4 text-xs">
-                  <p className={`leading-relaxed ${isDark ? 'text-neutral-300' : 'text-slate-600'}`}>
-                    Sesuai protokol K3 & Keamanan Siber Tambang mineral, pemulihan kata sandi dilakukan melalui verifikasi manual oleh Site Supervisor Dispatch atau Administrator PT BAS.
-                  </p>
+                  {!resetSentInfo ? (
+                    <form onSubmit={handleForgotSubmit} className="space-y-4">
+                      <p
+                        className={`leading-relaxed ${
+                          isDark ? 'text-neutral-300' : 'text-slate-600'
+                        }`}
+                      >
+                        Masukkan alamat Gmail yang terdaftar pada akun Anda. Tautan token verifikasi
+                        khusus (berlaku <strong>15 menit</strong>) akan dikirimkan ke kotak masuk Gmail Anda
+                        untuk mengatur ulang kata sandi baru.
+                      </p>
 
-                  {/* Dispatch Contacts */}
-                  <div className={`p-3.5 rounded-xl border space-y-3 font-mono ${isDark ? 'bg-[#070A12] border-[#192436]' : 'bg-slate-50 border-slate-200'}`}>
-                    <div className={`flex items-center justify-between text-[11px] border-b pb-2 ${isDark ? 'border-[#141C2B]' : 'border-slate-200'}`}>
-                      <span className={`font-bold uppercase ${isDark ? 'text-neutral-400' : 'text-slate-600'}`}>
-                        KEPALA DISPATCH HAULING
-                      </span>
-                      <span className="text-[#F4511E] font-bold">CH 09 / 148.550 MHz</span>
-                    </div>
+                      {resetError && (
+                        <div
+                          className={`p-3 rounded-xl border flex items-center gap-2 text-xs ${
+                            isDark
+                              ? 'bg-red-950/40 border-red-800/50 text-red-300'
+                              : 'bg-red-50 border-red-200 text-red-700'
+                          }`}
+                        >
+                          <AlertCircle className="w-4 h-4 text-red-500 shrink-0" />
+                          <span>{resetError}</span>
+                        </div>
+                      )}
 
-                    <div className="space-y-1 text-[11px]">
-                      <div className={`font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                        Bpk. Hendra Gunawan, S.T.
+                      <div>
+                        <label
+                          className={`block text-[11px] font-bold uppercase tracking-wider mb-1 font-mono ${
+                            isDark ? 'text-neutral-300' : 'text-slate-700'
+                          }`}
+                        >
+                          Email Gmail Terdaftar
+                        </label>
+                        <div className="relative">
+                          <Mail className="w-4 h-4 absolute left-3 top-3 text-neutral-400 pointer-events-none" />
+                          <input
+                            type="email"
+                            required
+                            value={resetEmail}
+                            onChange={(e) => setResetEmail(e.target.value)}
+                            placeholder="Contoh: superadmin@ptbas.co.id"
+                            className={`w-full text-xs pl-9 pr-3 py-2.5 rounded-xl border transition-colors outline-none focus:ring-1 focus:ring-[#F4511E] ${
+                              isDark
+                                ? 'bg-[#121824] border-[#22314A] text-white placeholder-neutral-500 focus:border-[#F4511E]'
+                                : 'bg-slate-50 border-slate-300 text-slate-900 placeholder-slate-400 focus:border-[#F4511E]'
+                            }`}
+                          />
+                        </div>
                       </div>
-                      <div className={`text-[10px] ${isDark ? 'text-neutral-500' : 'text-slate-400'}`}>
-                        DISPATCH-LEAD-PIT4
+
+                      <button
+                        type="submit"
+                        disabled={resetSubmitting}
+                        className="w-full py-2.5 px-4 rounded-xl bg-[#F4511E] hover:bg-[#d84315] text-white text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md disabled:opacity-50"
+                      >
+                        {resetSubmitting ? (
+                          <>
+                            <RefreshCw className="w-4 h-4 animate-spin" />
+                            <span>Mengirim Tautan ke Gmail...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Mail className="w-4 h-4" />
+                            <span>Kirim Tautan Reset Password</span>
+                          </>
+                        )}
+                      </button>
+
+                      {/* Subtle Help note */}
+                      <div
+                        className={`pt-3 border-t text-[11px] leading-relaxed ${
+                          isDark ? 'border-[#192436] text-neutral-400' : 'border-slate-200 text-slate-500'
+                        }`}
+                      >
+                        <div className="font-semibold text-[#F4511E] mb-0.5">Bantuan Lapangan Tambang:</div>
+                        Radio Dispatch: <strong>CH 09 / 148.550 MHz</strong> | Hotline Supervisor:{' '}
+                        <strong>+62 811-5409-8821</strong>
                       </div>
-                      <div className="text-[#F4511E] font-bold">+62 811-5409-8821</div>
-                    </div>
+                    </form>
+                  ) : (
+                    <div className="space-y-4 py-2">
+                      <div className="text-center space-y-2">
+                        <div className="w-12 h-12 mx-auto rounded-full bg-emerald-500/20 text-emerald-500 flex items-center justify-center">
+                          <CheckCircle2 className="w-7 h-7" />
+                        </div>
+                        <h4
+                          className={`text-sm font-bold ${
+                            isDark ? 'text-white' : 'text-slate-900'
+                          }`}
+                        >
+                          Tautan Reset Telah Diproses!
+                        </h4>
+                        <p
+                          className={`text-xs leading-relaxed ${
+                            isDark ? 'text-neutral-300' : 'text-slate-600'
+                          }`}
+                        >
+                          {resetSentInfo.message}
+                        </p>
+                      </div>
 
-                    <div className={`pt-2 border-t flex items-center justify-between text-[10px] ${isDark ? 'border-[#141C2B]' : 'border-slate-200'}`}>
-                      <span className={isDark ? 'text-neutral-400' : 'text-slate-600'}>Security Gate Pos 01:</span>
-                      <span className="text-emerald-500 font-bold">+62 812-7019-3304</span>
-                    </div>
-                  </div>
+                      {resetSentInfo.resetUrl && (
+                        <div
+                          className={`p-3.5 rounded-xl border space-y-2 text-xs font-mono ${
+                            isDark
+                              ? 'bg-[#0E1522] border-[#22334D] text-neutral-300'
+                              : 'bg-orange-50 border-orange-200 text-slate-800'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="text-[10px] font-bold text-[#F4511E] uppercase">
+                              Tautan Reset URL (Direct Access)
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                navigator.clipboard.writeText(resetSentInfo.resetUrl);
+                                addToast('Tautan reset password berhasil disalin!', 'success');
+                              }}
+                              className="p-1 rounded hover:bg-black/20 text-neutral-400 hover:text-white cursor-pointer"
+                              title="Salin Tautan"
+                            >
+                              <Copy className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                          <div className="text-[11px] truncate select-all opacity-90">
+                            {resetSentInfo.resetUrl}
+                          </div>
 
-                  <div className={`text-[11px] flex items-center gap-2 ${isDark ? 'text-neutral-400' : 'text-slate-600'}`}>
-                    <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
-                    <span>Sandi default site: <strong>admin123</strong> (Admin) atau <strong>superadmin123</strong> (Super Admin).</span>
-                  </div>
+                          <div className="pt-2">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setShowForgotPasswordModal(false);
+                                const tokenQuery = resetSentInfo.resetUrl.split('?')[1];
+                                navigate(`/reset-password?${tokenQuery}`);
+                              }}
+                              className="w-full py-2 px-3 rounded-lg bg-[#F4511E] hover:bg-[#d84315] text-white text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer font-sans shadow-sm"
+                            >
+                              <span>Buka Halaman Reset Sekarang</span>
+                              <ExternalLink className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
 
-                <div className={`p-3.5 border-t flex justify-end ${isDark ? 'bg-[#080C14] border-[#182336]' : 'bg-slate-50 border-slate-200'}`}>
+                {/* Footer */}
+                <div
+                  className={`p-3.5 border-t flex justify-end ${
+                    isDark ? 'bg-[#080C14] border-[#182336]' : 'bg-slate-50 border-slate-200'
+                  }`}
+                >
                   <button
                     type="button"
                     onClick={() => setShowForgotPasswordModal(false)}
-                    className={`px-4 py-2 rounded-xl text-xs font-bold transition-colors cursor-pointer ${isDark ? 'bg-[#162030] hover:bg-[#1E2B40] text-white' : 'bg-slate-200 hover:bg-slate-300 text-slate-800'
-                      }`}
+                    className={`px-4 py-2 rounded-xl text-xs font-bold transition-colors cursor-pointer ${
+                      isDark
+                        ? 'bg-[#162030] hover:bg-[#1E2B40] text-white'
+                        : 'bg-slate-200 hover:bg-slate-300 text-slate-800'
+                    }`}
                   >
-                    Tutup Informasi
+                    Tutup
                   </button>
                 </div>
               </motion.div>

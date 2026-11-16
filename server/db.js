@@ -32,6 +32,10 @@ export function initDb() {
       roleLabel TEXT,
       branch TEXT,
       phone TEXT,
+      birth_date TEXT,
+      gender TEXT,
+      reset_token TEXT,
+      reset_token_expires INTEGER,
       aktif INTEGER DEFAULT 1,
       created_at TEXT
     );
@@ -148,6 +152,26 @@ export function initDb() {
     );
   `);
 
+  // Safe migration for user profile & password reset fields
+  try {
+    const tableInfo = db.prepare('PRAGMA table_info(users)').all();
+    const cols = tableInfo.map((c) => c.name);
+    if (!cols.includes('birth_date')) {
+      db.exec('ALTER TABLE users ADD COLUMN birth_date TEXT;');
+    }
+    if (!cols.includes('gender')) {
+      db.exec('ALTER TABLE users ADD COLUMN gender TEXT;');
+    }
+    if (!cols.includes('reset_token')) {
+      db.exec('ALTER TABLE users ADD COLUMN reset_token TEXT;');
+    }
+    if (!cols.includes('reset_token_expires')) {
+      db.exec('ALTER TABLE users ADD COLUMN reset_token_expires INTEGER;');
+    }
+  } catch (err) {
+    console.warn('Migration users table error:', err);
+  }
+
   seedInitialData();
 }
 
@@ -165,6 +189,8 @@ function seedInitialData() {
       roleLabel: 'Super Admin',
       branch: 'Pusat & Hub Gresik',
       phone: '0811-3001-992',
+      birth_date: '1985-06-15',
+      gender: 'Laki-laki',
     },
     {
       id: 'usr-2',
@@ -175,6 +201,8 @@ function seedInitialData() {
       roleLabel: 'Admin',
       branch: 'Hub Gresik',
       phone: '0813-8899-112',
+      birth_date: '1992-04-10',
+      gender: 'Laki-laki',
     },
     {
       id: 'usr-3',
@@ -185,12 +213,14 @@ function seedInitialData() {
       roleLabel: 'Admin',
       branch: 'Hub Gresik',
       phone: '0812-4567-8901',
+      birth_date: '1995-11-20',
+      gender: 'Laki-laki',
     },
   ];
 
   const insertUser = db.prepare(`
-    INSERT INTO users (id, name, email, password, role, roleLabel, branch, phone, aktif, created_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?)
+    INSERT INTO users (id, name, email, password, role, roleLabel, branch, phone, birth_date, gender, aktif, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)
   `);
 
   for (const u of initialUsers) {
@@ -205,9 +235,22 @@ function seedInitialData() {
         u.roleLabel,
         u.branch,
         u.phone,
+        u.birth_date,
+        u.gender,
         new Date().toISOString()
       );
     }
+  }
+
+  // Ensure default superadmin has birth_date and gender populated
+  try {
+    db.prepare(`
+      UPDATE users 
+      SET birth_date = '1985-06-15', gender = 'Laki-laki' 
+      WHERE role = 'superadmin' AND (birth_date IS NULL OR gender IS NULL OR birth_date = '')
+    `).run();
+  } catch (e) {
+    // ignore
   }
 
   // Seed materials if empty

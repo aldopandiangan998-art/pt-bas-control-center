@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Navigate } from 'react-router-dom';
 import {
   ArrowLeft,
   Monitor,
@@ -16,14 +16,20 @@ import {
   Info,
   Send,
 } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { useApp } from '../../context/AppContext';
 import { Button, Badge, Card, Modal, Input, Select } from '../../components/ui';
 
 export default function SettingsPage() {
   const navigate = useNavigate();
+  const { isSuperAdmin } = useAuth();
   const { addToast } = useToast();
   const { isDark, toggleTheme } = useApp();
+
+  if (!isSuperAdmin) {
+    return <Navigate to="/" replace />;
+  }
 
   // Settings states
   const [quickLoginEnabled, setQuickLoginEnabled] = useState(true);

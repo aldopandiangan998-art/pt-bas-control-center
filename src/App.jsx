@@ -114,7 +114,14 @@ export default function App() {
                       </SuperAdminOnlyRoute>
                     }
                   />
-                  <Route path="pengaturan" element={<SettingsPage />} />
+                  <Route
+                    path="pengaturan"
+                    element={
+                      <SuperAdminOnlyRoute>
+                        <SettingsPage />
+                      </SuperAdminOnlyRoute>
+                    }
+                  />
                   <Route path="*" element={<NotFoundPage />} />
                 </Route>
               </Routes>

@@ -15,7 +15,6 @@ import {
   ChevronLeft,
   ChevronRight,
   ChevronDown,
-  UserCheck,
   HardHat,
   Mountain,
   Building2,
@@ -23,9 +22,14 @@ import {
   CreditCard,
   Users,
   Coins,
+  Sun,
+  Moon,
+  RotateCcw,
+  LogOut,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../context/ToastContext';
 import { NAV_CATEGORIES } from '../../utils/constants';
 
 const ICON_MAP = {
@@ -50,16 +54,31 @@ const ICON_MAP = {
 export default function Sidebar() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { sidebarOpen, closeMobileSidebar, sidebarCollapsed, toggleCollapseSidebar } = useApp();
-  const { currentUser, switchRole, isSuperAdmin } = useAuth();
+  const { sidebarOpen, closeMobileSidebar, sidebarCollapsed, toggleCollapseSidebar, isDark, toggleTheme } = useApp();
+  const { currentUser, isSuperAdmin, logout } = useAuth();
+  const { addToast } = useToast();
 
-  // Filter navigation items by role: Sembunyikan Pusat Laporan dan Data Master untuk role Admin
+  const handleLogout = () => {
+    logout();
+    addToast('Sesi akun telah diakhiri. Silakan masuk kembali.', 'info');
+    navigate('/login');
+  };
+
+  const handleToggleTheme = () => {
+    toggleTheme();
+    addToast(
+      `Tema diubah ke ${isDark ? 'Mode Terang (Light Mode)' : 'Mode Gelap (Dark Mode)'}`,
+      'info'
+    );
+  };
+
+  // Filter navigation items by role: Sembunyikan Pusat Laporan dan Sistem & Master untuk role Admin
   const filteredNavCategories = useMemo(() => {
     return NAV_CATEGORIES.map((cat) => ({
       ...cat,
       items: cat.items.filter((item) => {
         if (!isSuperAdmin) {
-          if (item.path === '/laporan' || item.path === '/master-data') {
+          if (item.path === '/laporan' || item.path === '/master-data' || item.path === '/pengaturan') {
             return false;
           }
         }
@@ -105,40 +124,56 @@ export default function Sidebar() {
 
       {/* Industrial Sidebar Shell */}
       <aside
-        className={`fixed lg:static top-0 bottom-0 left-0 z-50 flex flex-col bg-[#111315] border-r border-[#22262A] transition-all duration-200 select-none shrink-0 h-full max-h-full min-h-0 overflow-hidden ${
-          sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
-        } ${sidebarCollapsed ? 'lg:w-16' : 'w-60 lg:w-60'}`}
+        className={`fixed lg:static top-0 bottom-0 left-0 z-50 flex flex-col bg-[#111315] border-r border-[#22262A] transition-all duration-200 select-none shrink-0 h-full max-h-full min-h-0 overflow-hidden ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+          } ${sidebarCollapsed ? 'lg:w-16' : 'w-60 lg:w-60'}`}
       >
         {/* Top Mini Section */}
-        <div className="shrink-0 flex items-center justify-between px-3.5 py-3 border-b border-[#22262A] bg-[#0E1012]">
-          <div className="flex items-center gap-2 overflow-hidden">
-            <span className="w-6 h-6 rounded bg-[#F4511E] text-white flex items-center justify-center font-bold text-xs shrink-0 font-mono shadow-xs">
-              B
-            </span>
-            {!sidebarCollapsed && (
-              <span className="text-xs font-bold text-neutral-300 tracking-wider uppercase font-mono">
-                Modul Operasi
-              </span>
-            )}
-          </div>
+        <div
+          className={`shrink-0 flex items-center border-b border-[#22262A] bg-[#0E1012] ${
+            sidebarCollapsed ? 'justify-center p-2.5' : 'justify-between px-3.5 py-3'
+          }`}
+        >
+          {!sidebarCollapsed ? (
+            <>
+              <div className="flex items-center gap-2 overflow-hidden">
+                <span className="w-6 h-6 rounded bg-[#F4511E] text-white flex items-center justify-center font-bold text-xs shrink-0 font-mono shadow-xs">
+                  B
+                </span>
+                <span className="text-xs font-bold text-neutral-300 tracking-wider uppercase font-mono truncate">
+                  Modul Operasi
+                </span>
+              </div>
 
-          <button
-            type="button"
-            onClick={closeMobileSidebar}
-            className="lg:hidden p-1 text-neutral-400 hover:text-white cursor-pointer"
-            aria-label="Tutup Menu"
-          >
-            <X className="w-4 h-4" />
-          </button>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={closeMobileSidebar}
+                  className="lg:hidden p-1 text-neutral-400 hover:text-white cursor-pointer"
+                  aria-label="Tutup Menu"
+                >
+                  <X className="w-4 h-4" />
+                </button>
 
-          <button
-            type="button"
-            onClick={toggleCollapseSidebar}
-            className="hidden lg:flex p-1 rounded text-neutral-400 hover:text-white hover:bg-neutral-800 transition-colors cursor-pointer"
-            title={sidebarCollapsed ? 'Perluas Sidebar' : 'Persempit Sidebar'}
-          >
-            {sidebarCollapsed ? <ChevronRight className="w-3.5 h-3.5" /> : <ChevronLeft className="w-3.5 h-3.5" />}
-          </button>
+                <button
+                  type="button"
+                  onClick={toggleCollapseSidebar}
+                  className="hidden lg:flex p-1 rounded text-neutral-400 hover:text-white hover:bg-neutral-800 transition-colors cursor-pointer"
+                  title="Persempit Sidebar"
+                >
+                  <ChevronLeft className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </>
+          ) : (
+            <button
+              type="button"
+              onClick={toggleCollapseSidebar}
+              className="w-8 h-8 rounded-lg bg-[#16181B] hover:bg-neutral-800 border border-[#22262A] flex items-center justify-center text-neutral-300 hover:text-white transition-colors cursor-pointer"
+              title="Perluas Sidebar"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          )}
         </div>
 
         {/* Categorized Navigation Item List */}
@@ -182,14 +217,18 @@ export default function Sidebar() {
                           role="button"
                           tabIndex={0}
                           onKeyDown={(e) => e.key === 'Enter' && toggleSubmenu(link.path)}
-                          className={`sidebar-submenu-trigger flex items-center justify-between px-2.5 py-2 rounded text-xs font-medium transition-all duration-150 group cursor-pointer ${
+                          className={`sidebar-submenu-trigger flex items-center rounded text-xs font-medium transition-all duration-150 group cursor-pointer ${
+                            sidebarCollapsed
+                              ? 'justify-center w-10 h-10 mx-auto'
+                              : 'justify-between px-2.5 py-2'
+                          } ${
                             isParentActive
                               ? 'sidebar-parent-active bg-[#1D2125] text-white font-semibold shadow-xs'
                               : 'text-neutral-400 hover:text-neutral-100 hover:bg-[#181B1E]'
                           }`}
                           title={sidebarCollapsed ? `${link.label} (${link.children.length} sub-item)` : link.description}
                         >
-                          <div className="flex items-center gap-2.5 min-w-0">
+                          <div className={`flex items-center ${sidebarCollapsed ? 'justify-center' : 'gap-2.5 min-w-0'}`}>
                             <Icon className={`w-4 h-4 shrink-0 transition-colors ${isParentActive ? 'text-[#F4511E]' : 'group-hover:scale-105'}`} />
                             {!sidebarCollapsed && (
                               <span className="truncate leading-none tracking-tight">{link.label}</span>
@@ -202,9 +241,8 @@ export default function Sidebar() {
                                 {link.children.length}
                               </span>
                               <ChevronDown
-                                className={`w-3.5 h-3.5 text-neutral-400 transition-transform duration-200 ${
-                                  isSubmenuOpen ? 'rotate-180 text-white' : ''
-                                }`}
+                                className={`w-3.5 h-3.5 text-neutral-400 transition-transform duration-200 ${isSubmenuOpen ? 'rotate-180 text-white' : ''
+                                  }`}
                               />
                             </div>
                           )}
@@ -225,19 +263,17 @@ export default function Sidebar() {
                                     navigate(child.path);
                                     closeMobileSidebar();
                                   }}
-                                  className={`sidebar-child-item w-full flex items-center justify-between px-2 py-1.5 rounded text-[11px] transition-all text-left group cursor-pointer ${
-                                    isChildActive
-                                      ? 'active bg-[#F4511E]/20 text-[#FF7043] font-semibold border-l-2 border-[#F4511E]'
-                                      : 'text-neutral-400 hover:text-neutral-200 hover:bg-[#151D28]'
-                                  }`}
+                                  className={`sidebar-child-item w-full flex items-center justify-between px-2 py-1.5 rounded text-[11px] transition-all text-left group cursor-pointer ${isChildActive
+                                    ? 'active bg-[#F4511E]/20 text-[#FF7043] font-semibold border-l-2 border-[#F4511E]'
+                                    : 'text-neutral-400 hover:text-neutral-200 hover:bg-[#151D28]'
+                                    }`}
                                 >
                                   <div className="flex items-center gap-2 truncate">
                                     <ChildIcon
-                                      className={`w-3.5 h-3.5 shrink-0 ${
-                                        isChildActive
-                                          ? 'text-[#FF7043]'
-                                          : 'text-neutral-500 group-hover:text-neutral-300'
-                                      }`}
+                                      className={`w-3.5 h-3.5 shrink-0 ${isChildActive
+                                        ? 'text-[#FF7043]'
+                                        : 'text-neutral-500 group-hover:text-neutral-300'
+                                        }`}
                                     />
                                     <span className="truncate">{child.label}</span>
                                   </div>
@@ -260,7 +296,11 @@ export default function Sidebar() {
                       to={link.path}
                       onClick={closeMobileSidebar}
                       className={({ isActive }) =>
-                        `flex items-center gap-2.5 px-2.5 py-2 rounded text-xs font-medium transition-all duration-150 group cursor-pointer ${
+                        `flex items-center rounded text-xs font-medium transition-all duration-150 group cursor-pointer ${
+                          sidebarCollapsed
+                            ? 'justify-center w-10 h-10 mx-auto'
+                            : 'gap-2.5 px-2.5 py-2'
+                        } ${
                           isActive
                             ? 'bg-[#151D28] text-[#FF7043] font-semibold border-l-2 border-[#F4511E] shadow-xs'
                             : 'text-neutral-400 hover:text-neutral-100 hover:bg-[#151D28]'
@@ -280,28 +320,159 @@ export default function Sidebar() {
           ))}
         </nav>
 
-        {/* Bottom Role Switcher Panel (Strictly Admin and Superadmin) */}
-        <div className="shrink-0 p-2.5 border-t border-[#1E2B3C] bg-[#0B0F17]">
+        {/* Bottom Consolidated User Profile & Control Toggles */}
+        <div className="shrink-0 border-t border-[#1E2B3C] bg-[#0B0F17]">
           {!sidebarCollapsed ? (
-            <div className="space-y-1">
-              <div className="flex items-center gap-1.5 text-[10px] text-neutral-400 font-medium">
-                <UserCheck className="w-3 h-3 text-[#F4511E]" />
-                <span>Simulasi Peran Aktif:</span>
-              </div>
-              <select
-                value={currentUser?.role === 'superadmin' ? 'superadmin' : 'admin'}
-                onChange={(e) => switchRole(e.target.value)}
-                className="w-full text-[11px] bg-[#131B26] border border-[#1E2B3C] text-neutral-200 rounded px-2 py-1.5 focus:outline-none focus:border-[#F4511E] font-medium cursor-pointer"
+            <div className="p-3 space-y-2.5">
+              {/* User Profile Block */}
+              <div
+                onClick={() => isSuperAdmin && navigate('/pengaturan')}
+                className={`flex items-center justify-between gap-2 ${
+                  isSuperAdmin ? 'cursor-pointer group' : 'cursor-default'
+                }`}
+                title={isSuperAdmin ? 'Buka Pengaturan Akun' : `Profil: ${currentUser?.name || 'Admin'}`}
               >
-                <option value="superadmin">Super Admin (Direktur)</option>
-                <option value="admin">Admin (Operasional Gresik)</option>
-              </select>
+                <div className="flex items-center gap-2 min-w-0">
+                  <div className="w-7 h-7 rounded-full border border-sky-400/30 bg-[#162B45] flex items-center justify-center text-[10px] font-bold text-sky-300 shrink-0">
+                    {currentUser?.name ? currentUser.name.split(' ').map((n) => n[0]).join('').slice(0, 2) : 'U'}
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-xs font-semibold text-white truncate leading-tight group-hover:text-amber-300 transition-colors">
+                      {currentUser?.name || 'Pengguna'}
+                    </div>
+                    <div className="text-[10px] text-neutral-400 font-mono truncate leading-none mt-0.5">
+                      {currentUser?.email || '-'}
+                    </div>
+                  </div>
+                </div>
+                <span
+                  className={`text-[9px] font-bold font-mono px-1.5 py-0.5 rounded uppercase tracking-wider shrink-0 ${
+                    isSuperAdmin
+                      ? 'bg-[#F4511E]/20 text-[#FF7043] border border-[#F4511E]/40'
+                      : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
+                  }`}
+                >
+                  {isSuperAdmin ? 'Super Admin' : 'Admin'}
+                </span>
+              </div>
+
+              {/* Consolidated Functional Tool Toggles */}
+              <div className="flex items-center justify-between pt-2 border-t border-[#1E2B3C]/80">
+                <div className="flex items-center gap-1">
+                  {/* Theme Mode Toggle */}
+                  <button
+                    type="button"
+                    onClick={handleToggleTheme}
+                    className="p-1.5 rounded bg-[#131B26] hover:bg-[#1A2332] text-neutral-300 hover:text-white transition-colors cursor-pointer border border-[#1E2838]"
+                    title={isDark ? 'Beralih ke Mode Terang (Light Mode)' : 'Beralih ke Mode Gelap (Dark Mode)'}
+                    aria-label="Ubah Tema Tampilan"
+                  >
+                    {isDark ? (
+                      <Sun className="w-3.5 h-3.5 text-amber-300" />
+                    ) : (
+                      <Moon className="w-3.5 h-3.5 text-amber-500" />
+                    )}
+                  </button>
+
+                  {/* Riwayat Transaksi (Jurnal GI) */}
+                  <button
+                    type="button"
+                    onClick={() => navigate('/rekapan')}
+                    className="p-1.5 rounded bg-[#131B26] hover:bg-[#1A2332] text-neutral-300 hover:text-white transition-colors cursor-pointer border border-[#1E2838]"
+                    title="Riwayat Transaksi (Jurnal GI)"
+                    aria-label="Riwayat Transaksi"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" />
+                  </button>
+
+                  {/* Pengaturan Sistem (Super Admin Only) */}
+                  {isSuperAdmin && (
+                    <button
+                      type="button"
+                      onClick={() => navigate('/pengaturan')}
+                      className="p-1.5 rounded bg-[#131B26] hover:bg-[#1A2332] text-neutral-300 hover:text-white transition-colors cursor-pointer border border-[#1E2838]"
+                      title="Konfigurasi Sistem & Pengaturan"
+                      aria-label="Pengaturan"
+                    >
+                      <Settings className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+
+                {/* Logout Button */}
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  className="p-1.5 rounded bg-[#131B26] hover:bg-rose-900/60 text-rose-300 hover:text-white transition-colors cursor-pointer border border-[#1E2838]"
+                  title="Keluar dari Akun (Logout)"
+                  aria-label="Keluar"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                </button>
+              </div>
             </div>
           ) : (
-            <div className="text-center py-1" title={`Role aktif: ${currentUser?.role}`}>
-              <span className="text-[10px] font-bold text-[#FF7043] font-mono px-1.5 py-0.5 rounded bg-black/40 border border-[#1E2B3C]">
-                {currentUser?.role === 'superadmin' ? 'SA' : 'AD'}
-              </span>
+            /* Collapsed / Closed Sidebar State (w-16 = 64px, neat vertical alignment) */
+            <div className="py-2.5 px-1 flex flex-col items-center gap-1.5">
+              {/* Avatar with Role Tooltip */}
+              <div
+                onClick={() => isSuperAdmin && navigate('/pengaturan')}
+                className={`w-8 h-8 rounded-full border border-sky-400/40 bg-[#162B45] flex items-center justify-center text-[11px] font-bold text-sky-300 shrink-0 shadow-xs ${
+                  isSuperAdmin ? 'cursor-pointer hover:border-amber-400/60' : 'cursor-default'
+                }`}
+                title={`${currentUser?.name || 'Pengguna'} (${isSuperAdmin ? 'Super Admin' : 'Admin'})`}
+              >
+                {currentUser?.name ? currentUser.name.split(' ').map((n) => n[0]).join('').slice(0, 2) : 'U'}
+              </div>
+
+              <div className="w-6 border-t border-[#1E2B3C] my-0.5" />
+
+              {/* Vertical Stack of Toggles */}
+              <button
+                type="button"
+                onClick={handleToggleTheme}
+                className="w-8 h-8 rounded-md flex items-center justify-center hover:bg-neutral-800 text-neutral-300 hover:text-white transition-colors cursor-pointer"
+                title={isDark ? 'Mode Terang' : 'Mode Gelap'}
+                aria-label="Ubah Tema"
+              >
+                {isDark ? (
+                  <Sun className="w-3.5 h-3.5 text-amber-300" />
+                ) : (
+                  <Moon className="w-3.5 h-3.5 text-amber-500" />
+                )}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => navigate('/rekapan')}
+                className="w-8 h-8 rounded-md flex items-center justify-center hover:bg-neutral-800 text-neutral-300 hover:text-white transition-colors cursor-pointer"
+                title="Riwayat Transaksi (Jurnal GI)"
+                aria-label="Riwayat Transaksi"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+              </button>
+
+              {isSuperAdmin && (
+                <button
+                  type="button"
+                  onClick={() => navigate('/pengaturan')}
+                  className="w-8 h-8 rounded-md flex items-center justify-center hover:bg-neutral-800 text-neutral-300 hover:text-white transition-colors cursor-pointer"
+                  title="Pengaturan Sistem"
+                  aria-label="Pengaturan"
+                >
+                  <Settings className="w-3.5 h-3.5" />
+                </button>
+              )}
+
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="w-8 h-8 rounded-md flex items-center justify-center hover:bg-rose-950/60 text-rose-400 hover:text-rose-200 transition-colors cursor-pointer"
+                title="Keluar (Logout)"
+                aria-label="Keluar"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+              </button>
             </div>
           )}
         </div>

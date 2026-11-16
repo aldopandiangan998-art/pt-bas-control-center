@@ -1227,44 +1227,69 @@ body, aside, header, main, .card {
 /* ======================================================== */
 /* TITAN FLEET COMMAND - HIGH TECH MINING AUTH PORTAL       */
 /* ======================================================== */
-.titan-portal {
-  background-color: #06090F;
+.titan-portal, .portal-bg {
+  background-color: #070B12;
   background-image: 
-    radial-gradient(circle at 50% 0%, rgba(244, 81, 30, 0.09) 0%, transparent 60%),
-    radial-gradient(circle at 85% 30%, rgba(14, 165, 233, 0.05) 0%, transparent 50%),
-    radial-gradient(circle at 15% 70%, rgba(245, 158, 11, 0.04) 0%, transparent 50%),
-    linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
-  background-size: 100% 100%, 100% 100%, 100% 100%, 28px 28px, 28px 28px;
+    radial-gradient(circle at 50% 0%, rgba(244, 81, 30, 0.14) 0%, transparent 65%),
+    radial-gradient(circle at 85% 25%, rgba(251, 140, 0, 0.06) 0%, transparent 45%),
+    radial-gradient(rgba(244, 81, 30, 0.15) 1.2px, transparent 1.2px);
+  background-size: 100% 100%, 100% 100%, 20px 20px;
 }
 
-.titan-card {
-  background-color: #0B0F19;
-  border: 1px solid #1A2436;
+.titan-card, .portal-card {
+  background-color: #0E1522;
+  background-image: linear-gradient(180deg, rgba(20, 30, 48, 0.6) 0%, rgba(10, 15, 25, 0.8) 100%);
+  border: 1px solid #1E2D44;
 }
 
-.titan-input-box {
-  background-color: #070A12;
-  border: 1px solid #1A2436;
+.titan-input-box, .portal-input-box {
+  background-color: #060A12;
+  border: 1px solid #1B293E;
   color: #FFFFFF;
   transition: all 0.15s ease;
 }
 
-.titan-input-box:focus-within {
+.titan-input-box:focus-within, .portal-input-box:focus-within {
   border-color: #F4511E;
   box-shadow: 0 0 0 2px rgba(244, 81, 30, 0.25);
 }
 
-.titan-btn-gold {
-  background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%);
-  color: #0A0D14;
+.titan-btn-gold, .portal-btn-primary {
+  background: linear-gradient(135deg, #F4511E 0%, #FB8C00 100%);
+  color: #FFFFFF;
   font-weight: 800;
   transition: all 0.2s ease;
+  box-shadow: 0 4px 18px rgba(244, 81, 30, 0.4);
 }
 
-.titan-btn-gold:hover {
-  background: linear-gradient(135deg, #FBBF24 0%, #F59E0B 100%);
-  box-shadow: 0 4px 20px -2px rgba(245, 158, 11, 0.4);
+.titan-btn-gold:hover, .portal-btn-primary:hover {
+  background: linear-gradient(135deg, #FF6E40 0%, #FB8C00 100%);
+  box-shadow: 0 6px 24px rgba(244, 81, 30, 0.55);
   transform: translateY(-1px);
 }
+
+/* Light mode overrides for portal auth */
+[data-theme="light"] .portal-bg,
+.light .portal-bg {
+  background-color: #F1F5F9;
+  background-image: 
+    radial-gradient(circle at 50% 0%, rgba(244, 81, 30, 0.08) 0%, transparent 60%),
+    radial-gradient(rgba(244, 81, 30, 0.1) 1.2px, transparent 1.2px);
+  background-size: 100% 100%, 20px 20px;
+}
+
+[data-theme="light"] .portal-input-box,
+.light .portal-input-box {
+  background-color: #FFFFFF !important;
+  border-color: #CBD5E1 !important;
+  color: #0F172A !important;
+}
+
+[data-theme="light"] .portal-input-box:focus-within,
+.light .portal-input-box:focus-within {
+  border-color: #F4511E !important;
+  box-shadow: 0 0 0 2px rgba(244, 81, 30, 0.2) !important;
+}
+
+
 

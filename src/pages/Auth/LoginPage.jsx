@@ -1,5 +1,5 @@
-import { useState, useMemo } from 'react';
-import { useNavigate, useLocation, Link } from 'react-router-dom';
+import { useState, useMemo, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   LogIn,
@@ -7,83 +7,98 @@ import {
   Lock,
   Eye,
   EyeOff,
-  ShieldCheck,
-  AlertTriangle,
   ArrowRight,
-  Scale,
-  Truck,
-  Activity,
-  Radio,
-  Building2,
-  FileCheck,
-  Gauge,
-  Cpu,
-  CheckCircle2,
-  X,
-  Phone,
-  User,
-  Sparkles,
   RefreshCw,
+  X,
+  HelpCircle,
+  AlertCircle,
+  CheckCircle2,
+  Sun,
+  Moon,
+  User,
+  Calendar,
+  Phone,
+  ChevronLeft,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
+import { useApp } from '../../context/AppContext';
+import MiningPitInteractiveBg from '../../components/common/MiningPitInteractiveBg';
 
-export default function LoginPage() {
+export default function LoginPage({ defaultMode = null }) {
   const navigate = useNavigate();
   const location = useLocation();
   const { login, register } = useAuth();
   const { addToast } = useToast();
+  const { isDark, setTheme, toggleTheme } = useApp();
 
-  // Mode: 'login' (Masuk Portal) or 'register' (Registrasi Armada Baru)
-  const [mode, setMode] = useState(
-    location.pathname === '/register' ? 'register' : 'login'
-  );
+  // Mode: 'login' or 'register'
+  const [mode, setMode] = useState(() => {
+    if (defaultMode) return defaultMode;
+    return location.pathname === '/register' ? 'register' : 'login';
+  });
 
-  // Weighbridge telemetry modal state
-  const [showWeighbridgeModal, setShowWeighbridgeModal] = useState(false);
+  useEffect(() => {
+    if (location.pathname === '/register') {
+      setMode('register');
+    } else if (location.pathname === '/login') {
+      setMode('login');
+    }
+  }, [location.pathname]);
 
-  // Login form state
+  const switchToMode = (newMode) => {
+    setMode(newMode);
+    setErrorMessage('');
+    if (newMode === 'register' && location.pathname !== '/register') {
+      navigate('/register');
+    } else if (newMode === 'login' && location.pathname !== '/login') {
+      navigate('/login');
+    }
+  };
+
+  // Form states
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [complianceChecked, setComplianceChecked] = useState(true);
+  const [rememberSession, setRememberSession] = useState(true);
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
-  // Register form state (Formulir Registrasi Armada Baru)
-  const [regData, setRegData] = useState({
-    vendorName: '',
-    driverName: '',
-    simperNumber: '',
-    hullNumber: '',
-    vehicleType: 'Tronton Dump Index 28 (32.5 m³)',
-    email: '',
-    password: '',
-  });
+  // Modals
+  const [showForgotPasswordModal, setShowForgotPasswordModal] = useState(false);
 
-  // Password requirements calculation
+  // Registration Form State matching reference UI
+  const [regData, setRegData] = useState({
+    fullName: '',
+    email: '',
+    birthDate: '',
+    gender: 'Laki-Laki',
+    phone: '',
+    password: '',
+    confirmPassword: '',
+    agreeTerms: false,
+  });
+  const [showRegPassword, setShowRegPassword] = useState(false);
+  const [showRegConfirmPassword, setShowRegConfirmPassword] = useState(false);
+  const [birthDateFocused, setBirthDateFocused] = useState(false);
+
+  // Password validation
   const pwdToCheck = mode === 'login' ? loginPassword : regData.password;
   const pwdValidation = useMemo(() => {
     return {
       minLen: pwdToCheck.length >= 8,
       hasUpper: /[A-Z]/.test(pwdToCheck),
       hasNumber: /[0-9]/.test(pwdToCheck),
-      hasSpecial: /[^A-Za-z0-9]/.test(pwdToCheck),
     };
   }, [pwdToCheck]);
 
-  // Submit Login
+  // Handle Login Submit
   const handleLoginSubmit = async (e) => {
     e.preventDefault();
     setErrorMessage('');
 
     if (!loginEmail || !loginPassword) {
-      setErrorMessage('Harap isi alamat email operasional dan kata sandi.');
-      return;
-    }
-
-    if (!complianceChecked) {
-      setErrorMessage('Harap setujui deklarasi kepatuhan keselamatan operasi tambang.');
+      setErrorMessage('Harap isi alamat email operasional dan kata sandi site.');
       return;
     }
 
@@ -100,26 +115,36 @@ export default function LoginPage() {
         );
         navigate('/');
       } else {
-        setErrorMessage(res?.message || 'Email atau kata sandi tidak valid.');
+        setErrorMessage(res?.message || 'Email operasional atau kata sandi tidak valid.');
       }
     } catch (err) {
       setLoading(false);
-      setErrorMessage('Terjadi kendala saat proses autentikasi terminal. Silakan coba kembali.');
+      setErrorMessage('Kendala koneksi ke server dispatch site. Silakan coba kembali.');
     }
   };
 
-  // Submit Registration
+  // Handle Register Submit
   const handleRegisterSubmit = async (e) => {
     e.preventDefault();
     setErrorMessage('');
 
-    if (!regData.vendorName || !regData.driverName || !regData.email || !regData.password) {
-      setErrorMessage('Harap lengkapi semua field registrasi wajib.');
+    if (!regData.fullName || !regData.email || !regData.password) {
+      setErrorMessage('Harap lengkapi nama lengkap, email, dan kata sandi.');
       return;
     }
 
-    if (!complianceChecked) {
-      setErrorMessage('Harap setujui deklarasi kepatuhan keselamatan operasi tambang.');
+    if (regData.password.length < 6) {
+      setErrorMessage('Kata sandi minimal 6 karakter.');
+      return;
+    }
+
+    if (regData.password !== regData.confirmPassword) {
+      setErrorMessage('Kata sandi dan masukkan ulang kata sandi tidak cocok.');
+      return;
+    }
+
+    if (!regData.agreeTerms) {
+      setErrorMessage('Anda harus menyetujui Ketentuan Layanan dan Kebijakan Privasi.');
       return;
     }
 
@@ -127,10 +152,10 @@ export default function LoginPage() {
 
     try {
       const res = await register({
-        name: `${regData.vendorName} - ${regData.driverName}`,
+        name: regData.fullName,
         email: regData.email,
-        phone: regData.simperNumber || '0812-3456-7890',
-        branch: `Armada [${regData.hullNumber || 'HAUL-UNIT'}] // ${regData.vehicleType}`,
+        phone: regData.phone ? `+62${regData.phone.replace(/^0+/, '')}` : '-',
+        branch: `Site [${regData.gender}] // Tgl: ${regData.birthDate || '-'}`,
         password: regData.password,
       });
 
@@ -139,16 +164,16 @@ export default function LoginPage() {
       if (res && res.success) {
         if (res.pendingApproval) {
           addToast(
-            'Pengajuan registrasi armada berhasil dikirim. Menunggu persetujuan (approval) dari Super Admin.',
+            'Pendaftaran berhasil dikirim. Menunggu verifikasi dari Super Admin.',
             'info'
           );
         } else {
           addToast(
-            'Pengajuan registrasi armada berhasil diverifikasi oleh Mining Dispatch.',
+            'Pendaftaran berhasil! Akun Anda telah aktif.',
             'success'
           );
         }
-        setMode('login');
+        switchToMode('login');
         setLoginEmail(regData.email);
         setLoginPassword(regData.password);
       } else {
@@ -156,803 +181,594 @@ export default function LoginPage() {
       }
     } catch (err) {
       setLoading(false);
-      setErrorMessage('Kendala koneksi ke server dispatch. Silakan coba kembali.');
+      setErrorMessage('Gagal menghubungi node dispatch. Silakan coba kembali.');
     }
   };
 
-  return (
-    <div className="min-h-screen titan-portal text-neutral-200 flex flex-col justify-center selection:bg-[#F59E0B] selection:text-black py-6 sm:py-10">
-      {/* ======================================================== */}
-      {/* MAIN SPLIT CONTENT (LEFT INFO & RIGHT FORM)              */}
-      {/* ======================================================== */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 w-full flex-1 flex flex-col justify-center">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-start">
-          {/* ==================================================== */}
-          {/* LEFT COLUMN: PROGRAM & OPERATIONAL TELEMETRY        */}
-          {/* ==================================================== */}
-          <div className="lg:col-span-6 xl:col-span-5 space-y-4">
-            {/* Brand Logo & Telemetry Tag */}
-            <div className="flex items-center justify-between pb-1">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded bg-gradient-to-br from-[#1C2434] to-[#0E1522] border border-[#2D3B54] flex items-center justify-center shadow-inner">
-                  <svg viewBox="0 0 24 24" className="w-5 h-5 text-white" fill="currentColor">
-                    <path d="M12 2L2 22h20L12 2zm0 4.5l6.5 13H5.5L12 6.5z" fill="#FFFFFF" opacity="0.9" />
-                    <polygon points="12,9 15.5,16 8.5,16" fill="#F59E0B" />
-                  </svg>
-                </div>
-                <div className="flex flex-col">
-                  <span className="font-mono font-black text-xs tracking-widest text-white uppercase flex items-center gap-1.5">
-                    TITAN FLEET
-                    <span className="text-[#F59E0B] text-[10px]">PT BAS</span>
-                  </span>
-                  <span className="text-[9px] font-mono text-neutral-500">
-                    DISPATCH NODE: GRESIK HUB // SEKTOR PIT-04
-                  </span>
-                </div>
-              </div>
+  // Top-Right Corner Theme Toggle Controller (Pojok Kanan Atas)
+  const topThemeToggle = (
+    <div
+      className={`inline-flex items-center p-1 rounded-full border shadow-2xl backdrop-blur-xl transition-all duration-300 select-none ${isDark
+        ? 'bg-[#0B1019]/90 border-[#1E2D44] shadow-black/50'
+        : 'bg-white/95 border-slate-300 shadow-slate-200/80'
+        }`}
+      role="group"
+      aria-label="Pilih Mode Tema Tampilan"
+    >
+      {/* Tombol Terang (Light Mode) */}
+      <button
+        type="button"
+        onClick={() => {
+          if (isDark) {
+            setTheme('light');
+            addToast('Beralih ke Mode Terang (Light Mode)', 'info');
+          }
+        }}
+        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-mono font-bold transition-all cursor-pointer ${!isDark
+          ? 'bg-amber-500 text-white shadow-sm'
+          : 'text-neutral-400 hover:text-white'
+          }`}
+        title="Aktifkan Mode Terang"
+      >
+        <Sun className="w-3.5 h-3.5" />
+        <span>Terang</span>
+      </button>
 
-              <div className="flex items-center gap-2 font-mono text-[10px]">
-                <div className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-[#0E1522] border border-[#1E2B40] text-neutral-400">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                  <span className="text-white font-bold">ONLINE</span>
-                  <span className="text-sky-400 text-[9px] ml-1">14MS</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Program Badge */}
-            <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded bg-[#0D1422] border border-[#1E2D44] text-[10px] font-mono uppercase tracking-wider text-neutral-300">
-              <Cpu className="w-3 h-3 text-[#F59E0B]" />
-              <span>PROGRAM INTEGRASI ARMADA LOGISTIK TAMBANG 2025</span>
-            </div>
-
-            {/* Giant Headline */}
-            <div>
-              <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight leading-tight">
-                {mode === 'register'
-                  ? 'Pendaftaran Vendor & Unit Pengangkutan Tambang'
-                  : 'Pusat Kontrol & Otorisasi Pengangkutan Tambang'}
-              </h1>
-              <p className="text-xs sm:text-[13px] text-neutral-400 mt-2 leading-relaxed">
-                Akses langsung jalur hauling terproteksi, weighbridge real-time telemetri, dan validasi unit tanpa hambatan birokrasi manual. Pengajuan Anda diverifikasi instan oleh Supervisor Dispatch Lapangan.
-              </p>
-            </div>
-
-            {/* Hero Visual Card (Monitor Kelayakan Armada) */}
-            <div className="relative rounded-lg overflow-hidden border border-[#1B2538] bg-gradient-to-b from-[#0E1420] via-[#090D15] to-[#06080D] h-36 sm:h-40 flex flex-col justify-between p-3.5 shadow-lg group">
-              {/* Technical Blueprint Vector Render (Hauling Quarry Truck at Dusk) */}
-              <div className="absolute inset-0 opacity-40 pointer-events-none overflow-hidden">
-                <svg viewBox="0 0 450 160" className="w-full h-full" preserveAspectRatio="xMidYMid slice">
-                  <defs>
-                    <linearGradient id="truckBeam" x1="0" y1="0" x2="1" y2="0">
-                      <stop offset="0%" stopColor="#F59E0B" stopOpacity="0.8" />
-                      <stop offset="70%" stopColor="#F59E0B" stopOpacity="0.1" />
-                      <stop offset="100%" stopColor="#F59E0B" stopOpacity="0" />
-                    </linearGradient>
-                    <linearGradient id="terrainGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#1C273C" />
-                      <stop offset="100%" stopColor="#0B1019" />
-                    </linearGradient>
-                  </defs>
-
-                  {/* Quarry mountain silhouette in background */}
-                  <path d="M0 80 L60 55 L130 75 L220 40 L310 65 L400 35 L450 60 L450 160 L0 160 Z" fill="url(#terrainGrad)" opacity="0.6" />
-                  
-                  {/* Grid contour scanlines */}
-                  <line x1="0" y1="90" x2="450" y2="90" stroke="#1D293E" strokeWidth="0.5" strokeDasharray="3 3" />
-                  <line x1="0" y1="120" x2="450" y2="120" stroke="#1D293E" strokeWidth="0.5" strokeDasharray="3 3" />
-                  
-                  {/* Heavy Mining Dump Truck Silhouette */}
-                  <g transform="translate(180, 50)">
-                    {/* Headlight beam shining forward */}
-                    <polygon points="120,45 280,15 280,85" fill="url(#truckBeam)" opacity="0.35" />
-                    
-                    {/* Dump Bed */}
-                    <path d="M 10 40 L 70 20 L 75 48 L 5 48 Z" fill="#2D3A50" stroke="#485B7A" strokeWidth="1" />
-                    {/* Minerals load in bed */}
-                    <path d="M 15 35 Q 40 18 68 22" stroke="#F59E0B" strokeWidth="2.5" fill="none" opacity="0.8" />
-                    
-                    {/* Truck Cabin & Chassis */}
-                    <rect x="73" y="24" width="35" height="25" rx="2" fill="#1C2638" stroke="#3A4A64" strokeWidth="1" />
-                    <polygon points="76,26 95,26 95,36 76,36" fill="#0C121C" stroke="#253245" strokeWidth="0.8" />
-                    <rect x="0" y="48" width="112" height="6" rx="1" fill="#151E2C" />
-                    
-                    {/* Massive Wheels */}
-                    <circle cx="22" cy="56" r="10" fill="#0D1118" stroke="#37455B" strokeWidth="2" />
-                    <circle cx="44" cy="56" r="10" fill="#0D1118" stroke="#37455B" strokeWidth="2" />
-                    <circle cx="95" cy="56" r="10" fill="#0D1118" stroke="#37455B" strokeWidth="2" />
-                    
-                    {/* Hub centers */}
-                    <circle cx="22" cy="56" r="3" fill="#F59E0B" />
-                    <circle cx="44" cy="56" r="3" fill="#F59E0B" />
-                    <circle cx="95" cy="56" r="3" fill="#F59E0B" />
-                  </g>
-                </svg>
-              </div>
-
-              {/* HUD Crosshairs on Top of Visual */}
-              <div className="relative z-10 flex items-center justify-between text-[9px] font-mono text-neutral-400">
-                <span className="flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                  CAM-02 // HAULING ROAD SEKTOR PIT-04
-                </span>
-                <span className="text-neutral-500">ISO 39001 COMPLIANT</span>
-              </div>
-
-              {/* Text & Badge Overlay */}
-              <div className="relative z-10 flex items-end justify-between pt-4">
-                <div>
-                  <div className="text-[10px] font-mono uppercase tracking-widest text-neutral-400">
-                    MONITOR KELAYAKAN ARMADA
-                  </div>
-                  <div className="text-xs sm:text-sm font-extrabold text-white tracking-wide font-mono uppercase mt-0.5">
-                    STANDAR ANGKUTAN KELAS EKSTRIM
-                  </div>
-                </div>
-
-                <div className="px-2.5 py-0.5 rounded bg-emerald-500/15 border border-emerald-500/40 text-emerald-400 text-[10px] font-mono font-bold tracking-wider uppercase">
-                  COMMISSIONED
-                </div>
-              </div>
-            </div>
-
-            {/* 3 Key Operational Features */}
-            <div className="space-y-2.5 pt-1">
-              {/* Feature 1: RFID Weighbridge */}
-              <div
-                onClick={() => setShowWeighbridgeModal(true)}
-                className="p-3 rounded-lg bg-[#0A0E18] border border-[#162030] hover:border-[#1E2E47] flex items-start gap-3 cursor-pointer transition-colors group"
-                title="Klik untuk melihat antrean jembatan timbang"
-              >
-                <div className="w-8 h-8 rounded-lg bg-[#111928] border border-[#1F2E47] group-hover:border-sky-400/50 flex items-center justify-center shrink-0 text-sky-400 mt-0.5 transition-colors">
-                  <Scale className="w-4 h-4" />
-                </div>
-                <div className="flex-1">
-                  <div className="flex items-center justify-between">
-                    <h2 className="text-xs font-bold text-white tracking-wide group-hover:text-sky-300 transition-colors">
-                      Verifikasi Timbangan Otomatis RFID
-                    </h2>
-                    <span className="text-[10px] text-[#F59E0B] font-mono group-hover:underline">
-                      Antrean Live →
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-neutral-400 mt-0.5 leading-relaxed">
-                    Sinkronisasi Weighbridge digital tanpa antre kertas. Sensor RFID aktif otomatis menimbang bobot kotor (Gross), tare, dan payload netto.
-                  </p>
-                </div>
-              </div>
-
-              {/* Feature 2: GPS Telemetry */}
-              <div className="p-3 rounded-lg bg-[#0A0E18] border border-[#162030] flex items-start gap-3">
-                <div className="w-8 h-8 rounded-lg bg-[#111928] border border-[#1F2E47] flex items-center justify-center shrink-0 text-[#F59E0B] mt-0.5">
-                  <Gauge className="w-4 h-4" />
-                </div>
-                <div>
-                  <h2 className="text-xs font-bold text-white tracking-wide">
-                    Pemantauan GPS & Kecepatan Terintegrasi
-                  </h2>
-                  <p className="text-[11px] text-neutral-400 mt-0.5 leading-relaxed">
-                    Geofencing jalur hauling aktif dengan batas kecepatan otomatis (Speed Limit Alert 40 km/h) & mitigasi area blind spot tambang.
-                  </p>
-                </div>
-              </div>
-
-              {/* Feature 3: Digital SIMPER */}
-              <div className="p-3 rounded-lg bg-[#0A0E18] border border-[#162030] flex items-start gap-3">
-                <div className="w-8 h-8 rounded-lg bg-[#111928] border border-[#1F2E47] flex items-center justify-center shrink-0 text-emerald-400 mt-0.5">
-                  <FileCheck className="w-4 h-4" />
-                </div>
-                <div>
-                  <h2 className="text-xs font-bold text-white tracking-wide">
-                    Surat Izin Masuk Tambang Digital
-                  </h2>
-                  <p className="text-[11px] text-neutral-400 mt-0.5 leading-relaxed">
-                    Validasi digital SIMPER driver dan KIMPER unit kendaraan. Akses portal pengawasan real-time compliance K3 tambang mineral.
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Field Radio Communication Box */}
-            <div className="p-3.5 rounded-lg bg-[#080C14] border border-[#161F2E] space-y-2.5">
-              <div className="flex items-center justify-between text-[10px] font-mono border-b border-[#131A26] pb-2">
-                <div className="flex items-center gap-1.5 text-neutral-300">
-                  <Radio className="w-3.5 h-3.5 text-[#F59E0B]" />
-                  <span className="font-bold tracking-wider uppercase">KOMUNIKASI OPERASIONAL LAPANGAN</span>
-                </div>
-                <span className="text-[#F59E0B] font-bold">CH 09 / 148.550 MHz</span>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3 text-[11px] font-mono">
-                <div>
-                  <div className="text-[9px] text-neutral-500 uppercase">KEPALA DISPATCH HAULING</div>
-                  <div className="text-white font-bold mt-0.5">Bpk. Hendra Gunawan, S.T.</div>
-                  <div className="text-[10px] text-neutral-400">DISPATCH-LEAD-PIT4</div>
-                  <div className="text-[10px] text-[#F59E0B]">+62 811-5409-8821</div>
-                </div>
-
-                <div>
-                  <div className="text-[9px] text-neutral-500 uppercase">SECURITY & GATE CONTROL</div>
-                  <div className="text-white font-bold mt-0.5">Terminal Pos Utama 01</div>
-                  <div className="text-[10px] text-neutral-400">GATE-CHECKPOINT-ALPHA</div>
-                  <div className="text-[10px] text-sky-400">+62 812-7019-3304</div>
-                </div>
-              </div>
-
-              <div className="text-[10px] text-neutral-400 pt-1.5 border-t border-[#131A26] flex items-center gap-1.5">
-                <span className="text-amber-400">ⓘ</span>
-                <span>Pemeriksaan fisik unit (Brake & Steering test) dilakukan di Pos Gate Alpha.</span>
-              </div>
-            </div>
-          </div>
-
-          {/* ==================================================== */}
-          {/* RIGHT COLUMN: HIGH-TECH FORM CARD                   */}
-          {/* ==================================================== */}
-          <div className="lg:col-span-6 xl:col-span-7">
-            <motion.div
-              key={mode}
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.2 }}
-              className="titan-card rounded-xl overflow-hidden shadow-2xl border-t-2 border-t-[#F59E0B] relative"
-            >
-              {/* Form Header */}
-              <div className="p-5 sm:p-6 border-b border-[#182232] bg-[#0A0E18]">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <h2 className="text-xl sm:text-2xl font-black text-white tracking-wide">
-                      {mode === 'register' ? 'Formulir Registrasi Armada Baru' : 'Formulir Masuk Portal Operasional'}
-                    </h2>
-                    <p className="text-xs text-neutral-400 mt-1 leading-relaxed">
-                      {mode === 'register'
-                        ? 'Daftarkan kontraktor, pengemudi, dan unit truk pengiriman untuk otorisasi jalur hauling. Seluruh data diverifikasi langsung oleh Mining Dispatch tanpa token SMS/OTP.'
-                        : 'Masuk sebagai operator, admin logistik, atau manajemen untuk otorisasi jalur hauling, penerbitan surat jalan, dan kontrol armada.'}
-                    </p>
-                  </div>
-
-                  <span className="shrink-0 px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/30 text-[#F59E0B] text-[10px] font-mono font-bold uppercase tracking-wider">
-                    {mode === 'register' ? 'DIRECT SUBMIT' : 'DIRECT ACCESS'}
-                  </span>
-                </div>
-
-                {/* Mode Selector Toggle Tabs inside Card */}
-                <div className="grid grid-cols-2 gap-2 mt-4 p-1 rounded-lg bg-[#070A12] border border-[#161F2E] text-xs font-mono">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setMode('login');
-                      setErrorMessage('');
-                    }}
-                    className={`py-2 rounded font-bold transition-all cursor-pointer flex items-center justify-center gap-2 ${
-                      mode === 'login'
-                        ? 'bg-[#141C2B] text-white border border-[#23334D] shadow-xs'
-                        : 'text-neutral-400 hover:text-white'
-                    }`}
-                  >
-                    <LogIn className="w-3.5 h-3.5 text-[#F59E0B]" />
-                    <span>Masuk Portal (Login)</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setMode('register');
-                      setErrorMessage('');
-                    }}
-                    className={`py-2 rounded font-bold transition-all cursor-pointer flex items-center justify-center gap-2 ${
-                      mode === 'register'
-                        ? 'bg-[#141C2B] text-white border border-[#23334D] shadow-xs'
-                        : 'text-neutral-400 hover:text-white'
-                    }`}
-                  >
-                    <Truck className="w-3.5 h-3.5 text-[#F59E0B]" />
-                    <span>Registrasi Armada</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* Form Body */}
-              <div className="p-5 sm:p-6 space-y-4">
-                {/* Error Banner */}
-                {errorMessage && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    className="p-3 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs flex items-center gap-2"
-                  >
-                    <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
-                    <span>{errorMessage}</span>
-                  </motion.div>
-                )}
-
-                {/* ---------------------------------------------------- */}
-                {/* LOGIN FORM                                           */}
-                {/* ---------------------------------------------------- */}
-                {mode === 'login' ? (
-                  <form onSubmit={handleLoginSubmit} className="space-y-4">
-                    {/* Section 01: Identitas Akun */}
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between text-[11px] font-mono border-b border-[#161F2E] pb-1.5">
-                        <span className="text-neutral-300 font-bold uppercase flex items-center gap-1.5">
-                          <span className="w-1.5 h-1.5 rounded-full bg-[#F59E0B]" />
-                          01. KREDENSIAL PENGGUNA & IDENTITAS AKUN
-                        </span>
-                        <span className="text-neutral-500 uppercase">WAJIB LENGKAP</span>
-                      </div>
-
-                      {/* Email / Username Input */}
-                      <div className="space-y-1">
-                        <div className="flex items-center justify-between text-[11px]">
-                          <label className="text-neutral-300 font-medium">
-                            Email Resmi Perusahaan / Username
-                          </label>
-                          <span className="text-neutral-500 font-mono text-[10px]">
-                            Akun Dinas PT BAS
-                          </span>
-                        </div>
-                        <div className="titan-input-box rounded-lg px-3 py-2 flex items-center gap-2">
-                          <input
-                            type="email"
-                            required
-                            value={loginEmail}
-                            onChange={(e) => setLoginEmail(e.target.value)}
-                            placeholder="contoh: admin@ptbas.co.id"
-                            autoComplete="username"
-                            className="w-full bg-transparent text-white text-xs outline-none placeholder:text-neutral-600 font-mono"
-                          />
-                          <span className="text-neutral-500 font-mono text-xs">@</span>
-                        </div>
-                      </div>
-
-                      {/* Password Input */}
-                      <div className="space-y-1">
-                        <div className="flex items-center justify-between text-[11px]">
-                          <label className="text-neutral-300 font-medium">
-                            Kata Sandi Portal Operasional
-                          </label>
-                          <span className="text-neutral-500 font-mono text-[10px]">
-                            ENKRIPSI SHA-256 DIRECT
-                          </span>
-                        </div>
-                        <div className="titan-input-box rounded-lg px-3 py-2 flex items-center gap-2">
-                          <input
-                            type={showPassword ? 'text' : 'password'}
-                            required
-                            value={loginPassword}
-                            onChange={(e) => setLoginPassword(e.target.value)}
-                            placeholder="••••••••••••"
-                            autoComplete="current-password"
-                            className="w-full bg-transparent text-white text-xs outline-none placeholder:text-neutral-600 font-mono"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => setShowPassword(!showPassword)}
-                            className="text-neutral-500 hover:text-white transition-colors cursor-pointer"
-                            title={showPassword ? 'Sembunyikan sandi' : 'Tampilkan sandi'}
-                          >
-                            {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                          </button>
-                        </div>
-
-                        {/* Real-time Password Security Indicators */}
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1 font-mono text-[10px]">
-                          <div className={`flex items-center gap-1.5 ${pwdValidation.minLen ? 'text-emerald-400' : 'text-neutral-500'}`}>
-                            <span>{pwdValidation.minLen ? '●' : '○'}</span>
-                            <span>Min. 8 Karakter</span>
-                          </div>
-                          <div className={`flex items-center gap-1.5 ${pwdValidation.hasUpper ? 'text-emerald-400' : 'text-neutral-500'}`}>
-                            <span>{pwdValidation.hasUpper ? '●' : '○'}</span>
-                            <span>Huruf Besar</span>
-                          </div>
-                          <div className={`flex items-center gap-1.5 ${pwdValidation.hasNumber ? 'text-emerald-400' : 'text-neutral-500'}`}>
-                            <span>{pwdValidation.hasNumber ? '●' : '○'}</span>
-                            <span>Karakter Angka</span>
-                          </div>
-                          <div className={`flex items-center gap-1.5 ${pwdValidation.hasSpecial ? 'text-emerald-400' : 'text-neutral-500'}`}>
-                            <span>{pwdValidation.hasSpecial ? '●' : '○'}</span>
-                            <span>Simbol Khusus</span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Declaration Checkbox */}
-                    <div className="pt-2">
-                      <label className="flex items-start gap-2.5 text-xs text-neutral-300 cursor-pointer select-none">
-                        <input
-                          type="checkbox"
-                          checked={complianceChecked}
-                          onChange={(e) => setComplianceChecked(e.target.checked)}
-                          className="checkbox checkbox-xs rounded bg-[#070A12] border-[#223048] checked:bg-[#F59E0B] checked:border-[#F59E0B] mt-0.5"
-                        />
-                        <span className="text-[11px] text-neutral-400 leading-relaxed">
-                          <strong className="text-neutral-200">Deklarasi Kepatuhan Keselamatan Operasi Tambang:</strong> Menyatakan otorisasi akses sistem resmi untuk operasional hauling PT Berkah Alam Semesta sesuai standar K3 ESDM No. 1827/2018 dan integritas data logistik.
-                        </span>
-                      </label>
-                    </div>
-
-                    {/* Big Action Button */}
-                    <div className="pt-2">
-                      <button
-                        type="submit"
-                        disabled={loading}
-                        className="w-full titan-btn-gold py-3 px-4 rounded-lg flex items-center justify-center gap-2 text-xs font-black tracking-widest uppercase cursor-pointer disabled:opacity-50"
-                      >
-                        {loading ? (
-                          <>
-                            <RefreshCw className="w-4 h-4 animate-spin text-black" />
-                            <span>MEMVERIFIKASI KREDENSIAL...</span>
-                          </>
-                        ) : (
-                          <>
-                            <ShieldCheck className="w-4 h-4 text-black" />
-                            <span>AJUKAN OTORISASI MASUK</span>
-                          </>
-                        )}
-                      </button>
-                    </div>
-
-                    {/* Bottom Status & Switch Link */}
-                    <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-2 text-[11px] font-mono border-t border-[#161F2E]">
-                      <div className="flex items-center gap-1.5 text-emerald-400">
-                        <CheckCircle2 className="w-3.5 h-3.5" />
-                        <span>Verifikasi instan oleh Site Dispatcher</span>
-                      </div>
-
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setMode('register');
-                          setErrorMessage('');
-                        }}
-                        className="text-[#F59E0B] hover:underline cursor-pointer flex items-center gap-1"
-                      >
-                        <span>Belum terdaftar? Registrasi Armada Baru</span>
-                        <ArrowRight className="w-3 h-3" />
-                      </button>
-                    </div>
-                  </form>
-                ) : (
-                  /* ---------------------------------------------------- */
-                  /* REGISTER FORM (FORMULIR REGISTRASI ARMADA BARU)      */
-                  /* ---------------------------------------------------- */
-                  <form onSubmit={handleRegisterSubmit} className="space-y-4">
-                    {/* Section 01: Entitas Vendor & Identitas Armada */}
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between text-[11px] font-mono border-b border-[#161F2E] pb-1.5">
-                        <span className="text-neutral-300 font-bold uppercase flex items-center gap-1.5">
-                          <span className="w-1.5 h-1.5 rounded-full bg-[#F59E0B]" />
-                          01. ENTITAS VENDOR & IDENTITAS ARMADA
-                        </span>
-                        <span className="text-neutral-500 uppercase">WAJIB LENGKAP</span>
-                      </div>
-
-                      {/* Nama Perusahaan Vendor */}
-                      <div className="space-y-1">
-                        <div className="flex items-center justify-between text-[11px]">
-                          <label className="text-neutral-300 font-medium">
-                            Nama Perusahaan Vendor / Subkontraktor
-                          </label>
-                          <span className="text-neutral-500 font-mono text-[10px]">
-                            Badan Hukum: PT / CV
-                          </span>
-                        </div>
-                        <div className="titan-input-box rounded-lg px-3 py-2 flex items-center gap-2">
-                          <input
-                            type="text"
-                            required
-                            value={regData.vendorName}
-                            onChange={(e) => setRegData({ ...regData, vendorName: e.target.value })}
-                            placeholder="contoh: PT Samudra Trans Batubara"
-                            className="w-full bg-transparent text-white text-xs outline-none placeholder:text-neutral-600 font-mono"
-                          />
-                          <Building2 className="w-4 h-4 text-neutral-500 shrink-0" />
-                        </div>
-                      </div>
-
-                      {/* 2-Col: Driver Name & SIMPER/KIMPER */}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <div className="space-y-1">
-                          <label className="text-neutral-300 font-medium text-[11px]">
-                            Nama Lengkap Driver Utama / Operator
-                          </label>
-                          <div className="titan-input-box rounded-lg px-3 py-2">
-                            <input
-                              type="text"
-                              required
-                              value={regData.driverName}
-                              onChange={(e) => setRegData({ ...regData, driverName: e.target.value })}
-                              placeholder="Nama sesuai KTP & SIMPER"
-                              className="w-full bg-transparent text-white text-xs outline-none placeholder:text-neutral-600 font-mono"
-                            />
-                          </div>
-                        </div>
-
-                        <div className="space-y-1">
-                          <div className="flex items-center justify-between text-[11px]">
-                            <label className="text-neutral-300 font-medium">
-                              Nomor SIMPER / KIMPER Aktif
-                            </label>
-                            <span className="text-emerald-400 font-mono text-[9px]">
-                              K3 Terverifikasi
-                            </span>
-                          </div>
-                          <div className="titan-input-box rounded-lg px-3 py-2">
-                            <input
-                              type="text"
-                              required
-                              value={regData.simperNumber}
-                              onChange={(e) => setRegData({ ...regData, simperNumber: e.target.value })}
-                              placeholder="SMP-2025-XXXX-09"
-                              className="w-full bg-transparent text-white text-xs outline-none placeholder:text-neutral-600 font-mono"
-                            />
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* 2-Col: Nomor Lambung Unit & Tipe Kendaraan */}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <div className="space-y-1">
-                          <label className="text-neutral-300 font-medium text-[11px]">
-                            Nomor Lambung Unit (Hull No.)
-                          </label>
-                          <div className="titan-input-box rounded-lg px-3 py-2">
-                            <input
-                              type="text"
-                              required
-                              value={regData.hullNumber}
-                              onChange={(e) => setRegData({ ...regData, hullNumber: e.target.value })}
-                              placeholder="DT-884 / TR-120"
-                              className="w-full bg-transparent text-white text-xs outline-none placeholder:text-neutral-600 font-mono"
-                            />
-                          </div>
-                        </div>
-
-                        <div className="space-y-1">
-                          <label className="text-neutral-300 font-medium text-[11px]">
-                            Tipe Kendaraan & Kelas Muatan
-                          </label>
-                          <div className="titan-input-box rounded-lg px-3 py-2">
-                            <select
-                              value={regData.vehicleType}
-                              onChange={(e) => setRegData({ ...regData, vehicleType: e.target.value })}
-                              className="w-full bg-transparent text-white text-xs outline-none font-mono cursor-pointer"
-                            >
-                              <option value="Tronton Dump Index 28 (32.5 m³)" className="bg-[#0B0F19]">
-                                Tronton Dump Index 28 (32.5 m³)
-                              </option>
-                              <option value="Dump Truck Index 24 (23.8 m³)" className="bg-[#0B0F19]">
-                                Dump Truck Index 24 (23.8 m³)
-                              </option>
-                              <option value="Colt Diesel CDD (8.0 m³)" className="bg-[#0B0F19]">
-                                Colt Diesel CDD (8.0 m³)
-                              </option>
-                              <option value="Trailer Hauling Tambang (45.0 m³)" className="bg-[#0B0F19]">
-                                Trailer Hauling Tambang (45.0 m³)
-                              </option>
-                            </select>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Section 02: Kredensial Portal Telemetri & Dispatch */}
-                    <div className="space-y-3 pt-2">
-                      <div className="flex items-center justify-between text-[11px] font-mono border-b border-[#161F2E] pb-1.5">
-                        <span className="text-neutral-300 font-bold uppercase flex items-center gap-1.5">
-                          <span className="w-1.5 h-1.5 rounded-full bg-sky-400" />
-                          02. KREDENSIAL PORTAL TELEMETRI & DISPATCH
-                        </span>
-                        <span className="text-neutral-500 uppercase">ENKRIPSI SHA-256 DIRECT</span>
-                      </div>
-
-                      {/* Email Perusahaan */}
-                      <div className="space-y-1">
-                        <div className="flex items-center justify-between text-[11px]">
-                          <label className="text-neutral-300 font-medium">
-                            Email Operasional Perusahaan
-                          </label>
-                          <span className="text-neutral-500 font-mono text-[10px]">
-                            Untuk Notifikasi Slip Timbang & DO
-                          </span>
-                        </div>
-                        <div className="titan-input-box rounded-lg px-3 py-2 flex items-center gap-2">
-                          <input
-                            type="email"
-                            required
-                            value={regData.email}
-                            onChange={(e) => setRegData({ ...regData, email: e.target.value })}
-                            placeholder="logistik.fleet@vendorcoal.co.id"
-                            className="w-full bg-transparent text-white text-xs outline-none placeholder:text-neutral-600 font-mono"
-                          />
-                          <span className="text-neutral-500 font-mono text-xs">@</span>
-                        </div>
-                      </div>
-
-                      {/* Kata Sandi */}
-                      <div className="space-y-1">
-                        <label className="text-neutral-300 font-medium text-[11px]">
-                          Kata Sandi Portal Operasional
-                        </label>
-                        <div className="titan-input-box rounded-lg px-3 py-2 flex items-center gap-2">
-                          <input
-                            type={showPassword ? 'text' : 'password'}
-                            required
-                            value={regData.password}
-                            onChange={(e) => setRegData({ ...regData, password: e.target.value })}
-                            placeholder="••••••••••••"
-                            className="w-full bg-transparent text-white text-xs outline-none placeholder:text-neutral-600 font-mono"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => setShowPassword(!showPassword)}
-                            className="text-neutral-500 hover:text-white transition-colors cursor-pointer"
-                          >
-                            {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                          </button>
-                        </div>
-
-                        {/* Password indicators */}
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1 font-mono text-[10px]">
-                          <div className={`flex items-center gap-1.5 ${pwdValidation.minLen ? 'text-emerald-400' : 'text-neutral-500'}`}>
-                            <span>{pwdValidation.minLen ? '●' : '○'}</span>
-                            <span>Min. 8 Karakter</span>
-                          </div>
-                          <div className={`flex items-center gap-1.5 ${pwdValidation.hasUpper ? 'text-emerald-400' : 'text-neutral-500'}`}>
-                            <span>{pwdValidation.hasUpper ? '●' : '○'}</span>
-                            <span>Huruf Besar</span>
-                          </div>
-                          <div className={`flex items-center gap-1.5 ${pwdValidation.hasNumber ? 'text-emerald-400' : 'text-neutral-500'}`}>
-                            <span>{pwdValidation.hasNumber ? '●' : '○'}</span>
-                            <span>Karakter Angka</span>
-                          </div>
-                          <div className={`flex items-center gap-1.5 ${pwdValidation.hasSpecial ? 'text-emerald-400' : 'text-neutral-500'}`}>
-                            <span>{pwdValidation.hasSpecial ? '●' : '○'}</span>
-                            <span>Simbol Khusus</span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Declaration Checkbox */}
-                    <div className="pt-2">
-                      <label className="flex items-start gap-2.5 text-xs text-neutral-300 cursor-pointer select-none">
-                        <input
-                          type="checkbox"
-                          checked={complianceChecked}
-                          onChange={(e) => setComplianceChecked(e.target.checked)}
-                          className="checkbox checkbox-xs rounded bg-[#070A12] border-[#223048] checked:bg-[#F59E0B] checked:border-[#F59E0B] mt-0.5"
-                        />
-                        <span className="text-[11px] text-neutral-400 leading-relaxed">
-                          <strong className="text-neutral-200">Deklarasi Kepatuhan Keselamatan Operasi Tambang:</strong> Menyatakan unit armada telah lolos uji berkala Commissioning K3, uji emisi gas buang standar tambang ESDM No. 1827/2018, dan pengemudi memiliki sertifikasi defensif hauling aktif.
-                        </span>
-                      </label>
-                    </div>
-
-                    {/* Big Action Button */}
-                    <div className="pt-2">
-                      <button
-                        type="submit"
-                        disabled={loading}
-                        className="w-full titan-btn-gold py-3 px-4 rounded-lg flex items-center justify-center gap-2 text-xs font-black tracking-widest uppercase cursor-pointer disabled:opacity-50"
-                      >
-                        {loading ? (
-                          <>
-                            <RefreshCw className="w-4 h-4 animate-spin text-black" />
-                            <span>MEMPROSES PENDAFTARAN...</span>
-                          </>
-                        ) : (
-                          <>
-                            <ShieldCheck className="w-4 h-4 text-black" />
-                            <span>AJUKAN OTORISASI ARMADA</span>
-                          </>
-                        )}
-                      </button>
-                    </div>
-
-                    {/* Bottom Status & Switch Link */}
-                    <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-2 text-[11px] font-mono border-t border-[#161F2E]">
-                      <div className="flex items-center gap-1.5 text-emerald-400">
-                        <CheckCircle2 className="w-3.5 h-3.5" />
-                        <span>Verifikasi instan oleh Site Dispatcher</span>
-                      </div>
-
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setMode('login');
-                          setErrorMessage('');
-                        }}
-                        className="text-[#F59E0B] hover:underline cursor-pointer flex items-center gap-1"
-                      >
-                        <span>Sudah terdaftar? Masuk ke Portal Operasional</span>
-                        <ArrowRight className="w-3 h-3" />
-                      </button>
-                    </div>
-                  </form>
-                )}
-              </div>
-            </motion.div>
-          </div>
-        </div>
-      </main>
-
-      {/* ======================================================== */}
-      {/* WEIGHBRIDGE TELEMETRY MODAL                              */}
-      {/* ======================================================== */}
-      <AnimatePresence>
-        {showWeighbridgeModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="w-full max-w-lg rounded-xl bg-[#0B0F19] border border-[#22314A] shadow-2xl overflow-hidden font-mono"
-            >
-              <div className="p-4 border-b border-[#182336] flex items-center justify-between bg-[#080C14]">
-                <div className="flex items-center gap-2">
-                  <Scale className="w-4 h-4 text-[#F59E0B]" />
-                  <span className="text-xs font-bold text-white uppercase tracking-wider">
-                    Telemetri Antrean Jembatan Timbang
-                  </span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setShowWeighbridgeModal(false)}
-                  className="p-1 rounded text-neutral-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-
-              <div className="p-4 space-y-3 text-xs">
-                {/* Scale 01 */}
-                <div className="p-3 rounded-lg bg-[#070A12] border border-[#162030] space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <span className="font-bold text-white">Weighbridge 01 (Inbound Gross)</span>
-                    <span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 text-[10px] border border-emerald-500/30">
-                      AKTIF BEROPERASI
-                    </span>
-                  </div>
-                  <div className="text-[11px] text-neutral-400">
-                    Antrean saat ini: <span className="text-[#F59E0B] font-bold">2 Unit Truk</span> (DT-884, DT-612)
-                  </div>
-                  <div className="text-[10px] text-neutral-500">
-                    Sensor: Mettler Toledo Load Cell 80 Ton | Toleransi: ±0.02%
-                  </div>
-                </div>
-
-                {/* Scale 02 */}
-                <div className="p-3 rounded-lg bg-[#070A12] border border-[#162030] space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <span className="font-bold text-white">Weighbridge 02 (Outbound Tare)</span>
-                    <span className="px-2 py-0.5 rounded bg-sky-500/10 text-sky-400 text-[10px] border border-sky-500/30">
-                      JALUR TERBUKA
-                    </span>
-                  </div>
-                  <div className="text-[11px] text-neutral-400">
-                    Antrean saat ini: <span className="text-emerald-400 font-bold">0 Unit (Siap Timbang)</span>
-                  </div>
-                  <div className="text-[10px] text-neutral-500">
-                    Rata-rata waktu siklus timbang netto: 1.4 menit per armada
-                  </div>
-                </div>
-              </div>
-
-              <div className="p-3 bg-[#080C14] border-t border-[#182336] flex justify-end">
-                <button
-                  type="button"
-                  onClick={() => setShowWeighbridgeModal(false)}
-                  className="px-4 py-1.5 rounded bg-[#162030] hover:bg-[#1E2B40] text-xs font-bold text-white transition-colors cursor-pointer"
-                >
-                  Tutup Monitor
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+      {/* Tombol Gelap (Dark Mode) */}
+      <button
+        type="button"
+        onClick={() => {
+          if (!isDark) {
+            setTheme('dark');
+            addToast('Beralih ke Mode Gelap (Dark Mode)', 'info');
+          }
+        }}
+        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-mono font-bold transition-all cursor-pointer ${isDark
+          ? 'bg-[#F4511E] text-white shadow-sm shadow-[#F4511E]/40'
+          : 'text-slate-600 hover:text-slate-900'
+          }`}
+        title="Aktifkan Mode Gelap"
+      >
+        <Moon className="w-3.5 h-3.5" />
+        <span>Gelap</span>
+      </button>
     </div>
+  );
+
+  return (
+    <MiningPitInteractiveBg topRightAction={topThemeToggle}>
+      <div className="w-full flex-1 flex flex-col justify-center py-8 px-4 sm:px-6 relative selection:bg-[#F4511E] selection:text-white font-sans">
+        {/* Main Center Column Card */}
+        <main className="w-full max-w-[430px] mx-auto flex flex-col items-center">
+          {/* ======================================================== */}
+          {/* MAIN AUTH CARD: AUTENTIKASI PENGGUNA / REGISTRASI        */}
+          {/* ======================================================== */}
+          <div
+            className={`w-full rounded-2xl sm:rounded-3xl border p-5 sm:p-6 shadow-2xl backdrop-blur-xl relative mb-3 transition-colors ${isDark
+              ? 'border-[#1E2D44]/90 bg-gradient-to-b from-[#0D1522]/92 via-[#090E17]/92 to-[#060911]/95 text-neutral-200'
+              : 'border-slate-200/90 bg-white/95 text-slate-800 shadow-slate-200/60'
+              }`}
+          >
+            {/* Card Top Glow Accent */}
+            <div className="absolute top-0 left-1/4 right-1/4 h-[2px] bg-gradient-to-r from-transparent via-[#F4511E] to-transparent shadow-[0_0_12px_#F4511E]" />
+
+            {/* Mode Switcher Tabs: Login / Register */}
+            <div
+              className={`grid grid-cols-2 p-1 rounded-xl mb-4.5 border ${isDark ? 'bg-[#060A12] border-[#182336]' : 'bg-slate-100 border-slate-200'
+                }`}
+            >
+              <button
+                type="button"
+                onClick={() => switchToMode('login')}
+                className={`py-2 text-xs font-mono font-bold rounded-lg transition-all cursor-pointer flex items-center justify-center gap-2 ${mode === 'login'
+                  ? 'bg-[#F4511E] text-white shadow-md shadow-[#F4511E]/30'
+                  : isDark
+                    ? 'text-neutral-400 hover:text-white'
+                    : 'text-slate-600 hover:text-slate-900'
+                  }`}
+              >
+                <LogIn className="w-3.5 h-3.5" />
+                <span>Login</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => switchToMode('register')}
+                className={`py-2 text-xs font-mono font-bold rounded-lg transition-all cursor-pointer flex items-center justify-center gap-2 ${mode === 'register'
+                  ? 'bg-[#F4511E] text-white shadow-md shadow-[#F4511E]/30'
+                  : isDark
+                    ? 'text-neutral-400 hover:text-white'
+                    : 'text-slate-600 hover:text-slate-900'
+                  }`}
+              >
+                <User className="w-3.5 h-3.5" />
+                <span>Register</span>
+              </button>
+            </div>
+
+            {/* Header Row: Title & Subtitle */}
+            {mode === 'login' ? (
+              <div className="mb-5">
+                <h1 className={`text-xl sm:text-2xl font-black tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                  Login
+                </h1>
+                <p className={`text-xs mt-1 ${isDark ? 'text-neutral-400' : 'text-slate-500'}`}>
+                  Masuk ke sistem operasional dispatch
+                </p>
+              </div>
+            ) : (
+              <div className="flex items-center gap-3.5 mb-5">
+                <button
+                  type="button"
+                  onClick={() => switchToMode('login')}
+                  className="w-10 h-10 rounded-full bg-[#F4511E] hover:bg-[#D84315] flex items-center justify-center text-white shadow-md shadow-[#F4511E]/30 transition-transform active:scale-95 cursor-pointer shrink-0"
+                  title="Kembali ke Login"
+                  aria-label="Kembali ke Login"
+                >
+                  <ChevronLeft className="w-5 h-5 stroke-[2.5]" />
+                </button>
+                <div>
+                  <h1 className={`text-2xl font-bold tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                    Register
+                  </h1>
+                  <p className={`text-xs mt-0.5 ${isDark ? 'text-neutral-400' : 'text-slate-500'}`}>
+                    Mohon masukkan profil akun Anda
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Error Message Banner */}
+            {errorMessage && (
+              <motion.div
+                initial={{ opacity: 0, y: -6 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mb-4 p-3 rounded-xl bg-rose-500/15 border border-rose-500/35 text-rose-300 text-xs flex items-center gap-2"
+              >
+                <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+                <span>{errorMessage}</span>
+              </motion.div>
+            )}
+
+            {/* ---------------------------------------------------- */}
+            {/* MODE 1: LOGIN FORM                                   */}
+            {/* ---------------------------------------------------- */}
+            {mode === 'login' ? (
+              <form onSubmit={handleLoginSubmit} className="space-y-4">
+                {/* Field 1: EMAIL OPERASIONAL */}
+                <div className="space-y-1.5">
+                  <label className={`block text-[11px] font-mono font-bold uppercase tracking-wider ${isDark ? 'text-neutral-200' : 'text-slate-700'}`}>
+                    EMAIL OPERASIONAL
+                  </label>
+
+                  <div className="portal-input-box rounded-xl px-3.5 py-3 flex items-center gap-3">
+                    <Mail className="w-4 h-4 text-[#F4511E] shrink-0" />
+                    <input
+                      type="email"
+                      required
+                      value={loginEmail}
+                      onChange={(e) => setLoginEmail(e.target.value)}
+                      placeholder="admin@ptbas.co.id"
+                      autoComplete="username"
+                      className={`w-full bg-transparent text-xs sm:text-sm outline-none font-mono ${isDark
+                        ? 'text-white placeholder:text-neutral-600'
+                        : 'text-slate-900 placeholder:text-slate-400'
+                        }`}
+                    />
+                  </div>
+                </div>
+
+                {/* Field 2: KATA SANDI */}
+                <div className="space-y-1.5 pt-1">
+                  <div className="flex items-center justify-between text-[11px] font-mono">
+                    <label className={`font-bold uppercase tracking-wider ${isDark ? 'text-neutral-200' : 'text-slate-700'}`}>
+                      KATA SANDI
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setShowForgotPasswordModal(true)}
+                      className="text-[#F4511E] hover:text-[#FB8C00] font-bold text-[11px] transition-colors cursor-pointer"
+                    >
+                      Lupa Sandi?
+                    </button>
+                  </div>
+
+                  <div className="portal-input-box rounded-xl px-3.5 py-3 flex items-center gap-3">
+                    <Lock className="w-4 h-4 text-[#F4511E] shrink-0" />
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      required
+                      value={loginPassword}
+                      onChange={(e) => setLoginPassword(e.target.value)}
+                      placeholder="Masukkan kata sandi site"
+                      autoComplete="current-password"
+                      className={`w-full bg-transparent text-xs sm:text-sm outline-none font-mono ${isDark
+                        ? 'text-white placeholder:text-neutral-500'
+                        : 'text-slate-900 placeholder:text-slate-400'
+                        }`}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className={`transition-colors cursor-pointer ${isDark ? 'text-neutral-400 hover:text-white' : 'text-slate-400 hover:text-slate-700'
+                        }`}
+                      title={showPassword ? 'Sembunyikan sandi' : 'Tampilkan sandi'}
+                    >
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Checkbox: Ingat sesi perangkat ini */}
+                <div className="flex items-center justify-between text-xs pt-2 pb-1">
+                  <label className="flex items-center gap-2 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={rememberSession}
+                      onChange={(e) => setRememberSession(e.target.checked)}
+                      className="w-4 h-4 rounded border-[#1E2D44] bg-[#060A12] text-[#F4511E] accent-[#F4511E] cursor-pointer"
+                    />
+                    <span className={`text-xs font-medium ${isDark ? 'text-neutral-300' : 'text-slate-700'}`}>
+                      Ingat sesi perangkat ini
+                    </span>
+                  </label>
+                </div>
+
+                {/* Primary Action Button: Masuk ke Sistem */}
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full py-3.5 px-4 rounded-xl portal-btn-primary flex items-center justify-center gap-2.5 text-xs sm:text-sm font-black tracking-wide uppercase cursor-pointer disabled:opacity-50 transition-all shadow-[0_4px_22px_rgba(244,81,30,0.45)]"
+                >
+                  {loading ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 animate-spin text-white" />
+                      <span>MEMVERIFIKASI KREDENSIAL...</span>
+                    </>
+                  ) : (
+                    <>
+                      <LogIn className="w-4 h-4 text-white" />
+                      <span className="font-bold tracking-wider">Masuk ke Sistem</span>
+                      <ArrowRight className="w-4 h-4 text-white" />
+                    </>
+                  )}
+                </button>
+              </form>
+            ) : (
+              /* ---------------------------------------------------- */
+              /* MODE 2: REGISTRATION FORM                            */
+              /* ---------------------------------------------------- */
+              <form onSubmit={handleRegisterSubmit} className="space-y-3.5">
+                {/* 1. Nama Lengkap */}
+                <div className="portal-input-box rounded-xl px-4 py-3 flex items-center gap-3">
+                  <User className="w-5 h-5 text-neutral-400 shrink-0" />
+                  <input
+                    type="text"
+                    required
+                    value={regData.fullName}
+                    onChange={(e) => setRegData({ ...regData, fullName: e.target.value })}
+                    placeholder="Nama Lengkap"
+                    className={`w-full bg-transparent text-sm outline-none ${
+                      isDark ? 'text-white placeholder:text-neutral-500' : 'text-slate-900 placeholder:text-slate-400'
+                    }`}
+                  />
+                </div>
+
+                {/* 2. Alamat Email */}
+                <div className="portal-input-box rounded-xl px-4 py-3 flex items-center gap-3">
+                  <Mail className="w-5 h-5 text-neutral-400 shrink-0" />
+                  <input
+                    type="email"
+                    required
+                    value={regData.email}
+                    onChange={(e) => setRegData({ ...regData, email: e.target.value })}
+                    placeholder="Alamat Email"
+                    className={`w-full bg-transparent text-sm outline-none ${
+                      isDark ? 'text-white placeholder:text-neutral-500' : 'text-slate-900 placeholder:text-slate-400'
+                    }`}
+                  />
+                </div>
+
+                {/* 3. Tanggal Lahir */}
+                <div className="portal-input-box rounded-xl px-4 py-3 flex items-center gap-3">
+                  <Calendar className="w-5 h-5 text-neutral-400 shrink-0" />
+                  <input
+                    type={birthDateFocused || regData.birthDate ? 'date' : 'text'}
+                    onFocus={() => setBirthDateFocused(true)}
+                    onBlur={() => setBirthDateFocused(false)}
+                    value={regData.birthDate}
+                    onChange={(e) => setRegData({ ...regData, birthDate: e.target.value })}
+                    placeholder="Tanggal Lahir"
+                    className={`w-full bg-transparent text-sm outline-none ${
+                      isDark ? 'text-white placeholder:text-neutral-500' : 'text-slate-900 placeholder:text-slate-400'
+                    }`}
+                  />
+                </div>
+
+                {/* 4. Jenis Kelamin */}
+                <div
+                  className={`relative rounded-xl border px-4 py-3 transition-colors ${
+                    isDark
+                      ? 'border-[#222E42] bg-[#060A12]'
+                      : 'border-slate-300 bg-white'
+                  }`}
+                >
+                  <span
+                    className={`absolute -top-2.5 left-3.5 px-1.5 text-xs font-semibold text-[#F4511E] ${
+                      isDark ? 'bg-[#0B1019]' : 'bg-white'
+                    }`}
+                  >
+                    Jenis Kelamin
+                  </span>
+
+                  <div className="flex items-center gap-8 pt-0.5">
+                    {/* Option: Laki-Laki */}
+                    <label className="flex items-center gap-2.5 cursor-pointer select-none">
+                      <input
+                        type="radio"
+                        name="gender"
+                        value="Laki-Laki"
+                        checked={regData.gender === 'Laki-Laki'}
+                        onChange={() => setRegData({ ...regData, gender: 'Laki-Laki' })}
+                        className="sr-only"
+                      />
+                      <div
+                        className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
+                          regData.gender === 'Laki-Laki'
+                            ? 'border-[#F4511E]'
+                            : isDark
+                            ? 'border-neutral-600'
+                            : 'border-slate-400'
+                        }`}
+                      >
+                        {regData.gender === 'Laki-Laki' && (
+                          <div className="w-2.5 h-2.5 rounded-full bg-[#F4511E]" />
+                        )}
+                      </div>
+                      <span className={`text-sm font-medium ${isDark ? 'text-white' : 'text-slate-800'}`}>
+                        Laki-Laki
+                      </span>
+                    </label>
+
+                    {/* Option: Perempuan */}
+                    <label className="flex items-center gap-2.5 cursor-pointer select-none">
+                      <input
+                        type="radio"
+                        name="gender"
+                        value="Perempuan"
+                        checked={regData.gender === 'Perempuan'}
+                        onChange={() => setRegData({ ...regData, gender: 'Perempuan' })}
+                        className="sr-only"
+                      />
+                      <div
+                        className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
+                          regData.gender === 'Perempuan'
+                            ? 'border-[#F4511E]'
+                            : isDark
+                            ? 'border-neutral-600'
+                            : 'border-slate-400'
+                        }`}
+                      >
+                        {regData.gender === 'Perempuan' && (
+                          <div className="w-2.5 h-2.5 rounded-full bg-[#F4511E]" />
+                        )}
+                      </div>
+                      <span className={`text-sm font-medium ${isDark ? 'text-white' : 'text-slate-800'}`}>
+                        Perempuan
+                      </span>
+                    </label>
+                  </div>
+                </div>
+
+                {/* 5. Nomor Telepon (tanpa +62 atau 0) */}
+                <div className="portal-input-box rounded-xl px-4 py-3 flex items-center gap-3">
+                  <Phone className="w-5 h-5 text-neutral-400 shrink-0" />
+                  <input
+                    type="tel"
+                    value={regData.phone}
+                    onChange={(e) => setRegData({ ...regData, phone: e.target.value.replace(/[^0-9]/g, '') })}
+                    placeholder="Nomor Telepon (tanpa +62 atau 0)"
+                    className={`w-full bg-transparent text-sm outline-none font-mono ${
+                      isDark ? 'text-white placeholder:text-neutral-500' : 'text-slate-900 placeholder:text-slate-400'
+                    }`}
+                  />
+                </div>
+
+                {/* 6. Kata Sandi */}
+                <div className="portal-input-box rounded-xl px-4 py-3 flex items-center gap-3">
+                  <Lock className="w-5 h-5 text-neutral-400 shrink-0" />
+                  <input
+                    type={showRegPassword ? 'text' : 'password'}
+                    required
+                    value={regData.password}
+                    onChange={(e) => setRegData({ ...regData, password: e.target.value })}
+                    placeholder="Kata Sandi"
+                    className={`w-full bg-transparent text-sm outline-none ${
+                      isDark ? 'text-white placeholder:text-neutral-500' : 'text-slate-900 placeholder:text-slate-400'
+                    }`}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowRegPassword(!showRegPassword)}
+                    className="cursor-pointer text-[#F4511E] hover:text-[#FF7043] transition-colors shrink-0"
+                    title={showRegPassword ? 'Sembunyikan kata sandi' : 'Tampilkan kata sandi'}
+                  >
+                    {showRegPassword ? <Eye className="w-5 h-5" /> : <EyeOff className="w-5 h-5" />}
+                  </button>
+                </div>
+
+                {/* 7. Masukkan Ulang Kata Sandi */}
+                <div className="portal-input-box rounded-xl px-4 py-3 flex items-center gap-3">
+                  <Lock className="w-5 h-5 text-neutral-400 shrink-0" />
+                  <input
+                    type={showRegConfirmPassword ? 'text' : 'password'}
+                    required
+                    value={regData.confirmPassword}
+                    onChange={(e) => setRegData({ ...regData, confirmPassword: e.target.value })}
+                    placeholder="Masukkan Ulang Kata Sandi"
+                    className={`w-full bg-transparent text-sm outline-none ${
+                      isDark ? 'text-white placeholder:text-neutral-500' : 'text-slate-900 placeholder:text-slate-400'
+                    }`}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowRegConfirmPassword(!showRegConfirmPassword)}
+                    className="cursor-pointer text-[#F4511E] hover:text-[#FF7043] transition-colors shrink-0"
+                    title={showRegConfirmPassword ? 'Sembunyikan kata sandi' : 'Tampilkan kata sandi'}
+                  >
+                    {showRegConfirmPassword ? <Eye className="w-5 h-5" /> : <EyeOff className="w-5 h-5" />}
+                  </button>
+                </div>
+
+                {/* Checkbox Ketentuan Layanan */}
+                <label className="flex items-start gap-3 cursor-pointer select-none pt-1">
+                  <input
+                    type="checkbox"
+                    required
+                    checked={regData.agreeTerms}
+                    onChange={(e) => setRegData({ ...regData, agreeTerms: e.target.checked })}
+                    className="w-4 h-4 mt-0.5 rounded border-[#262F40] bg-[#060A12] text-[#F4511E] accent-[#F4511E] cursor-pointer shrink-0"
+                  />
+                  <span className={`text-xs leading-relaxed ${isDark ? 'text-neutral-300' : 'text-slate-700'}`}>
+                    Saya setuju dengan Ketentuan Layanan dan Kebijakan Privasi
+                  </span>
+                </label>
+
+                {/* 10. Submit Button: DAFTAR */}
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full mt-3 py-3.5 px-4 rounded-xl bg-[#F4511E] hover:bg-[#D84315] active:scale-[0.99] text-white font-bold tracking-wider text-sm uppercase shadow-lg shadow-[#F4511E]/30 cursor-pointer disabled:opacity-50 transition-all flex items-center justify-center gap-2"
+                >
+                  {loading ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 animate-spin text-white" />
+                      <span>MEMPROSES PENDAFTARAN...</span>
+                    </>
+                  ) : (
+                    <span>DAFTAR</span>
+                  )}
+                </button>
+              </form>
+            )}
+          </div>
+
+          {/* ======================================================== */}
+          {/* REGISTER / LOGIN SWITCH LINK                             */}
+          {/* ======================================================== */}
+          <div className={`text-center text-xs mb-4 font-sans ${isDark ? 'text-neutral-300' : 'text-slate-600'}`}>
+            {mode === 'login' ? (
+              <>
+                <span>Belum memiliki akun? </span>
+                <button
+                  type="button"
+                  onClick={() => switchToMode('register')}
+                  className="text-[#F4511E] font-bold hover:underline cursor-pointer transition-colors"
+                >
+                  Register Akun Baru
+                </button>
+              </>
+            ) : (
+              <>
+                <span>Sudah memiliki akun? </span>
+                <button
+                  type="button"
+                  onClick={() => switchToMode('login')}
+                  className="text-[#F4511E] font-bold hover:underline cursor-pointer transition-colors"
+                >
+                  Login ke Akun Anda
+                </button>
+              </>
+            )}
+          </div>
+
+          {/* ======================================================== */}
+          {/* SYSTEM FOOTER                                            */}
+          {/* ======================================================== */}
+          <div className={`text-center text-[11px] font-sans tracking-wide ${isDark ? 'text-neutral-500' : 'text-slate-400'}`}>
+            © {new Date().getFullYear()} PT Berkah Alam Semesta • Dispatch & Logistics
+          </div>
+        </main>
+
+        {/* ======================================================== */}
+        {/* MODAL: LUPA KATA SANDI / BANTUAN DISPATCH                */}
+        {/* ======================================================== */}
+        <AnimatePresence>
+          {showForgotPasswordModal && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                className={`w-full max-w-md rounded-2xl border shadow-2xl overflow-hidden font-sans transition-colors ${isDark ? 'bg-[#0B0F19] border-[#22314A] text-neutral-200' : 'bg-white border-slate-200 text-slate-800'
+                  }`}
+              >
+                <div className={`p-4 border-b flex items-center justify-between ${isDark ? 'bg-[#080C14] border-[#182336]' : 'bg-slate-50 border-slate-200'}`}>
+                  <div className="flex items-center gap-2">
+                    <HelpCircle className="w-4 h-4 text-[#F4511E]" />
+                    <span className={`text-xs font-bold uppercase tracking-wider font-mono ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                      Reset Sandi & Bantuan Akses Dispatch
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowForgotPasswordModal(false)}
+                    className={`p-1 rounded transition-colors cursor-pointer ${isDark ? 'text-neutral-400 hover:text-white' : 'text-slate-400 hover:text-slate-700'}`}
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+
+                <div className="p-5 space-y-4 text-xs">
+                  <p className={`leading-relaxed ${isDark ? 'text-neutral-300' : 'text-slate-600'}`}>
+                    Sesuai protokol K3 & Keamanan Siber Tambang mineral, pemulihan kata sandi dilakukan melalui verifikasi manual oleh Site Supervisor Dispatch atau Administrator PT BAS.
+                  </p>
+
+                  {/* Dispatch Contacts */}
+                  <div className={`p-3.5 rounded-xl border space-y-3 font-mono ${isDark ? 'bg-[#070A12] border-[#192436]' : 'bg-slate-50 border-slate-200'}`}>
+                    <div className={`flex items-center justify-between text-[11px] border-b pb-2 ${isDark ? 'border-[#141C2B]' : 'border-slate-200'}`}>
+                      <span className={`font-bold uppercase ${isDark ? 'text-neutral-400' : 'text-slate-600'}`}>
+                        KEPALA DISPATCH HAULING
+                      </span>
+                      <span className="text-[#F4511E] font-bold">CH 09 / 148.550 MHz</span>
+                    </div>
+
+                    <div className="space-y-1 text-[11px]">
+                      <div className={`font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                        Bpk. Hendra Gunawan, S.T.
+                      </div>
+                      <div className={`text-[10px] ${isDark ? 'text-neutral-500' : 'text-slate-400'}`}>
+                        DISPATCH-LEAD-PIT4
+                      </div>
+                      <div className="text-[#F4511E] font-bold">+62 811-5409-8821</div>
+                    </div>
+
+                    <div className={`pt-2 border-t flex items-center justify-between text-[10px] ${isDark ? 'border-[#141C2B]' : 'border-slate-200'}`}>
+                      <span className={isDark ? 'text-neutral-400' : 'text-slate-600'}>Security Gate Pos 01:</span>
+                      <span className="text-emerald-500 font-bold">+62 812-7019-3304</span>
+                    </div>
+                  </div>
+
+                  <div className={`text-[11px] flex items-center gap-2 ${isDark ? 'text-neutral-400' : 'text-slate-600'}`}>
+                    <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+                    <span>Sandi default site: <strong>admin123</strong> (Admin) atau <strong>superadmin123</strong> (Super Admin).</span>
+                  </div>
+                </div>
+
+                <div className={`p-3.5 border-t flex justify-end ${isDark ? 'bg-[#080C14] border-[#182336]' : 'bg-slate-50 border-slate-200'}`}>
+                  <button
+                    type="button"
+                    onClick={() => setShowForgotPasswordModal(false)}
+                    className={`px-4 py-2 rounded-xl text-xs font-bold transition-colors cursor-pointer ${isDark ? 'bg-[#162030] hover:bg-[#1E2B40] text-white' : 'bg-slate-200 hover:bg-slate-300 text-slate-800'
+                      }`}
+                  >
+                    Tutup Informasi
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
+      </div>
+    </MiningPitInteractiveBg>
   );
 }

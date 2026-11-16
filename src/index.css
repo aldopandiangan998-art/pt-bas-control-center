@@ -12,12 +12,12 @@
   --color-secondary: #FB8C00;
   --color-secondary-content: #FFFFFF;
   --color-accent: #F59E0B;
-  --color-accent-content: #0B111E;
-  --color-neutral: #16202C;
+  --color-accent-content: #111315;
+  --color-neutral: #181B1E;
   --color-neutral-content: #F1F5F9;
-  --color-base-100: #131A24;
-  --color-base-200: #0B0F17;
-  --color-base-300: #182230;
+  --color-base-100: #14171A;
+  --color-base-200: #111315;
+  --color-base-300: #181B1E;
   --color-base-content: #F1F5F9;
   --color-success: #10B981;
   --color-warning: #F59E0B;
@@ -29,20 +29,20 @@
 
 @layer base {
   :root {
-    --bg-base: #0B0F17;
-    --bg-surface: #0E1520;
-    --bg-card: #131B26;
-    --bg-card-hover: #182332;
-    --border-subtle: #1D2838;
-    --border-bold: #29384D;
+    --bg-base: #111315;
+    --bg-surface: #14171A;
+    --bg-card: #16181B;
+    --bg-card-hover: #1D2125;
+    --border-subtle: #22262A;
+    --border-bold: #2E3338;
     --color-primary: #F4511E;
     --primary-orange: #F4511E;
     --primary-flame: #FB8C00;
     --primary-amber: #F59E0B;
     --primary-light: #FF7043;
     --primary-hover: #D84315;
-    --timber-base: #1E293B;
-    --timber-dark: #0F172A;
+    --timber-base: #181B1E;
+    --timber-dark: #0E1012;
     --text-primary: #F8FAFC;
     --text-secondary: #94A3B8;
     --text-muted: #64748B;
@@ -69,13 +69,11 @@
   }
 }
 
-/* Authentic dark slate / navy console band matching executive dashboard theme */
+/* Authentic dark console band matching sidebar black theme */
 .timber-header {
-  background-color: #0F172A;
-  background-image: 
-    linear-gradient(90deg, rgba(2, 132, 199, 0.08) 0%, transparent 40%, rgba(14, 165, 233, 0.06) 100%),
-    linear-gradient(180deg, #131D2D 0%, #0F172A 100%);
-  border-bottom: 1px solid #1E2B3E;
+  background-color: #0E1012;
+  background-image: linear-gradient(180deg, #111315 0%, #0E1012 100%);
+  border-bottom: 1px solid #22262A;
 }
 
 /* Technical grid background for CAD/blueprint cross-sections */

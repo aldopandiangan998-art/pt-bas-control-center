@@ -12,7 +12,7 @@ export default function FormAppBar({ title = 'Buat Received Order (RO)', onBack 
     <div
       className={`sticky top-0 z-30 flex items-center gap-3 h-14 px-2 mb-4 transition-colors ${
         isDark
-          ? 'bg-[#0B111E] border-b border-[#1A1E24]'
+          ? 'bg-[#111315] border-b border-[#22262A]'
           : 'bg-white border-b border-slate-200 shadow-xs'
       }`}
     >

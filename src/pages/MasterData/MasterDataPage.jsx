@@ -1227,7 +1227,7 @@ export default function MasterDataPage() {
       </div>
 
       {/* 2. Unified Data Toolbar (Search, Filter, Count & View Mode Toggle) */}
-      <div className="master-toolbar bg-[#131A24]/90 backdrop-blur-md border border-[#1D2838] rounded-2xl p-2.5 sm:px-3.5 sm:py-2.5 flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-sm">
+      <div className="master-toolbar bg-[#14171A]/90 backdrop-blur-md border border-[#22262A] rounded-2xl p-2.5 sm:px-3.5 sm:py-2.5 flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-sm">
         {/* Left: Search with / shortcut hint & Status Filter */}
         <div className="flex items-center gap-2.5 flex-1 flex-wrap sm:flex-nowrap">
           <div className="relative flex-1 max-w-md">
@@ -1238,7 +1238,7 @@ export default function MasterDataPage() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder={`Cari ${activeItem.shortLabel.toLowerCase()}... (tekan / untuk cari)`}
-              className="w-full pl-9 pr-14 py-2 text-xs bg-[#0B0F17] border border-[#1D2838] rounded-xl text-white placeholder-neutral-500 focus:outline-none focus:border-[#F4511E] focus:ring-2 focus:ring-[#F4511E]/20 transition-all shadow-inner"
+              className="w-full pl-9 pr-14 py-2 text-xs bg-[#0E1012] border border-[#22262A] rounded-xl text-white placeholder-neutral-500 focus:outline-none focus:border-[#F4511E] focus:ring-2 focus:ring-[#F4511E]/20 transition-all shadow-inner"
             />
             {searchQuery ? (
               <button
@@ -1263,7 +1263,7 @@ export default function MasterDataPage() {
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className="text-xs bg-[#0B0F17] border border-[#1D2838] rounded-xl pl-8 pr-3 py-2 text-neutral-200 focus:outline-none focus:border-[#F4511E] transition-all cursor-pointer font-medium shadow-inner"
+                className="text-xs bg-[#0E1012] border border-[#22262A] rounded-xl pl-8 pr-3 py-2 text-neutral-200 focus:outline-none focus:border-[#F4511E] transition-all cursor-pointer font-medium shadow-inner"
               >
                 <option value="all">Semua Status</option>
                 <option value="active">Hanya Aktif</option>
@@ -1280,7 +1280,7 @@ export default function MasterDataPage() {
           </div>
 
           {/* Opsi Tampilan Grid / List */}
-          <div className="view-toggle-container flex items-center bg-[#0B0F17] p-1 rounded-xl border border-[#1D2838] shrink-0">
+          <div className="view-toggle-container flex items-center bg-[#0E1012] p-1 rounded-xl border border-[#22262A] shrink-0">
             <button
               type="button"
               onClick={() => handleSetViewMode('grid')}

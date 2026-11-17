@@ -27,6 +27,27 @@ function loadStorage(key, fallback) {
   }
 }
 
+export function normalizeBkkItem(item) {
+  if (!item || typeof item !== 'object') return item;
+  const vol = Number(item.volume ?? item.kubikasi ?? 0) || 0;
+  return {
+    ...item,
+    volume: vol,
+    kubikasi: Number(item.kubikasi ?? item.volume ?? vol) || vol,
+    amount: Number(item.amount ?? 0) || 0,
+    timestamp: item.timestamp || (item.tanggal ? `${item.tanggal} 08:00:00` : ''),
+    tanggal: item.tanggal || (item.timestamp ? String(item.timestamp).slice(0, 10) : ''),
+    subDetail: item.subDetail || item.penerima || '-',
+    penerima: item.penerima || item.subDetail || '-',
+    jenis: item.jenis || 'CURAH | JASA ANGKUT + MATERIAL',
+    periode: item.periode || (item.tanggal ? String(item.tanggal).slice(0, 7) : (item.timestamp ? String(item.timestamp).slice(0, 7) : '-')),
+    statusBayar: item.statusBayar || 'Belum Dibayar',
+    kodeTransaksi: item.kodeTransaksi || '-',
+    perusahaan: item.perusahaan || '-',
+    material: item.material || '-',
+  };
+}
+
 export const INITIAL_CURRENCIES = [
   {
     id: 'curr-idr',
@@ -211,7 +232,8 @@ export function DataProvider({ children }) {
   ]));
 
   // BKK (Cash Out) transactions strictly matching Screenshot 2 & Image 1
-  const [bkkList, setBkkList] = useState(() => loadStorage(STORAGE_KEYS.bkk, [
+  const [bkkList, setBkkList] = useState(() => {
+    const raw = loadStorage(STORAGE_KEYS.bkk, [
     {
       id: 'co-1',
       volume: 107.87,
@@ -347,7 +369,9 @@ export function DataProvider({ children }) {
       tanggalBayar: '2026-11-08',
       rekeningSumber: 'BCA - 0188920199 a/n PT Berkah Alam Semesta',
     },
-  ]));
+    ]);
+    return Array.isArray(raw) ? raw.map(normalizeBkkItem) : [];
+  });
 
   // Data Invoices strictly matching Screenshot media_1794538112384_ea2f3289.jpg
   const [invoiceList, setInvoiceList] = useState(() => loadStorage(STORAGE_KEYS.invoices, [
@@ -979,9 +1003,10 @@ export function DataProvider({ children }) {
       if (res.ok) {
         const data = await res.json();
         if (Array.isArray(data) && data.length > 0) {
-          setBkkList(data);
+          const normalized = data.map(normalizeBkkItem);
+          setBkkList(normalized);
           try {
-            localStorage.setItem(STORAGE_KEYS.bkk, JSON.stringify(data));
+            localStorage.setItem(STORAGE_KEYS.bkk, JSON.stringify(normalized));
           } catch (e) {}
         }
       }
@@ -1067,7 +1092,7 @@ export function DataProvider({ children }) {
       if (e.key === STORAGE_KEYS.bkk && e.newValue) {
         try {
           const parsed = JSON.parse(e.newValue);
-          if (Array.isArray(parsed)) setBkkList(parsed);
+          if (Array.isArray(parsed)) setBkkList(parsed.map(normalizeBkkItem));
         } catch (err) {}
       }
     };
@@ -1323,13 +1348,23 @@ export function DataProvider({ children }) {
           return {
             ...item,
             statusBayar: 'Lunas',
-            tanggalBayar: paymentDetails.tanggalBayar || new Date().toISOString().split('T')[0],
-            rekeningSumber: paymentDetails.rekeningSumber || 'BCA - 0188920199 a/n PT Berkah Alam Semesta',
+            tanggalBayar: paymentDetails?.tanggalBayar || new Date().toISOString().split('T')[0],
+            rekeningSumber: paymentDetails?.rekeningSumber || 'BCA - 0188920199 a/n PT Berkah Alam Semesta',
           };
         }
         return item;
       })
     );
+    try {
+      fetch('/api/bkk/pay', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ids: bkkIds,
+          tanggalBayar: paymentDetails?.tanggalBayar || new Date().toISOString().split('T')[0],
+        }),
+      }).catch(() => {});
+    } catch (e) {}
     addToast(`${bkkIds.length} BKK berhasil dicatat LUNAS! Hutang supplier diperbarui.`, 'success');
   };
 

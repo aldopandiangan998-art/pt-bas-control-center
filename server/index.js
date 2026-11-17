@@ -1048,7 +1048,23 @@ app.post('/api/surat-jalan', (req, res) => {
 // BKK
 app.get('/api/bkk', (req, res) => {
   const bkks = db.prepare('SELECT * FROM bkk ORDER BY id DESC').all();
-  res.json(bkks);
+  const normalized = bkks.map((b) => ({
+    ...b,
+    volume: Number(b.volume ?? b.kubikasi ?? 0),
+    kubikasi: Number(b.kubikasi ?? b.volume ?? 0),
+    amount: Number(b.amount ?? 0),
+    timestamp: b.timestamp || (b.tanggal ? `${b.tanggal} 08:00:00` : ''),
+    tanggal: b.tanggal || (b.timestamp ? b.timestamp.slice(0, 10) : ''),
+    subDetail: b.subDetail || b.penerima || '-',
+    penerima: b.penerima || b.subDetail || '-',
+    jenis: b.jenis || 'CURAH | JASA ANGKUT + MATERIAL',
+    periode: b.periode || (b.tanggal ? b.tanggal.slice(0, 7) : (b.timestamp ? b.timestamp.slice(0, 7) : '-')),
+    statusBayar: b.statusBayar || 'Belum Dibayar',
+    kodeTransaksi: b.kodeTransaksi || '-',
+    perusahaan: b.perusahaan || '-',
+    material: b.material || '-',
+  }));
+  res.json(normalized);
 });
 
 app.patch('/api/bkk/pay', (req, res) => {

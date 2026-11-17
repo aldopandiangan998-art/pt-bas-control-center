@@ -25,8 +25,8 @@ function deriveKey(item, groupBy) {
       return normaliseKey(item.material);
 
     case 'month': {
-      // Try to parse from item.timestamp ("2026-11-09 09:34:30") or item.periode
-      const src = item.timestamp || item.periode || '';
+      // Try to parse from item.timestamp ("2026-11-09 09:34:30") or item.tanggal or item.periode
+      const src = item.timestamp || item.tanggal || item.periode || '';
       const match = src.match(/^(\d{4})-(\d{2})/);
       if (match) {
         const [, year, month] = match;
@@ -67,7 +67,7 @@ function computeSummary(items) {
     // All existing data uses m³; guard anyway
     const unit = (item.unit || 'm3').toLowerCase();
     if (unit !== 'm3' && unit !== 'm³') mixedUnits = true;
-    totalVolume += Number(item.volume) || 0;
+    totalVolume += Number(item.volume ?? item.kubikasi) || 0;
 
     if (item.statusBayar === 'Lunas') {
       paidCount++;

@@ -136,7 +136,7 @@ function CashOutGroupHeader({ group, expanded, onToggle, checkState, onGroupChec
         </span>
         {summary.totalVolume !== null && (
           <span className="text-[10px] font-mono text-neutral-500">
-            {summary.totalVolume.toFixed(2)} m³
+            {Number(summary.totalVolume || 0).toFixed(2)} m³
           </span>
         )}
       </div>
@@ -167,7 +167,7 @@ function CashOutRow({ item, isSelected, onSelect, onInfo, isEven }) {
 
       {/* Tanggal */}
       <td className="px-3 py-2.5 text-[11px] font-mono text-neutral-400 whitespace-nowrap">
-        {item.timestamp ? item.timestamp.slice(0, 16) : '-'}
+        {item.timestamp ? item.timestamp.slice(0, 16) : (item.tanggal || '-')}
       </td>
 
       {/* No. Dokumen */}
@@ -183,7 +183,7 @@ function CashOutRow({ item, isSelected, onSelect, onInfo, isEven }) {
 
       {/* Volume */}
       <td className="px-3 py-2.5 text-[11px] font-mono text-white text-right whitespace-nowrap">
-        {item.volume.toFixed(2)} m³
+        {(Number(item.volume ?? item.kubikasi) || 0).toFixed(2)} m³
       </td>
 
       {/* Jumlah IDR */}
@@ -198,12 +198,12 @@ function CashOutRow({ item, isSelected, onSelect, onInfo, isEven }) {
 
       {/* PIC */}
       <td className="px-3 py-2.5 text-[11px] font-mono text-neutral-300">
-        {item.subDetail || '-'}
+        {item.subDetail || item.penerima || '-'}
       </td>
 
       {/* Periode */}
       <td className="px-3 py-2.5 text-[11px] font-mono text-neutral-400 whitespace-nowrap">
-        {item.periode}
+        {item.periode || (item.tanggal ? item.tanggal.slice(0, 7) : '-')}
       </td>
 
       {/* Aksi info */}
@@ -271,7 +271,7 @@ function CashOutGridCard({ item, isSelected, onSelect, onInfo }) {
         <div className="text-right">
           <span className="text-[10px] text-neutral-500 uppercase font-mono block">Volume</span>
           <span className="text-xs font-bold font-mono text-white">
-            {item.volume.toFixed(2)} m³
+            {(Number(item.volume ?? item.kubikasi) || 0).toFixed(2)} m³
           </span>
         </div>
       </div>
@@ -283,8 +283,8 @@ function CashOutGridCard({ item, isSelected, onSelect, onInfo }) {
           <span className="text-[9px] text-neutral-500 uppercase truncate max-w-[120px]">{item.jenis}</span>
         </div>
         <div className="flex items-center justify-between text-neutral-400">
-          <span className="truncate max-w-[140px]">{item.subDetail || '-'}</span>
-          <span className="text-neutral-500">{item.timestamp ? item.timestamp.slice(0, 10) : '-'}</span>
+          <span className="truncate max-w-[140px]">{item.subDetail || item.penerima || '-'}</span>
+          <span className="text-neutral-500">{item.timestamp ? item.timestamp.slice(0, 10) : (item.tanggal || '-')}</span>
         </div>
       </div>
     </div>
@@ -429,13 +429,14 @@ export default function BkkPage() {
   // ── Filtered list (search + status applied before grouping)
   const filteredBkk = useMemo(() => {
     return bkkList.filter((item) => {
-      const q = searchFilter.toLowerCase();
+      const q = (searchFilter || '').toLowerCase().trim();
       const matchSearch =
         !q ||
-        item.kodeTransaksi.toLowerCase().includes(q) ||
-        item.perusahaan.toLowerCase().includes(q) ||
-        item.material.toLowerCase().includes(q) ||
-        (item.subDetail && item.subDetail.toLowerCase().includes(q));
+        (item.kodeTransaksi && item.kodeTransaksi.toLowerCase().includes(q)) ||
+        (item.perusahaan && item.perusahaan.toLowerCase().includes(q)) ||
+        (item.material && item.material.toLowerCase().includes(q)) ||
+        (item.subDetail && item.subDetail.toLowerCase().includes(q)) ||
+        (item.penerima && item.penerima.toLowerCase().includes(q));
 
       const matchStatus =
         statusFilter === 'ALL' ||
@@ -520,7 +521,7 @@ export default function BkkPage() {
 
   const totalSelected = bkkList
     .filter((item) => selectedItems.includes(item.id))
-    .reduce((sum, item) => sum + item.amount, 0);
+    .reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
 
   const handleConfirmPayment = () => {
     markBkkPaid(selectedItems, paymentForm);
@@ -975,7 +976,7 @@ export default function BkkPage() {
             <div className="grid grid-cols-2 gap-2 bg-[#181B1E] p-3 rounded-lg border border-[#262A2F]">
               <div>
                 <span className="text-neutral-500 block text-[10px] uppercase">Volume</span>
-                <span className="text-white font-bold">{infoModalItem.volume} m³</span>
+                <span className="text-white font-bold">{(Number(infoModalItem.volume ?? infoModalItem.kubikasi) || 0).toFixed(2)} m³</span>
               </div>
               <div>
                 <span className="text-neutral-500 block text-[10px] uppercase">Material</span>
@@ -994,15 +995,15 @@ export default function BkkPage() {
               </div>
               <div>
                 <span className="text-neutral-500 block text-[10px] uppercase">PIC / Driver / Subdetail</span>
-                <span className="text-neutral-200">{infoModalItem.subDetail}</span>
+                <span className="text-neutral-200">{infoModalItem.subDetail || infoModalItem.penerima || '-'}</span>
               </div>
               <div>
                 <span className="text-neutral-500 block text-[10px] uppercase">Waktu Transaksi</span>
-                <span className="text-neutral-200">{infoModalItem.timestamp}</span>
+                <span className="text-neutral-200">{infoModalItem.timestamp || infoModalItem.tanggal || '-'}</span>
               </div>
               <div>
                 <span className="text-neutral-500 block text-[10px] uppercase">Periode</span>
-                <span className="text-neutral-200">{infoModalItem.periode}</span>
+                <span className="text-neutral-200">{infoModalItem.periode || (infoModalItem.tanggal ? infoModalItem.tanggal.slice(0, 7) : '-')}</span>
               </div>
               <div>
                 <span className="text-neutral-500 block text-[10px] uppercase">Status Pembayaran</span>

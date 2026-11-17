@@ -21,6 +21,12 @@ import {
   HelpCircle,
   AlertCircle,
   Clock,
+  Search,
+  X,
+  RotateCcw,
+  SlidersHorizontal,
+  ChevronDown,
+  Filter,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useData } from '../../context/DataContext';
@@ -126,6 +132,158 @@ export default function PreOrderPage() {
   const [formData, setFormData] = useState(mkDefaultForm());
   const [items, setItems] = useState([]);
   const firstErrorRef = useRef(null);
+
+  // ── Search & Filter State (Superadmin & Admin) ──
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('ALL'); // 'ALL' | 'AKTIF' | 'SELESAI' | 'OVER'
+  const [customerFilter, setCustomerFilter] = useState('ALL');
+  const [materialFilter, setMaterialFilter] = useState('ALL');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [sortBy, setSortBy] = useState('NEWEST');
+
+  const handleStartDateChange = (val) => {
+    setStartDate(val);
+    if (val && endDate && endDate < val) {
+      setEndDate(val);
+    }
+  };
+
+  const handleEndDateChange = (val) => {
+    if (startDate && val && val < startDate) {
+      addToast('Tanggal akhir tidak boleh sebelum tanggal mulai', 'warning');
+      setEndDate(startDate);
+      return;
+    }
+    setEndDate(val);
+  };
+
+  const handleResetFilters = () => {
+    setSearchQuery('');
+    setStatusFilter('ALL');
+    setCustomerFilter('ALL');
+    setMaterialFilter('ALL');
+    setStartDate('');
+    setEndDate('');
+    setSortBy('NEWEST');
+    addToast('Filter pencarian berhasil di-reset', 'info');
+  };
+
+  const hasActiveFilters = Boolean(
+    searchQuery ||
+    statusFilter !== 'ALL' ||
+    customerFilter !== 'ALL' ||
+    materialFilter !== 'ALL' ||
+    startDate ||
+    endDate ||
+    sortBy !== 'NEWEST'
+  );
+
+  const availableCustomerOptions = useMemo(() => {
+    const set = new Set();
+    safePreOrders.forEach((po) => {
+      if (po.customer) set.add(po.customer);
+    });
+    return Array.from(set).sort((a, b) => a.localeCompare(b, 'id'));
+  }, [safePreOrders]);
+
+  const availableMaterialOptions = useMemo(() => {
+    const set = new Set();
+    safePreOrders.forEach((po) => {
+      if (po.materialName) set.add(po.materialName);
+      if (Array.isArray(po.items)) {
+        po.items.forEach((it) => {
+          if (it.materialName) set.add(it.materialName);
+        });
+      }
+    });
+    return Array.from(set).sort((a, b) => a.localeCompare(b, 'id'));
+  }, [safePreOrders]);
+
+  const statusCounts = useMemo(() => {
+    let aktif = 0;
+    let selesai = 0;
+    let over = 0;
+    safePreOrders.forEach((po) => {
+      const isCompleted = (Number(po.terkirim) || 0) >= (Number(po.totalOrder) || 1);
+      const isOver = Math.round(((Number(po.terkirim) || 0) / (Number(po.totalOrder) || 1)) * 100) > 100;
+      if (isCompleted) selesai++;
+      else aktif++;
+      if (isOver) over++;
+    });
+    return { all: safePreOrders.length, aktif, selesai, over };
+  }, [safePreOrders]);
+
+  const filteredPreOrders = useMemo(() => {
+    return safePreOrders.filter((po) => {
+      // 1. Search query
+      const q = (searchQuery || '').toLowerCase().trim();
+      if (q) {
+        const matchPo = (po.nomorPo || '').toLowerCase().includes(q);
+        const matchId = (po.id || '').toLowerCase().includes(q);
+        const matchRo = (po.nomorRO || po.nomorRo || '').toLowerCase().includes(q);
+        const matchCust = (po.customer || '').toLowerCase().includes(q);
+        const matchMat = (po.materialName || '').toLowerCase().includes(q);
+        const matchCreated = (po.createdBy || '').toLowerCase().includes(q);
+        const matchItems = Array.isArray(po.items) && po.items.some(
+          (it) => (it.materialName || '').toLowerCase().includes(q)
+        );
+        if (!matchPo && !matchId && !matchRo && !matchCust && !matchMat && !matchCreated && !matchItems) {
+          return false;
+        }
+      }
+
+      // 2. Status filter
+      const fulfillmentPct = Math.round(((Number(po.terkirim) || 0) / (Number(po.totalOrder) || 1)) * 100);
+      const isCompleted = (Number(po.terkirim) || 0) >= (Number(po.totalOrder) || 1);
+      const isOver = fulfillmentPct > 100;
+
+      if (statusFilter === 'AKTIF' && isCompleted) return false;
+      if (statusFilter === 'SELESAI' && !isCompleted) return false;
+      if (statusFilter === 'OVER' && !isOver) return false;
+
+      // 3. Customer filter
+      if (customerFilter !== 'ALL' && po.customer !== customerFilter) {
+        return false;
+      }
+
+      // 4. Material filter
+      if (materialFilter !== 'ALL') {
+        const directMatch = po.materialName === materialFilter;
+        const itemMatch = Array.isArray(po.items) && po.items.some((it) => it.materialName === materialFilter);
+        if (!directMatch && !itemMatch) return false;
+      }
+
+      // 5. Date range filter
+      if (startDate && po.tanggal && po.tanggal < startDate) {
+        return false;
+      }
+      if (endDate && po.tanggal && po.tanggal > endDate) {
+        return false;
+      }
+
+      return true;
+    }).sort((a, b) => {
+      if (sortBy === 'OLDEST') {
+        return (a.tanggal || '').localeCompare(b.tanggal || '');
+      }
+      if (sortBy === 'PROGRESS_DESC') {
+        const pctA = (Number(a.terkirim) || 0) / (Number(a.totalOrder) || 1);
+        const pctB = (Number(b.terkirim) || 0) / (Number(b.totalOrder) || 1);
+        return pctB - pctA;
+      }
+      if (sortBy === 'VOLUME_DESC') {
+        return (Number(b.totalOrder) || 0) - (Number(a.totalOrder) || 0);
+      }
+      if (sortBy === 'VALUE_DESC') {
+        const valA = (Number(a.totalOrder) || 0) * (Number(a.hargaJual) || 0);
+        const valB = (Number(b.totalOrder) || 0) * (Number(b.hargaJual) || 0);
+        return valB - valA;
+      }
+      // Default: NEWEST
+      return (b.tanggal || '').localeCompare(a.tanggal || '') || String(b.id).localeCompare(String(a.id));
+    });
+  }, [safePreOrders, searchQuery, statusFilter, customerFilter, materialFilter, startDate, endDate, sortBy]);
 
   // Dynamic currency options mapped from active currencies in DataContext
   const mataUangOptions = useMemo(() => {
@@ -421,94 +579,258 @@ export default function PreOrderPage() {
 
       {/* ══════════ VIEW 1: DAFTAR PRE ORDER AKTIF ══════════ */}
       {activeTab === 'list' && (
-        <section className="space-y-3">
-          <div className="flex items-center justify-between text-xs text-neutral-400 font-mono px-1">
-            <span>Daftar Pre Order di Sistem Gresik:</span>
-            <span>
-              Role aktif:{' '}
-              <strong className="text-white font-medium">
-                {roleLabel || (currentUser?.role === 'superadmin' ? 'Super Admin' : 'Admin')}
-              </strong>
-            </span>
+        <section className="space-y-4">
+          {/* ── SEARCH & FILTER TOOLBAR ── */}
+          <div className="bg-[#14171A] border border-[#22262A] rounded-xl p-3.5 sm:p-4 space-y-3.5 shadow-sm">
+            {/* Top Row: Status Tabs + Counter + Reset Filter */}
+            <div className="flex flex-wrap items-center justify-between gap-2.5 pb-3 border-b border-[#22262A]">
+              {/* Status Filter Buttons */}
+              <div className="flex flex-wrap items-center gap-1.5">
+                {[
+                  { id: 'ALL', label: 'Semua Status', count: statusCounts.all },
+                  { id: 'AKTIF', label: 'Aktif Berjalan', count: statusCounts.aktif },
+                  { id: 'SELESAI', label: 'Selesai Kirim', count: statusCounts.selesai },
+                  { id: 'OVER', label: 'Over-Delivery (>100%)', count: statusCounts.over },
+                ].map((tab) => (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => setStatusFilter(tab.id)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-mono transition-all flex items-center gap-2 cursor-pointer ${
+                      statusFilter === tab.id
+                        ? 'bg-[#F4511E] text-white font-bold shadow-xs'
+                        : 'text-neutral-400 hover:text-neutral-200 hover:bg-[#1E2228] border border-transparent font-medium'
+                    }`}
+                  >
+                    <span>{tab.label}</span>
+                    <span
+                      className={`text-[10px] px-1.5 py-0.2 rounded font-bold font-mono ${
+                        statusFilter === tab.id
+                          ? 'bg-black/30 text-white'
+                          : 'bg-[#1C1F23] text-neutral-400 border border-[#2B3037]'
+                      }`}
+                    >
+                      {tab.count}
+                    </span>
+                  </button>
+                ))}
+              </div>
+
+              {/* Right: Counter and Reset Button */}
+              <div className="flex items-center gap-2 text-xs font-mono text-neutral-400">
+                <span>
+                  Menampilkan <strong className="text-white">{filteredPreOrders.length}</strong> dari{' '}
+                  <strong className="text-neutral-300">{safePreOrders.length}</strong> PO
+                </span>
+                {hasActiveFilters && (
+                  <button
+                    type="button"
+                    onClick={handleResetFilters}
+                    className="text-[11px] text-[#F4511E] hover:text-[#FF7043] flex items-center gap-1 cursor-pointer transition-colors ml-1 font-semibold"
+                    title="Reset semua filter pencarian"
+                  >
+                    <RotateCcw className="w-3 h-3" />
+                    <span>Reset Filter</span>
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Middle Row: Search Bar */}
+            <div className="relative">
+              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Cari nomor PO, nomor RO, nama customer, jenis material, atau pembuat order..."
+                className="w-full bg-[#0E1012] border border-[#22262A] rounded-lg pl-9 pr-8 py-2 text-xs text-neutral-200 placeholder-neutral-500 focus:outline-none focus:border-[#F4511E] font-mono transition-colors"
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-white p-0.5 cursor-pointer"
+                  title="Hapus pencarian"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+
+            {/* Bottom Row: Additional Filters (Customer, Material, Date Range, Sort) */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 pt-1">
+              {/* Customer Filter */}
+              <div className="relative">
+                <Building2 className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none" />
+                <select
+                  value={customerFilter}
+                  onChange={(e) => setCustomerFilter(e.target.value)}
+                  className="w-full bg-[#0E1012] border border-[#22262A] rounded-lg pl-8 pr-7 py-2 text-xs text-neutral-200 focus:outline-none focus:border-[#F4511E] font-mono appearance-none cursor-pointer"
+                >
+                  <option value="ALL">Semua Customer</option>
+                  {availableCustomerOptions.map((c) => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
+                <ChevronDown className="w-3.5 h-3.5 absolute right-2.5 top-1/2 -translate-y-1/2 text-neutral-500 pointer-events-none" />
+              </div>
+
+              {/* Material Filter */}
+              <div className="relative">
+                <Package className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none" />
+                <select
+                  value={materialFilter}
+                  onChange={(e) => setMaterialFilter(e.target.value)}
+                  className="w-full bg-[#0E1012] border border-[#22262A] rounded-lg pl-8 pr-7 py-2 text-xs text-neutral-200 focus:outline-none focus:border-[#F4511E] font-mono appearance-none cursor-pointer"
+                >
+                  <option value="ALL">Semua Material</option>
+                  {availableMaterialOptions.map((m) => (
+                    <option key={m} value={m}>{m}</option>
+                  ))}
+                </select>
+                <ChevronDown className="w-3.5 h-3.5 absolute right-2.5 top-1/2 -translate-y-1/2 text-neutral-500 pointer-events-none" />
+              </div>
+
+              {/* Date Range Filter (Start & End with min restriction) */}
+              <div className="flex items-center gap-1.5 bg-[#0E1012] border border-[#22262A] rounded-lg px-2.5 py-1 text-xs font-mono">
+                <Calendar className="w-3.5 h-3.5 text-neutral-400 shrink-0" />
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => handleStartDateChange(e.target.value)}
+                  className="w-full bg-transparent text-neutral-200 focus:outline-none text-[11px]"
+                  title="Tanggal Mulai"
+                />
+                <span className="text-neutral-500">-</span>
+                <input
+                  type="date"
+                  value={endDate}
+                  min={startDate || undefined}
+                  onChange={(e) => handleEndDateChange(e.target.value)}
+                  className="w-full bg-transparent text-neutral-200 focus:outline-none text-[11px]"
+                  title="Tanggal Akhir (tidak boleh sebelum tanggal mulai)"
+                />
+              </div>
+
+              {/* Sort Filter */}
+              <div className="relative">
+                <SlidersHorizontal className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none" />
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value)}
+                  className="w-full bg-[#0E1012] border border-[#22262A] rounded-lg pl-8 pr-7 py-2 text-xs text-neutral-200 focus:outline-none focus:border-[#F4511E] font-mono appearance-none cursor-pointer"
+                >
+                  <option value="NEWEST">Urutan: Tanggal Terbaru</option>
+                  <option value="OLDEST">Urutan: Tanggal Terlama</option>
+                  <option value="PROGRESS_DESC">Progress Kirim Tertinggi</option>
+                  <option value="VOLUME_DESC">Total Volume Terbesar</option>
+                  <option value="VALUE_DESC">Estimasi Nilai Terbesar</option>
+                </select>
+                <ChevronDown className="w-3.5 h-3.5 absolute right-2.5 top-1/2 -translate-y-1/2 text-neutral-500 pointer-events-none" />
+              </div>
+            </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-3">
-            {safePreOrders.map((po) => {
-              const fulfillmentPct = Math.min(120, Math.round((po.terkirim / (po.totalOrder || 1)) * 100));
-              const isOverDelivered = fulfillmentPct > 100;
-              return (
-                <Card key={po.id} hover className="p-4.5 sm:p-5 space-y-3.5 bg-[#14171A] border border-[#22262A]">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono text-xs font-bold px-2.5 py-0.5 rounded bg-[#1C1F23] text-neutral-200 border border-[#2B3037]">
-                          {po.nomorPo || 'DRAFT (MENUNGGU SURAT JALAN PERTAMA)'}
-                        </span>
-                        <span className="text-xs text-neutral-400 font-mono">{po.tanggal}</span>
+          {/* Cards List or Empty State */}
+          {filteredPreOrders.length === 0 ? (
+            <div className="bg-[#14171A] border border-[#22262A] rounded-xl p-8 text-center space-y-3">
+              <div className="w-12 h-12 rounded-full bg-[#1C1F23] flex items-center justify-center mx-auto text-neutral-400">
+                <Search className="w-6 h-6" />
+              </div>
+              <div className="space-y-1">
+                <p className="text-sm font-semibold text-white">Tidak ada Pre Order ditemukan</p>
+                <p className="text-xs text-neutral-400 font-mono">
+                  {hasActiveFilters
+                    ? 'Coba sesuaikan kata kunci pencarian atau reset filter untuk melihat data lainnya.'
+                    : 'Belum ada data Pre Order yang tersimpan.'}
+                </p>
+              </div>
+              {hasActiveFilters && (
+                <Button size="sm" variant="ghost" icon={RotateCcw} onClick={handleResetFilters} className="mx-auto">
+                  Reset Filter Pencarian
+                </Button>
+              )}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-3">
+              {filteredPreOrders.map((po) => {
+                const fulfillmentPct = Math.min(120, Math.round(((Number(po.terkirim) || 0) / (Number(po.totalOrder) || 1)) * 100));
+                const isOverDelivered = fulfillmentPct > 100;
+                return (
+                  <Card key={po.id} hover className="p-4.5 sm:p-5 space-y-3.5 bg-[#14171A] border border-[#22262A]">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-xs font-bold px-2.5 py-0.5 rounded bg-[#1C1F23] text-neutral-200 border border-[#2B3037]">
+                            {po.nomorPo || 'DRAFT (MENUNGGU SURAT JALAN PERTAMA)'}
+                          </span>
+                          <span className="text-xs text-neutral-400 font-mono">{po.tanggal}</span>
+                        </div>
+                        <div className="text-sm font-bold text-white mt-1">
+                          {po.customer}{' '}
+                          <span className="text-neutral-500 font-normal">•</span>{' '}
+                          <span className="text-amber-400 font-medium">
+                            {po.items && po.items.length > 1
+                              ? `${po.materialName} (+${po.items.length - 1} item lainnya)`
+                              : po.materialName}
+                          </span>
+                        </div>
                       </div>
-                      <div className="text-sm font-bold text-white mt-1">
-                        {po.customer}{' '}
-                        <span className="text-neutral-500 font-normal">•</span>{' '}
-                        <span className="text-amber-400 font-medium">
-                          {po.items && po.items.length > 1
-                            ? `${po.materialName} (+${po.items.length - 1} item lainnya)`
-                            : po.materialName}
-                        </span>
+                      <div>
+                        {(Number(po.terkirim) || 0) >= (Number(po.totalOrder) || 1) ? (
+                          <Badge variant="neutral">SELESAI</Badge>
+                        ) : (
+                          <Badge variant="success" dot>AKTIF</Badge>
+                        )}
                       </div>
                     </div>
-                    <div>
-                      {po.terkirim >= po.totalOrder ? (
-                        <Badge variant="neutral">SELESAI</Badge>
-                      ) : (
-                        <Badge variant="success" dot>AKTIF</Badge>
-                      )}
-                    </div>
-                  </div>
 
-                  <div className="bg-[#111315] rounded-md p-2.5 border border-[#22262A] space-y-1.5 font-mono">
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-neutral-400">
-                        Realisasi Kirim:{' '}
-                        <strong className="text-white">{formatVolume(po.terkirim, po.satuan)}</strong> / {formatVolume(po.totalOrder, po.satuan)}
-                      </span>
-                      <span className={`font-bold ${isOverDelivered ? 'text-amber-400' : 'text-neutral-300'}`}>
-                        {fulfillmentPct}% {isOverDelivered && '(Peringatan Toleransi 20%)'}
-                      </span>
+                    <div className="bg-[#111315] rounded-md p-2.5 border border-[#22262A] space-y-1.5 font-mono">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-neutral-400">
+                          Realisasi Kirim:{' '}
+                          <strong className="text-white">{formatVolume(po.terkirim, po.satuan)}</strong> / {formatVolume(po.totalOrder, po.satuan)}
+                        </span>
+                        <span className={`font-bold ${isOverDelivered ? 'text-amber-400' : 'text-neutral-300'}`}>
+                          {fulfillmentPct}% {isOverDelivered && '(Peringatan Toleransi 20%)'}
+                        </span>
+                      </div>
+                      <div className="w-full h-2 rounded-full bg-[#1C1F23] overflow-hidden">
+                        <div
+                          className={`h-full transition-all duration-300 ${isOverDelivered ? 'bg-amber-400' : 'bg-[#F4511E]'}`}
+                          style={{ width: `${Math.min(100, fulfillmentPct)}%` }}
+                        />
+                      </div>
                     </div>
-                    <div className="w-full h-2 rounded-full bg-[#1C1F23] overflow-hidden">
-                      <div
-                        className={`h-full transition-all duration-300 ${isOverDelivered ? 'bg-amber-400' : 'bg-[#F4511E]'}`}
-                        style={{ width: `${Math.min(100, fulfillmentPct)}%` }}
-                      />
-                    </div>
-                  </div>
 
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-1 text-xs border-t border-[#22262A]">
-                    <div className="flex items-center gap-4 text-neutral-400 font-mono">
-                      <span>Jual: <strong className="text-white">{formatCurrency(po.hargaJual)}</strong>/{po.satuan}</span>
-                      <span>Beli: <strong className="text-neutral-300">{formatCurrency(po.hargaBeli)}</strong>/{po.satuan}</span>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="text-xs text-neutral-400 font-mono">
-                        Dibuat: <strong className="text-neutral-200">{po.createdBy || 'Admin'}</strong>
-                      </span>
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-1 text-xs border-t border-[#22262A]">
+                      <div className="flex items-center gap-4 text-neutral-400 font-mono">
+                        <span>Jual: <strong className="text-white">{formatCurrency(po.hargaJual)}</strong>/{po.satuan}</span>
+                        <span>Beli: <strong className="text-neutral-300">{formatCurrency(po.hargaBeli)}</strong>/{po.satuan}</span>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-xs text-neutral-400 font-mono">
+                          Dibuat: <strong className="text-neutral-200">{po.createdBy || 'Admin'}</strong>
+                        </span>
 
-                      {/* Fitur Buat Surat Jalan GI untuk Pre Order */}
-                      <Button
-                        size="sm"
-                        variant="primary"
-                        icon={FileText}
-                        onClick={() => handleBuatSuratJalan(po)}
-                        title={`Buat Surat Jalan GI untuk ${po.customer}`}
-                      >
-                        Buat Surat Jalan GI &rarr;
-                      </Button>
+                        {/* Fitur Buat Surat Jalan GI untuk Pre Order */}
+                        <Button
+                          size="sm"
+                          variant="primary"
+                          icon={FileText}
+                          onClick={() => handleBuatSuratJalan(po)}
+                          title={`Buat Surat Jalan GI untuk ${po.customer}`}
+                        >
+                          Buat Surat Jalan GI &rarr;
+                        </Button>
+                      </div>
                     </div>
-                  </div>
-                </Card>
-              );
-            })}
-          </div>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
         </section>
       )}
 

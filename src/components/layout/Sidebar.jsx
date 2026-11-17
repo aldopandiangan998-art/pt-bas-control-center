@@ -27,6 +27,9 @@ import {
   User,
   KeyRound,
   ShieldCheck,
+  Clock,
+  TrendingUp,
+  AlertCircle,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { useAuth } from '../../context/AuthContext';
@@ -50,6 +53,9 @@ const ICON_MAP = {
   CreditCard,
   Users,
   Coins,
+  Clock,
+  TrendingUp,
+  AlertCircle,
 };
 
 export default function Sidebar() {
@@ -87,12 +93,16 @@ export default function Sidebar() {
   // Track expanded state for expandable submenus
   const [openSubmenus, setOpenSubmenus] = useState(() => ({
     '/master-data': location.pathname === '/master-data',
+    '/laporan': location.pathname === '/laporan',
   }));
 
-  // Automatically expand submenu if on /master-data
+  // Automatically expand submenu if on /master-data or /laporan
   useEffect(() => {
     if (location.pathname === '/master-data') {
       setOpenSubmenus((prev) => ({ ...prev, '/master-data': true }));
+    }
+    if (location.pathname === '/laporan') {
+      setOpenSubmenus((prev) => ({ ...prev, '/laporan': true }));
     }
   }, [location.pathname]);
 

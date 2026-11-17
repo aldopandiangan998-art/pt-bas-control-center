@@ -394,7 +394,7 @@ function seedInitialData() {
     `);
 
     insertPo.run('PO-DRAFT-01', 'PO-LW-2026-089', 'PT LION WINGS', 'Kawasan Industri Gresik Blok C-12', 'mat-8', 'SIRTU', 'Curah', 2.0, 'm3', 500, 161.43, 67233, 50765, '2026-11-01', '30 Hari', 'APPROVED', 'Admin Gresik', 'David Rusiah (Direktur)', '2026-11-01 10:30');
-    insertPo.run('PO-DRAFT-02', null, 'PT SEMEN INDONESIA', 'Jl. Veteran, Gresik', 'mat-4', 'LIMESTONE', 'Padat', 2.65, 'm3', 1200, 0, 42857, 38991, '2026-11-10', '14 Hari', 'MENUNGGU_APPROVAL', 'Admin Gresik', null, null);
+    insertPo.run('PO-DRAFT-02', null, 'PT SEMEN INDONESIA', 'Jl. Veteran, Gresik', 'mat-4', 'LIMESTONE', 'Padat', 2.65, 'm3', 1200, 0, 42857, 38991, '2026-11-10', '14 Hari', 'APPROVED', 'Admin Gresik', 'David Rusiah (Direktur)', '2026-11-10 09:00');
     insertPo.run('PO-DRAFT-03', 'PO-PG-2026-041', 'PT PETROKIMIA GRESIK', 'Jl. Jenderal Ahmad Yani, Gresik', 'mat-6', 'PASIR', 'Curah', 2.0, 'rit', 150, 45, 50000, 40000, '2026-11-04', 'Cash / Tunai', 'APPROVED', 'Admin Gresik', 'David Rusiah (Direktur)', '2026-11-04 14:10');
   }
 

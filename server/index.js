@@ -905,7 +905,7 @@ app.post('/api/pre-orders', (req, res) => {
     hargaBeli = 0,
     tanggal = new Date().toISOString().split('T')[0],
     top = '30 Hari',
-    status = 'MENUNGGU_APPROVAL',
+    status = 'APPROVED',
     createdBy = 'Admin Gresik',
     approvedBy = null,
     approvedAt = null,
@@ -1013,17 +1013,6 @@ app.post('/api/surat-jalan', (req, res) => {
     volumeAkhir,
     status = 'Selesai'
   } = req.body;
-
-  // Strict check: Pre Order must exist and be APPROVED before creating Surat Jalan
-  if (poNumber) {
-    const po = db.prepare('SELECT * FROM pre_orders WHERE nomorPo = ? OR id = ?').get(poNumber, poNumber);
-    if (po && po.status !== 'APPROVED') {
-      return res.status(400).json({
-        success: false,
-        message: 'Surat Jalan tidak dapat dibuat karena Pre Order belum disetujui oleh Super Admin.'
-      });
-    }
-  }
 
   const id = customId || `SJ-${Date.now()}`;
 

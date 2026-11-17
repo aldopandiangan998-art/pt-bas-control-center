@@ -118,7 +118,8 @@ export function DataProvider({ children }) {
   // ==========================================
 
   // Pre Order list per PT BAS Gresik
-  const [preOrders, setPreOrders] = useState(() => loadStorage(STORAGE_KEYS.preOrders, [
+  const [preOrders, setPreOrders] = useState(() => {
+    const raw = loadStorage(STORAGE_KEYS.preOrders, [
     {
       id: 'PO-DRAFT-01',
       nomorPo: 'PO-LW-2026-089', // Generated upon 1st SJ
@@ -135,7 +136,7 @@ export function DataProvider({ children }) {
       hargaBeli: 50765,
       tanggal: '2026-11-01',
       top: '30 Hari',
-      status: 'APPROVED', // 'DRAFT' | 'MENUNGGU_APPROVAL' | 'APPROVED' | 'REJECTED' | 'SELESAI_KIRIM'
+      status: 'APPROVED', // 'DRAFT' | 'APPROVED' | 'SELESAI_KIRIM'
       createdBy: 'Admin Gresik',
       approvedBy: 'David Rusiah (Direktur)',
       approvedAt: '2026-11-01 10:30',
@@ -157,10 +158,10 @@ export function DataProvider({ children }) {
       hargaBeli: 38991,
       tanggal: '2026-11-10',
       top: '14 Hari',
-      status: 'MENUNGGU_APPROVAL',
+      status: 'APPROVED',
       createdBy: 'Admin Gresik',
-      approvedBy: null,
-      approvedAt: null,
+      approvedBy: 'David Rusiah (Direktur)',
+      approvedAt: '2026-11-10 09:00',
       rejectionReason: null,
     },
     {
@@ -185,7 +186,11 @@ export function DataProvider({ children }) {
       approvedAt: '2026-11-04 14:10',
       rejectionReason: null,
     },
-  ]));
+    ]);
+    return Array.isArray(raw)
+      ? raw.map((po) => ({ ...po, status: po.status === 'MENUNGGU_APPROVAL' ? 'APPROVED' : po.status }))
+      : [];
+  });
 
   // Surat Jalan (Good Issue) list
   const [suratJalanList, setSuratJalanList] = useState(() => loadStorage(STORAGE_KEYS.suratJalan, [
@@ -971,9 +976,13 @@ export function DataProvider({ children }) {
       if (res.ok) {
         const data = await res.json();
         if (Array.isArray(data) && data.length > 0) {
-          setPreOrders(data);
+          const normalized = data.map((po) => ({
+            ...po,
+            status: po.status === 'MENUNGGU_APPROVAL' ? 'APPROVED' : po.status,
+          }));
+          setPreOrders(normalized);
           try {
-            localStorage.setItem(STORAGE_KEYS.preOrders, JSON.stringify(data));
+            localStorage.setItem(STORAGE_KEYS.preOrders, JSON.stringify(normalized));
           } catch (e) {}
         }
       }
@@ -1134,10 +1143,10 @@ export function DataProvider({ children }) {
       id,
       nomorPo: data.nomorPo || null, // Generated on 1st SJ
       terkirim: Number(data.terkirim) || 0,
-      status: 'MENUNGGU_APPROVAL',
+      status: 'APPROVED',
       createdBy: data.createdBy || 'Admin Gresik',
-      approvedBy: null,
-      approvedAt: null,
+      approvedBy: 'Auto-Approved',
+      approvedAt: new Date().toISOString().replace('T', ' ').substring(0, 16),
       rejectionReason: null,
     };
 

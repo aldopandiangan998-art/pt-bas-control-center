@@ -276,7 +276,28 @@ export default function BuatLaporanPajakPage() {
     return acc + (isPph23 ? row.potonganPph : row.ppn);
   }, 0);
 
+  const handleStartDateChange = (val) => {
+    setStartDate(val);
+    // Jika tanggal akhir sudah diisi dan tanggal mulai baru melebihi tanggal akhir,
+    // otomatis sesuaikan tanggal akhir agar tidak sebelum tanggal mulai
+    if (endDate && val && val > endDate) {
+      setEndDate(val);
+    }
+  };
+
+  const handleEndDateChange = (val) => {
+    if (startDate && val && val < startDate) {
+      addToast('Tanggal akhir tidak boleh sebelum tanggal mulai', 'warning');
+      return;
+    }
+    setEndDate(val);
+  };
+
   const handleApplyFilter = () => {
+    if (startDate && endDate && endDate < startDate) {
+      addToast('Tanggal akhir tidak boleh sebelum tanggal mulai', 'error');
+      return;
+    }
     setHasApplied(true);
     addToast(`Filter berhasil diterapkan untuk periode ${startDate || 'Awal'} s/d ${endDate || 'Akhir'}`, 'success');
   };
@@ -378,7 +399,7 @@ export default function BuatLaporanPajakPage() {
                       <input
                         type="date"
                         value={startDate}
-                        onChange={(e) => setStartDate(e.target.value)}
+                        onChange={(e) => handleStartDateChange(e.target.value)}
                         placeholder="Mulai"
                         className="w-full bg-transparent text-xs font-mono font-medium focus:outline-none cursor-pointer mt-0.5"
                       />
@@ -387,9 +408,11 @@ export default function BuatLaporanPajakPage() {
 
                   {/* Input Akhir */}
                   <div className={`flex items-center rounded-xl border px-3.5 py-3 transition-colors ${
-                    isDark
-                      ? 'bg-[#22262B] border-[#2E333B] text-neutral-200 focus-within:border-[#F4511E]'
-                      : 'bg-slate-50 border-slate-300 text-slate-800 focus-within:border-[#F4511E]'
+                    startDate && endDate && endDate < startDate
+                      ? 'border-rose-500 focus-within:border-rose-500 text-rose-300'
+                      : isDark
+                        ? 'bg-[#22262B] border-[#2E333B] text-neutral-200 focus-within:border-[#F4511E]'
+                        : 'bg-slate-50 border-slate-300 text-slate-800 focus-within:border-[#F4511E]'
                   }`}>
                     <Calendar className="w-4 h-4 text-neutral-400 shrink-0 mr-3" />
                     <div className="flex-1 min-w-0">
@@ -399,13 +422,20 @@ export default function BuatLaporanPajakPage() {
                       <input
                         type="date"
                         value={endDate}
-                        onChange={(e) => setEndDate(e.target.value)}
+                        min={startDate || undefined}
+                        onChange={(e) => handleEndDateChange(e.target.value)}
                         placeholder="Akhir"
                         className="w-full bg-transparent text-xs font-mono font-medium focus:outline-none cursor-pointer mt-0.5"
                       />
                     </div>
                   </div>
                 </div>
+
+                {startDate && endDate && endDate < startDate && (
+                  <p className="text-[11px] text-rose-500 font-medium font-mono px-1">
+                    Tanggal akhir tidak boleh sebelum tanggal mulai
+                  </p>
+                )}
 
                 {/* Full-Width Orange Button: TERAPKAN */}
                 <button

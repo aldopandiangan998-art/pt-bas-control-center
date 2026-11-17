@@ -86,6 +86,8 @@ export default function RekapanPage() {
       }
       if (filterData.taxFilter === 'ppn' && !item.isPpn) return false;
       if (filterData.taxFilter === 'non-ppn' && item.isPpn) return false;
+      if (filterData.mulai && item.tanggal < filterData.mulai) return false;
+      if (filterData.akhir && item.tanggal > filterData.akhir) return false;
       return true;
     });
   }, [filterData]);
@@ -100,7 +102,27 @@ export default function RekapanPage() {
     return { totalSj, totalVol, totalBeli, totalJual, totalMargin };
   }, [filteredData]);
 
+  const handleMulaiChange = (val) => {
+    setFilterData((prev) => ({
+      ...prev,
+      mulai: val,
+      akhir: prev.akhir && val && val > prev.akhir ? val : prev.akhir,
+    }));
+  };
+
+  const handleAkhirChange = (val) => {
+    if (filterData.mulai && val && val < filterData.mulai) {
+      addToast('Tanggal akhir tidak boleh sebelum tanggal mulai', 'warning');
+      return;
+    }
+    setFilterData((prev) => ({ ...prev, akhir: val }));
+  };
+
   const handleApplyFilter = () => {
+    if (filterData.mulai && filterData.akhir && filterData.akhir < filterData.mulai) {
+      addToast('Tanggal akhir tidak boleh sebelum tanggal mulai', 'error');
+      return;
+    }
     setIsApplying(true);
     setTimeout(() => {
       setIsApplying(false);
@@ -240,7 +262,7 @@ export default function RekapanPage() {
                 type="date"
                 icon={Calendar}
                 value={filterData.mulai}
-                onChange={(e) => setFilterData({ ...filterData, mulai: e.target.value })}
+                onChange={(e) => handleMulaiChange(e.target.value)}
               />
 
               <Input
@@ -248,7 +270,13 @@ export default function RekapanPage() {
                 type="date"
                 icon={Calendar}
                 value={filterData.akhir}
-                onChange={(e) => setFilterData({ ...filterData, akhir: e.target.value })}
+                min={filterData.mulai || undefined}
+                onChange={(e) => handleAkhirChange(e.target.value)}
+                error={
+                  filterData.mulai && filterData.akhir && filterData.akhir < filterData.mulai
+                    ? 'Tanggal akhir tidak boleh sebelum tanggal mulai'
+                    : undefined
+                }
               />
             </motion.div>
           )}

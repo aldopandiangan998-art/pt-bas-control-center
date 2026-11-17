@@ -16,6 +16,9 @@ export default function DateField({
   error = '',
   helper = '',
   className = '',
+  min,
+  max,
+  ...props
 }) {
   const { isDark } = useApp();
   const [focused, setFocused] = useState(false);
@@ -43,6 +46,9 @@ export default function DateField({
         onBlur={() => setFocused(false)}
         required={required}
         disabled={disabled}
+        min={min}
+        max={max}
+        {...props}
         aria-required={required}
         aria-describedby={error || helper ? `${uid}-hint` : undefined}
         style={{ colorScheme: isDark ? 'dark' : 'light' }}

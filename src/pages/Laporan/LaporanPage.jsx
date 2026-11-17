@@ -24,6 +24,8 @@ import {
   FileText,
   ShieldCheck,
   Check,
+  LayoutGrid,
+  List,
 } from 'lucide-react';
 import { formatCurrency, formatVolume } from '../../utils/formatters';
 import { Button, Badge, Card, Input } from '../../components/ui';
@@ -48,6 +50,25 @@ export default function LaporanPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterPphCategory, setFilterPphCategory] = useState('ALL');
   const [filterPpnStatus, setFilterPpnStatus] = useState('ALL');
+  const [filterRekapanStatus, setFilterRekapanStatus] = useState('ALL');
+  const [filterRekapanCustomer, setFilterRekapanCustomer] = useState('ALL');
+  const [filterPiutangStatus, setFilterPiutangStatus] = useState('ALL');
+  const [filterHutangStatus, setFilterHutangStatus] = useState('ALL');
+
+  const [viewMode, setViewMode] = useState(() => {
+    try {
+      return localStorage.getItem('laporan_viewMode') || 'grid';
+    } catch {
+      return 'grid';
+    }
+  });
+
+  const handleSetViewMode = (mode) => {
+    setViewMode(mode);
+    try {
+      localStorage.setItem('laporan_viewMode', mode);
+    } catch {}
+  };
 
   useEffect(() => {
     const currentParam = searchParams.get('tab');
@@ -411,6 +432,85 @@ export default function LaporanPage() {
     });
   }, [searchQuery, filterPphCategory]);
 
+  // Unique customers for Rekapan filter dropdown
+  const rekapanCustomers = useMemo(() => {
+    return ['ALL', ...new Set(pendingRekapanList.map((r) => r.customer))];
+  }, []);
+
+  // Filtered Rekapan data
+  const filteredRekapan = useMemo(() => {
+    return pendingRekapanList.filter((item) => {
+      const q = searchQuery.toLowerCase().trim();
+      const matchSearch =
+        !q ||
+        item.id.toLowerCase().includes(q) ||
+        item.customer.toLowerCase().includes(q) ||
+        item.poNumber.toLowerCase().includes(q) ||
+        item.material.toLowerCase().includes(q) ||
+        item.tanggal.toLowerCase().includes(q);
+
+      const matchStatus =
+        filterRekapanStatus === 'ALL' ||
+        (filterRekapanStatus === '<=7' && item.daysPending <= 7) ||
+        (filterRekapanStatus === '>7' && item.daysPending > 7);
+
+      const matchCustomer =
+        filterRekapanCustomer === 'ALL' || item.customer === filterRekapanCustomer;
+
+      return matchSearch && matchStatus && matchCustomer;
+    });
+  }, [searchQuery, filterRekapanStatus, filterRekapanCustomer]);
+
+  // Filtered Piutang data
+  const filteredPiutang = useMemo(() => {
+    return piutangCustomerList.filter((item) => {
+      const q = searchQuery.toLowerCase().trim();
+      const matchSearch =
+        !q ||
+        item.id.toLowerCase().includes(q) ||
+        item.customer.toLowerCase().includes(q) ||
+        item.jatuhTempo.toLowerCase().includes(q) ||
+        item.aging.toLowerCase().includes(q) ||
+        item.invNumbers.some((inv) => inv.toLowerCase().includes(q));
+
+      const matchStatus =
+        filterPiutangStatus === 'ALL' || item.status === filterPiutangStatus;
+
+      return matchSearch && matchStatus;
+    });
+  }, [searchQuery, filterPiutangStatus]);
+
+  // Filtered Hutang data
+  const filteredHutang = useMemo(() => {
+    return hutangSupplierList.filter((sup) => {
+      const q = searchQuery.toLowerCase().trim();
+      const matchSearch =
+        !q ||
+        sup.id.toLowerCase().includes(q) ||
+        sup.supplier.toLowerCase().includes(q) ||
+        sup.bank.toLowerCase().includes(q) ||
+        sup.atasNama.toLowerCase().includes(q);
+
+      const matchStatus =
+        filterHutangStatus === 'ALL' || sup.status === filterHutangStatus;
+
+      return matchSearch && matchStatus;
+    });
+  }, [searchQuery, filterHutangStatus]);
+
+  // Dynamic totals for summary cards
+  const totalEstimasiRekapan = useMemo(() => {
+    return filteredRekapan.reduce((acc, r) => acc + r.estimasiTagihan, 0);
+  }, [filteredRekapan]);
+
+  const totalSisaPiutang = useMemo(() => {
+    return filteredPiutang.reduce((acc, c) => acc + c.sisaPiutang, 0);
+  }, [filteredPiutang]);
+
+  const totalSisaHutang = useMemo(() => {
+    return filteredHutang.reduce((acc, s) => acc + s.sisaHutang, 0);
+  }, [filteredHutang]);
+
   const handleExportCsv = (title) => {
     addToast(`Menyiapkan berkas ekspor CSV: ${title}...`, 'info');
     setTimeout(() => {
@@ -719,39 +819,120 @@ export default function LaporanPage() {
                   {st === 'ALL' ? 'Semua' : st}
                 </button>
               ))}
+
+              {/* Count Indicator */}
+              <div className="text-[11px] font-mono text-neutral-400 px-2 py-1 rounded-lg bg-black/20 border border-white/5">
+                Menampilkan <span className="text-[#FF7043] font-bold">{filteredPpn.length}</span> dari {ppnData.length} data
+              </div>
+
+              {/* Grid / List View Toggle */}
+              <div className="flex items-center bg-[#0E1012] p-1 rounded-xl border border-[#22262A] shrink-0">
+                <button
+                  type="button"
+                  onClick={() => handleSetViewMode('grid')}
+                  className={`px-2.5 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 text-xs font-medium ${
+                    viewMode === 'grid'
+                      ? 'bg-[#F4511E] text-white shadow-xs font-bold'
+                      : 'text-neutral-400 hover:text-white hover:bg-[#151D28]'
+                  }`}
+                  title="Tampilan Grid (Kartu)"
+                >
+                  <LayoutGrid className="w-3.5 h-3.5" />
+                  <span className="text-[11px]">Grid</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleSetViewMode('list')}
+                  className={`px-2.5 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 text-xs font-medium ${
+                    viewMode === 'list'
+                      ? 'bg-[#F4511E] text-white shadow-xs font-bold'
+                      : 'text-neutral-400 hover:text-white hover:bg-[#151D28]'
+                  }`}
+                  title="Tampilan List (Tabel)"
+                >
+                  <List className="w-3.5 h-3.5" />
+                  <span className="text-[11px]">List</span>
+                </button>
+              </div>
             </div>
           </div>
 
-          {/* Data Table */}
-          <div className={`rounded-xl border overflow-hidden transition-colors ${
-            isDark ? 'bg-[#14171A] border-[#24282C]' : 'bg-white border-slate-200 shadow-xs'
-          }`}>
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead>
-                  <tr className={`border-b font-mono uppercase text-[11px] ${
-                    isDark ? 'bg-[#181B1E] border-[#24282C] text-neutral-400' : 'bg-slate-50 border-slate-200 text-slate-600'
-                  }`}>
-                    <th className="py-3 px-3.5">No</th>
-                    <th className="py-3 px-3.5">Faktur Pajak & Tanggal</th>
-                    <th className="py-3 px-3.5">Customer & NPWP</th>
-                    <th className="py-3 px-3.5">Material / Objek</th>
-                    <th className="py-3 px-3.5 text-right">DPP (Rp)</th>
-                    <th className="py-3 px-3.5 text-center">Tarif</th>
-                    <th className="py-3 px-3.5 text-right">PPN 11% (Rp)</th>
-                    <th className="py-3 px-3.5 text-right">Total Tagihan (Rp)</th>
-                    <th className="py-3 px-3.5 text-center">Status Bayar</th>
-                  </tr>
-                </thead>
-                <tbody className={`divide-y ${isDark ? 'divide-[#202428]' : 'divide-slate-100'}`}>
-                  {filteredPpn.length === 0 ? (
-                    <tr>
-                      <td colSpan={9} className="py-8 text-center text-neutral-500">
-                        Tidak ada data faktur PPN yang cocok dengan filter pencarian.
-                      </td>
+          {/* Cards or Data Table */}
+          {filteredPpn.length === 0 ? (
+            <div className={`p-12 text-center rounded-xl border font-mono ${
+              isDark ? 'bg-[#14171A] border-[#24282C] text-neutral-500' : 'bg-white border-slate-200 text-slate-500'
+            }`}>
+              <AlertCircle className="w-8 h-8 text-neutral-500 mx-auto mb-2 opacity-50" />
+              <p className="text-sm font-semibold text-neutral-400">Tidak ada data faktur PPN yang cocok dengan pencarian dan filter.</p>
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchQuery('');
+                  setFilterPpnStatus('ALL');
+                }}
+                className="mt-3 px-3 py-1 text-xs text-[#F4511E] hover:underline cursor-pointer"
+              >
+                Reset Filter Pencarian
+              </button>
+            </div>
+          ) : viewMode === 'grid' ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              {filteredPpn.map((row) => (
+                <Card key={row.id} hover className={`p-4 space-y-3 ${isDark ? 'border-[#24282C]' : 'border-slate-200'}`}>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-mono text-[#F4511E] font-bold">{row.noFakturPajak}</span>
+                    <Badge size="xs" variant={row.statusBayar === 'Lunas' ? 'success' : 'warning'} dot>
+                      {row.statusBayar}
+                    </Badge>
+                  </div>
+                  <div>
+                    <h3 className={`text-sm font-bold line-clamp-1 ${isDark ? 'text-white' : 'text-slate-900'}`}>{row.customer}</h3>
+                    <p className="text-[11px] text-neutral-400 font-mono mt-0.5">{row.noInvoice} • {row.material}</p>
+                  </div>
+                  <div className={`p-2.5 border rounded space-y-1 font-mono text-xs ${isDark ? 'bg-[#181B1E] border-[#24282C]' : 'bg-slate-50 border-slate-200'}`}>
+                    <div className="flex justify-between text-neutral-400 text-[11px]">
+                      <span>DPP:</span>
+                      <span className={isDark ? 'text-neutral-200' : 'text-slate-700'}>{formatCurrency(row.dpp)}</span>
+                    </div>
+                    <div className="flex justify-between text-neutral-400 text-[11px]">
+                      <span>PPN (11%):</span>
+                      <span className="text-emerald-400">{formatCurrency(row.ppn)}</span>
+                    </div>
+                    <div className={`flex justify-between font-bold pt-1 border-t ${isDark ? 'text-white border-[#24282C]' : 'text-slate-900 border-slate-200'}`}>
+                      <span>Total Tagihan:</span>
+                      <span className="text-[#F4511E]">{formatCurrency(row.total)}</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between pt-1">
+                    <span className="text-[10px] text-neutral-500 font-mono">Tgl: {row.tanggal}</span>
+                    <Badge size="xs" variant="primary">DJP Valid</Badge>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <div className={`rounded-xl border overflow-hidden transition-colors ${
+              isDark ? 'bg-[#14171A] border-[#24282C]' : 'bg-white border-slate-200 shadow-xs'
+            }`}>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead>
+                    <tr className={`border-b font-mono uppercase text-[11px] ${
+                      isDark ? 'bg-[#181B1E] border-[#24282C] text-neutral-400' : 'bg-slate-50 border-slate-200 text-slate-600'
+                    }`}>
+                      <th className="py-3 px-3.5">No</th>
+                      <th className="py-3 px-3.5">Faktur Pajak & Tanggal</th>
+                      <th className="py-3 px-3.5">Customer & NPWP</th>
+                      <th className="py-3 px-3.5">Material / Objek</th>
+                      <th className="py-3 px-3.5 text-right">DPP (Rp)</th>
+                      <th className="py-3 px-3.5 text-center">Tarif</th>
+                      <th className="py-3 px-3.5 text-right">PPN 11% (Rp)</th>
+                      <th className="py-3 px-3.5 text-right">Total Tagihan (Rp)</th>
+                      <th className="py-3 px-3.5 text-center">Status Bayar</th>
                     </tr>
-                  ) : (
-                    filteredPpn.map((row, idx) => (
+                  </thead>
+                  <tbody className={`divide-y ${isDark ? 'divide-[#202428]' : 'divide-slate-100'}`}>
+                    {filteredPpn.map((row, idx) => (
                       <tr
                         key={row.id}
                         className={`transition-colors ${
@@ -810,25 +991,25 @@ export default function LaporanPage() {
                           </Badge>
                         </td>
                       </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
 
-            {/* Table Footer */}
-            <div className={`p-3 px-4 flex flex-col sm:flex-row items-center justify-between gap-2 border-t font-mono text-xs ${
-              isDark ? 'bg-[#101215] border-[#24282C] text-neutral-400' : 'bg-slate-50 border-slate-200 text-slate-600'
-            }`}>
-              <div>
-                Menampilkan <strong>{filteredPpn.length}</strong> dari <strong>{ppnData.length}</strong> Faktur PPN 11%
-              </div>
-              <div className="flex items-center gap-4">
-                <span>Total PPN: <strong className="text-[#F4511E]">{formatCurrency(totalPpnDipungut)}</strong></span>
-                <span>DPP: <strong className={isDark ? 'text-white' : 'text-slate-900'}>{formatCurrency(totalDppPpn)}</strong></span>
+              {/* Table Footer */}
+              <div className={`p-3 px-4 flex flex-col sm:flex-row items-center justify-between gap-2 border-t font-mono text-xs ${
+                isDark ? 'bg-[#101215] border-[#24282C] text-neutral-400' : 'bg-slate-50 border-slate-200 text-slate-600'
+              }`}>
+                <div>
+                  Menampilkan <strong>{filteredPpn.length}</strong> dari <strong>{ppnData.length}</strong> Faktur PPN 11%
+                </div>
+                <div className="flex items-center gap-4">
+                  <span>Total PPN: <strong className="text-[#F4511E]">{formatCurrency(totalPpnDipungut)}</strong></span>
+                  <span>DPP: <strong className={isDark ? 'text-white' : 'text-slate-900'}>{formatCurrency(totalDppPpn)}</strong></span>
+                </div>
               </div>
             </div>
-          </div>
+          )}
         </motion.div>
       )}
 
@@ -948,10 +1129,102 @@ export default function LaporanPage() {
                   {opt.label}
                 </button>
               ))}
+
+              {/* Count Indicator */}
+              <div className="text-[11px] font-mono text-neutral-400 px-2 py-1 rounded-lg bg-black/20 border border-white/5">
+                Menampilkan <span className="text-[#FF7043] font-bold">{filteredPph.length}</span> dari {pph23Data.length} data
+              </div>
+
+              {/* Grid / List View Toggle */}
+              <div className="flex items-center bg-[#0E1012] p-1 rounded-xl border border-[#22262A] shrink-0">
+                <button
+                  type="button"
+                  onClick={() => handleSetViewMode('grid')}
+                  className={`px-2.5 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 text-xs font-medium ${
+                    viewMode === 'grid'
+                      ? 'bg-[#F4511E] text-white shadow-xs font-bold'
+                      : 'text-neutral-400 hover:text-white hover:bg-[#151D28]'
+                  }`}
+                  title="Tampilan Grid (Kartu)"
+                >
+                  <LayoutGrid className="w-3.5 h-3.5" />
+                  <span className="text-[11px]">Grid</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleSetViewMode('list')}
+                  className={`px-2.5 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 text-xs font-medium ${
+                    viewMode === 'list'
+                      ? 'bg-[#F4511E] text-white shadow-xs font-bold'
+                      : 'text-neutral-400 hover:text-white hover:bg-[#151D28]'
+                  }`}
+                  title="Tampilan List (Tabel)"
+                >
+                  <List className="w-3.5 h-3.5" />
+                  <span className="text-[11px]">List</span>
+                </button>
+              </div>
             </div>
           </div>
 
-          {/* Data Table */}
+          {/* Cards or Data Table */}
+          {filteredPph.length === 0 ? (
+            <div className={`p-12 text-center rounded-xl border font-mono ${
+              isDark ? 'bg-[#14171A] border-[#24282C] text-neutral-500' : 'bg-white border-slate-200 text-slate-500'
+            }`}>
+              <AlertCircle className="w-8 h-8 text-neutral-500 mx-auto mb-2 opacity-50" />
+              <p className="text-sm font-semibold text-neutral-400">Tidak ada data bukti potong PPh 23 yang cocok dengan filter.</p>
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchQuery('');
+                  setFilterPphCategory('ALL');
+                }}
+                className="mt-3 px-3 py-1 text-xs text-[#F4511E] hover:underline cursor-pointer"
+              >
+                Reset Filter Pencarian
+              </button>
+            </div>
+          ) : viewMode === 'grid' ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              {filteredPph.map((row) => (
+                <Card key={row.id} hover className={`p-4 space-y-3 ${isDark ? 'border-[#24282C]' : 'border-slate-200'}`}>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-mono text-emerald-400 font-bold">{row.noBuktiPotong}</span>
+                    <Badge size="xs" variant="success" dot>
+                      {row.statusBupot}
+                    </Badge>
+                  </div>
+                  <div>
+                    <h3 className={`text-sm font-bold line-clamp-1 ${isDark ? 'text-white' : 'text-slate-900'}`}>{row.vendor}</h3>
+                    <p className="text-[11px] text-neutral-400 font-mono mt-0.5">{row.noBkk} • ID: {row.npwpNik}</p>
+                  </div>
+                  <div className={`p-2.5 border rounded space-y-1 font-mono text-xs ${isDark ? 'bg-[#181B1E] border-[#24282C]' : 'bg-slate-50 border-slate-200'}`}>
+                    <div className="flex justify-between text-neutral-400 text-[11px]">
+                      <span>Objek:</span>
+                      <span className={isDark ? 'text-neutral-200' : 'text-slate-700'}>{row.objekPajak}</span>
+                    </div>
+                    <div className="flex justify-between text-neutral-400 text-[11px]">
+                      <span>Tarif PPh:</span>
+                      <span className="text-amber-400">{row.tarif}%</span>
+                    </div>
+                    <div className="flex justify-between text-neutral-400 text-[11px]">
+                      <span>Potongan PPh:</span>
+                      <span className="text-emerald-400">{formatCurrency(row.potonganPph)}</span>
+                    </div>
+                    <div className={`flex justify-between font-bold pt-1 border-t ${isDark ? 'text-white border-[#24282C]' : 'text-slate-900 border-slate-200'}`}>
+                      <span>Net Kas Keluar:</span>
+                      <span className="text-white">{formatCurrency(row.nettoBkk)}</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between pt-1">
+                    <span className="text-[10px] text-neutral-500 font-mono">Tgl: {row.tanggal}</span>
+                    <Badge size="xs" variant="primary">{row.kategori}</Badge>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          ) : (
           <div className={`rounded-xl border overflow-hidden transition-colors ${
             isDark ? 'bg-[#14171A] border-[#24282C]' : 'bg-white border-slate-200 shadow-xs'
           }`}>
@@ -1062,7 +1335,8 @@ export default function LaporanPage() {
                 <span>Total Bruto: <strong className={isDark ? 'text-white' : 'text-slate-900'}>{formatCurrency(totalBrutoPph)}</strong></span>
               </div>
             </div>
-          </div>
+            </div>
+          )}
         </motion.div>
       )}
 
@@ -1085,10 +1359,10 @@ export default function LaporanPage() {
                 Total Estimasi Penagihan Tertunda
               </div>
               <div className={`text-2xl font-bold font-mono mt-0.5 ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                {formatCurrency(43614600)}
+                {formatCurrency(totalEstimasiRekapan)}
               </div>
               <div className="text-xs text-amber-600 mt-1">
-                4 Rekapan kiriman belum dikonversi menjadi Invoice resmi
+                {filteredRekapan.length} Rekapan kiriman belum dikonversi menjadi Invoice resmi
               </div>
             </div>
 
@@ -1105,16 +1379,118 @@ export default function LaporanPage() {
             </Button>
           </div>
 
-          {/* Cards for each pending rekapan */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {pendingRekapanList
-              .filter(
-                (r) =>
-                  r.customer.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                  r.poNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                  r.material.toLowerCase().includes(searchQuery.toLowerCase())
-              )
-              .map((item) => (
+          {/* Filter & Search Bar */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+            <div className="flex-1 max-w-md">
+              <Input
+                icon={Search}
+                placeholder="Cari No. Rekapan, PO, Customer, atau Material..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                size="sm"
+              />
+            </div>
+
+            <div className="flex items-center gap-2 self-end sm:self-auto flex-wrap">
+              <span className={`text-xs ml-1 ${isDark ? 'text-neutral-400' : 'text-slate-500'}`}>Status:</span>
+              {[
+                { key: 'ALL', label: 'Semua' },
+                { key: '<=7', label: '≤ 7 Hari' },
+                { key: '>7', label: '> 7 Hari' },
+              ].map((st) => (
+                <button
+                  key={st.key}
+                  type="button"
+                  onClick={() => setFilterRekapanStatus(st.key)}
+                  className={`px-2.5 py-1 text-xs font-medium rounded-lg border transition-all cursor-pointer ${
+                    filterRekapanStatus === st.key
+                      ? 'bg-[#F4511E] text-white border-[#F4511E]'
+                      : isDark
+                        ? 'bg-[#16181B] border-[#24282C] text-neutral-400 hover:text-white'
+                        : 'bg-white border-slate-300 text-slate-700 hover:bg-slate-50'
+                  }`}
+                >
+                  {st.label}
+                </button>
+              ))}
+
+              {/* Customer Selector */}
+              <select
+                value={filterRekapanCustomer}
+                onChange={(e) => setFilterRekapanCustomer(e.target.value)}
+                className={`text-xs px-2.5 py-1.5 rounded-lg border focus:outline-none focus:border-[#F4511E] cursor-pointer ${
+                  isDark ? 'bg-[#16181B] border-[#24282C] text-neutral-300' : 'bg-white border-slate-300 text-slate-700'
+                }`}
+              >
+                <option value="ALL">Semua Customer</option>
+                {rekapanCustomers
+                  .filter((c) => c !== 'ALL')
+                  .map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
+                  ))}
+              </select>
+
+              {/* Count Indicator */}
+              <div className="text-[11px] font-mono text-neutral-400 px-2 py-1 rounded-lg bg-black/20 border border-white/5">
+                Menampilkan <span className="text-[#FF7043] font-bold">{filteredRekapan.length}</span> dari {pendingRekapanList.length} data
+              </div>
+
+              {/* Grid / List View Toggle */}
+              <div className="flex items-center bg-[#0E1012] p-1 rounded-xl border border-[#22262A] shrink-0">
+                <button
+                  type="button"
+                  onClick={() => handleSetViewMode('grid')}
+                  className={`px-2.5 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 text-xs font-medium ${
+                    viewMode === 'grid'
+                      ? 'bg-[#F4511E] text-white shadow-xs font-bold'
+                      : 'text-neutral-400 hover:text-white hover:bg-[#151D28]'
+                  }`}
+                  title="Tampilan Grid (Kartu)"
+                >
+                  <LayoutGrid className="w-3.5 h-3.5" />
+                  <span className="text-[11px]">Grid</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleSetViewMode('list')}
+                  className={`px-2.5 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 text-xs font-medium ${
+                    viewMode === 'list'
+                      ? 'bg-[#F4511E] text-white shadow-xs font-bold'
+                      : 'text-neutral-400 hover:text-white hover:bg-[#151D28]'
+                  }`}
+                  title="Tampilan List (Tabel)"
+                >
+                  <List className="w-3.5 h-3.5" />
+                  <span className="text-[11px]">List</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Cards or Table */}
+          {filteredRekapan.length === 0 ? (
+            <div className={`p-12 text-center rounded-xl border font-mono ${
+              isDark ? 'bg-[#14171A] border-[#24282C] text-neutral-500' : 'bg-white border-slate-200 text-slate-500'
+            }`}>
+              <AlertCircle className="w-8 h-8 text-neutral-500 mx-auto mb-2 opacity-50" />
+              <p className="text-sm font-semibold text-neutral-400">Tidak ada rekapan yang sesuai kriteria pencarian</p>
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchQuery('');
+                  setFilterRekapanStatus('ALL');
+                  setFilterRekapanCustomer('ALL');
+                }}
+                className="mt-3 px-3 py-1 text-xs text-[#F4511E] hover:underline cursor-pointer"
+              >
+                Reset Filter Pencarian
+              </button>
+            </div>
+          ) : viewMode === 'grid' ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {filteredRekapan.map((item) => (
                 <Card key={item.id} hover className={`p-4 space-y-3 ${isDark ? 'border-[#24282C]' : 'border-slate-200'}`}>
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-mono text-[#F4511E] font-bold">{item.id}</span>
@@ -1169,7 +1545,86 @@ export default function LaporanPage() {
                   </div>
                 </Card>
               ))}
-          </div>
+            </div>
+          ) : (
+            <div className={`rounded-xl border overflow-hidden transition-colors ${
+              isDark ? 'bg-[#14171A] border-[#24282C]' : 'bg-white border-slate-200 shadow-xs'
+            }`}>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead>
+                    <tr className={`border-b font-mono uppercase text-[11px] ${
+                      isDark ? 'bg-[#181B1E] border-[#24282C] text-neutral-400' : 'bg-slate-50 border-slate-200 text-slate-600'
+                    }`}>
+                      <th className="py-3 px-3.5">No</th>
+                      <th className="py-3 px-3.5">Kode Rekapan & Tanggal</th>
+                      <th className="py-3 px-3.5">Customer & PO</th>
+                      <th className="py-3 px-3.5">Material</th>
+                      <th className="py-3 px-3.5 text-center">Surat Jalan</th>
+                      <th className="py-3 px-3.5 text-right">Total Volume</th>
+                      <th className="py-3 px-3.5 text-right">Estimasi Tagihan</th>
+                      <th className="py-3 px-3.5 text-center">Status Pending</th>
+                      <th className="py-3 px-3.5 text-right">Aksi</th>
+                    </tr>
+                  </thead>
+                  <tbody className={`divide-y ${isDark ? 'divide-[#202428]' : 'divide-slate-100'}`}>
+                    {filteredRekapan.map((item, idx) => (
+                      <tr
+                        key={item.id}
+                        className={`transition-colors ${
+                          isDark ? 'hover:bg-[#1A1E24]' : 'hover:bg-slate-50/80'
+                        }`}
+                      >
+                        <td className="py-3 px-3.5 font-mono text-neutral-500">{idx + 1}</td>
+                        <td className="py-3 px-3.5">
+                          <div className="font-mono font-bold text-[#F4511E]">{item.id}</div>
+                          <div className="text-[11px] text-neutral-500 font-mono mt-0.5">{item.tanggal}</div>
+                        </td>
+                        <td className="py-3 px-3.5">
+                          <div className={`font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>{item.customer}</div>
+                          <div className="text-[11px] font-mono text-neutral-400 mt-0.5">{item.poNumber}</div>
+                        </td>
+                        <td className="py-3 px-3.5">
+                          <span className={`px-2 py-0.5 rounded text-[11px] font-medium ${
+                            isDark ? 'bg-neutral-800 text-neutral-200' : 'bg-slate-100 text-slate-700'
+                          }`}>
+                            {item.material}
+                          </span>
+                        </td>
+                        <td className="py-3 px-3.5 text-center font-mono">
+                          <span className="font-bold">{item.totalSj}</span> <span className="text-neutral-500 text-[11px]">lbr</span>
+                        </td>
+                        <td className="py-3 px-3.5 text-right font-mono font-semibold text-neutral-200">
+                          {formatVolume(item.volume)}
+                        </td>
+                        <td className="py-3 px-3.5 text-right font-mono font-bold text-[#F4511E]">
+                          {formatCurrency(item.estimasiTagihan)}
+                        </td>
+                        <td className="py-3 px-3.5 text-center">
+                          <Badge size="xs" variant="warning" dot>
+                            Pending {item.daysPending} hari
+                          </Badge>
+                        </td>
+                        <td className="py-3 px-3.5 text-right">
+                          <Button
+                            size="xs"
+                            variant="outline"
+                            icon={ArrowUpRight}
+                            onClick={() => {
+                              navigate('/invoices');
+                              addToast(`Beralih ke form penagihan ${item.id}`, 'info');
+                            }}
+                          >
+                            Buat Faktur
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
         </motion.div>
       )}
 
@@ -1192,10 +1647,10 @@ export default function LaporanPage() {
                 Total Piutang Usaha Belum Tertagih
               </div>
               <div className={`text-2xl font-bold font-mono mt-0.5 ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                {formatCurrency(84250000)}
+                {formatCurrency(totalSisaPiutang)}
               </div>
               <div className="text-xs text-rose-600 mt-1">
-                3 Customer prioritas dengan faktur aktif
+                {filteredPiutang.length} Customer prioritas dengan faktur aktif
               </div>
             </div>
 
@@ -1210,11 +1665,99 @@ export default function LaporanPage() {
             </Button>
           </div>
 
-          {/* Cards for each customer */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            {piutangCustomerList
-              .filter((c) => c.customer.toLowerCase().includes(searchQuery.toLowerCase()))
-              .map((item) => (
+          {/* Filter & Search Bar */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+            <div className="flex-1 max-w-md">
+              <Input
+                icon={Search}
+                placeholder="Cari Customer, ID, atau No. Invoice..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                size="sm"
+              />
+            </div>
+
+            <div className="flex items-center gap-2 self-end sm:self-auto flex-wrap">
+              <span className={`text-xs ml-1 ${isDark ? 'text-neutral-400' : 'text-slate-500'}`}>Status:</span>
+              {[
+                { key: 'ALL', label: 'Semua' },
+                { key: 'Lancar', label: 'Lancar' },
+                { key: 'Jatuh Tempo', label: 'Jatuh Tempo' },
+              ].map((st) => (
+                <button
+                  key={st.key}
+                  type="button"
+                  onClick={() => setFilterPiutangStatus(st.key)}
+                  className={`px-2.5 py-1 text-xs font-medium rounded-lg border transition-all cursor-pointer ${
+                    filterPiutangStatus === st.key
+                      ? 'bg-[#F4511E] text-white border-[#F4511E]'
+                      : isDark
+                        ? 'bg-[#16181B] border-[#24282C] text-neutral-400 hover:text-white'
+                        : 'bg-white border-slate-300 text-slate-700 hover:bg-slate-50'
+                  }`}
+                >
+                  {st.label}
+                </button>
+              ))}
+
+              {/* Count Indicator */}
+              <div className="text-[11px] font-mono text-neutral-400 px-2 py-1 rounded-lg bg-black/20 border border-white/5">
+                Menampilkan <span className="text-[#FF7043] font-bold">{filteredPiutang.length}</span> dari {piutangCustomerList.length} data
+              </div>
+
+              {/* Grid / List View Toggle */}
+              <div className="flex items-center bg-[#0E1012] p-1 rounded-xl border border-[#22262A] shrink-0">
+                <button
+                  type="button"
+                  onClick={() => handleSetViewMode('grid')}
+                  className={`px-2.5 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 text-xs font-medium ${
+                    viewMode === 'grid'
+                      ? 'bg-[#F4511E] text-white shadow-xs font-bold'
+                      : 'text-neutral-400 hover:text-white hover:bg-[#151D28]'
+                  }`}
+                  title="Tampilan Grid (Kartu)"
+                >
+                  <LayoutGrid className="w-3.5 h-3.5" />
+                  <span className="text-[11px]">Grid</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleSetViewMode('list')}
+                  className={`px-2.5 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 text-xs font-medium ${
+                    viewMode === 'list'
+                      ? 'bg-[#F4511E] text-white shadow-xs font-bold'
+                      : 'text-neutral-400 hover:text-white hover:bg-[#151D28]'
+                  }`}
+                  title="Tampilan List (Tabel)"
+                >
+                  <List className="w-3.5 h-3.5" />
+                  <span className="text-[11px]">List</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Cards or Table */}
+          {filteredPiutang.length === 0 ? (
+            <div className={`p-12 text-center rounded-xl border font-mono ${
+              isDark ? 'bg-[#14171A] border-[#24282C] text-neutral-500' : 'bg-white border-slate-200 text-slate-500'
+            }`}>
+              <AlertCircle className="w-8 h-8 text-neutral-500 mx-auto mb-2 opacity-50" />
+              <p className="text-sm font-semibold text-neutral-400">Tidak ada piutang customer yang sesuai kriteria pencarian</p>
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchQuery('');
+                  setFilterPiutangStatus('ALL');
+                }}
+                className="mt-3 px-3 py-1 text-xs text-[#F4511E] hover:underline cursor-pointer"
+              >
+                Reset Filter Pencarian
+              </button>
+            </div>
+          ) : viewMode === 'grid' ? (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              {filteredPiutang.map((item) => (
                 <Card key={item.id} hover className={`p-4 space-y-3 ${isDark ? 'border-[#24282C]' : 'border-slate-200'}`}>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
@@ -1276,7 +1819,91 @@ export default function LaporanPage() {
                   </div>
                 </Card>
               ))}
-          </div>
+            </div>
+          ) : (
+            <div className={`rounded-xl border overflow-hidden transition-colors ${
+              isDark ? 'bg-[#14171A] border-[#24282C]' : 'bg-white border-slate-200 shadow-xs'
+            }`}>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead>
+                    <tr className={`border-b font-mono uppercase text-[11px] ${
+                      isDark ? 'bg-[#181B1E] border-[#24282C] text-neutral-400' : 'bg-slate-50 border-slate-200 text-slate-600'
+                    }`}>
+                      <th className="py-3 px-3.5">No</th>
+                      <th className="py-3 px-3.5">ID & Customer</th>
+                      <th className="py-3 px-3.5">Jatuh Tempo & Aging</th>
+                      <th className="py-3 px-3.5 text-right">Total Invoice</th>
+                      <th className="py-3 px-3.5 text-right">Telah Dibayar</th>
+                      <th className="py-3 px-3.5 text-right">Sisa Piutang</th>
+                      <th className="py-3 px-3.5">No. Invoice Terkait</th>
+                      <th className="py-3 px-3.5 text-center">Status</th>
+                      <th className="py-3 px-3.5 text-right">Aksi</th>
+                    </tr>
+                  </thead>
+                  <tbody className={`divide-y ${isDark ? 'divide-[#202428]' : 'divide-slate-100'}`}>
+                    {filteredPiutang.map((item, idx) => (
+                      <tr
+                        key={item.id}
+                        className={`transition-colors ${
+                          isDark ? 'hover:bg-[#1A1E24]' : 'hover:bg-slate-50/80'
+                        }`}
+                      >
+                        <td className="py-3 px-3.5 font-mono text-neutral-500">{idx + 1}</td>
+                        <td className="py-3 px-3.5">
+                          <div className="flex items-center gap-2">
+                            <Building2 className="w-4 h-4 text-[#F4511E] shrink-0" />
+                            <div>
+                              <div className={`font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>{item.customer}</div>
+                              <div className="text-[11px] font-mono text-neutral-500">{item.id}</div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="py-3 px-3.5">
+                          <div className="font-mono text-neutral-200">Tempo: {item.jatuhTempo}</div>
+                          <div className="text-[11px] text-neutral-500 font-mono mt-0.5">{item.aging}</div>
+                        </td>
+                        <td className="py-3 px-3.5 text-right font-mono font-medium text-neutral-300">
+                          {formatCurrency(item.totalInvoice)}
+                        </td>
+                        <td className="py-3 px-3.5 text-right font-mono font-medium text-emerald-400">
+                          {formatCurrency(item.terbayar)}
+                        </td>
+                        <td className="py-3 px-3.5 text-right font-mono font-bold text-rose-500">
+                          {formatCurrency(item.sisaPiutang)}
+                        </td>
+                        <td className="py-3 px-3.5 font-mono text-[11px] text-neutral-400">
+                          {item.invNumbers.join(', ')}
+                        </td>
+                        <td className="py-3 px-3.5 text-center">
+                          <Badge
+                            size="xs"
+                            variant={item.status === 'Lancar' ? 'success' : 'error'}
+                            dot
+                          >
+                            {item.status}
+                          </Badge>
+                        </td>
+                        <td className="py-3 px-3.5 text-right">
+                          <Button
+                            size="xs"
+                            variant="ghost"
+                            icon={ArrowUpRight}
+                            onClick={() => {
+                              navigate('/invoices');
+                              addToast(`Beralih ke riwayat faktur ${item.customer}`, 'info');
+                            }}
+                          >
+                            Faktur
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
         </motion.div>
       )}
 
@@ -1299,10 +1926,10 @@ export default function LaporanPage() {
                 Total Kewajiban Kas Keluar (Hutang Vendor Tambang)
               </div>
               <div className={`text-2xl font-bold font-mono mt-0.5 ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                {formatCurrency(38920000)}
+                {formatCurrency(totalSisaHutang)}
               </div>
               <div className="text-xs text-emerald-600 mt-1">
-                3 Vendor tambang menanti pencairan batch transfer BCA
+                {filteredHutang.length} Vendor tambang menanti pencairan batch transfer BCA
               </div>
             </div>
 
@@ -1317,15 +1944,99 @@ export default function LaporanPage() {
             </Button>
           </div>
 
-          {/* Cards for each supplier */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            {hutangSupplierList
-              .filter(
-                (s) =>
-                  s.supplier.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                  s.bank.toLowerCase().includes(searchQuery.toLowerCase())
-              )
-              .map((sup) => (
+          {/* Filter & Search Bar */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+            <div className="flex-1 max-w-md">
+              <Input
+                icon={Search}
+                placeholder="Cari Supplier, ID, Bank, atau No. Rekening..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                size="sm"
+              />
+            </div>
+
+            <div className="flex items-center gap-2 self-end sm:self-auto flex-wrap">
+              <span className={`text-xs ml-1 ${isDark ? 'text-neutral-400' : 'text-slate-500'}`}>Status:</span>
+              {[
+                { key: 'ALL', label: 'Semua' },
+                { key: 'Siap Cair', label: 'Siap Cair' },
+                { key: 'Jadwal Mingguan', label: 'Jadwal Mingguan' },
+              ].map((st) => (
+                <button
+                  key={st.key}
+                  type="button"
+                  onClick={() => setFilterHutangStatus(st.key)}
+                  className={`px-2.5 py-1 text-xs font-medium rounded-lg border transition-all cursor-pointer ${
+                    filterHutangStatus === st.key
+                      ? 'bg-[#F4511E] text-white border-[#F4511E]'
+                      : isDark
+                        ? 'bg-[#16181B] border-[#24282C] text-neutral-400 hover:text-white'
+                        : 'bg-white border-slate-300 text-slate-700 hover:bg-slate-50'
+                  }`}
+                >
+                  {st.label}
+                </button>
+              ))}
+
+              {/* Count Indicator */}
+              <div className="text-[11px] font-mono text-neutral-400 px-2 py-1 rounded-lg bg-black/20 border border-white/5">
+                Menampilkan <span className="text-[#FF7043] font-bold">{filteredHutang.length}</span> dari {hutangSupplierList.length} data
+              </div>
+
+              {/* Grid / List View Toggle */}
+              <div className="flex items-center bg-[#0E1012] p-1 rounded-xl border border-[#22262A] shrink-0">
+                <button
+                  type="button"
+                  onClick={() => handleSetViewMode('grid')}
+                  className={`px-2.5 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 text-xs font-medium ${
+                    viewMode === 'grid'
+                      ? 'bg-[#F4511E] text-white shadow-xs font-bold'
+                      : 'text-neutral-400 hover:text-white hover:bg-[#151D28]'
+                  }`}
+                  title="Tampilan Grid (Kartu)"
+                >
+                  <LayoutGrid className="w-3.5 h-3.5" />
+                  <span className="text-[11px]">Grid</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleSetViewMode('list')}
+                  className={`px-2.5 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 text-xs font-medium ${
+                    viewMode === 'list'
+                      ? 'bg-[#F4511E] text-white shadow-xs font-bold'
+                      : 'text-neutral-400 hover:text-white hover:bg-[#151D28]'
+                  }`}
+                  title="Tampilan List (Tabel)"
+                >
+                  <List className="w-3.5 h-3.5" />
+                  <span className="text-[11px]">List</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Cards or Table */}
+          {filteredHutang.length === 0 ? (
+            <div className={`p-12 text-center rounded-xl border font-mono ${
+              isDark ? 'bg-[#14171A] border-[#24282C] text-neutral-500' : 'bg-white border-slate-200 text-slate-500'
+            }`}>
+              <AlertCircle className="w-8 h-8 text-neutral-500 mx-auto mb-2 opacity-50" />
+              <p className="text-sm font-semibold text-neutral-400">Tidak ada hutang supplier yang sesuai kriteria pencarian</p>
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchQuery('');
+                  setFilterHutangStatus('ALL');
+                }}
+                className="mt-3 px-3 py-1 text-xs text-[#F4511E] hover:underline cursor-pointer"
+              >
+                Reset Filter Pencarian
+              </button>
+            </div>
+          ) : viewMode === 'grid' ? (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              {filteredHutang.map((sup) => (
                 <Card key={sup.id} hover className={`p-4 space-y-3 ${isDark ? 'border-[#24282C]' : 'border-slate-200'}`}>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
@@ -1382,7 +2093,90 @@ export default function LaporanPage() {
                   </div>
                 </Card>
               ))}
-          </div>
+            </div>
+          ) : (
+            <div className={`rounded-xl border overflow-hidden transition-colors ${
+              isDark ? 'bg-[#14171A] border-[#24282C]' : 'bg-white border-slate-200 shadow-xs'
+            }`}>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead>
+                    <tr className={`border-b font-mono uppercase text-[11px] ${
+                      isDark ? 'bg-[#181B1E] border-[#24282C] text-neutral-400' : 'bg-slate-50 border-slate-200 text-slate-600'
+                    }`}>
+                      <th className="py-3 px-3.5">No</th>
+                      <th className="py-3 px-3.5">ID & Supplier</th>
+                      <th className="py-3 px-3.5">Rekening Bank</th>
+                      <th className="py-3 px-3.5 text-center">Ritase SJ</th>
+                      <th className="py-3 px-3.5 text-right">Total Kas Keluar</th>
+                      <th className="py-3 px-3.5 text-right">Telah Dibayarkan</th>
+                      <th className="py-3 px-3.5 text-right">Sisa Kewajiban</th>
+                      <th className="py-3 px-3.5 text-center">Status</th>
+                      <th className="py-3 px-3.5 text-right">Aksi</th>
+                    </tr>
+                  </thead>
+                  <tbody className={`divide-y ${isDark ? 'divide-[#202428]' : 'divide-slate-100'}`}>
+                    {filteredHutang.map((sup, idx) => (
+                      <tr
+                        key={sup.id}
+                        className={`transition-colors ${
+                          isDark ? 'hover:bg-[#1A1E24]' : 'hover:bg-slate-50/80'
+                        }`}
+                      >
+                        <td className="py-3 px-3.5 font-mono text-neutral-500">{idx + 1}</td>
+                        <td className="py-3 px-3.5">
+                          <div className="flex items-center gap-2">
+                            <HardHat className="w-4 h-4 text-[#F4511E] shrink-0" />
+                            <div>
+                              <div className={`font-semibold uppercase ${isDark ? 'text-white' : 'text-slate-900'}`}>{sup.supplier}</div>
+                              <div className="text-[11px] font-mono text-neutral-500">{sup.id}</div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="py-3 px-3.5 font-mono">
+                          <div className="text-neutral-200">{sup.bank}</div>
+                          <div className="text-[11px] text-neutral-500">a/n {sup.atasNama}</div>
+                        </td>
+                        <td className="py-3 px-3.5 text-center font-mono">
+                          <span className="font-bold">{sup.ritaseCount}</span> <span className="text-neutral-500 text-[11px]">rit</span>
+                        </td>
+                        <td className="py-3 px-3.5 text-right font-mono font-medium text-neutral-300">
+                          {formatCurrency(sup.totalBkk)}
+                        </td>
+                        <td className="py-3 px-3.5 text-right font-mono font-medium text-neutral-400">
+                          {formatCurrency(sup.terbayar)}
+                        </td>
+                        <td className="py-3 px-3.5 text-right font-mono font-bold text-emerald-400">
+                          {formatCurrency(sup.sisaHutang)}
+                        </td>
+                        <td className="py-3 px-3.5 text-center">
+                          <Badge
+                            size="xs"
+                            variant={sup.status === 'Siap Cair' ? 'success' : 'warning'}
+                            dot
+                          >
+                            {sup.status}
+                          </Badge>
+                        </td>
+                        <td className="py-3 px-3.5 text-right">
+                          <Button
+                            size="xs"
+                            variant="primary"
+                            onClick={() => {
+                              navigate('/bkk');
+                              addToast(`Beralih ke kasir BKK untuk ${sup.supplier}`, 'info');
+                            }}
+                          >
+                            Proses BKK
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
         </motion.div>
       )}
 

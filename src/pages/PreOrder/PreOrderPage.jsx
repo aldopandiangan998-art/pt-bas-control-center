@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo } from 'react';
+import { useState, useRef, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -48,12 +48,6 @@ const TOP_OPTIONS = [
 const JENIS_OPTIONS = [
   { value: 'BORONG', label: 'BORONG' },
   { value: 'CURAH', label: 'CURAH' },
-];
-
-const MATA_UANG_OPTIONS = [
-  { value: 'IDR', label: 'IDR – Rupiah Indonesia' },
-  { value: 'USD', label: 'USD – Dolar AS' },
-  { value: 'EUR', label: 'EUR – Euro' },
 ];
 
 const JENIS_PAJAK_OPTIONS = [
@@ -118,7 +112,9 @@ function mkDefaultForm() {
 export default function PreOrderPage() {
   const navigate = useNavigate();
   const { currentUser, roleLabel, permissions } = useAuth();
-  const { preOrders, createPreOrder, materials, customers } = useData();
+  const { preOrders, createPreOrder, materials, customers, currencies } = useData();
+
+  const safePreOrders = Array.isArray(preOrders) ? preOrders : [];
 
   const [activeTab, setActiveTab] = useState('list');
   const [submitting, setSubmitting] = useState(false);
@@ -128,6 +124,29 @@ export default function PreOrderPage() {
   const [formData, setFormData] = useState(mkDefaultForm());
   const [items, setItems] = useState([]);
   const firstErrorRef = useRef(null);
+
+  // Dynamic currency options mapped from active currencies in DataContext
+  const mataUangOptions = useMemo(() => {
+    if (!currencies || !Array.isArray(currencies) || currencies.length === 0) {
+      return [{ value: 'IDR', label: 'IDR – Rupiah Indonesia' }];
+    }
+    const active = currencies.filter((c) => c.aktif === true || c.aktif === 1);
+    if (active.length === 0) {
+      return [{ value: 'IDR', label: 'IDR – Rupiah Indonesia' }];
+    }
+    return active.map((c) => ({
+      value: c.code,
+      label: `${c.code} – ${c.name || c.englishName || c.code}`,
+    }));
+  }, [currencies]);
+
+  // Keep formData.mataUang in sync if currently selected currency gets disabled
+  useEffect(() => {
+    if (mataUangOptions.length > 0 && !mataUangOptions.some((o) => o.value === formData.mataUang)) {
+      const fallback = mataUangOptions.find((o) => o.value === 'IDR')?.value || mataUangOptions[0].value;
+      setFormData((prev) => ({ ...prev, mataUang: fallback }));
+    }
+  }, [mataUangOptions, formData.mataUang]);
 
   // Complete materials list from Database (DataContext), falling back to DEFAULT_MATERIALS
   const allMaterials = useMemo(() => {
@@ -199,7 +218,7 @@ export default function PreOrderPage() {
       const next = { ...prev, [key]: val };
       if (key === 'jenisRO') {
         if (val !== 'JASA ANGKUT SAJA') next.hubungkanNomorPoMaterial = '';
-        
+
         // Auto-initialize first item from database with auto-filled prices
         let pool = allMaterials;
         if (val === 'JASA ANGKUT SAJA') {
@@ -218,7 +237,7 @@ export default function PreOrderPage() {
               !(m.name || m.nama || '').toUpperCase().includes('ANGKUT')
           );
         }
-        
+
         const firstMat = pool[0];
         setItems(val && firstMat ? [createItemFromMaterial(firstMat)] : []);
         setItemsLocked(false);
@@ -380,7 +399,7 @@ export default function PreOrderPage() {
 
         <div className="flex items-center gap-1.5 bg-[#14171A] p-1 rounded-lg border border-[#22262A]">
           <Button size="sm" variant={activeTab === 'list' ? 'primary' : 'ghost'} onClick={handleCancel}>
-            Daftar PO ({preOrders.length})
+            Daftar PO ({safePreOrders.length})
           </Button>
           <Button
             size="sm"
@@ -412,7 +431,7 @@ export default function PreOrderPage() {
           </div>
 
           <div className="grid grid-cols-1 gap-3">
-            {preOrders.map((po) => {
+            {safePreOrders.map((po) => {
               const fulfillmentPct = Math.min(120, Math.round((po.terkirim / (po.totalOrder || 1)) * 100));
               const isOverDelivered = fulfillmentPct > 100;
               return (
@@ -587,7 +606,7 @@ export default function PreOrderPage() {
                     label="Mata Uang"
                     value={formData.mataUang}
                     onChange={(v) => setField('mataUang', v)}
-                    options={MATA_UANG_OPTIONS}
+                    options={mataUangOptions}
                     required
                     error={errors.mataUang}
                   />

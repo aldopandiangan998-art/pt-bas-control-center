@@ -198,16 +198,11 @@ export default function Sidebar() {
             <div key={cat.category} className="space-y-1">
               {/* Category Header (when expanded) or divider (when collapsed) */}
               {!sidebarCollapsed ? (
-                <div className="flex items-center justify-between px-2.5 py-1">
+                <div className="px-2.5 py-1">
                   <span className={`text-[10px] font-mono font-bold uppercase tracking-wider ${
                     isDark ? 'text-neutral-400' : 'text-slate-500'
                   }`}>
                     {cat.category}
-                  </span>
-                  <span className={`text-[9px] font-mono px-1.5 py-0.2 rounded border ${
-                    isDark ? 'text-neutral-400 bg-[#16181B] border-transparent' : 'text-slate-500 bg-slate-100 border-slate-200'
-                  }`}>
-                    {cat.items.length}
                   </span>
                 </div>
               ) : (
@@ -263,13 +258,6 @@ export default function Sidebar() {
 
                           {!sidebarCollapsed && (
                             <div className="flex items-center gap-1.5 shrink-0 ml-1">
-                              <span className={`sidebar-count-badge text-[10px] font-mono px-1.5 py-0.2 rounded border ${
-                                isDark
-                                  ? 'text-neutral-400 bg-[#151D28] border-[#1E2B3C]'
-                                  : 'text-slate-500 bg-slate-100 border-slate-200'
-                              }`}>
-                                {link.children.length}
-                              </span>
                               <ChevronDown
                                 className={`w-4 h-4 transition-transform duration-200 ${
                                   isSubmenuOpen

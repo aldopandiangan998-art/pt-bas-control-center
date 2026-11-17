@@ -150,6 +150,46 @@ export function initDb() {
       rekeningTujuan TEXT,
       penerima TEXT
     );
+
+    CREATE TABLE IF NOT EXISTS banks (
+      id TEXT PRIMARY KEY,
+      namaBank TEXT NOT NULL,
+      namaAlias TEXT,
+      kodeSwift TEXT,
+      kodeBank TEXT,
+      aktif INTEGER DEFAULT 1
+    );
+
+    CREATE TABLE IF NOT EXISTS bank_accounts (
+      id TEXT PRIMARY KEY,
+      bank TEXT NOT NULL,
+      jenisRekening TEXT,
+      nomorRekening TEXT NOT NULL,
+      rekeningAtasNama TEXT NOT NULL,
+      namaAlias TEXT,
+      supplierId TEXT,
+      aktif INTEGER DEFAULT 1
+    );
+
+    CREATE TABLE IF NOT EXISTS currencies (
+      id TEXT PRIMARY KEY,
+      code TEXT NOT NULL,
+      isoCode TEXT,
+      name TEXT NOT NULL,
+      englishName TEXT,
+      symbol TEXT,
+      country TEXT,
+      pemisahRibuan TEXT,
+      pemisahDesimal TEXT,
+      formatSample TEXT,
+      presisi TEXT,
+      formatPresisi TEXT,
+      pajak TEXT,
+      isBase INTEGER DEFAULT 0,
+      deskripsi TEXT,
+      lingkupModul TEXT,
+      aktif INTEGER DEFAULT 1
+    );
   `);
 
   // Safe migration for user profile & password reset fields
@@ -360,6 +400,102 @@ function seedInitialData() {
     insertBkk.run('bkk-1', 'TRX-202611-001', '2026-11-07', 'UKHY DIAN', 'SIRTU (Curah)', 1, 32.5, 50765, 1649863, 'Belum Dibayar', null, 'BCA 6150832452', 'UKHY DIAN');
     insertBkk.run('bkk-2', 'TRX-202611-002', '2026-11-07', 'PT TENANG JAYA SEJAHTERA', 'SIRTU (Curah)', 1, 40.39, 50765, 2050400, 'Belum Dibayar', null, 'BCA 0503800800', 'ARIF NURCAHYADI');
     insertBkk.run('bkk-3', 'TRX-202611-003', '2026-11-07', 'PT SOYO APIK', 'SIRTU (Curah)', 1, 26.65, 50765, 1352887, 'Belum Dibayar', null, 'BCA 829-189-1888', 'PT SOYO APIK');
+  }
+
+  // Seed banks if empty
+  const bankCount = db.prepare('SELECT COUNT(*) as count FROM banks').get().count;
+  if (bankCount === 0) {
+    const insertBank = db.prepare(`
+      INSERT INTO banks (id, namaBank, namaAlias, kodeSwift, kodeBank, aktif)
+      VALUES (?, ?, ?, ?, ?, 1)
+    `);
+
+    insertBank.run('bank-1', 'Bank Central Asia', 'BCA', 'CENAIDJA', '014');
+    insertBank.run('bank-2', 'Bank Mandiri', 'Mandiri', 'BMRIIDJA', '008');
+    insertBank.run('bank-3', 'Bank Rakyat Indonesia', 'BRI', 'BRINIDJA', '002');
+    insertBank.run('bank-4', 'Bank Negara Indonesia', 'BNI', 'BNINIDJA', '009');
+  }
+
+  // Seed bank_accounts if empty
+  const accCount = db.prepare('SELECT COUNT(*) as count FROM bank_accounts').get().count;
+  if (accCount === 0) {
+    const insertAcc = db.prepare(`
+      INSERT INTO bank_accounts (id, bank, jenisRekening, nomorRekening, rekeningAtasNama, namaAlias, supplierId, aktif)
+      VALUES (?, ?, ?, ?, ?, ?, ?, 1)
+    `);
+
+    insertAcc.run('acc-1', 'BCA', 'Giro Bisnis', '0188920199', 'PT Berkah Alam Semesta', 'BCA Operasional Gresik', null);
+    insertAcc.run('acc-2', 'Bank Mandiri', 'Giro Utama', '1420019283741', 'PT Berkah Alam Semesta', 'Mandiri Penerimaan Proyek', null);
+    insertAcc.run('acc-3', 'Bank Central Asia', 'Tabungan Escrow', '0503800800', 'PT Berkah Alam Semesta', 'BCA Cadangan Kas Supplier', null);
+  }
+
+  // Seed currencies if empty
+  const currCount = db.prepare('SELECT COUNT(*) as count FROM currencies').get().count;
+  if (currCount === 0) {
+    const insertCurr = db.prepare(`
+      INSERT INTO currencies (id, code, isoCode, name, englishName, symbol, country, pemisahRibuan, pemisahDesimal, formatSample, presisi, formatPresisi, pajak, isBase, deskripsi, lingkupModul, aktif)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    insertCurr.run(
+      'curr-idr',
+      'IDR',
+      '360',
+      'Rupiah Indonesia',
+      'Indonesian Rupiah',
+      'Rp',
+      'Indonesia (Bank Indonesia)',
+      'Titik (.)',
+      'Koma (,)',
+      'Rp 18.712.800,00',
+      '2 Digit Koma',
+      '24,50 m³',
+      'PPN 11% & PPh 22 (0.25% - 1.5%)',
+      1,
+      'Mata uang basis resmi pembukuan akuntansi, buku besar (GL), kas operasional (BKK), dan faktur customer PT BAS.',
+      JSON.stringify(['Buku Besar (GL)', 'BKK (Cash Out)', 'Faktur Invoice', 'Surat Jalan', 'RO']),
+      1
+    );
+
+    insertCurr.run(
+      'curr-usd',
+      'USD',
+      '840',
+      'Dolar Amerika Serikat',
+      'United States Dollar',
+      '$',
+      'Amerika Serikat (Federal Reserve)',
+      'Koma (,)',
+      'Titik (.)',
+      '$ 1,250.00',
+      '2 Digit Desimal',
+      '24.50 m³',
+      'Non-PPN / Transaksi Valas',
+      0,
+      'Valuta asing pendukung untuk kontrak pengadaan material internasional dan order customer berbasis Dolar AS.',
+      JSON.stringify(['Pre Order Customer', 'Kontrak Vendor Valas']),
+      1
+    );
+
+    insertCurr.run(
+      'curr-eur',
+      'EUR',
+      '978',
+      'Euro Uni Eropa',
+      'Euro',
+      '€',
+      'Uni Eropa (European Central Bank)',
+      'Titik (.)',
+      'Koma (,)',
+      '€ 1.100,00',
+      '2 Digit Desimal',
+      '24,50 m³',
+      'Non-PPN / Transaksi Valas',
+      0,
+      'Valuta asing cadangan untuk impor suku cadang dump truck dan mesin pemecah batu (stone crusher).',
+      JSON.stringify(['Pengadaan Suku Cadang Alat']),
+      0
+    );
   }
 }
 

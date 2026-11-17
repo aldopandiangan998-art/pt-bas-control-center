@@ -197,6 +197,7 @@ export default function MasterDataPage() {
     armadaList,
     banks,
     bankAccounts,
+    currencies,
     usersList,
     toggleMaterialStatus,
     addMaterial,
@@ -208,6 +209,7 @@ export default function MasterDataPage() {
     deleteSupplier,
     toggleCustomerStatus,
     addCustomer,
+    updateCustomer,
     deleteCustomer,
     toggleArmadaStatus,
     addArmada,
@@ -219,8 +221,15 @@ export default function MasterDataPage() {
     deleteBank,
     toggleBankAccountStatus,
     addBankAccount,
+    updateBankAccount,
     deleteBankAccount,
+    toggleCurrencyStatus,
+    addCurrency,
+    updateCurrency,
+    deleteCurrency,
   } = useData();
+
+  const currenciesList = currencies || [];
 
   const [searchQuery, setSearchQuery] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
@@ -228,74 +237,6 @@ export default function MasterDataPage() {
   const setTab = (tabKey) => {
     setSearchParams({ tab: tabKey });
     setSearchQuery('');
-  };
-
-  // Currency Data State
-  const [currenciesList, setCurrenciesList] = useState([
-    {
-      id: 'curr-idr',
-      code: 'IDR',
-      isoCode: '360',
-      name: 'Rupiah Indonesia',
-      englishName: 'Indonesian Rupiah',
-      symbol: 'Rp',
-      country: 'Indonesia (Bank Indonesia)',
-      pemisahRibuan: 'Titik (.)',
-      pemisahDesimal: 'Koma (,)',
-      formatSample: 'Rp 18.712.800,00',
-      presisi: '2 Digit Koma',
-      formatPresisi: '24,50 m³',
-      pajak: 'PPN 11% & PPh 22 (0.25% - 1.5%)',
-      isBase: true,
-      aktif: true,
-      deskripsi: 'Mata uang basis resmi pembukuan akuntansi, buku besar (GL), kas operasional (BKK), dan faktur customer PT BAS.',
-      lingkupModul: ['Buku Besar (GL)', 'BKK (Cash Out)', 'Faktur Invoice', 'Surat Jalan', 'RO'],
-    },
-    {
-      id: 'curr-usd',
-      code: 'USD',
-      isoCode: '840',
-      name: 'Dolar Amerika Serikat',
-      englishName: 'United States Dollar',
-      symbol: '$',
-      country: 'Amerika Serikat (Federal Reserve)',
-      pemisahRibuan: 'Koma (,)',
-      pemisahDesimal: 'Titik (.)',
-      formatSample: '$ 1,250.00',
-      presisi: '2 Digit Desimal',
-      formatPresisi: '24.50 m³',
-      pajak: 'Non-PPN / Transaksi Valas',
-      isBase: false,
-      aktif: true,
-      deskripsi: 'Valuta asing pendukung untuk kontrak pengadaan material internasional dan order customer berbasis Dolar AS.',
-      lingkupModul: ['Pre Order Customer', 'Kontrak Vendor Valas'],
-    },
-    {
-      id: 'curr-eur',
-      code: 'EUR',
-      isoCode: '978',
-      name: 'Euro Uni Eropa',
-      englishName: 'Euro',
-      symbol: '€',
-      country: 'Uni Eropa (European Central Bank)',
-      pemisahRibuan: 'Titik (.)',
-      pemisahDesimal: 'Koma (,)',
-      formatSample: '€ 1.100,00',
-      presisi: '2 Digit Desimal',
-      formatPresisi: '24,50 m³',
-      pajak: 'Non-PPN / Transaksi Valas',
-      isBase: false,
-      aktif: false,
-      deskripsi: 'Valuta asing cadangan untuk impor suku cadang dump truck dan mesin pemecah batu (stone crusher).',
-      lingkupModul: ['Pengadaan Suku Cadang Alat'],
-    },
-  ]);
-
-  const toggleCurrencyStatus = (id) => {
-    setCurrenciesList((prev) =>
-      prev.map((c) => (c.id === id ? { ...c, aktif: !c.aktif } : c))
-    );
-    addToast('Status mata uang berhasil diperbarui', 'info');
   };
 
   // Form States
@@ -385,6 +326,20 @@ export default function MasterDataPage() {
     kodePrefix: '',
   });
 
+  const [selectedCustomer, setSelectedCustomer] = useState(null);
+  const [editCustomerModal, setEditCustomerModal] = useState(false);
+  const [editCustomerForm, setEditCustomerForm] = useState({
+    id: '',
+    jenisBadanUsaha: 'PT-Perusahaan Terbatas',
+    name: '',
+    alias: '',
+    alamat: '',
+    npwp: '',
+    telepon: '',
+    kodePrefix: '',
+    aktif: true,
+  });
+
   const [bankForm, setBankForm] = useState({
     namaBank: '',
     namaAlias: '',
@@ -408,17 +363,55 @@ export default function MasterDataPage() {
     nomorRekening: '',
     rekeningAtasNama: '',
     namaAlias: '',
+    supplierId: '',
+  });
+
+  const [selectedRekening, setSelectedRekening] = useState(null);
+  const [editRekeningModal, setEditRekeningModal] = useState(false);
+  const [editRekeningForm, setEditRekeningForm] = useState({
+    id: '',
+    bank: '',
+    jenisRekening: '',
+    nomorRekening: '',
+    rekeningAtasNama: '',
+    namaAlias: '',
+    supplierId: '',
+    aktif: true,
+  });
+
+  const [currencyForm, setCurrencyForm] = useState({
+    code: '',
+    isoCode: '',
+    name: '',
+    englishName: '',
+    symbol: '',
+    country: '',
+    pemisahRibuan: 'Titik (.)',
+    pemisahDesimal: 'Koma (,)',
+    formatSample: '',
+    presisi: '2 Digit Desimal',
+    formatPresisi: '24.50 m³',
+    pajak: 'Non-PPN / Transaksi Valas',
+    deskripsi: '',
+    lingkupModul: ['Pre Order Customer', 'Kontrak Vendor Valas'],
   });
 
   // Delete confirmation modal state
   const [deleteConfirm, setDeleteConfirm] = useState({
     open: false,
-    type: '',       // 'supplier' | 'material' | 'armada' | 'customer' | 'bank' | 'rekening'
+    type: '',       // 'supplier' | 'material' | 'armada' | 'customer' | 'bank' | 'rekening' | 'mata-uang'
     id: null,
     label: '',      // nama item untuk ditampilkan di modal
   });
 
   const handleAskDelete = (type, id, label) => {
+    if (type === 'mata-uang') {
+      const targetCurr = currencies.find((c) => c.id === id);
+      if (targetCurr?.isBase) {
+        addToast('Mata uang basis (IDR) tidak dapat dihapus karena merupakan acuan buku besar.', 'warning');
+        return;
+      }
+    }
     setDeleteConfirm({ open: true, type, id, label });
   };
 
@@ -430,11 +423,76 @@ export default function MasterDataPage() {
     else if (type === 'customer') deleteCustomer(id);
     else if (type === 'bank') deleteBank(id);
     else if (type === 'rekening') deleteBankAccount(id);
+    else if (type === 'mata-uang') deleteCurrency(id);
     setDeleteConfirm({ open: false, type: '', id: null, label: '' });
   };
 
   const handleCancelDelete = () => {
     setDeleteConfirm({ open: false, type: '', id: null, label: '' });
+  };
+
+  const handleOpenEditCustomer = (cust) => {
+    setSelectedCustomer(cust);
+    setEditCustomerForm({
+      id: cust.id,
+      jenisBadanUsaha: cust.jenisBadanUsaha || 'PT-Perusahaan Terbatas',
+      name: cust.name || '',
+      alias: cust.alias || '',
+      alamat: cust.alamat || '',
+      npwp: cust.npwp || '',
+      telepon: cust.telepon || '',
+      kodePrefix: cust.kodePrefix || '',
+      aktif: cust.aktif ?? true,
+    });
+    setEditCustomerModal(true);
+  };
+
+  const handleUpdateCustomer = (e) => {
+    e.preventDefault();
+    if (!editCustomerForm.id || !editCustomerForm.name) return;
+    updateCustomer(editCustomerForm.id, {
+      name: editCustomerForm.name,
+      alias: editCustomerForm.alias,
+      jenisBadanUsaha: editCustomerForm.jenisBadanUsaha,
+      alamat: editCustomerForm.alamat,
+      npwp: editCustomerForm.npwp,
+      telepon: editCustomerForm.telepon,
+      kodePrefix: editCustomerForm.kodePrefix,
+      aktif: editCustomerForm.aktif,
+    });
+    setEditCustomerModal(false);
+    setSelectedCustomer(null);
+  };
+
+  const handleOpenEditRekening = (acc) => {
+    setSelectedRekening(acc);
+    setEditRekeningForm({
+      id: acc.id,
+      bank: acc.bank || '',
+      jenisRekening: acc.jenisRekening || 'Giro Bisnis (Operasional Perusahaan)',
+      nomorRekening: acc.nomorRekening || '',
+      rekeningAtasNama: acc.rekeningAtasNama || '',
+      namaAlias: acc.namaAlias || '',
+      supplierId: acc.supplierId || '',
+      aktif: acc.aktif ?? true,
+    });
+    setEditRekeningModal(true);
+  };
+
+  const handleUpdateRekening = (e) => {
+    e.preventDefault();
+    if (!editRekeningForm.id || !editRekeningForm.nomorRekening) return;
+    updateBankAccount(editRekeningForm.id, {
+      bank: editRekeningForm.bank,
+      jenisRekening: editRekeningForm.jenisRekening,
+      nomorRekening: editRekeningForm.nomorRekening,
+      rekeningAtasNama: editRekeningForm.rekeningAtasNama,
+      namaAlias: editRekeningForm.namaAlias,
+      supplierId: editRekeningForm.supplierId,
+      aktif: editRekeningForm.aktif,
+    });
+    setEditRekeningModal(false);
+    setSelectedRekening(null);
   };
 
   // Handlers
@@ -458,7 +516,18 @@ export default function MasterDataPage() {
   const handleOpenEditSupplier = (sup) => {
     setSelectedSupplier(sup);
     let matchedBank = sup.bank || 'BCA - BANK CENTRAL ASIA';
-    if (matchedBank === 'BCA' || matchedBank.toUpperCase().startsWith('BCA')) {
+    // Match against banks in master table
+    const foundBank = banks.find((b) => {
+      const alias = (b.namaAlias || '').toUpperCase();
+      const nama = (b.namaBank || '').toUpperCase();
+      const target = matchedBank.toUpperCase();
+      return (alias && target.includes(alias)) || (nama && target.includes(nama));
+    });
+    if (foundBank) {
+      matchedBank = foundBank.namaAlias
+        ? `${foundBank.namaAlias.toUpperCase()} - ${foundBank.namaBank.toUpperCase()}`
+        : foundBank.namaBank.toUpperCase();
+    } else if (matchedBank === 'BCA' || matchedBank.toUpperCase().startsWith('BCA')) {
       matchedBank = 'BCA - BANK CENTRAL ASIA';
     } else if (matchedBank === 'Mandiri' || matchedBank.toUpperCase().startsWith('MANDIRI')) {
       matchedBank = 'MANDIRI - BANK MANDIRI';
@@ -676,6 +745,49 @@ export default function MasterDataPage() {
       nomorRekening: '',
       rekeningAtasNama: '',
       namaAlias: '',
+    });
+    setModalOpen(false);
+  };
+
+  const handleSubmitCurrency = (e) => {
+    e.preventDefault();
+    if (!currencyForm.code || !currencyForm.name) {
+      addToast('Kode mata uang dan nama mata uang wajib diisi!', 'warning');
+      return;
+    }
+    const cleanCode = currencyForm.code.trim().toUpperCase();
+    if (currenciesList.some((c) => c.code.toUpperCase() === cleanCode)) {
+      addToast(`Mata uang "${cleanCode}" sudah terdaftar di sistem!`, 'error');
+      return;
+    }
+    addCurrency({
+      ...currencyForm,
+      code: cleanCode,
+      symbol: currencyForm.symbol || cleanCode,
+      formatSample: currencyForm.formatSample || `${currencyForm.symbol || cleanCode} 1,250.00`,
+      formatPresisi: currencyForm.formatPresisi || '24.50 m³',
+      lingkupModul:
+        Array.isArray(currencyForm.lingkupModul) && currencyForm.lingkupModul.length > 0
+          ? currencyForm.lingkupModul
+          : ['Pre Order Customer', 'Kontrak Vendor Valas'],
+      isBase: false,
+      aktif: true,
+    });
+    setCurrencyForm({
+      code: '',
+      isoCode: '',
+      name: '',
+      englishName: '',
+      symbol: '',
+      country: '',
+      pemisahRibuan: 'Titik (.)',
+      pemisahDesimal: 'Koma (,)',
+      formatSample: '',
+      presisi: '2 Digit Desimal',
+      formatPresisi: '24.50 m³',
+      pajak: 'Non-PPN / Transaksi Valas',
+      deskripsi: '',
+      lingkupModul: ['Pre Order Customer', 'Kontrak Vendor Valas'],
     });
     setModalOpen(false);
   };
@@ -992,7 +1104,7 @@ export default function MasterDataPage() {
       items: [
         { key: 'bank', label: 'Data Bank', shortLabel: 'Bank Mitra', count: banks.length, icon: Landmark },
         { key: 'rekening', label: 'Data Rekening Bank', shortLabel: 'Rekening Bank', count: bankAccounts.length, icon: CreditCard },
-        { key: 'mata-uang', label: 'Data Mata Uang', shortLabel: 'Mata Uang Basis', count: currenciesList.length, icon: Coins },
+        { key: 'mata-uang', label: 'Data Mata Uang', shortLabel: 'Mata Uang', count: currenciesList.length, icon: Coins },
       ],
     },
     {
@@ -1212,7 +1324,7 @@ export default function MasterDataPage() {
             Ekspor CSV
           </Button>
 
-          {['supplier', 'material', 'armada', 'customer', 'bank', 'rekening'].includes(currentTab) && (
+          {['supplier', 'material', 'armada', 'customer', 'bank', 'rekening', 'mata-uang'].includes(currentTab) && (
             <Button
               size="sm"
               variant="primary"
@@ -1344,6 +1456,7 @@ export default function MasterDataPage() {
                   else if (currentTab === 'bank') list = filteredBanks.filter((b) => selectedIds.includes(b.id));
                   else if (currentTab === 'rekening') list = filteredAccounts.filter((r) => selectedIds.includes(r.id));
                   else if (currentTab === 'pengguna') list = filteredUsers.filter((u) => selectedIds.includes(u.id));
+                  else if (currentTab === 'mata-uang') list = filteredCurrencies.filter((c) => selectedIds.includes(c.id));
                   handleExportCSV(list);
                 }}
                 className="px-3 py-1.5 rounded-lg bg-[#F4511E] hover:bg-[#D84315] text-white font-medium transition-all flex items-center gap-1.5 shadow-xs cursor-pointer"
@@ -2482,14 +2595,24 @@ export default function MasterDataPage() {
                             {cust.npwp || '-'}
                           </td>
                           <td className="p-3 text-center">
-                            <Button
-                              size="xs"
-                              variant="ghost"
-                              icon={Trash2}
-                              onClick={() => handleAskDelete('customer', cust.id, cust.name)}
-                              className="text-[#F4511E] hover:bg-[#F4511E]/10 border border-[#F4511E]/30"
-                              title="Hapus Customer"
-                            />
+                            <div className="flex items-center justify-center gap-1">
+                              <Button
+                                size="xs"
+                                variant="ghost"
+                                icon={Edit2}
+                                onClick={() => handleOpenEditCustomer(cust)}
+                                className="text-neutral-300 hover:text-white hover:bg-neutral-800"
+                                title="Edit Customer"
+                              />
+                              <Button
+                                size="xs"
+                                variant="ghost"
+                                icon={Trash2}
+                                onClick={() => handleAskDelete('customer', cust.id, cust.name)}
+                                className="text-[#F4511E] hover:bg-[#F4511E]/10 border border-[#F4511E]/30"
+                                title="Hapus Customer"
+                              />
+                            </div>
                           </td>
                         </tr>
                       ))}
@@ -2575,14 +2698,24 @@ export default function MasterDataPage() {
                         <span className="text-[11px] text-neutral-500 font-mono">
                           ID: {cust.id}
                         </span>
-                        <Button
-                          size="xs"
-                          variant="ghost"
-                          icon={Trash2}
-                          onClick={() => handleAskDelete('customer', cust.id, cust.name)}
-                          className="text-[#F4511E] hover:bg-[#F4511E]/10 border border-[#F4511E]/20"
-                          title="Hapus Customer"
-                        />
+                        <div className="flex items-center gap-1">
+                          <Button
+                            size="xs"
+                            variant="ghost"
+                            icon={Edit2}
+                            onClick={() => handleOpenEditCustomer(cust)}
+                            className="text-neutral-300 hover:text-white hover:bg-neutral-800"
+                            title="Edit Customer"
+                          />
+                          <Button
+                            size="xs"
+                            variant="ghost"
+                            icon={Trash2}
+                            onClick={() => handleAskDelete('customer', cust.id, cust.name)}
+                            className="text-[#F4511E] hover:bg-[#F4511E]/10 border border-[#F4511E]/20"
+                            title="Hapus Customer"
+                          />
+                        </div>
                       </div>
                     </Card>
                   </motion.div>
@@ -3037,14 +3170,24 @@ export default function MasterDataPage() {
                             {acc.namaAlias}
                           </td>
                           <td className="p-3 text-center">
-                            <Button
-                              size="xs"
-                              variant="ghost"
-                              icon={Trash2}
-                              onClick={() => handleAskDelete('rekening', acc.id, acc.nomorRekening)}
-                              className="text-[#F4511E] hover:bg-[#F4511E]/10 border border-[#F4511E]/30"
-                              title="Hapus Rekening"
-                            />
+                            <div className="flex items-center justify-center gap-1">
+                              <Button
+                                size="xs"
+                                variant="ghost"
+                                icon={Edit2}
+                                onClick={() => handleOpenEditRekening(acc)}
+                                className="text-neutral-300 hover:text-white hover:bg-neutral-800"
+                                title="Edit Rekening"
+                              />
+                              <Button
+                                size="xs"
+                                variant="ghost"
+                                icon={Trash2}
+                                onClick={() => handleAskDelete('rekening', acc.id, acc.nomorRekening)}
+                                className="text-[#F4511E] hover:bg-[#F4511E]/10 border border-[#F4511E]/30"
+                                title="Hapus Rekening"
+                              />
+                            </div>
                           </td>
                         </tr>
                       ))}
@@ -3141,14 +3284,24 @@ export default function MasterDataPage() {
                         <span className="text-[11px] text-neutral-500 font-mono">
                           ID: {acc.id}
                         </span>
-                        <Button
-                          size="xs"
-                          variant="ghost"
-                          icon={Trash2}
-                          onClick={() => handleAskDelete('rekening', acc.id, acc.nomorRekening)}
-                          className="text-[#F4511E] hover:bg-[#F4511E]/10 border border-[#F4511E]/20"
-                          title="Hapus Rekening"
-                        />
+                        <div className="flex items-center gap-1">
+                          <Button
+                            size="xs"
+                            variant="ghost"
+                            icon={Edit2}
+                            onClick={() => handleOpenEditRekening(acc)}
+                            className="text-neutral-300 hover:text-white hover:bg-neutral-800"
+                            title="Edit Rekening"
+                          />
+                          <Button
+                            size="xs"
+                            variant="ghost"
+                            icon={Trash2}
+                            onClick={() => handleAskDelete('rekening', acc.id, acc.nomorRekening)}
+                            className="text-[#F4511E] hover:bg-[#F4511E]/10 border border-[#F4511E]/20"
+                            title="Hapus Rekening"
+                          />
+                        </div>
                       </div>
                     </Card>
                   </motion.div>
@@ -3278,8 +3431,9 @@ export default function MasterDataPage() {
                     </thead>
                     <tbody className="divide-y divide-[#202326]">
                       {filtered.map((user) => {
-                        const isPending = !user.aktif || user.aktif === 0;
+                        const isPending = user.pendingApproval === true || user.isApproved === false || (!user.aktif && user.id?.startsWith('usr-reg-'));
                         const isSuper = user.role === 'superadmin' || user.roleLabel === 'Super Admin';
+                        const isUserActive = user.aktif === 1 || user.aktif === true;
 
                         return (
                           <tr key={user.id} className="hover:bg-[#181B1E]/60 transition-colors">
@@ -3322,9 +3476,48 @@ export default function MasterDataPage() {
                                   Menunggu Approval
                                 </Badge>
                               ) : (
-                                <Badge size="xs" variant="success" dot>
-                                  Aktif
-                                </Badge>
+                                <div className="flex items-center gap-2">
+                                  <button
+                                    type="button"
+                                    disabled={isSuper}
+                                    onClick={async () => {
+                                      if (isSuper) {
+                                        addToast('Akun Super Admin utama tidak dapat dinonaktifkan.', 'warning');
+                                        return;
+                                      }
+                                      const res = await toggleUserStatus(user.id);
+                                      if (res?.success) {
+                                        addToast(
+                                          `Status akun ${user.name} diubah menjadi ${res.aktif ? 'Aktif' : 'Nonaktif'}.`,
+                                          'info'
+                                        );
+                                      }
+                                    }}
+                                    className={`w-8 h-4.5 flex items-center rounded-full p-0.5 transition-colors ${
+                                      isSuper
+                                        ? 'opacity-60 cursor-not-allowed bg-[#F4511E]'
+                                        : isUserActive
+                                        ? 'bg-[#F4511E] cursor-pointer'
+                                        : 'bg-[#2A2E33] cursor-pointer'
+                                    }`}
+                                    title={
+                                      isSuper
+                                        ? 'Akun Super Admin tidak dapat dinonaktifkan'
+                                        : isUserActive
+                                        ? 'Klik untuk non-aktifkan'
+                                        : 'Klik untuk aktifkan'
+                                    }
+                                  >
+                                    <div
+                                      className={`bg-white w-3.5 h-3.5 rounded-full shadow-md transform transition-transform ${
+                                        isUserActive ? 'translate-x-3.5' : 'translate-x-0'
+                                      }`}
+                                    />
+                                  </button>
+                                  <span className="text-[11px] font-mono text-neutral-400">
+                                    {isUserActive ? 'Aktif' : 'Non-aktif'}
+                                  </span>
+                                </div>
                               )}
                             </td>
                             <td className="p-3 font-mono text-[11px] text-neutral-400">
@@ -3334,7 +3527,7 @@ export default function MasterDataPage() {
                               <td className="p-3 text-center">
                                 {!isSuper && (
                                   <div className="flex items-center justify-center gap-1.5">
-                                    {isPending ? (
+                                    {isPending && (
                                       <Button
                                         size="xs"
                                         variant="primary"
@@ -3350,23 +3543,6 @@ export default function MasterDataPage() {
                                         className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold"
                                       >
                                         Setujui
-                                      </Button>
-                                    ) : (
-                                      <Button
-                                        size="xs"
-                                        variant="neutral"
-                                        onClick={async () => {
-                                          const res = await toggleUserStatus(user.id);
-                                          if (res.success) {
-                                            addToast(
-                                              `Status akun ${user.name} diubah menjadi ${res.aktif ? 'Aktif' : 'Nonaktif'}.`,
-                                              'info'
-                                            );
-                                          }
-                                        }}
-                                        className="text-[10px] py-1 text-neutral-400 hover:text-white"
-                                      >
-                                        Nonaktifkan
                                       </Button>
                                     )}
 
@@ -3404,8 +3580,9 @@ export default function MasterDataPage() {
                 className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3.5"
               >
                 {filtered.map((user) => {
-                  const isPending = !user.aktif || user.aktif === 0;
+                  const isPending = user.pendingApproval === true || user.isApproved === false || (!user.aktif && user.id?.startsWith('usr-reg-'));
                   const isSuper = user.role === 'superadmin' || user.roleLabel === 'Super Admin';
+                  const isUserActive = user.aktif === 1 || user.aktif === true;
 
                   return (
                     <motion.div
@@ -3438,6 +3615,47 @@ export default function MasterDataPage() {
                               <Badge size="xs" variant={isSuper ? 'primary' : 'neutral'}>
                                 {user.roleLabel || user.role}
                               </Badge>
+                              {!isPending && (
+                                <div className="flex items-center gap-1">
+                                  <button
+                                    type="button"
+                                    disabled={isSuper}
+                                    onClick={async () => {
+                                      if (isSuper) {
+                                        addToast('Akun Super Admin tidak dapat dinonaktifkan.', 'warning');
+                                        return;
+                                      }
+                                      const res = await toggleUserStatus(user.id);
+                                      if (res?.success) {
+                                        addToast(
+                                          `Status akun ${user.name} diubah menjadi ${res.aktif ? 'Aktif' : 'Nonaktif'}.`,
+                                          'info'
+                                        );
+                                      }
+                                    }}
+                                    className={`w-8 h-4.5 flex items-center rounded-full p-0.5 transition-colors ${
+                                      isSuper
+                                        ? 'opacity-60 cursor-not-allowed bg-[#F4511E]'
+                                        : isUserActive
+                                        ? 'bg-[#F4511E] cursor-pointer'
+                                        : 'bg-[#2A2E33] cursor-pointer'
+                                    }`}
+                                    title={
+                                      isSuper
+                                        ? 'Akun Super Admin tidak dapat dinonaktifkan'
+                                        : isUserActive
+                                        ? 'Klik untuk non-aktifkan'
+                                        : 'Klik untuk aktifkan'
+                                    }
+                                  >
+                                    <div
+                                      className={`bg-white w-3.5 h-3.5 rounded-full shadow-md transform transition-transform ${
+                                        isUserActive ? 'translate-x-3.5' : 'translate-x-0'
+                                      }`}
+                                    />
+                                  </button>
+                                </div>
+                              )}
                             </div>
                           </div>
 
@@ -3459,8 +3677,8 @@ export default function MasterDataPage() {
                                 Menunggu Approval
                               </Badge>
                             ) : (
-                              <Badge size="xs" variant="success" dot>
-                                Aktif
+                              <Badge size="xs" variant={isUserActive ? 'success' : 'neutral'} dot>
+                                {isUserActive ? 'Aktif' : 'Non-aktif'}
                               </Badge>
                             )}
                             <span className="font-mono text-[10px] text-neutral-500">
@@ -3470,7 +3688,7 @@ export default function MasterDataPage() {
 
                           {/* Super Admin Action Controls */}
                           {isSuperAdmin && !isSuper && (
-                            <div className="pt-2 flex items-center gap-1.5 border-t border-[#1C2024]">
+                            <div className="pt-2 flex items-center justify-between gap-1.5 border-t border-[#1C2024]">
                               {isPending ? (
                                 <Button
                                   size="xs"
@@ -3489,22 +3707,9 @@ export default function MasterDataPage() {
                                   Setujui Akun
                                 </Button>
                               ) : (
-                                <Button
-                                  size="xs"
-                                  variant="neutral"
-                                  onClick={async () => {
-                                    const res = await toggleUserStatus(user.id);
-                                    if (res.success) {
-                                      addToast(
-                                        `Status akun ${user.name} diubah menjadi ${res.aktif ? 'Aktif' : 'Nonaktif'}.`,
-                                        'info'
-                                      );
-                                    }
-                                  }}
-                                  className="text-[10px] py-1 text-neutral-400 hover:text-white"
-                                >
-                                  Nonaktifkan
-                                </Button>
+                                <span className="text-[10px] font-mono text-neutral-500">
+                                  ID: {user.id}
+                                </span>
                               )}
 
                               <button
@@ -3604,6 +3809,7 @@ export default function MasterDataPage() {
                 setSearchQuery('');
                 setStatusFilter('all');
               }}
+              onAdd={() => setModalOpen(true)}
               entityLabel="Mata Uang"
             />
           ) : viewMode === 'list' ? (
@@ -3655,11 +3861,28 @@ export default function MasterDataPage() {
                           <div className="flex items-center gap-2">
                             <button
                               type="button"
-                              onClick={() => toggleCurrencyStatus(curr.id)}
-                              className={`w-8 h-4.5 flex items-center rounded-full p-0.5 transition-colors cursor-pointer ${
-                                curr.aktif ? 'bg-[#F4511E]' : 'bg-[#2A2E33]'
+                              disabled={curr.isBase}
+                              onClick={() => {
+                                if (curr.isBase) {
+                                  addToast('Mata uang basis (IDR) merupakan acuan pembukuan dan tidak dapat dinonaktifkan.', 'warning');
+                                  return;
+                                }
+                                toggleCurrencyStatus(curr.id);
+                              }}
+                              className={`w-8 h-4.5 flex items-center rounded-full p-0.5 transition-colors ${
+                                curr.isBase
+                                  ? 'opacity-60 cursor-not-allowed bg-[#F4511E]'
+                                  : curr.aktif
+                                  ? 'bg-[#F4511E] cursor-pointer'
+                                  : 'bg-[#2A2E33] cursor-pointer'
                               }`}
-                              title={curr.aktif ? 'Klik untuk non-aktifkan' : 'Klik untuk aktifkan'}
+                              title={
+                                curr.isBase
+                                  ? 'Mata uang basis (IDR) tidak dapat dinonaktifkan'
+                                  : curr.aktif
+                                  ? 'Klik untuk non-aktifkan'
+                                  : 'Klik untuk aktifkan'
+                              }
                             >
                               <div
                                 className={`bg-white w-3.5 h-3.5 rounded-full shadow-md transform transition-transform ${
@@ -3792,11 +4015,28 @@ export default function MasterDataPage() {
                         <div className="flex flex-col items-end gap-1">
                           <button
                             type="button"
-                            onClick={() => toggleCurrencyStatus(curr.id)}
-                            className={`w-9 h-5 flex items-center rounded-full p-0.5 transition-colors cursor-pointer ${
-                              curr.aktif ? 'bg-[#F4511E]' : 'bg-[#2A2E33]'
+                            disabled={curr.isBase}
+                            onClick={() => {
+                              if (curr.isBase) {
+                                addToast('Mata uang basis (IDR) merupakan acuan pembukuan dan tidak dapat dinonaktifkan.', 'warning');
+                                return;
+                              }
+                              toggleCurrencyStatus(curr.id);
+                            }}
+                            className={`w-9 h-5 flex items-center rounded-full p-0.5 transition-colors ${
+                              curr.isBase
+                                ? 'opacity-60 cursor-not-allowed bg-[#F4511E]'
+                                : curr.aktif
+                                ? 'bg-[#F4511E] cursor-pointer'
+                                : 'bg-[#2A2E33] cursor-pointer'
                             }`}
-                            title={curr.aktif ? 'Klik untuk non-aktifkan' : 'Klik untuk aktifkan'}
+                            title={
+                              curr.isBase
+                                ? 'Mata uang basis (IDR) tidak dapat dinonaktifkan'
+                                : curr.aktif
+                                ? 'Klik untuk non-aktifkan'
+                                : 'Klik untuk aktifkan'
+                            }
                           >
                             <div
                               className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${
@@ -3875,7 +4115,7 @@ export default function MasterDataPage() {
       </AnimatePresence>
 
       {/* Floating Action Button (FAB) */}
-      {['supplier', 'material', 'armada', 'customer', 'bank', 'rekening'].includes(currentTab) && (
+      {['supplier', 'material', 'armada', 'customer', 'bank', 'rekening', 'mata-uang'].includes(currentTab) && (
         <button
           type="button"
           onClick={() => setModalOpen(true)}
@@ -3995,10 +4235,25 @@ export default function MasterDataPage() {
               value={supplierForm.bank}
               onChange={(e) => setSupplierForm({ ...supplierForm, bank: e.target.value })}
             >
-              <option value="BCA - BANK CENTRAL ASIA">BCA - BANK CENTRAL ASIA</option>
-              <option value="MANDIRI - BANK MANDIRI">MANDIRI - BANK MANDIRI</option>
-              <option value="BRI - BANK RAKYAT INDONESIA">BRI - BANK RAKYAT INDONESIA</option>
-              <option value="BNI - BANK NEGARA INDONESIA">BNI - BANK NEGARA INDONESIA</option>
+              {banks && banks.length > 0 ? (
+                banks.map((b) => {
+                  const val = b.namaAlias
+                    ? `${b.namaAlias.toUpperCase()} - ${b.namaBank.toUpperCase()}`
+                    : b.namaBank.toUpperCase();
+                  return (
+                    <option key={b.id} value={val}>
+                      {val}
+                    </option>
+                  );
+                })
+              ) : (
+                <>
+                  <option value="BCA - BANK CENTRAL ASIA">BCA - BANK CENTRAL ASIA</option>
+                  <option value="MANDIRI - BANK MANDIRI">MANDIRI - BANK MANDIRI</option>
+                  <option value="BRI - BANK RAKYAT INDONESIA">BRI - BANK RAKYAT INDONESIA</option>
+                  <option value="BNI - BANK NEGARA INDONESIA">BNI - BANK NEGARA INDONESIA</option>
+                </>
+              )}
             </Select>
 
             <Input
@@ -4191,22 +4446,25 @@ export default function MasterDataPage() {
                 setEditSupplierForm({ ...editSupplierForm, bank: e.target.value })
               }
             >
-              <option value="BCA - BANK CENTRAL ASIA">BCA - BANK CENTRAL ASIA</option>
-              <option value="MANDIRI - BANK MANDIRI">MANDIRI - BANK MANDIRI</option>
-              <option value="BRI - BANK RAKYAT INDONESIA">BRI - BANK RAKYAT INDONESIA</option>
-              <option value="BNI - BANK NEGARA INDONESIA">BNI - BANK NEGARA INDONESIA</option>
-              {banks
-                .filter(
-                  (b) =>
-                    !['BCA', 'MANDIRI', 'BRI', 'BNI'].some((code) =>
-                      b.namaAlias.toUpperCase().includes(code)
-                    )
-                )
-                .map((b) => (
-                  <option key={b.id} value={`${b.namaAlias} - ${b.namaBank.toUpperCase()}`}>
-                    {b.namaAlias} - {b.namaBank.toUpperCase()}
-                  </option>
-                ))}
+              {banks && banks.length > 0 ? (
+                banks.map((b) => {
+                  const val = b.namaAlias
+                    ? `${b.namaAlias.toUpperCase()} - ${b.namaBank.toUpperCase()}`
+                    : b.namaBank.toUpperCase();
+                  return (
+                    <option key={b.id} value={val}>
+                      {val}
+                    </option>
+                  );
+                })
+              ) : (
+                <>
+                  <option value="BCA - BANK CENTRAL ASIA">BCA - BANK CENTRAL ASIA</option>
+                  <option value="MANDIRI - BANK MANDIRI">MANDIRI - BANK MANDIRI</option>
+                  <option value="BRI - BANK RAKYAT INDONESIA">BRI - BANK RAKYAT INDONESIA</option>
+                  <option value="BNI - BANK NEGARA INDONESIA">BNI - BANK NEGARA INDONESIA</option>
+                </>
+              )}
             </Select>
 
             <Input
@@ -5040,6 +5298,165 @@ export default function MasterDataPage() {
       </Modal>
 
       {/* ======================================================== */}
+      {/* MODAL: EDIT CUSTOMER */}
+      {/* ======================================================== */}
+      <Modal
+        isOpen={editCustomerModal}
+        onClose={() => {
+          setEditCustomerModal(false);
+          setSelectedCustomer(null);
+        }}
+        title="Ubah Data Customer"
+        subtitle={`Perbarui informasi ${editCustomerForm.name || 'customer'}`}
+      >
+        <form onSubmit={handleUpdateCustomer} className="p-4 space-y-3">
+          <Select
+            label="Pilih Jenis Badan Usaha"
+            icon={User}
+            value={editCustomerForm.jenisBadanUsaha}
+            onChange={(e) => {
+              const val = e.target.value;
+              const pfx = val.split('-')[0] || val;
+              setEditCustomerForm({
+                ...editCustomerForm,
+                jenisBadanUsaha: val,
+                alias: editCustomerForm.name ? `${pfx} ${editCustomerForm.name}` : editCustomerForm.alias,
+              });
+            }}
+          >
+            <option value="CV-Persekutuan Komanditer">CV-Persekutuan Komanditer</option>
+            <option value="PE-Personal">PE-Personal</option>
+            <option value="PT-Perusahaan Terbatas">PT-Perusahaan Terbatas</option>
+            <option value="UD-Usaha Dagang">UD-Usaha Dagang</option>
+          </Select>
+
+          <Input
+            label="Nama Customer"
+            required
+            value={editCustomerForm.name}
+            onChange={(e) => {
+              const pfx = editCustomerForm.jenisBadanUsaha.split('-')[0] || editCustomerForm.jenisBadanUsaha;
+              setEditCustomerForm({
+                ...editCustomerForm,
+                name: e.target.value,
+                alias: `${pfx} ${e.target.value}`,
+              });
+            }}
+            placeholder="Contoh: LION WINGS, SEMEN INDONESIA"
+          />
+
+          <Input
+            label="Nama Alias Customer (auto)"
+            value={editCustomerForm.alias}
+            onChange={(e) => setEditCustomerForm({ ...editCustomerForm, alias: e.target.value })}
+            className="font-mono"
+          />
+
+          <Input
+            label="Alamat Lengkap / Proyek"
+            value={editCustomerForm.alamat}
+            onChange={(e) => setEditCustomerForm({ ...editCustomerForm, alamat: e.target.value })}
+            placeholder="Lokasi bongkar / gudang proyek"
+          />
+
+          <div className="grid grid-cols-2 gap-2">
+            <Input
+              label="Nomor NPWP"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              value={editCustomerForm.npwp}
+              onKeyDown={(e) => {
+                if (
+                  [
+                    'Backspace',
+                    'Tab',
+                    'Enter',
+                    'Delete',
+                    'Escape',
+                    'ArrowLeft',
+                    'ArrowRight',
+                    'ArrowUp',
+                    'ArrowDown',
+                    'Home',
+                    'End',
+                  ].includes(e.key) ||
+                  e.ctrlKey ||
+                  e.metaKey
+                ) {
+                  return;
+                }
+                if (!/^[0-9]$/.test(e.key)) {
+                  e.preventDefault();
+                }
+              }}
+              onChange={(e) =>
+                setEditCustomerForm({
+                  ...editCustomerForm,
+                  npwp: e.target.value.replace(/\D/g, ''),
+                })
+              }
+              className="font-mono"
+              placeholder="Hanya angka"
+            />
+            <Input
+              label="Nomor Telepon Customer"
+              icon={Phone}
+              inputMode="numeric"
+              pattern="[0-9]*"
+              value={editCustomerForm.telepon}
+              onKeyDown={(e) => {
+                if (
+                  [
+                    'Backspace',
+                    'Tab',
+                    'Enter',
+                    'Delete',
+                    'Escape',
+                    'ArrowLeft',
+                    'ArrowRight',
+                    'ArrowUp',
+                    'ArrowDown',
+                    'Home',
+                    'End',
+                  ].includes(e.key) ||
+                  e.ctrlKey ||
+                  e.metaKey
+                ) {
+                  return;
+                }
+                if (!/^[0-9]$/.test(e.key)) {
+                  e.preventDefault();
+                }
+              }}
+              onChange={(e) =>
+                setEditCustomerForm({
+                  ...editCustomerForm,
+                  telepon: e.target.value.replace(/\D/g, ''),
+                })
+              }
+              className="font-mono"
+              placeholder="Contoh: 081234567890 (Hanya angka)"
+            />
+          </div>
+
+          <div className="pt-3 border-t border-[#24282C] flex justify-end gap-2">
+            <Button
+              variant="ghost"
+              onClick={() => {
+                setEditCustomerModal(false);
+                setSelectedCustomer(null);
+              }}
+            >
+              Batal
+            </Button>
+            <Button type="submit" variant="primary" icon={Save}>
+              Perbarui Customer
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* ======================================================== */}
       {/* MODAL: TAMBAH BANK */}
       {/* ======================================================== */}
       <Modal
@@ -5244,22 +5661,62 @@ export default function MasterDataPage() {
             onChange={(e) => setRekeningForm({ ...rekeningForm, bank: e.target.value })}
           >
             <option value="" disabled>Pilih Bank</option>
-            <option value="bca -bank central asia">bca -bank central asia</option>
-            <option value="bmrii-bank mandiri">bmrii-bank mandiri</option>
+            {banks.map((b) => {
+              const label = b.namaAlias ? `${b.namaAlias} - ${b.namaBank}` : b.namaBank;
+              return (
+                <option key={b.id} value={b.namaAlias || b.namaBank}>
+                  {label}
+                </option>
+              );
+            })}
           </Select>
 
           <Select
             label="Jenis Rekening"
             required
             value={rekeningForm.jenisRekening}
-            onChange={(e) =>
-              setRekeningForm({ ...rekeningForm, jenisRekening: e.target.value })
-            }
+            onChange={(e) => {
+              const jenis = e.target.value;
+              const updates = { ...rekeningForm, jenisRekening: jenis };
+              if (jenis.startsWith('Giro') || jenis.startsWith('Tabungan')) {
+                if (!rekeningForm.rekeningAtasNama) {
+                  updates.rekeningAtasNama = 'PT Berkah Alam Semesta';
+                }
+              }
+              setRekeningForm(updates);
+            }}
           >
             <option value="" disabled>Pilih Jenis Rekening</option>
-            <option value="perusahaan">perusahaan</option>
-            <option value="supplier">supplier</option>
+            <option value="Giro Bisnis (Operasional Perusahaan)">Giro Bisnis (Operasional Perusahaan)</option>
+            <option value="Giro Utama (Penerimaan Proyek)">Giro Utama (Penerimaan Proyek)</option>
+            <option value="Tabungan Escrow (Cadangan Kas)">Tabungan Escrow (Cadangan Kas)</option>
+            <option value="Rekening Mitra Supplier">Rekening Mitra Supplier</option>
           </Select>
+
+          {rekeningForm.jenisRekening === 'Rekening Mitra Supplier' && (
+            <Select
+              label="Tautkan ke Supplier"
+              value={rekeningForm.supplierId || ''}
+              onChange={(e) => {
+                const sId = e.target.value;
+                const sup = suppliers.find((s) => s.id === sId);
+                setRekeningForm({
+                  ...rekeningForm,
+                  supplierId: sId,
+                  rekeningAtasNama: sup?.penerima || sup?.name || rekeningForm.rekeningAtasNama,
+                  nomorRekening: sup?.noRekening || rekeningForm.nomorRekening,
+                  namaAlias: sup ? `Rekening Mitra - ${sup.name}` : rekeningForm.namaAlias,
+                });
+              }}
+            >
+              <option value="">-- Pilih Mitra Supplier (Opsional) --</option>
+              {suppliers.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.idProgram} - {s.name} ({s.penerima})
+                </option>
+              ))}
+            </Select>
+          )}
 
           <Input
             label="Nomor Rekening"
@@ -5321,6 +5778,305 @@ export default function MasterDataPage() {
             </Button>
             <Button type="submit" variant="primary" icon={Save}>
               Simpan Rekening
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* ======================================================== */}
+      {/* MODAL: EDIT REKENING BANK */}
+      {/* ======================================================== */}
+      <Modal
+        isOpen={editRekeningModal}
+        onClose={() => {
+          setEditRekeningModal(false);
+          setSelectedRekening(null);
+        }}
+        title="Ubah Rekening Bank"
+        subtitle={`Perbarui informasi rekening ${editRekeningForm.nomorRekening || ''}`}
+      >
+        <form onSubmit={handleUpdateRekening} className="p-4 space-y-3">
+          <Select
+            label="Pilih Bank"
+            required
+            value={editRekeningForm.bank}
+            onChange={(e) => setEditRekeningForm({ ...editRekeningForm, bank: e.target.value })}
+          >
+            <option value="" disabled>Pilih Bank</option>
+            {banks.map((b) => {
+              const label = b.namaAlias ? `${b.namaAlias} - ${b.namaBank}` : b.namaBank;
+              return (
+                <option key={b.id} value={b.namaAlias || b.namaBank}>
+                  {label}
+                </option>
+              );
+            })}
+          </Select>
+
+          <Select
+            label="Jenis Rekening"
+            required
+            value={editRekeningForm.jenisRekening}
+            onChange={(e) =>
+              setEditRekeningForm({ ...editRekeningForm, jenisRekening: e.target.value })
+            }
+          >
+            <option value="" disabled>Pilih Jenis Rekening</option>
+            <option value="Giro Bisnis (Operasional Perusahaan)">Giro Bisnis (Operasional Perusahaan)</option>
+            <option value="Giro Utama (Penerimaan Proyek)">Giro Utama (Penerimaan Proyek)</option>
+            <option value="Tabungan Escrow (Cadangan Kas)">Tabungan Escrow (Cadangan Kas)</option>
+            <option value="Rekening Mitra Supplier">Rekening Mitra Supplier</option>
+          </Select>
+
+          {editRekeningForm.jenisRekening === 'Rekening Mitra Supplier' && (
+            <Select
+              label="Tautkan ke Supplier"
+              value={editRekeningForm.supplierId || ''}
+              onChange={(e) => {
+                const sId = e.target.value;
+                const sup = suppliers.find((s) => s.id === sId);
+                setEditRekeningForm({
+                  ...editRekeningForm,
+                  supplierId: sId,
+                  rekeningAtasNama: sup?.penerima || sup?.name || editRekeningForm.rekeningAtasNama,
+                  nomorRekening: sup?.noRekening || editRekeningForm.nomorRekening,
+                  namaAlias: sup ? `Rekening Mitra - ${sup.name}` : editRekeningForm.namaAlias,
+                });
+              }}
+            >
+              <option value="">-- Pilih Mitra Supplier (Opsional) --</option>
+              {suppliers.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.idProgram} - {s.name} ({s.penerima})
+                </option>
+              ))}
+            </Select>
+          )}
+
+          <Input
+            label="Nomor Rekening"
+            required
+            inputMode="numeric"
+            pattern="[0-9]*"
+            value={editRekeningForm.nomorRekening}
+            onKeyDown={(e) => {
+              if (
+                [
+                  'Backspace',
+                  'Tab',
+                  'Enter',
+                  'Delete',
+                  'Escape',
+                  'ArrowLeft',
+                  'ArrowRight',
+                  'ArrowUp',
+                  'ArrowDown',
+                  'Home',
+                  'End',
+                ].includes(e.key) ||
+                e.ctrlKey ||
+                e.metaKey
+              ) {
+                return;
+              }
+              if (!/^[0-9]$/.test(e.key)) {
+                e.preventDefault();
+              }
+            }}
+            onChange={(e) => {
+              const numericOnly = e.target.value.replace(/\D/g, '');
+              setEditRekeningForm({ ...editRekeningForm, nomorRekening: numericOnly });
+            }}
+            placeholder="Contoh: 140001928192 (Hanya angka)"
+            className="font-mono font-bold"
+          />
+
+          <Input
+            label="Rekening Atas Nama"
+            required
+            value={editRekeningForm.rekeningAtasNama}
+            onChange={(e) =>
+              setEditRekeningForm({ ...editRekeningForm, rekeningAtasNama: e.target.value })
+            }
+          />
+
+          <Input
+            label="Nama Alias Rekening"
+            value={editRekeningForm.namaAlias}
+            onChange={(e) => setEditRekeningForm({ ...editRekeningForm, namaAlias: e.target.value })}
+            placeholder="Contoh: BCA Operasional Gresik"
+          />
+
+          <div className="pt-3 border-t border-[#24282C] flex justify-end gap-2">
+            <Button
+              variant="ghost"
+              onClick={() => {
+                setEditRekeningModal(false);
+                setSelectedRekening(null);
+              }}
+            >
+              Batal
+            </Button>
+            <Button type="submit" variant="primary" icon={Save}>
+              Perbarui Rekening
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* ======================================================== */}
+      {/* MODAL: TAMBAH MATA UANG BARU */}
+      {/* ======================================================== */}
+      <Modal
+        isOpen={modalOpen && currentTab === 'mata-uang'}
+        onClose={() => setModalOpen(false)}
+        title="Tambah Mata Uang Baru"
+        subtitle="Konfigurasi valuta asing atau mata uang transaksi pendukung PT BAS"
+      >
+        <form onSubmit={handleSubmitCurrency} className="p-4 space-y-3.5 max-h-[80vh] overflow-y-auto">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <Input
+              label="Kode Mata Uang (3 Huruf ISO)"
+              required
+              maxLength={4}
+              value={currencyForm.code}
+              onChange={(e) => {
+                const code = e.target.value.toUpperCase().replace(/[^A-Z]/g, '');
+                setCurrencyForm({
+                  ...currencyForm,
+                  code,
+                  symbol: currencyForm.symbol || code,
+                  formatSample: `${currencyForm.symbol || code} 1,250.00`,
+                });
+              }}
+              placeholder="Contoh: SGD, JPY, CNY"
+              className="font-mono uppercase font-bold"
+            />
+
+            <Input
+              label="Kode ISO 4217 (Numerik)"
+              maxLength={4}
+              inputMode="numeric"
+              value={currencyForm.isoCode}
+              onChange={(e) =>
+                setCurrencyForm({ ...currencyForm, isoCode: e.target.value.replace(/\D/g, '') })
+              }
+              placeholder="Contoh: 702 (SGD), 392 (JPY)"
+              className="font-mono"
+            />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <Input
+              label="Nama Mata Uang (Indonesia)"
+              required
+              value={currencyForm.name}
+              onChange={(e) => setCurrencyForm({ ...currencyForm, name: e.target.value })}
+              placeholder="Contoh: Dolar Singapura"
+            />
+
+            <Input
+              label="Nama Mata Uang (Inggris)"
+              value={currencyForm.englishName}
+              onChange={(e) => setCurrencyForm({ ...currencyForm, englishName: e.target.value })}
+              placeholder="Contoh: Singapore Dollar"
+            />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <Input
+              label="Simbol Mata Uang"
+              value={currencyForm.symbol}
+              onChange={(e) => {
+                const sym = e.target.value;
+                setCurrencyForm({
+                  ...currencyForm,
+                  symbol: sym,
+                  formatSample: `${sym || currencyForm.code || 'VAL'} 1,250.00`,
+                });
+              }}
+              placeholder="Contoh: S$, ¥, RM, $"
+              className="font-mono font-bold"
+            />
+
+            <Input
+              label="Negara / Bank Penerbit"
+              value={currencyForm.country}
+              onChange={(e) => setCurrencyForm({ ...currencyForm, country: e.target.value })}
+              placeholder="Contoh: Singapura (MAS)"
+            />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <Select
+              label="Format Pemisah Ribuan"
+              value={currencyForm.pemisahRibuan}
+              onChange={(e) => setCurrencyForm({ ...currencyForm, pemisahRibuan: e.target.value })}
+            >
+              <option value="Titik (.)">Titik (.) — Standar Indonesia/Eropa</option>
+              <option value="Koma (,)">Koma (,) — Standar Internasional/AS</option>
+              <option value="Spasi ( )">Spasi ( ) — Format ISO Internasional</option>
+            </Select>
+
+            <Select
+              label="Format Pemisah Desimal"
+              value={currencyForm.pemisahDesimal}
+              onChange={(e) => setCurrencyForm({ ...currencyForm, pemisahDesimal: e.target.value })}
+            >
+              <option value="Koma (,)">Koma (,) — Standar Indonesia</option>
+              <option value="Titik (.)">Titik (.) — Standar Internasional/AS</option>
+            </Select>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <Select
+              label="Format Presisi Satuan"
+              value={currencyForm.presisi}
+              onChange={(e) => setCurrencyForm({ ...currencyForm, presisi: e.target.value })}
+            >
+              <option value="2 Digit Desimal">2 Digit Desimal (0.00)</option>
+              <option value="2 Digit Koma">2 Digit Koma (0,00)</option>
+              <option value="0 Digit (Bulat)">0 Digit (Bulat Tanpa Desimal)</option>
+            </Select>
+
+            <Select
+              label="Ketentuan Pajak Default"
+              value={currencyForm.pajak}
+              onChange={(e) => setCurrencyForm({ ...currencyForm, pajak: e.target.value })}
+            >
+              <option value="Non-PPN / Transaksi Valas">Non-PPN / Transaksi Valas</option>
+              <option value="PPN 11% & PPh 22 (0.25% - 1.5%)">PPN 11% & PPh 22</option>
+              <option value="Bebas Pajak (Kawasan Berikat)">Bebas Pajak (Kawasan Berikat)</option>
+            </Select>
+          </div>
+
+          <Input
+            label="Contoh Format Penulisan"
+            value={currencyForm.formatSample}
+            onChange={(e) => setCurrencyForm({ ...currencyForm, formatSample: e.target.value })}
+            placeholder="Contoh: S$ 1,250.00"
+            className="font-mono text-emerald-400"
+          />
+
+          <div>
+            <label className="block text-xs font-semibold text-neutral-300 mb-1">
+              Deskripsi & Peruntukan
+            </label>
+            <textarea
+              rows={2}
+              value={currencyForm.deskripsi}
+              onChange={(e) => setCurrencyForm({ ...currencyForm, deskripsi: e.target.value })}
+              placeholder="Keterangan kontrak atau keperluan mata uang ini..."
+              className="w-full px-3 py-2 bg-[#101214] border border-[#24282C] rounded-lg text-xs text-white focus:outline-none focus:border-[#F4511E] transition-colors"
+            />
+          </div>
+
+          <div className="pt-3 border-t border-[#24282C] flex justify-end gap-2">
+            <Button variant="ghost" onClick={() => setModalOpen(false)}>
+              Batal
+            </Button>
+            <Button type="submit" variant="primary" icon={Save}>
+              Simpan Mata Uang
             </Button>
           </div>
         </form>

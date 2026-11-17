@@ -1,6 +1,91 @@
-import { createContext, useContext, useState } from 'react';
+import { createContext, useContext, useState, useEffect } from 'react';
 import { useToast } from './ToastContext';
 import { calculateKubikasi } from '../utils/formatters';
+
+const STORAGE_KEYS = {
+  materials: 'ptbas_materials_v2',
+  suppliers: 'ptbas_suppliers_v2',
+  customers: 'ptbas_customers_v2',
+  armada: 'ptbas_armada_v2',
+  banks: 'ptbas_banks_v2',
+  bankAccounts: 'ptbas_bank_accounts_v2',
+  currencies: 'ptbas_currencies_v2',
+  preOrders: 'ptbas_preorders_v2',
+  suratJalan: 'ptbas_suratjalan_v2',
+  bkk: 'ptbas_bkk_v2',
+  invoices: 'ptbas_invoices_v2',
+};
+
+function loadStorage(key, fallback) {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return fallback;
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) && parsed.length > 0 ? parsed : fallback;
+  } catch (e) {
+    return fallback;
+  }
+}
+
+export const INITIAL_CURRENCIES = [
+  {
+    id: 'curr-idr',
+    code: 'IDR',
+    isoCode: '360',
+    name: 'Rupiah Indonesia',
+    englishName: 'Indonesian Rupiah',
+    symbol: 'Rp',
+    country: 'Indonesia (Bank Indonesia)',
+    pemisahRibuan: 'Titik (.)',
+    pemisahDesimal: 'Koma (,)',
+    formatSample: 'Rp 18.712.800,00',
+    presisi: '2 Digit Koma',
+    formatPresisi: '24,50 m³',
+    pajak: 'PPN 11% & PPh 22 (0.25% - 1.5%)',
+    isBase: true,
+    deskripsi: 'Mata uang basis resmi pembukuan akuntansi, buku besar (GL), kas operasional (BKK), dan faktur customer PT BAS.',
+    lingkupModul: ['Buku Besar (GL)', 'BKK (Cash Out)', 'Faktur Invoice', 'Surat Jalan', 'RO'],
+    aktif: true,
+  },
+  {
+    id: 'curr-usd',
+    code: 'USD',
+    isoCode: '840',
+    name: 'Dolar Amerika Serikat',
+    englishName: 'United States Dollar',
+    symbol: '$',
+    country: 'Amerika Serikat (Federal Reserve)',
+    pemisahRibuan: 'Koma (,)',
+    pemisahDesimal: 'Titik (.)',
+    formatSample: '$ 1,250.00',
+    presisi: '2 Digit Desimal',
+    formatPresisi: '24.50 m³',
+    pajak: 'Non-PPN / Transaksi Valas',
+    isBase: false,
+    deskripsi: 'Valuta asing pendukung untuk kontrak pengadaan material internasional dan order customer berbasis Dolar AS.',
+    lingkupModul: ['Pre Order Customer', 'Kontrak Vendor Valas'],
+    aktif: true,
+  },
+  {
+    id: 'curr-eur',
+    code: 'EUR',
+    isoCode: '978',
+    name: 'Euro Uni Eropa',
+    englishName: 'Euro',
+    symbol: '€',
+    country: 'Uni Eropa (European Central Bank)',
+    pemisahRibuan: 'Titik (.)',
+    pemisahDesimal: 'Koma (,)',
+    formatSample: '€ 1.100,00',
+    presisi: '2 Digit Desimal',
+    formatPresisi: '24,50 m³',
+    pajak: 'Non-PPN / Transaksi Valas',
+    isBase: false,
+    deskripsi: 'Valuta asing cadangan untuk impor suku cadang dump truck dan mesin pemecah batu (stone crusher).',
+    lingkupModul: ['Pengadaan Suku Cadang Alat'],
+    aktif: false,
+  },
+];
 
 const DataContext = createContext(null);
 
@@ -12,7 +97,7 @@ export function DataProvider({ children }) {
   // ==========================================
 
   // Pre Order list per PT BAS Gresik
-  const [preOrders, setPreOrders] = useState([
+  const [preOrders, setPreOrders] = useState(() => loadStorage(STORAGE_KEYS.preOrders, [
     {
       id: 'PO-DRAFT-01',
       nomorPo: 'PO-LW-2026-089', // Generated upon 1st SJ
@@ -79,10 +164,10 @@ export function DataProvider({ children }) {
       approvedAt: '2026-11-04 14:10',
       rejectionReason: null,
     },
-  ]);
+  ]));
 
   // Surat Jalan (Good Issue) list
-  const [suratJalanList, setSuratJalanList] = useState([
+  const [suratJalanList, setSuratJalanList] = useState(() => loadStorage(STORAGE_KEYS.suratJalan, [
     {
       id: 'SJ-202611-0089',
       nomorSj: '29678',
@@ -123,10 +208,10 @@ export function DataProvider({ children }) {
       fotoSuratJalan: 'sj_29679_w8812ua.jpg',
       statusRekap: 'DIREKAP',
     },
-  ]);
+  ]));
 
   // BKK (Cash Out) transactions strictly matching Screenshot 2 & Image 1
-  const [bkkList, setBkkList] = useState([
+  const [bkkList, setBkkList] = useState(() => loadStorage(STORAGE_KEYS.bkk, [
     {
       id: 'co-1',
       volume: 107.87,
@@ -262,10 +347,10 @@ export function DataProvider({ children }) {
       tanggalBayar: '2026-11-08',
       rekeningSumber: 'BCA - 0188920199 a/n PT Berkah Alam Semesta',
     },
-  ]);
+  ]));
 
   // Data Invoices strictly matching Screenshot media_1794538112384_ea2f3289.jpg
-  const [invoiceList, setInvoiceList] = useState([
+  const [invoiceList, setInvoiceList] = useState(() => loadStorage(STORAGE_KEYS.invoices, [
     {
       id: 'inv-1',
       volume: 331.03,
@@ -338,14 +423,14 @@ export function DataProvider({ children }) {
       periode: 'Periode: [2026-10-12, 2026-10-14, 2026-10-15]',
       statusBayar: 'Belum Dibayar',
     },
-  ]);
+  ]));
 
   // ==========================================
   // 2. DATA MASTER (FAITHFUL TO SCREENSHOTS)
   // ==========================================
 
   // Data Material per Screenshot e79f026e
-  const [materials, setMaterials] = useState([
+  const [materials, setMaterials] = useState(() => loadStorage(STORAGE_KEYS.materials, [
     {
       id: 'mat-1',
       name: 'BASE COURSE',
@@ -463,10 +548,10 @@ export function DataProvider({ children }) {
       satuan: 'm3',
       aktif: true,
     },
-  ]);
+  ]));
 
   // Data Supplier per Screenshot 38e7625c
-  const [suppliers, setSuppliers] = useState([
+  const [suppliers, setSuppliers] = useState(() => loadStorage(STORAGE_KEYS.suppliers, [
     {
       id: 'sup-1',
       name: 'UKHY DIAN',
@@ -563,10 +648,10 @@ export function DataProvider({ children }) {
       rekeningAtasNama: 'ADITA JUSTIA SAPUTRA',
       aktif: true,
     },
-  ]);
+  ]));
 
   // Data Customer per Screenshot cbe2d441 & e339cc44
-  const [customers, setCustomers] = useState([
+  const [customers, setCustomers] = useState(() => loadStorage(STORAGE_KEYS.customers, [
     {
       id: 'cust-1',
       kodePrefix: 'LW 655',
@@ -633,10 +718,10 @@ export function DataProvider({ children }) {
       telepon: '031-3980000',
       aktif: true,
     },
-  ]);
+  ]));
 
   // Data Armada Dump Truck per Screenshot bf8de022 & d26f8f80
-  const [armadaList, setArmadaList] = useState([
+  const [armadaList, setArmadaList] = useState(() => loadStorage(STORAGE_KEYS.armada, [
     {
       id: 'arm-1',
       nopol: 'W 9821 UB',
@@ -728,10 +813,10 @@ export function DataProvider({ children }) {
       tahun: 2020,
       aktif: true,
     },
-  ]);
+  ]));
 
   // Data Bank per Screenshot 6584ca21 & ef502847
-  const [banks, setBanks] = useState([
+  const [banks, setBanks] = useState(() => loadStorage(STORAGE_KEYS.banks, [
     {
       id: 'bank-1',
       namaBank: 'Bank Central Asia',
@@ -764,10 +849,10 @@ export function DataProvider({ children }) {
       kodeBank: '009',
       aktif: true,
     },
-  ]);
+  ]));
 
   // Data Rekening Bank PT BAS per Screenshot 5b565e7a
-  const [bankAccounts, setBankAccounts] = useState([
+  const [bankAccounts, setBankAccounts] = useState(() => loadStorage(STORAGE_KEYS.bankAccounts, [
     {
       id: 'acc-1',
       bank: 'BCA',
@@ -795,13 +880,108 @@ export function DataProvider({ children }) {
       namaAlias: 'BCA Cadangan Kas Supplier',
       aktif: true,
     },
-  ]);
+  ]));
+
+  // Data Mata Uang Sistem PT BAS
+  const [currencies, setCurrencies] = useState(() =>
+    loadStorage(STORAGE_KEYS.currencies, INITIAL_CURRENCIES)
+  );
 
   // Data Pengguna (Users)
   const [usersList, setUsersList] = useState([
     { id: 'usr-1', name: 'David Rusiah', role: 'Super Admin', email: 'superadmin@ptbas.co.id', phone: '0811-3001-992', aktif: true },
     { id: 'usr-2', name: 'Rudi Hartono', role: 'Admin', email: 'admin@ptbas.co.id', phone: '0813-8899-112', aktif: true },
   ]);
+
+  // ==========================================
+  // AUTO-PERSISTENCE TO LOCALSTORAGE
+  // ==========================================
+  useEffect(() => {
+    try { localStorage.setItem(STORAGE_KEYS.preOrders, JSON.stringify(preOrders)); } catch (e) {}
+  }, [preOrders]);
+
+  useEffect(() => {
+    try { localStorage.setItem(STORAGE_KEYS.suratJalan, JSON.stringify(suratJalanList)); } catch (e) {}
+  }, [suratJalanList]);
+
+  useEffect(() => {
+    try { localStorage.setItem(STORAGE_KEYS.bkk, JSON.stringify(bkkList)); } catch (e) {}
+  }, [bkkList]);
+
+  useEffect(() => {
+    try { localStorage.setItem(STORAGE_KEYS.invoices, JSON.stringify(invoiceList)); } catch (e) {}
+  }, [invoiceList]);
+
+  useEffect(() => {
+    try { localStorage.setItem(STORAGE_KEYS.materials, JSON.stringify(materials)); } catch (e) {}
+  }, [materials]);
+
+  useEffect(() => {
+    try { localStorage.setItem(STORAGE_KEYS.suppliers, JSON.stringify(suppliers)); } catch (e) {}
+  }, [suppliers]);
+
+  useEffect(() => {
+    try { localStorage.setItem(STORAGE_KEYS.customers, JSON.stringify(customers)); } catch (e) {}
+  }, [customers]);
+
+  useEffect(() => {
+    try { localStorage.setItem(STORAGE_KEYS.armada, JSON.stringify(armadaList)); } catch (e) {}
+  }, [armadaList]);
+
+  useEffect(() => {
+    try { localStorage.setItem(STORAGE_KEYS.banks, JSON.stringify(banks)); } catch (e) {}
+  }, [banks]);
+
+  useEffect(() => {
+    try { localStorage.setItem(STORAGE_KEYS.bankAccounts, JSON.stringify(bankAccounts)); } catch (e) {}
+  }, [bankAccounts]);
+
+  useEffect(() => {
+    try { localStorage.setItem(STORAGE_KEYS.currencies, JSON.stringify(currencies)); } catch (e) {}
+  }, [currencies]);
+
+  // Sync with backend SQLite database on mount
+  useEffect(() => {
+    const fetchMasterData = async () => {
+      try {
+        const [matRes, supRes, custRes, armRes, bnkRes, accRes, currRes] = await Promise.allSettled([
+          fetch('/api/master/materials').then((r) => (r.ok ? r.json() : null)),
+          fetch('/api/master/suppliers').then((r) => (r.ok ? r.json() : null)),
+          fetch('/api/master/customers').then((r) => (r.ok ? r.json() : null)),
+          fetch('/api/master/armada').then((r) => (r.ok ? r.json() : null)),
+          fetch('/api/master/banks').then((r) => (r.ok ? r.json() : null)),
+          fetch('/api/master/bank-accounts').then((r) => (r.ok ? r.json() : null)),
+          fetch('/api/master/currencies').then((r) => (r.ok ? r.json() : null)),
+        ]);
+
+        if (matRes.status === 'fulfilled' && Array.isArray(matRes.value) && matRes.value.length > 0) {
+          setMaterials(matRes.value);
+        }
+        if (supRes.status === 'fulfilled' && Array.isArray(supRes.value) && supRes.value.length > 0) {
+          setSuppliers(supRes.value);
+        }
+        if (custRes.status === 'fulfilled' && Array.isArray(custRes.value) && custRes.value.length > 0) {
+          setCustomers(custRes.value);
+        }
+        if (armRes.status === 'fulfilled' && Array.isArray(armRes.value) && armRes.value.length > 0) {
+          setArmadaList(armRes.value);
+        }
+        if (bnkRes.status === 'fulfilled' && Array.isArray(bnkRes.value) && bnkRes.value.length > 0) {
+          setBanks(bnkRes.value);
+        }
+        if (accRes.status === 'fulfilled' && Array.isArray(accRes.value) && accRes.value.length > 0) {
+          setBankAccounts(accRes.value);
+        }
+        if (currRes.status === 'fulfilled' && Array.isArray(currRes.value) && currRes.value.length > 0) {
+          setCurrencies(currRes.value);
+        }
+      } catch (err) {
+        // Fall back to local storage cache smoothly
+      }
+    };
+
+    fetchMasterData();
+  }, []);
 
   // ==========================================
   // 3. ACTION DISPATCHERS
@@ -967,23 +1147,36 @@ export function DataProvider({ children }) {
     setMaterials((prev) =>
       prev.map((m) => (m.id === id ? { ...m, aktif: !m.aktif } : m))
     );
+    fetch(`/api/master/materials/${id}/toggle`, { method: 'PATCH' }).catch((e) =>
+      console.error('Error toggling material:', e)
+    );
     addToast('Status material berhasil diubah', 'info');
   };
 
   const addMaterial = (newMat) => {
     const item = {
       ...newMat,
-      id: `mat-${Date.now()}`,
-      aktif: true,
+      id: newMat.id || `mat-${Date.now()}`,
+      beli: Number(newMat.beli) || 0,
+      jual: Number(newMat.jual) || 0,
       pphRate: newMat.category === 'Padat' ? 2.65 : 2.0,
       satuan: newMat.satuan || 'm3',
+      aktif: newMat.aktif !== undefined ? newMat.aktif : true,
     };
     setMaterials((prev) => [...prev, item]);
+    fetch('/api/master/materials', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(item),
+    }).catch((e) => console.error('Error adding material:', e));
     addToast(`Material "${item.name}" berhasil ditambahkan!`, 'success');
   };
 
   const deleteMaterial = (id) => {
     setMaterials((prev) => prev.filter((m) => m.id !== id));
+    fetch(`/api/master/materials/${id}`, { method: 'DELETE' }).catch((e) =>
+      console.error('Error deleting material:', e)
+    );
     addToast('Material berhasil dihapus', 'info');
   };
 
@@ -1000,6 +1193,11 @@ export function DataProvider({ children }) {
           : m
       )
     );
+    fetch(`/api/master/materials/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updatedData),
+    }).catch((e) => console.error('Error updating material:', e));
     addToast('Data material berhasil diperbarui!', 'success');
   };
 
@@ -1008,21 +1206,32 @@ export function DataProvider({ children }) {
     setSuppliers((prev) =>
       prev.map((s) => (s.id === id ? { ...s, aktif: !s.aktif } : s))
     );
+    fetch(`/api/master/suppliers/${id}/toggle`, { method: 'PATCH' }).catch((e) =>
+      console.error('Error toggling supplier:', e)
+    );
     addToast('Status supplier berhasil diubah', 'info');
   };
 
   const addSupplier = (newSup) => {
     const item = {
       ...newSup,
-      id: `sup-${Date.now()}`,
-      aktif: true,
+      id: newSup.id || `sup-${Date.now()}`,
+      aktif: newSup.aktif !== undefined ? newSup.aktif : true,
     };
     setSuppliers((prev) => [...prev, item]);
+    fetch('/api/master/suppliers', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(item),
+    }).catch((e) => console.error('Error adding supplier:', e));
     addToast(`Supplier "${item.name}" berhasil disimpan!`, 'success');
   };
 
   const deleteSupplier = (id) => {
     setSuppliers((prev) => prev.filter((s) => s.id !== id));
+    fetch(`/api/master/suppliers/${id}`, { method: 'DELETE' }).catch((e) =>
+      console.error('Error deleting supplier:', e)
+    );
     addToast('Supplier berhasil dihapus', 'info');
   };
 
@@ -1037,6 +1246,11 @@ export function DataProvider({ children }) {
           : s
       )
     );
+    fetch(`/api/master/suppliers/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updatedData),
+    }).catch((e) => console.error('Error updating supplier:', e));
     addToast('Data supplier berhasil diperbarui!', 'success');
   };
 
@@ -1045,6 +1259,9 @@ export function DataProvider({ children }) {
     setCustomers((prev) =>
       prev.map((c) => (c.id === id ? { ...c, aktif: !c.aktif } : c))
     );
+    fetch(`/api/master/customers/${id}/toggle`, { method: 'PATCH' }).catch((e) =>
+      console.error('Error toggling customer:', e)
+    );
     addToast('Status customer berhasil diubah', 'info');
   };
 
@@ -1052,16 +1269,43 @@ export function DataProvider({ children }) {
     const jbuPrefix = (newCust.jenisBadanUsaha || '').split('-')[0] || newCust.jenisBadanUsaha;
     const item = {
       ...newCust,
-      id: `cust-${Date.now()}`,
-      aktif: true,
+      id: newCust.id || `cust-${Date.now()}`,
+      aktif: newCust.aktif !== undefined ? newCust.aktif : true,
       alias: newCust.alias || `${jbuPrefix} ${newCust.name}`.trim(),
     };
     setCustomers((prev) => [...prev, item]);
+    fetch('/api/master/customers', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(item),
+    }).catch((e) => console.error('Error adding customer:', e));
     addToast(`Customer "${item.name}" berhasil disimpan!`, 'success');
+  };
+
+  const updateCustomer = (id, updatedData) => {
+    setCustomers((prev) =>
+      prev.map((c) =>
+        c.id === id
+          ? {
+              ...c,
+              ...updatedData,
+            }
+          : c
+      )
+    );
+    fetch(`/api/master/customers/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updatedData),
+    }).catch((e) => console.error('Error updating customer:', e));
+    addToast('Data customer berhasil diperbarui!', 'success');
   };
 
   const deleteCustomer = (id) => {
     setCustomers((prev) => prev.filter((c) => c.id !== id));
+    fetch(`/api/master/customers/${id}`, { method: 'DELETE' }).catch((e) =>
+      console.error('Error deleting customer:', e)
+    );
     addToast('Customer berhasil dihapus', 'info');
   };
 
@@ -1069,6 +1313,9 @@ export function DataProvider({ children }) {
   const toggleArmadaStatus = (id) => {
     setArmadaList((prev) =>
       prev.map((a) => (a.id === id ? { ...a, aktif: !a.aktif } : a))
+    );
+    fetch(`/api/master/armada/${id}/toggle`, { method: 'PATCH' }).catch((e) =>
+      console.error('Error toggling armada:', e)
     );
     addToast('Status armada berhasil diubah', 'info');
   };
@@ -1081,16 +1328,24 @@ export function DataProvider({ children }) {
 
     const item = {
       ...newArmada,
-      id: `arm-${Date.now()}`,
+      id: newArmada.id || `arm-${Date.now()}`,
       kapasitas,
       aktif: newArmada.aktif !== undefined ? newArmada.aktif : true,
     };
     setArmadaList((prev) => [...prev, item]);
+    fetch('/api/master/armada', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(item),
+    }).catch((e) => console.error('Error adding armada:', e));
     addToast(`Armada "${item.nopol}" (${kapasitas} m³) berhasil ditambahkan!`, 'success');
   };
 
   const deleteArmada = (id) => {
     setArmadaList((prev) => prev.filter((a) => a.id !== id));
+    fetch(`/api/master/armada/${id}`, { method: 'DELETE' }).catch((e) =>
+      console.error('Error deleting armada:', e)
+    );
     addToast('Armada berhasil dihapus', 'info');
   };
 
@@ -1112,6 +1367,11 @@ export function DataProvider({ children }) {
         };
       })
     );
+    fetch(`/api/master/armada/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updatedData),
+    }).catch((e) => console.error('Error updating armada:', e));
     addToast('Data armada berhasil diperbarui!', 'success');
   };
 
@@ -1120,21 +1380,32 @@ export function DataProvider({ children }) {
     setBanks((prev) =>
       prev.map((b) => (b.id === id ? { ...b, aktif: !b.aktif } : b))
     );
+    fetch(`/api/master/banks/${id}/toggle`, { method: 'PATCH' }).catch((e) =>
+      console.error('Error toggling bank:', e)
+    );
     addToast('Status bank berhasil diubah', 'info');
   };
 
   const addBank = (newBank) => {
     const item = {
       ...newBank,
-      id: `bank-${Date.now()}`,
-      aktif: true,
+      id: newBank.id || `bank-${Date.now()}`,
+      aktif: newBank.aktif !== undefined ? newBank.aktif : true,
     };
     setBanks((prev) => [...prev, item]);
+    fetch('/api/master/banks', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(item),
+    }).catch((e) => console.error('Error adding bank:', e));
     addToast(`Bank "${item.namaBank}" berhasil ditambahkan!`, 'success');
   };
 
   const deleteBank = (id) => {
     setBanks((prev) => prev.filter((b) => b.id !== id));
+    fetch(`/api/master/banks/${id}`, { method: 'DELETE' }).catch((e) =>
+      console.error('Error deleting bank:', e)
+    );
     addToast('Bank berhasil dihapus', 'info');
   };
 
@@ -1149,6 +1420,11 @@ export function DataProvider({ children }) {
           : b
       )
     );
+    fetch(`/api/master/banks/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updatedData),
+    }).catch((e) => console.error('Error updating bank:', e));
     addToast('Data bank berhasil diperbarui!', 'success');
   };
 
@@ -1157,22 +1433,130 @@ export function DataProvider({ children }) {
     setBankAccounts((prev) =>
       prev.map((a) => (a.id === id ? { ...a, aktif: !a.aktif } : a))
     );
+    fetch(`/api/master/bank-accounts/${id}/toggle`, { method: 'PATCH' }).catch((e) =>
+      console.error('Error toggling bank account:', e)
+    );
     addToast('Status rekening berhasil diubah', 'info');
   };
 
   const addBankAccount = (newAcc) => {
     const item = {
       ...newAcc,
-      id: `acc-${Date.now()}`,
-      aktif: true,
+      id: newAcc.id || `acc-${Date.now()}`,
+      aktif: newAcc.aktif !== undefined ? newAcc.aktif : true,
     };
     setBankAccounts((prev) => [...prev, item]);
+    fetch('/api/master/bank-accounts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(item),
+    }).catch((e) => console.error('Error adding bank account:', e));
     addToast(`Rekening "${item.nomorRekening}" berhasil ditambahkan!`, 'success');
+  };
+
+  const updateBankAccount = (id, updatedData) => {
+    setBankAccounts((prev) =>
+      prev.map((a) =>
+        a.id === id
+          ? {
+              ...a,
+              ...updatedData,
+            }
+          : a
+      )
+    );
+    fetch(`/api/master/bank-accounts/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updatedData),
+    }).catch((e) => console.error('Error updating bank account:', e));
+    addToast('Data rekening berhasil diperbarui!', 'success');
   };
 
   const deleteBankAccount = (id) => {
     setBankAccounts((prev) => prev.filter((a) => a.id !== id));
+    fetch(`/api/master/bank-accounts/${id}`, { method: 'DELETE' }).catch((e) =>
+      console.error('Error deleting bank account:', e)
+    );
     addToast('Rekening bank berhasil dihapus', 'info');
+  };
+
+  // Currency CRUD
+  const toggleCurrencyStatus = (id) => {
+    const target = currencies.find((c) => c.id === id || c.code === id);
+    if (!target) return;
+
+    if (target.isBase || target.code === 'IDR') {
+      addToast('Mata uang basis (IDR) merupakan acuan pembukuan dan tidak dapat dinonaktifkan.', 'warning');
+      return;
+    }
+
+    const nextAktif = !target.aktif;
+    setCurrencies((prev) =>
+      prev.map((c) => (c.id === target.id ? { ...c, aktif: nextAktif } : c))
+    );
+
+    fetch(`/api/master/currencies/${target.id}/toggle`, {
+      method: 'PATCH',
+    }).catch((err) => console.error('Error toggling currency:', err));
+
+    addToast(`Status mata uang ${target.code} berhasil ${nextAktif ? 'diaktifkan' : 'dinonaktifkan'}`, 'info');
+  };
+
+  const addCurrency = (newCurr) => {
+    const code = (newCurr.code || '').toUpperCase().trim();
+    const id = newCurr.id || `curr-${code.toLowerCase()}`;
+    const item = {
+      ...newCurr,
+      id,
+      code,
+      symbol: newCurr.symbol || code,
+      isBase: false,
+      aktif: newCurr.aktif !== undefined ? newCurr.aktif : true,
+      lingkupModul: Array.isArray(newCurr.lingkupModul)
+        ? newCurr.lingkupModul
+        : ['Pre Order Customer', 'Kontrak Vendor Valas'],
+    };
+
+    setCurrencies((prev) => [...prev, item]);
+
+    fetch('/api/master/currencies', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(item),
+    }).catch((err) => console.error('Error adding currency:', err));
+
+    addToast(`Mata uang "${item.code} (${item.name})" berhasil ditambahkan!`, 'success');
+  };
+
+  const updateCurrency = (id, updatedData) => {
+    setCurrencies((prev) =>
+      prev.map((c) => (c.id === id ? { ...c, ...updatedData } : c))
+    );
+
+    fetch(`/api/master/currencies/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updatedData),
+    }).catch((err) => console.error('Error updating currency:', err));
+
+    addToast('Data mata uang berhasil diperbarui!', 'success');
+  };
+
+  const deleteCurrency = (id) => {
+    const target = currencies.find((c) => c.id === id);
+    if (target?.isBase || target?.code === 'IDR') {
+      addToast('Mata uang basis (IDR) tidak dapat dihapus!', 'warning');
+      return;
+    }
+
+    setCurrencies((prev) => prev.filter((c) => c.id !== id));
+
+    fetch(`/api/master/currencies/${id}`, {
+      method: 'DELETE',
+    }).catch((err) => console.error('Error deleting currency:', err));
+
+    addToast('Mata uang berhasil dihapus', 'info');
   };
 
   return (
@@ -1199,6 +1583,7 @@ export function DataProvider({ children }) {
         armadaList,
         banks,
         bankAccounts,
+        currencies,
         usersList,
 
         // Master Data Actions
@@ -1212,6 +1597,7 @@ export function DataProvider({ children }) {
         deleteSupplier,
         toggleCustomerStatus,
         addCustomer,
+        updateCustomer,
         deleteCustomer,
         toggleArmadaStatus,
         addArmada,
@@ -1223,7 +1609,12 @@ export function DataProvider({ children }) {
         deleteBank,
         toggleBankAccountStatus,
         addBankAccount,
+        updateBankAccount,
         deleteBankAccount,
+        toggleCurrencyStatus,
+        addCurrency,
+        updateCurrency,
+        deleteCurrency,
       }}
     >
       {children}

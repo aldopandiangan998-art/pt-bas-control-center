@@ -1,8 +1,15 @@
 import express from 'express';
 import cors from 'cors';
 import crypto from 'node:crypto';
-import nodemailer from 'nodemailer';
 import db, { initDb } from './db.js';
+
+let nodemailer = null;
+try {
+  const nm = await import('nodemailer');
+  nodemailer = nm.default || nm;
+} catch (e) {
+  // nodemailer is optional in dev/offline mode
+}
 
 // Initialize SQLite database
 initDb();
@@ -479,6 +486,21 @@ app.post('/api/master/materials', (req, res) => {
   res.status(201).json({ success: true, id });
 });
 
+app.put('/api/master/materials/:id', (req, res) => {
+  const { id } = req.params;
+  const { name, category = 'Curah', pphRate = 2.0, defaultUnit = 'm3', beli, jual, coa, coaPiutang, coaPendapatan, aktif } = req.body;
+  const current = db.prepare('SELECT id, aktif FROM materials WHERE id = ?').get(id);
+  if (!current) return res.status(404).json({ message: 'Material not found' });
+
+  db.prepare(`
+    UPDATE materials
+    SET name = ?, category = ?, pphRate = ?, defaultUnit = ?, beli = ?, jual = ?, coa = ?, coaPiutang = ?, coaPendapatan = ?, aktif = ?
+    WHERE id = ?
+  `).run(name, category, pphRate, defaultUnit, beli, jual, coa, coaPiutang, coaPendapatan, aktif !== undefined ? (aktif ? 1 : 0) : current.aktif, id);
+
+  res.json({ success: true });
+});
+
 app.patch('/api/master/materials/:id/toggle', (req, res) => {
   const { id } = req.params;
   const current = db.prepare('SELECT aktif FROM materials WHERE id = ?').get(id);
@@ -510,6 +532,21 @@ app.post('/api/master/suppliers', (req, res) => {
   `).run(id, name, idProgram, penerima, telepon, pkp ? 1 : 0, bank, noRekening, rekeningAtasNama);
 
   res.status(201).json({ success: true, id });
+});
+
+app.put('/api/master/suppliers/:id', (req, res) => {
+  const { id } = req.params;
+  const { name, idProgram, penerima, telepon, pkp = 1, bank = 'BCA', noRekening, rekeningAtasNama, aktif } = req.body;
+  const current = db.prepare('SELECT id, aktif FROM suppliers WHERE id = ?').get(id);
+  if (!current) return res.status(404).json({ message: 'Supplier not found' });
+
+  db.prepare(`
+    UPDATE suppliers
+    SET name = ?, idProgram = ?, penerima = ?, telepon = ?, pkp = ?, bank = ?, noRekening = ?, rekeningAtasNama = ?, aktif = ?
+    WHERE id = ?
+  `).run(name, idProgram, penerima, telepon, pkp ? 1 : 0, bank, noRekening, rekeningAtasNama, aktif !== undefined ? (aktif ? 1 : 0) : current.aktif, id);
+
+  res.json({ success: true });
 });
 
 app.patch('/api/master/suppliers/:id/toggle', (req, res) => {
@@ -545,6 +582,21 @@ app.post('/api/master/customers', (req, res) => {
   res.status(201).json({ success: true, id });
 });
 
+app.put('/api/master/customers/:id', (req, res) => {
+  const { id } = req.params;
+  const { name, alias, badanUsaha = 'PT', alamat, npwp, telepon, kodePrefix, aktif } = req.body;
+  const current = db.prepare('SELECT id, aktif FROM customers WHERE id = ?').get(id);
+  if (!current) return res.status(404).json({ message: 'Customer not found' });
+
+  db.prepare(`
+    UPDATE customers
+    SET name = ?, alias = ?, badanUsaha = ?, alamat = ?, npwp = ?, telepon = ?, kodePrefix = ?, aktif = ?
+    WHERE id = ?
+  `).run(name, alias, badanUsaha, alamat, npwp, telepon, kodePrefix, aktif !== undefined ? (aktif ? 1 : 0) : current.aktif, id);
+
+  res.json({ success: true });
+});
+
 app.patch('/api/master/customers/:id/toggle', (req, res) => {
   const { id } = req.params;
   const current = db.prepare('SELECT aktif FROM customers WHERE id = ?').get(id);
@@ -578,6 +630,21 @@ app.post('/api/master/armada', (req, res) => {
   res.status(201).json({ success: true, id });
 });
 
+app.put('/api/master/armada/:id', (req, res) => {
+  const { id } = req.params;
+  const { nopol, panjangCm, lebarCm, tinggiCm, merk, vin, mesin, tahun, aktif } = req.body;
+  const current = db.prepare('SELECT id, aktif FROM armada WHERE id = ?').get(id);
+  if (!current) return res.status(404).json({ message: 'Armada not found' });
+
+  db.prepare(`
+    UPDATE armada
+    SET nopol = ?, panjangCm = ?, lebarCm = ?, tinggiCm = ?, merk = ?, vin = ?, mesin = ?, tahun = ?, aktif = ?
+    WHERE id = ?
+  `).run(nopol, panjangCm, lebarCm, tinggiCm, merk, vin, mesin, tahun, aktif !== undefined ? (aktif ? 1 : 0) : current.aktif, id);
+
+  res.json({ success: true });
+});
+
 app.patch('/api/master/armada/:id/toggle', (req, res) => {
   const { id } = req.params;
   const current = db.prepare('SELECT aktif FROM armada WHERE id = ?').get(id);
@@ -590,6 +657,210 @@ app.patch('/api/master/armada/:id/toggle', (req, res) => {
 
 app.delete('/api/master/armada/:id', (req, res) => {
   db.prepare('DELETE FROM armada WHERE id = ?').run(req.params.id);
+  res.json({ success: true });
+});
+
+// 5. Banks
+app.get('/api/master/banks', (req, res) => {
+  const banks = db.prepare('SELECT * FROM banks ORDER BY id ASC').all();
+  res.json(banks);
+});
+
+app.post('/api/master/banks', (req, res) => {
+  const { namaBank, namaAlias, kodeSwift, kodeBank } = req.body;
+  const id = `bank-${Date.now()}`;
+
+  db.prepare(`
+    INSERT INTO banks (id, namaBank, namaAlias, kodeSwift, kodeBank, aktif)
+    VALUES (?, ?, ?, ?, ?, 1)
+  `).run(id, namaBank, namaAlias || namaBank, kodeSwift || '', kodeBank || '');
+
+  res.status(201).json({ success: true, id });
+});
+
+app.put('/api/master/banks/:id', (req, res) => {
+  const { id } = req.params;
+  const { namaBank, namaAlias, kodeSwift, kodeBank, aktif } = req.body;
+  const current = db.prepare('SELECT id, aktif FROM banks WHERE id = ?').get(id);
+  if (!current) return res.status(404).json({ message: 'Bank not found' });
+
+  db.prepare(`
+    UPDATE banks
+    SET namaBank = ?, namaAlias = ?, kodeSwift = ?, kodeBank = ?, aktif = ?
+    WHERE id = ?
+  `).run(namaBank, namaAlias || namaBank, kodeSwift || '', kodeBank || '', aktif !== undefined ? (aktif ? 1 : 0) : current.aktif, id);
+
+  res.json({ success: true });
+});
+
+app.patch('/api/master/banks/:id/toggle', (req, res) => {
+  const { id } = req.params;
+  const current = db.prepare('SELECT aktif FROM banks WHERE id = ?').get(id);
+  if (!current) return res.status(404).json({ message: 'Bank not found' });
+
+  const nextState = current.aktif ? 0 : 1;
+  db.prepare('UPDATE banks SET aktif = ? WHERE id = ?').run(nextState, id);
+  res.json({ success: true, aktif: nextState });
+});
+
+app.delete('/api/master/banks/:id', (req, res) => {
+  db.prepare('DELETE FROM banks WHERE id = ?').run(req.params.id);
+  res.json({ success: true });
+});
+
+// 6. Bank Accounts (Rekening)
+app.get('/api/master/bank-accounts', (req, res) => {
+  const accounts = db.prepare('SELECT * FROM bank_accounts ORDER BY id ASC').all();
+  res.json(accounts);
+});
+
+app.post('/api/master/bank-accounts', (req, res) => {
+  const { bank, jenisRekening, nomorRekening, rekeningAtasNama, namaAlias, supplierId } = req.body;
+  const id = `acc-${Date.now()}`;
+
+  db.prepare(`
+    INSERT INTO bank_accounts (id, bank, jenisRekening, nomorRekening, rekeningAtasNama, namaAlias, supplierId, aktif)
+    VALUES (?, ?, ?, ?, ?, ?, ?, 1)
+  `).run(id, bank, jenisRekening || 'Giro Operasional', nomorRekening, rekeningAtasNama, namaAlias || '', supplierId || null);
+
+  res.status(201).json({ success: true, id });
+});
+
+app.put('/api/master/bank-accounts/:id', (req, res) => {
+  const { id } = req.params;
+  const { bank, jenisRekening, nomorRekening, rekeningAtasNama, namaAlias, supplierId, aktif } = req.body;
+  const current = db.prepare('SELECT id, aktif FROM bank_accounts WHERE id = ?').get(id);
+  if (!current) return res.status(404).json({ message: 'Bank account not found' });
+
+  db.prepare(`
+    UPDATE bank_accounts
+    SET bank = ?, jenisRekening = ?, nomorRekening = ?, rekeningAtasNama = ?, namaAlias = ?, supplierId = ?, aktif = ?
+    WHERE id = ?
+  `).run(bank, jenisRekening, nomorRekening, rekeningAtasNama, namaAlias, supplierId || null, aktif !== undefined ? (aktif ? 1 : 0) : current.aktif, id);
+
+  res.json({ success: true });
+});
+
+app.patch('/api/master/bank-accounts/:id/toggle', (req, res) => {
+  const { id } = req.params;
+  const current = db.prepare('SELECT aktif FROM bank_accounts WHERE id = ?').get(id);
+  if (!current) return res.status(404).json({ message: 'Bank account not found' });
+
+  const nextState = current.aktif ? 0 : 1;
+  db.prepare('UPDATE bank_accounts SET aktif = ? WHERE id = ?').run(nextState, id);
+  res.json({ success: true, aktif: nextState });
+});
+
+app.delete('/api/master/bank-accounts/:id', (req, res) => {
+  db.prepare('DELETE FROM bank_accounts WHERE id = ?').run(req.params.id);
+  res.json({ success: true });
+});
+
+// 7. Currencies (Mata Uang)
+app.get('/api/master/currencies', (req, res) => {
+  const currencies = db.prepare('SELECT * FROM currencies ORDER BY isBase DESC, id ASC').all();
+  // Parse lingkupModul JSON string to array
+  const formatted = currencies.map((c) => ({
+    ...c,
+    isBase: Boolean(c.isBase),
+    aktif: Boolean(c.aktif),
+    lingkupModul: (() => {
+      try {
+        return c.lingkupModul ? JSON.parse(c.lingkupModul) : [];
+      } catch {
+        return [];
+      }
+    })(),
+  }));
+  res.json(formatted);
+});
+
+app.post('/api/master/currencies', (req, res) => {
+  const { code, isoCode, name, englishName, symbol, country, pemisahRibuan, pemisahDesimal, formatSample, presisi, formatPresisi, pajak, isBase, deskripsi, lingkupModul } = req.body;
+  const id = `curr-${code.toLowerCase()}`;
+
+  db.prepare(`
+    INSERT INTO currencies (id, code, isoCode, name, englishName, symbol, country, pemisahRibuan, pemisahDesimal, formatSample, presisi, formatPresisi, pajak, isBase, deskripsi, lingkupModul, aktif)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+  `).run(
+    id,
+    code.toUpperCase(),
+    isoCode || '',
+    name,
+    englishName || '',
+    symbol || '',
+    country || '',
+    pemisahRibuan || 'Titik (.)',
+    pemisahDesimal || 'Koma (,)',
+    formatSample || '',
+    presisi || '2 Digit Desimal',
+    formatPresisi || '',
+    pajak || 'Non-PPN',
+    isBase ? 1 : 0,
+    deskripsi || '',
+    JSON.stringify(Array.isArray(lingkupModul) ? lingkupModul : [])
+  );
+
+  res.status(201).json({ success: true, id });
+});
+
+app.put('/api/master/currencies/:id', (req, res) => {
+  const { id } = req.params;
+  const { code, isoCode, name, englishName, symbol, country, pemisahRibuan, pemisahDesimal, formatSample, presisi, formatPresisi, pajak, isBase, deskripsi, lingkupModul, aktif } = req.body;
+  const current = db.prepare('SELECT id, isBase, aktif FROM currencies WHERE id = ?').get(id);
+  if (!current) return res.status(404).json({ message: 'Currency not found' });
+
+  db.prepare(`
+    UPDATE currencies
+    SET code = ?, isoCode = ?, name = ?, englishName = ?, symbol = ?, country = ?, pemisahRibuan = ?, pemisahDesimal = ?, formatSample = ?, presisi = ?, formatPresisi = ?, pajak = ?, isBase = ?, deskripsi = ?, lingkupModul = ?, aktif = ?
+    WHERE id = ?
+  `).run(
+    code.toUpperCase(),
+    isoCode || '',
+    name,
+    englishName || '',
+    symbol || '',
+    country || '',
+    pemisahRibuan || 'Titik (.)',
+    pemisahDesimal || 'Koma (,)',
+    formatSample || '',
+    presisi || '2 Digit Desimal',
+    formatPresisi || '',
+    pajak || 'Non-PPN',
+    isBase !== undefined ? (isBase ? 1 : 0) : current.isBase,
+    deskripsi || '',
+    JSON.stringify(Array.isArray(lingkupModul) ? lingkupModul : []),
+    aktif !== undefined ? (aktif ? 1 : 0) : current.aktif,
+    id
+  );
+
+  res.json({ success: true });
+});
+
+app.patch('/api/master/currencies/:id/toggle', (req, res) => {
+  const { id } = req.params;
+  const current = db.prepare('SELECT isBase, aktif FROM currencies WHERE id = ?').get(id);
+  if (!current) return res.status(404).json({ message: 'Currency not found' });
+
+  // Prevent disabling base currency
+  if (current.isBase) {
+    return res.status(400).json({
+      success: false,
+      message: 'Mata uang basis (IDR) acuan buku besar tidak dapat dinonaktifkan.',
+    });
+  }
+
+  const nextState = current.aktif ? 0 : 1;
+  db.prepare('UPDATE currencies SET aktif = ? WHERE id = ?').run(nextState, id);
+  res.json({ success: true, aktif: nextState });
+});
+
+app.delete('/api/master/currencies/:id', (req, res) => {
+  const current = db.prepare('SELECT isBase FROM currencies WHERE id = ?').get(req.params.id);
+  if (current && current.isBase) {
+    return res.status(400).json({ success: false, message: 'Mata uang basis tidak dapat dihapus.' });
+  }
+  db.prepare('DELETE FROM currencies WHERE id = ?').run(req.params.id);
   res.json({ success: true });
 });
 

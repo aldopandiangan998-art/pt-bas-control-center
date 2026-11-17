@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo } from 'react';
+import { useState, useRef, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -47,12 +47,6 @@ const TOP_OPTIONS = [
 const JENIS_OPTIONS = [
   { value: 'BORONG', label: 'BORONG' },
   { value: 'CURAH', label: 'CURAH' },
-];
-
-const MATA_UANG_OPTIONS = [
-  { value: 'IDR', label: 'IDR – Rupiah Indonesia' },
-  { value: 'USD', label: 'USD – Dolar AS' },
-  { value: 'EUR', label: 'EUR – Euro' },
 ];
 
 const JENIS_PAJAK_OPTIONS = [
@@ -117,7 +111,22 @@ function mkDefaultForm() {
 export default function PreOrderPage() {
   const navigate = useNavigate();
   const { currentUser, roleLabel, permissions } = useAuth();
-  const { preOrders, createPreOrder, approvePreOrder, rejectPreOrder, materials, customers } = useData();
+  const { preOrders, createPreOrder, approvePreOrder, rejectPreOrder, materials, customers, currencies } = useData();
+
+  // Dynamic currency options mapped from active currencies in DataContext
+  const mataUangOptions = useMemo(() => {
+    if (!currencies || currencies.length === 0) {
+      return [{ value: 'IDR', label: 'IDR – Rupiah Indonesia' }];
+    }
+    const active = currencies.filter((c) => c.aktif === true || c.aktif === 1);
+    if (active.length === 0) {
+      return [{ value: 'IDR', label: 'IDR – Rupiah Indonesia' }];
+    }
+    return active.map((c) => ({
+      value: c.code,
+      label: `${c.code} – ${c.name || c.englishName || c.code}`,
+    }));
+  }, [currencies]);
 
   const [activeTab, setActiveTab] = useState('list');
   const [rejectModalId, setRejectModalId] = useState(null);
@@ -127,6 +136,14 @@ export default function PreOrderPage() {
   const [itemsLocked, setItemsLocked] = useState(false);
 
   const [formData, setFormData] = useState(mkDefaultForm());
+
+  // Keep formData.mataUang in sync if currently selected currency gets disabled
+  useEffect(() => {
+    if (mataUangOptions.length > 0 && !mataUangOptions.some((o) => o.value === formData.mataUang)) {
+      const fallback = mataUangOptions.find((o) => o.value === 'IDR')?.value || mataUangOptions[0].value;
+      setFormData((prev) => ({ ...prev, mataUang: fallback }));
+    }
+  }, [mataUangOptions, formData.mataUang]);
   const [items, setItems] = useState([]);
   const firstErrorRef = useRef(null);
 
@@ -200,7 +217,7 @@ export default function PreOrderPage() {
       const next = { ...prev, [key]: val };
       if (key === 'jenisRO') {
         if (val !== 'JASA ANGKUT SAJA') next.hubungkanNomorPoMaterial = '';
-        
+
         // Auto-initialize first item from database with auto-filled prices
         let pool = allMaterials;
         if (val === 'JASA ANGKUT SAJA') {
@@ -219,7 +236,7 @@ export default function PreOrderPage() {
               !(m.name || m.nama || '').toUpperCase().includes('ANGKUT')
           );
         }
-        
+
         const firstMat = pool[0];
         setItems(val && firstMat ? [createItemFromMaterial(firstMat)] : []);
         setItemsLocked(false);
@@ -604,7 +621,7 @@ export default function PreOrderPage() {
                     label="Mata Uang"
                     value={formData.mataUang}
                     onChange={(v) => setField('mataUang', v)}
-                    options={MATA_UANG_OPTIONS}
+                    options={mataUangOptions}
                     required
                     error={errors.mataUang}
                   />

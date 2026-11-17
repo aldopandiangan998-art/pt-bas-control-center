@@ -41,14 +41,6 @@ export default function Header() {
               }`}>
                 {APP_CONFIG.name}
               </span>
-              <span className={`hidden sm:inline-flex items-center gap-1 text-[10px] uppercase font-bold tracking-widest px-2 py-0.5 rounded border ${
-                isDark
-                  ? 'bg-black/35 text-amber-200/90 border-black/30'
-                  : 'bg-orange-50 text-[#F4511E] border-orange-200'
-              }`}>
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                Gresik Hub
-              </span>
             </div>
           </div>
 

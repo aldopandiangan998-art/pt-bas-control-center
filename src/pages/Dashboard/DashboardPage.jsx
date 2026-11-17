@@ -2,9 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
 import {
-  ArrowRight,
   TrendingUp,
-  ShieldCheck,
   CheckCircle2,
   Clock,
   MoreHorizontal,
@@ -187,31 +185,6 @@ export default function DashboardPage() {
           </span>
         </div>
       </div>
-
-      {/* Executive Alert Banner for Super Admin if ROs need approval */}
-      {isSuperAdmin && pendingPreOrders.length > 0 && (
-        <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-3 sm:p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs font-mono shadow-sm">
-          <div className="flex items-center gap-2.5 text-amber-300">
-            <span className="w-8 h-8 rounded-lg bg-amber-500/20 border border-amber-500/30 flex items-center justify-center shrink-0">
-              <ShieldCheck className="w-4 h-4 text-amber-400" />
-            </span>
-            <div>
-              <span className="font-bold text-white text-sm">Otorisasi Direksi Tertunda:</span>
-              <p className="text-neutral-300 text-xs mt-0.5">
-                Ada <strong className="text-amber-400">{pendingPreOrders.length} Received Order</strong> yang menanti persetujuan harga &amp; kontrak sebelum Surat Jalan diterbitkan.
-              </p>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={() => navigate('/approval-ro')}
-            className="px-3.5 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-black font-bold font-sans text-xs transition-colors cursor-pointer shrink-0 shadow-xs flex items-center gap-1.5"
-          >
-            <span>Buka Approval RO</span>
-            <ArrowRight className="w-3.5 h-3.5" />
-          </button>
-        </div>
-      )}
 
       {/* 4 SIGNATURE DASHBOARD WIDGETS WITH PT BAS OPERATIONAL CONTEXT */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">

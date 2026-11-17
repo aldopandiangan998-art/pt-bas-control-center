@@ -140,96 +140,6 @@ function CashOutGroupHeader({ group, expanded, onToggle, checkState, onGroupChec
           </span>
         )}
       </div>
-      {/* ── MODAL FILTER RENTANG TANGGAL KALENDER ── */}
-      <Modal
-        isOpen={dateRangeModalOpen}
-        onClose={() => setDateRangeModalOpen(false)}
-        title="Filter Rentang Tanggal Kas Keluar"
-        subtitle="Saring transaksi BKK berdasarkan rentang tanggal kalender"
-        maxWidth="max-w-md"
-      >
-        <div className="p-4 space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <Input
-              label="Tanggal Mulai"
-              type="date"
-              icon={Calendar}
-              value={tempDateRange.mulai}
-              onChange={(e) => {
-                const val = e.target.value;
-                setTempDateRange((prev) => ({
-                  ...prev,
-                  mulai: val,
-                  akhir: prev.akhir && val && val > prev.akhir ? val : prev.akhir,
-                }));
-              }}
-            />
-
-            <Input
-              label="Tanggal Akhir"
-              type="date"
-              icon={Calendar}
-              value={tempDateRange.akhir}
-              min={tempDateRange.mulai || undefined}
-              onChange={(e) => {
-                const val = e.target.value;
-                if (tempDateRange.mulai && val && val < tempDateRange.mulai) {
-                  addToast('Tanggal akhir tidak boleh sebelum tanggal mulai', 'warning');
-                  return;
-                }
-                setTempDateRange((prev) => ({ ...prev, akhir: val }));
-              }}
-              error={
-                tempDateRange.mulai && tempDateRange.akhir && tempDateRange.akhir < tempDateRange.mulai
-                  ? 'Tanggal akhir tidak boleh sebelum tanggal mulai'
-                  : undefined
-              }
-            />
-          </div>
-
-          <div className="pt-3 border-t border-[#24282C] flex items-center justify-between gap-2">
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                setTempDateRange({ mulai: '', akhir: '' });
-                setDateRange({ mulai: '', akhir: '' });
-                setDateRangeModalOpen(false);
-                addToast('Filter rentang tanggal dihapus', 'info');
-              }}
-            >
-              Reset
-            </Button>
-            <div className="flex items-center gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => setDateRangeModalOpen(false)}
-              >
-                Tutup
-              </Button>
-              <Button
-                type="button"
-                variant="primary"
-                size="sm"
-                onClick={() => {
-                  if (tempDateRange.mulai && tempDateRange.akhir && tempDateRange.akhir < tempDateRange.mulai) {
-                    addToast('Tanggal akhir tidak boleh sebelum tanggal mulai', 'error');
-                    return;
-                  }
-                  setDateRange(tempDateRange);
-                  setDateRangeModalOpen(false);
-                  addToast('Filter rentang tanggal berhasil diterapkan', 'success');
-                }}
-              >
-                Terapkan
-              </Button>
-            </div>
-          </div>
-        </div>
-      </Modal>
     </div>
   );
 }
@@ -377,96 +287,6 @@ function CashOutGridCard({ item, isSelected, onSelect, onInfo }) {
           <span className="text-neutral-500">{item.timestamp ? item.timestamp.slice(0, 10) : '-'}</span>
         </div>
       </div>
-      {/* ── MODAL FILTER RENTANG TANGGAL KALENDER ── */}
-      <Modal
-        isOpen={dateRangeModalOpen}
-        onClose={() => setDateRangeModalOpen(false)}
-        title="Filter Rentang Tanggal Kas Keluar"
-        subtitle="Saring transaksi BKK berdasarkan rentang tanggal kalender"
-        maxWidth="max-w-md"
-      >
-        <div className="p-4 space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <Input
-              label="Tanggal Mulai"
-              type="date"
-              icon={Calendar}
-              value={tempDateRange.mulai}
-              onChange={(e) => {
-                const val = e.target.value;
-                setTempDateRange((prev) => ({
-                  ...prev,
-                  mulai: val,
-                  akhir: prev.akhir && val && val > prev.akhir ? val : prev.akhir,
-                }));
-              }}
-            />
-
-            <Input
-              label="Tanggal Akhir"
-              type="date"
-              icon={Calendar}
-              value={tempDateRange.akhir}
-              min={tempDateRange.mulai || undefined}
-              onChange={(e) => {
-                const val = e.target.value;
-                if (tempDateRange.mulai && val && val < tempDateRange.mulai) {
-                  addToast('Tanggal akhir tidak boleh sebelum tanggal mulai', 'warning');
-                  return;
-                }
-                setTempDateRange((prev) => ({ ...prev, akhir: val }));
-              }}
-              error={
-                tempDateRange.mulai && tempDateRange.akhir && tempDateRange.akhir < tempDateRange.mulai
-                  ? 'Tanggal akhir tidak boleh sebelum tanggal mulai'
-                  : undefined
-              }
-            />
-          </div>
-
-          <div className="pt-3 border-t border-[#24282C] flex items-center justify-between gap-2">
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                setTempDateRange({ mulai: '', akhir: '' });
-                setDateRange({ mulai: '', akhir: '' });
-                setDateRangeModalOpen(false);
-                addToast('Filter rentang tanggal dihapus', 'info');
-              }}
-            >
-              Reset
-            </Button>
-            <div className="flex items-center gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => setDateRangeModalOpen(false)}
-              >
-                Tutup
-              </Button>
-              <Button
-                type="button"
-                variant="primary"
-                size="sm"
-                onClick={() => {
-                  if (tempDateRange.mulai && tempDateRange.akhir && tempDateRange.akhir < tempDateRange.mulai) {
-                    addToast('Tanggal akhir tidak boleh sebelum tanggal mulai', 'error');
-                    return;
-                  }
-                  setDateRange(tempDateRange);
-                  setDateRangeModalOpen(false);
-                  addToast('Filter rentang tanggal berhasil diterapkan', 'success');
-                }}
-              >
-                Terapkan
-              </Button>
-            </div>
-          </div>
-        </div>
-      </Modal>
     </div>
   );
 }
@@ -558,96 +378,6 @@ function CashOutGroupedTable({
           </div>
         );
       })}
-      {/* ── MODAL FILTER RENTANG TANGGAL KALENDER ── */}
-      <Modal
-        isOpen={dateRangeModalOpen}
-        onClose={() => setDateRangeModalOpen(false)}
-        title="Filter Rentang Tanggal Kas Keluar"
-        subtitle="Saring transaksi BKK berdasarkan rentang tanggal kalender"
-        maxWidth="max-w-md"
-      >
-        <div className="p-4 space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <Input
-              label="Tanggal Mulai"
-              type="date"
-              icon={Calendar}
-              value={tempDateRange.mulai}
-              onChange={(e) => {
-                const val = e.target.value;
-                setTempDateRange((prev) => ({
-                  ...prev,
-                  mulai: val,
-                  akhir: prev.akhir && val && val > prev.akhir ? val : prev.akhir,
-                }));
-              }}
-            />
-
-            <Input
-              label="Tanggal Akhir"
-              type="date"
-              icon={Calendar}
-              value={tempDateRange.akhir}
-              min={tempDateRange.mulai || undefined}
-              onChange={(e) => {
-                const val = e.target.value;
-                if (tempDateRange.mulai && val && val < tempDateRange.mulai) {
-                  addToast('Tanggal akhir tidak boleh sebelum tanggal mulai', 'warning');
-                  return;
-                }
-                setTempDateRange((prev) => ({ ...prev, akhir: val }));
-              }}
-              error={
-                tempDateRange.mulai && tempDateRange.akhir && tempDateRange.akhir < tempDateRange.mulai
-                  ? 'Tanggal akhir tidak boleh sebelum tanggal mulai'
-                  : undefined
-              }
-            />
-          </div>
-
-          <div className="pt-3 border-t border-[#24282C] flex items-center justify-between gap-2">
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                setTempDateRange({ mulai: '', akhir: '' });
-                setDateRange({ mulai: '', akhir: '' });
-                setDateRangeModalOpen(false);
-                addToast('Filter rentang tanggal dihapus', 'info');
-              }}
-            >
-              Reset
-            </Button>
-            <div className="flex items-center gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => setDateRangeModalOpen(false)}
-              >
-                Tutup
-              </Button>
-              <Button
-                type="button"
-                variant="primary"
-                size="sm"
-                onClick={() => {
-                  if (tempDateRange.mulai && tempDateRange.akhir && tempDateRange.akhir < tempDateRange.mulai) {
-                    addToast('Tanggal akhir tidak boleh sebelum tanggal mulai', 'error');
-                    return;
-                  }
-                  setDateRange(tempDateRange);
-                  setDateRangeModalOpen(false);
-                  addToast('Filter rentang tanggal berhasil diterapkan', 'success');
-                }}
-              >
-                Terapkan
-              </Button>
-            </div>
-          </div>
-        </div>
-      </Modal>
     </div>
   );
 }
@@ -676,9 +406,6 @@ export default function BkkPage() {
   // ── Search & Filter
   const [searchFilter, setSearchFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
-  const [dateRangeModalOpen, setDateRangeModalOpen] = useState(false);
-  const [dateRange, setDateRange] = useState({ mulai: '', akhir: '' });
-  const [tempDateRange, setTempDateRange] = useState({ mulai: '', akhir: '' });
 
   // ── Input Cash Out form state
   const [filterData, setFilterData] = useState({ pelanggan: 'PT LION WINGS', supplier: '' });
@@ -699,7 +426,7 @@ export default function BkkPage() {
     rekeningSumber: 'BCA - 0188920199 a/n PT Berkah Alam Semesta',
   });
 
-  // ── Filtered list (search + status + date range applied before grouping)
+  // ── Filtered list (search + status applied before grouping)
   const filteredBkk = useMemo(() => {
     return bkkList.filter((item) => {
       const q = searchFilter.toLowerCase();
@@ -715,14 +442,9 @@ export default function BkkPage() {
         (statusFilter === 'BELUM_BAYAR' && item.statusBayar !== 'Lunas') ||
         (statusFilter === 'LUNAS' && item.statusBayar === 'Lunas');
 
-      const itemDate = item.timestamp ? item.timestamp.split(' ')[0] : '';
-      const matchDate =
-        (!dateRange.mulai || (itemDate && itemDate >= dateRange.mulai)) &&
-        (!dateRange.akhir || (itemDate && itemDate <= dateRange.akhir));
-
-      return matchSearch && matchStatus && matchDate;
+      return matchSearch && matchStatus;
     });
-  }, [bkkList, searchFilter, statusFilter, dateRange]);
+  }, [bkkList, searchFilter, statusFilter]);
 
   // ── Grouped data (memoised)
   const groups = useMemo(
@@ -753,8 +475,6 @@ export default function BkkPage() {
   const handleReset = () => {
     setSearchFilter('');
     setStatusFilter('ALL');
-    setDateRange({ mulai: '', akhir: '' });
-    setTempDateRange({ mulai: '', akhir: '' });
     setFilterData({ pelanggan: '', supplier: '' });
     setKeteranganList([{ id: 1, tipe: '', deskripsi: '' }]);
     setSelectedItems([]);
@@ -895,15 +615,8 @@ export default function BkkPage() {
               {/* Date range */}
               <button
                 type="button"
-                onClick={() => {
-                  setTempDateRange(dateRange);
-                  setDateRangeModalOpen(true);
-                }}
-                className={`w-8 h-8 flex items-center justify-center rounded-full transition-colors cursor-pointer ${
-                  dateRange.mulai || dateRange.akhir
-                    ? 'bg-[#F4511E] text-white shadow-xs'
-                    : 'text-neutral-300 hover:text-white hover:bg-neutral-800'
-                }`}
+                onClick={() => addToast('Pilih rentang tanggal CO', 'info')}
+                className="w-8 h-8 flex items-center justify-center rounded-full text-neutral-300 hover:text-white hover:bg-neutral-800 transition-colors cursor-pointer"
                 title="Rentang Tanggal"
               >
                 <Calendar className="w-4 h-4" />
@@ -1026,36 +739,21 @@ export default function BkkPage() {
             )}
           </div>
 
-          {/* Status & Date filter chips */}
-          {(statusFilter !== 'ALL' || dateRange.mulai || dateRange.akhir) && (
-            <div className="flex items-center gap-2 flex-wrap">
+          {/* Status filter chip */}
+          {statusFilter !== 'ALL' && (
+            <div className="flex items-center gap-2">
               <span className="text-[10px] text-neutral-500">Filter aktif:</span>
-              {statusFilter !== 'ALL' && (
-                <span
-                  className={`text-[10px] font-mono px-2 py-0.5 rounded-full border cursor-pointer ${
-                    statusFilter === 'LUNAS'
-                      ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30'
-                      : 'text-[#F4511E] bg-[#F4511E]/10 border-[#F4511E]/30'
-                  }`}
-                  onClick={() => setStatusFilter('ALL')}
-                  title="Klik untuk hapus filter status"
-                >
-                  {statusFilter === 'LUNAS' ? 'LUNAS' : 'BELUM LUNAS'} ✕
-                </span>
-              )}
-              {(dateRange.mulai || dateRange.akhir) && (
-                <span
-                  className="text-[10px] font-mono px-2 py-0.5 rounded-full border text-amber-400 bg-amber-500/10 border-amber-500/30 cursor-pointer flex items-center gap-1"
-                  onClick={() => {
-                    setDateRange({ mulai: '', akhir: '' });
-                    setTempDateRange({ mulai: '', akhir: '' });
-                    addToast('Filter rentang tanggal dihapus', 'info');
-                  }}
-                  title="Klik untuk hapus filter rentang tanggal"
-                >
-                  📅 {dateRange.mulai || 'Awal'} s/d {dateRange.akhir || 'Akhir'} ✕
-                </span>
-              )}
+              <span
+                className={`text-[10px] font-mono px-2 py-0.5 rounded-full border cursor-pointer ${
+                  statusFilter === 'LUNAS'
+                    ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30'
+                    : 'text-[#F4511E] bg-[#F4511E]/10 border-[#F4511E]/30'
+                }`}
+                onClick={() => setStatusFilter('ALL')}
+                title="Klik untuk hapus filter"
+              >
+                {statusFilter === 'LUNAS' ? 'LUNAS' : 'BELUM LUNAS'} ✕
+              </span>
             </div>
           )}
 
@@ -1365,96 +1063,6 @@ export default function BkkPage() {
           <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#24282C]">
             <Button variant="ghost" onClick={() => setShowPaymentModal(false)}>Batal</Button>
             <Button variant="primary" icon={CheckCircle2} onClick={handleConfirmPayment}>Simpan Pelunasan</Button>
-          </div>
-        </div>
-      </Modal>
-      {/* ── MODAL FILTER RENTANG TANGGAL KALENDER ── */}
-      <Modal
-        isOpen={dateRangeModalOpen}
-        onClose={() => setDateRangeModalOpen(false)}
-        title="Filter Rentang Tanggal Kas Keluar"
-        subtitle="Saring transaksi BKK berdasarkan rentang tanggal kalender"
-        maxWidth="max-w-md"
-      >
-        <div className="p-4 space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <Input
-              label="Tanggal Mulai"
-              type="date"
-              icon={Calendar}
-              value={tempDateRange.mulai}
-              onChange={(e) => {
-                const val = e.target.value;
-                setTempDateRange((prev) => ({
-                  ...prev,
-                  mulai: val,
-                  akhir: prev.akhir && val && val > prev.akhir ? val : prev.akhir,
-                }));
-              }}
-            />
-
-            <Input
-              label="Tanggal Akhir"
-              type="date"
-              icon={Calendar}
-              value={tempDateRange.akhir}
-              min={tempDateRange.mulai || undefined}
-              onChange={(e) => {
-                const val = e.target.value;
-                if (tempDateRange.mulai && val && val < tempDateRange.mulai) {
-                  addToast('Tanggal akhir tidak boleh sebelum tanggal mulai', 'warning');
-                  return;
-                }
-                setTempDateRange((prev) => ({ ...prev, akhir: val }));
-              }}
-              error={
-                tempDateRange.mulai && tempDateRange.akhir && tempDateRange.akhir < tempDateRange.mulai
-                  ? 'Tanggal akhir tidak boleh sebelum tanggal mulai'
-                  : undefined
-              }
-            />
-          </div>
-
-          <div className="pt-3 border-t border-[#24282C] flex items-center justify-between gap-2">
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                setTempDateRange({ mulai: '', akhir: '' });
-                setDateRange({ mulai: '', akhir: '' });
-                setDateRangeModalOpen(false);
-                addToast('Filter rentang tanggal dihapus', 'info');
-              }}
-            >
-              Reset
-            </Button>
-            <div className="flex items-center gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => setDateRangeModalOpen(false)}
-              >
-                Tutup
-              </Button>
-              <Button
-                type="button"
-                variant="primary"
-                size="sm"
-                onClick={() => {
-                  if (tempDateRange.mulai && tempDateRange.akhir && tempDateRange.akhir < tempDateRange.mulai) {
-                    addToast('Tanggal akhir tidak boleh sebelum tanggal mulai', 'error');
-                    return;
-                  }
-                  setDateRange(tempDateRange);
-                  setDateRangeModalOpen(false);
-                  addToast('Filter rentang tanggal berhasil diterapkan', 'success');
-                }}
-              >
-                Terapkan
-              </Button>
-            </div>
           </div>
         </div>
       </Modal>

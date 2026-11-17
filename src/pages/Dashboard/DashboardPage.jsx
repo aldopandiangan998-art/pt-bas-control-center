@@ -36,7 +36,6 @@ import {
   LaporanPajakIcon,
   LaporanAllInOneIcon,
   LaporanSupplierIcon,
-  PusatStatistikIcon,
   DataPenggunaIcon,
   DataMaterialIcon,
   DataSupplierIcon,
@@ -85,7 +84,6 @@ export default function DashboardPage() {
           { title: 'Laporan Pajak', path: '/laporan', icon: LaporanPajakIcon },
           { title: 'Laporan All-in-One', path: '/laporan', icon: LaporanAllInOneIcon },
           { title: 'Laporan Supplier', path: '/laporan', icon: LaporanSupplierIcon },
-          { title: 'Pusat Statistik', path: '/laporan', icon: PusatStatistikIcon },
         ]
       : []),
   ];
@@ -784,7 +782,7 @@ export default function DashboardPage() {
           </span>
         </div>
 
-        <div className={`grid grid-cols-3 sm:grid-cols-5 ${isSuperAdmin ? 'md:grid-cols-9' : 'md:grid-cols-5'} gap-2`}>
+        <div className={`grid grid-cols-2 ${isSuperAdmin ? 'sm:grid-cols-4 md:grid-cols-8' : 'sm:grid-cols-5 md:grid-cols-5'} gap-2`}>
           {operationalModules.map((item) => {
             const Icon = item.icon;
             return (

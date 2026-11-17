@@ -768,16 +768,6 @@ export default function BkkPage() {
             onInfo={setInfoModalItem}
             displayMode={displayMode}
           />
-
-          {/* FAB */}
-          <button
-            type="button"
-            onClick={() => setActiveTab('create')}
-            className="fixed bottom-6 right-6 z-30 w-14 h-14 rounded-full bg-[#F4511E] hover:bg-[#E04418] text-white flex items-center justify-center shadow-xl shadow-[#F4511E]/40 cursor-pointer transition-transform hover:scale-105 active:scale-95"
-            title="Tambah Cash Out"
-          >
-            <Plus className="w-6 h-6 stroke-[2.5]" />
-          </button>
         </div>
       )}
 

@@ -3874,18 +3874,6 @@ export default function MasterDataPage() {
         </motion.div>
       </AnimatePresence>
 
-      {/* Floating Action Button (FAB) */}
-      {['supplier', 'material', 'armada', 'customer', 'bank', 'rekening'].includes(currentTab) && (
-        <button
-          type="button"
-          onClick={() => setModalOpen(true)}
-          className="fixed bottom-6 right-6 z-30 w-14 h-14 rounded-full bg-[#F4511E] hover:bg-[#D84315] active:scale-95 text-white flex items-center justify-center shadow-2xl transition-all border border-white/20 cursor-pointer"
-          title={`Tambah ${categories.find((c) => c.key === currentTab)?.label}`}
-        >
-          <Plus className="w-7 h-7 stroke-[2.5]" />
-        </button>
-      )}
-
       {/* ======================================================== */}
       {/* MODAL: TAMBAH SUPPLIER */}
       {/* ======================================================== */}

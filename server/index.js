@@ -870,7 +870,7 @@ app.delete('/api/master/currencies/:id', (req, res) => {
 
 // Pre Orders
 app.get('/api/pre-orders', (req, res) => {
-  const pos = db.prepare('SELECT * FROM pre_orders ORDER BY id DESC').all();
+  const pos = db.prepare('SELECT * FROM pre_orders ORDER BY tanggal DESC, id DESC').all();
   const parsed = pos.map((po) => {
     let items = po.items;
     if (typeof items === 'string') {
@@ -889,87 +889,171 @@ app.get('/api/pre-orders', (req, res) => {
 });
 
 app.post('/api/pre-orders', (req, res) => {
-  const {
-    id: customId,
-    nomorPo = null,
-    customer = '',
-    customerAddress = '',
-    materialId = '',
-    materialName = '',
-    materialCategory = 'Curah',
-    pphRate = 2.0,
-    satuan = 'm3',
-    totalOrder = 0,
-    terkirim = 0,
-    hargaJual = 0,
-    hargaBeli = 0,
-    tanggal = new Date().toISOString().split('T')[0],
-    top = '30 Hari',
-    status = 'APPROVED',
-    createdBy = 'Admin Gresik',
-    approvedBy = null,
-    approvedAt = null,
-    rejectionReason = null,
-    items = [],
-    nomorRO = '',
-    jenisRO = '',
-    jenis = 'CURAH',
-    mataUang = 'IDR',
-    jenisWajibPajak = 'PKP',
-    nomorPoCustomer = '',
-    hubungkanNomorPoMaterial = '',
-  } = req.body;
+  try {
+    const b = req.body || {};
+    const id = b.id || `PO-DRAFT-${Date.now()}`;
+    const finalNomorRO = b.nomorRO || `RO-${new Date().getFullYear()}-${String(Date.now()).slice(-4)}`;
+    const itemsJson = typeof b.items === 'string' ? b.items : JSON.stringify(b.items || []);
 
-  const id = customId || `PO-DRAFT-${Date.now()}`;
-  const itemsJson = typeof items === 'string' ? items : JSON.stringify(items || []);
+    const params = [
+      id,
+      b.nomorPo ?? null,
+      b.customer ?? '',
+      b.customerAddress ?? '',
+      b.materialId ?? '',
+      b.materialName ?? '',
+      b.materialCategory ?? 'Curah',
+      Number(b.pphRate) || 0,
+      b.satuan ?? 'm3',
+      Number(b.totalOrder) || 0,
+      Number(b.terkirim) || 0,
+      Number(b.hargaJual) || 0,
+      Number(b.hargaBeli) || 0,
+      b.tanggal ?? new Date().toISOString().split('T')[0],
+      b.top ?? '30 Hari',
+      b.status ?? 'MENUNGGU_APPROVAL',
+      b.createdBy ?? 'Admin Gresik',
+      b.approvedBy ?? null,
+      b.approvedAt ?? null,
+      b.rejectionReason ?? null,
+      itemsJson,
+      finalNomorRO,
+      b.jenisRO ?? '',
+      b.jenis ?? 'CURAH',
+      b.mataUang ?? 'IDR',
+      b.jenisWajibPajak ?? 'PKP',
+      b.nomorPoCustomer ?? '',
+      b.hubungkanNomorPoMaterial ?? '',
+    ].map((val) => (val === undefined ? null : val));
 
-  db.prepare(`
-    INSERT OR REPLACE INTO pre_orders (
-      id, nomorPo, customer, customerAddress, materialId, materialName,
-      materialCategory, pphRate, satuan, totalOrder, terkirim, hargaJual,
-      hargaBeli, tanggal, top, status, createdBy, approvedBy, approvedAt,
-      rejectionReason, items, nomorRO, jenisRO, jenis, mataUang,
-      jenisWajibPajak, nomorPoCustomer, hubungkanNomorPoMaterial
-    ) VALUES (
-      ?, ?, ?, ?, ?, ?,
-      ?, ?, ?, ?, ?, ?,
-      ?, ?, ?, ?, ?, ?, ?,
-      ?, ?, ?, ?, ?, ?,
-      ?, ?, ?
-    )
-  `).run(
-    id, nomorPo, customer, customerAddress, materialId, materialName,
-    materialCategory, pphRate, satuan, totalOrder, terkirim, hargaJual,
-    hargaBeli, tanggal, top, status, createdBy, approvedBy, approvedAt,
-    rejectionReason, itemsJson, nomorRO, jenisRO, jenis, mataUang,
-    jenisWajibPajak, nomorPoCustomer, hubungkanNomorPoMaterial
-  );
+    db.prepare(`
+      INSERT OR REPLACE INTO pre_orders (
+        id, nomorPo, customer, customerAddress, materialId, materialName,
+        materialCategory, pphRate, satuan, totalOrder, terkirim, hargaJual,
+        hargaBeli, tanggal, top, status, createdBy, approvedBy, approvedAt,
+        rejectionReason, items, nomorRO, jenisRO, jenis, mataUang,
+        jenisWajibPajak, nomorPoCustomer, hubungkanNomorPoMaterial
+      ) VALUES (
+        ?, ?, ?, ?, ?, ?,
+        ?, ?, ?, ?, ?, ?,
+        ?, ?, ?, ?, ?, ?, ?,
+        ?, ?, ?, ?, ?, ?,
+        ?, ?, ?
+      )
+    `).run(...params);
 
-  const created = {
-    id, nomorPo, customer, customerAddress, materialId, materialName,
-    materialCategory, pphRate, satuan, totalOrder, terkirim, hargaJual,
-    hargaBeli, tanggal, top, status, createdBy, approvedBy, approvedAt,
-    rejectionReason, items, nomorRO, jenisRO, jenis, mataUang,
-    jenisWajibPajak, nomorPoCustomer, hubungkanNomorPoMaterial
-  };
+    const created = {
+      id,
+      nomorPo: b.nomorPo ?? null,
+      customer: b.customer ?? '',
+      customerAddress: b.customerAddress ?? '',
+      materialId: b.materialId ?? '',
+      materialName: b.materialName ?? '',
+      materialCategory: b.materialCategory ?? 'Curah',
+      pphRate: Number(b.pphRate) || 0,
+      satuan: b.satuan ?? 'm3',
+      totalOrder: Number(b.totalOrder) || 0,
+      terkirim: Number(b.terkirim) || 0,
+      hargaJual: Number(b.hargaJual) || 0,
+      hargaBeli: Number(b.hargaBeli) || 0,
+      tanggal: b.tanggal ?? new Date().toISOString().split('T')[0],
+      top: b.top ?? '30 Hari',
+      status: b.status ?? 'MENUNGGU_APPROVAL',
+      createdBy: b.createdBy ?? 'Admin Gresik',
+      approvedBy: b.approvedBy ?? null,
+      approvedAt: b.approvedAt ?? null,
+      rejectionReason: b.rejectionReason ?? null,
+      items: Array.isArray(b.items) ? b.items : [],
+      nomorRO: finalNomorRO,
+      jenisRO: b.jenisRO ?? '',
+      jenis: b.jenis ?? 'CURAH',
+      mataUang: b.mataUang ?? 'IDR',
+      jenisWajibPajak: b.jenisWajibPajak ?? 'PKP',
+      nomorPoCustomer: b.nomorPoCustomer ?? '',
+      hubungkanNomorPoMaterial: b.hubungkanNomorPoMaterial ?? '',
+    };
 
-  res.status(201).json({ success: true, id, data: created });
+    res.status(201).json({ success: true, id, data: created });
+  } catch (err) {
+    console.error('Error inserting pre_order:', err);
+    res.status(500).json({ success: false, message: err.message });
+  }
 });
 
 app.patch('/api/pre-orders/:id/approve', (req, res) => {
   const { approver = 'David Rusiah (Direktur)' } = req.body;
   const now = new Date().toISOString().replace('T', ' ').substring(0, 16);
+  
   db.prepare(`
     UPDATE pre_orders
     SET status = 'APPROVED', approvedBy = ?, approvedAt = ?, rejectionReason = NULL
     WHERE id = ?
   `).run(approver, now, req.params.id);
 
-  const updated = db.prepare('SELECT * FROM pre_orders WHERE id = ?').get(req.params.id);
-  if (updated && updated.items) {
-    try { updated.items = JSON.parse(updated.items); } catch (e) { updated.items = []; }
+  const po = db.prepare('SELECT * FROM pre_orders WHERE id = ?').get(req.params.id);
+  if (!po) {
+    return res.status(404).json({ success: false, message: 'Pre Order tidak ditemukan' });
   }
-  res.json({ success: true, data: updated });
+
+  let parsedItems = [];
+  if (po.items) {
+    try { parsedItems = JSON.parse(po.items); } catch (e) { parsedItems = []; }
+  }
+
+  // Otomatis buat Jurnal GI (Rekapan) untuk nomor RO pre-order ini jika belum ada
+  const finalNomorRO = po.nomorRO || `RO-${po.id}`;
+  const existingJurnal = db.prepare('SELECT * FROM jurnal_gi WHERE preOrderId = ? OR nomorRO = ?').get(po.id, finalNomorRO);
+  
+  let jurnalId = existingJurnal?.id;
+  if (!existingJurnal) {
+    jurnalId = `REK-${new Date().toISOString().slice(0, 7).replace('-', '')}-${String(Date.now()).slice(-4)}`;
+    const firstItem = parsedItems[0] || {};
+    const matName = po.materialName || firstItem.nama || 'SIRTU';
+    const targetVol = Number(po.totalOrder || firstItem.kuantitas || 0);
+    const hBeli = Number(po.hargaBeli || firstItem.hargaBeli || 0);
+    const hJual = Number(po.hargaJual || firstItem.hargaJual || 0);
+    const isPpn = po.jenisWajibPajak === 'PKP' ? 1 : 0;
+    const nowIso = new Date().toISOString();
+
+    db.prepare(`
+      INSERT INTO jurnal_gi (
+        id, nomorRO, preOrderId, poNumber, customer, customerAddress,
+        material, isPpn, tanggal, totalSj, targetRitase, totalVolume,
+        targetVolume, satuan, hargaBeli, hargaJual, nominalBeli,
+        nominalJual, status, suratJalanDetails, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      jurnalId,
+      finalNomorRO,
+      po.id,
+      po.nomorPo || 'MENUNGGU SURAT JALAN PERTAMA',
+      po.customer,
+      po.customerAddress || '',
+      matName,
+      isPpn,
+      po.tanggal || nowIso.split('T')[0],
+      0,
+      Math.max(1, Math.ceil(targetVol / 30)),
+      0,
+      targetVol,
+      po.satuan || 'm3',
+      hBeli,
+      hJual,
+      0,
+      0,
+      'Siap Kirim',
+      JSON.stringify([]),
+      nowIso,
+      nowIso
+    );
+  }
+
+  res.json({
+    success: true,
+    data: { ...po, items: parsedItems },
+    jurnalId,
+    message: `Pre Order ${finalNomorRO} disetujui dan Jurnal GI otomatis di-generate.`
+  });
 });
 
 app.patch('/api/pre-orders/:id/reject', (req, res) => {
@@ -987,6 +1071,35 @@ app.patch('/api/pre-orders/:id/reject', (req, res) => {
   res.json({ success: true, data: updated });
 });
 
+// ==========================================
+// JURNAL GI / REKAPAN ROUTES
+// ==========================================
+app.get('/api/jurnal-gi', (req, res) => {
+  const jurnals = db.prepare('SELECT * FROM jurnal_gi ORDER BY tanggal DESC, created_at DESC, id DESC').all();
+  const formatted = jurnals.map((j) => {
+    let details = [];
+    try {
+      details = typeof j.suratJalanDetails === 'string' ? JSON.parse(j.suratJalanDetails) : (j.suratJalanDetails || []);
+    } catch (e) {
+      details = [];
+    }
+    return {
+      ...j,
+      isPpn: Boolean(j.isPpn),
+      totalSj: Number(j.totalSj || 0),
+      totalVolume: Number(j.totalVolume || 0),
+      targetVolume: Number(j.targetVolume || 0),
+      targetRitase: Number(j.targetRitase || 0),
+      hargaBeli: Number(j.hargaBeli || 0),
+      hargaJual: Number(j.hargaJual || 0),
+      nominalBeli: Number(j.nominalBeli || 0),
+      nominalJual: Number(j.nominalJual || 0),
+      suratJalanDetails: Array.isArray(details) ? details : [],
+    };
+  });
+  res.json(formatted);
+});
+
 // Surat Jalan
 app.get('/api/surat-jalan', (req, res) => {
   const sjs = db.prepare('SELECT * FROM surat_jalan ORDER BY id DESC').all();
@@ -1001,6 +1114,7 @@ app.post('/api/surat-jalan', (req, res) => {
     customer,
     material,
     nopol,
+    nomorPolisi,
     driver,
     tanggal,
     waktu,
@@ -1011,27 +1125,161 @@ app.post('/api/surat-jalan', (req, res) => {
     tinggiCm,
     koreksiTinggiCm = 0,
     volumeAkhir,
-    status = 'Selesai'
+    status = 'Selesai',
+    nomorRo,
   } = req.body;
+
+  const finalNopol = nopol || nomorPolisi || 'W 9821 UB';
+  const finalVolume = Number(volumeAkhir) || 0;
+
+  // 1. Validasi PO Approval: Pre-Order HARUS sudah berstatus APPROVED
+  let targetPo = null;
+  if (poNumber) {
+    targetPo = db.prepare('SELECT * FROM pre_orders WHERE nomorPo = ? OR id = ? OR nomorRO = ?').get(poNumber, poNumber, nomorRo || poNumber);
+  }
+  if (!targetPo && nomorRo) {
+    targetPo = db.prepare('SELECT * FROM pre_orders WHERE nomorRO = ?').get(nomorRo);
+  }
+  if (!targetPo && customer) {
+    targetPo = db.prepare('SELECT * FROM pre_orders WHERE customer = ? AND status = "APPROVED" ORDER BY id DESC LIMIT 1').get(customer);
+  }
+
+  if (targetPo && targetPo.status !== 'APPROVED') {
+    return res.status(400).json({
+      success: false,
+      message: `Surat Jalan ditolak: Pre Order ${targetPo.nomorRO || targetPo.id} untuk ${targetPo.customer} belum disetujui (APPROVED) oleh Super Admin!`
+    });
+  }
 
   const id = customId || `SJ-${Date.now()}`;
 
   db.prepare(`
     INSERT INTO surat_jalan (id, nomorSj, poNumber, customer, material, nopol, driver, tanggal, waktu, nomorNota, isPpn, panjangCm, lebarCm, tinggiCm, koreksiTinggiCm, volumeAkhir, status)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(id, nomorSj, poNumber, customer, material, nopol, driver, tanggal, waktu, nomorNota, isPpn ? 1 : 0, panjangCm, lebarCm, tinggiCm, koreksiTinggiCm, volumeAkhir, status);
+  `).run(
+    id,
+    nomorSj,
+    targetPo?.nomorPo || poNumber,
+    customer,
+    material,
+    finalNopol,
+    driver || 'Supir Terjadwal',
+    tanggal,
+    waktu || '09:00',
+    nomorNota || '',
+    isPpn ? 1 : 0,
+    panjangCm,
+    lebarCm,
+    tinggiCm,
+    koreksiTinggiCm,
+    finalVolume,
+    status
+  );
 
   // Update Pre Order delivery volume and assign PO number if it is the first delivery
-  if (poNumber) {
-    const po = db.prepare('SELECT * FROM pre_orders WHERE nomorPo = ? OR id = ?').get(poNumber, poNumber);
-    if (po) {
-      const newTerkirim = Number(((po.terkirim || 0) + Number(volumeAkhir)).toFixed(2));
-      const finalPoNum = po.nomorPo || `PO-${(customer || 'CS').replace(/[^A-Z]/g, '').slice(0, 2)}-2026-${Math.floor(100 + Math.random() * 900)}`;
-      db.prepare('UPDATE pre_orders SET terkirim = ?, nomorPo = ? WHERE id = ?').run(newTerkirim, finalPoNum, po.id);
-    }
+  let finalPoNum = poNumber;
+  if (targetPo) {
+    const newTerkirim = Number(((targetPo.terkirim || 0) + finalVolume).toFixed(2));
+    finalPoNum = targetPo.nomorPo || `PO-${(customer || 'CS').replace(/[^A-Z]/g, '').slice(0, 2)}-2026-${Math.floor(100 + Math.random() * 900)}`;
+    db.prepare('UPDATE pre_orders SET terkirim = ?, nomorPo = ? WHERE id = ?').run(newTerkirim, finalPoNum, targetPo.id);
   }
 
-  res.status(201).json({ success: true, id });
+  // 2. OTOMATIS SINKRONISASI KE JURNAL GI (REKAPAN):
+  // Masukkan rincian Surat Jalan ke suratJalanDetails pada jurnal_gi nomor RO terkait
+  let jurnal = null;
+  if (targetPo) {
+    jurnal = db.prepare('SELECT * FROM jurnal_gi WHERE preOrderId = ? OR nomorRO = ? OR (poNumber IS NOT NULL AND poNumber = ?)').get(targetPo.id, targetPo.nomorRO || '', finalPoNum);
+  }
+  if (!jurnal && nomorRo) {
+    jurnal = db.prepare('SELECT * FROM jurnal_gi WHERE nomorRO = ?').get(nomorRo);
+  }
+  if (!jurnal && finalPoNum) {
+    jurnal = db.prepare('SELECT * FROM jurnal_gi WHERE poNumber = ?').get(finalPoNum);
+  }
+  if (!jurnal && customer) {
+    jurnal = db.prepare('SELECT * FROM jurnal_gi WHERE customer = ? ORDER BY id DESC LIMIT 1').get(customer);
+  }
+
+  // Jika jurnal belum ada, generate jurnal_gi baru
+  if (!jurnal) {
+    const newJrnId = `REK-${new Date().toISOString().slice(0, 7).replace('-', '')}-${String(Date.now()).slice(-4)}`;
+    const jrnRo = targetPo?.nomorRO || nomorRo || `RO-${new Date().getFullYear()}-${String(Date.now()).slice(-4)}`;
+    const targetVol = targetPo ? Number(targetPo.totalOrder || 0) : finalVolume;
+    const hBeli = targetPo ? Number(targetPo.hargaBeli || 0) : 50765;
+    const hJual = targetPo ? Number(targetPo.hargaJual || 0) : 67233;
+    const nowIso = new Date().toISOString();
+
+    db.prepare(`
+      INSERT INTO jurnal_gi (
+        id, nomorRO, preOrderId, poNumber, customer, customerAddress, material,
+        isPpn, tanggal, totalSj, targetRitase, totalVolume, targetVolume, satuan,
+        hargaBeli, hargaJual, nominalBeli, nominalJual, status, suratJalanDetails,
+        created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      newJrnId, jrnRo, targetPo?.id || null, finalPoNum, customer, targetPo?.customerAddress || '',
+      material, isPpn ? 1 : 0, tanggal, 0, Math.max(1, Math.ceil(targetVol / 30)),
+      0, targetVol, targetPo?.satuan || 'm3', hBeli, hJual, 0, 0,
+      'Siap Kirim', JSON.stringify([]), nowIso, nowIso
+    );
+    jurnal = db.prepare('SELECT * FROM jurnal_gi WHERE id = ?').get(newJrnId);
+  }
+
+  if (jurnal) {
+    let sjDetails = [];
+    try {
+      sjDetails = typeof jurnal.suratJalanDetails === 'string' ? JSON.parse(jurnal.suratJalanDetails) : (jurnal.suratJalanDetails || []);
+    } catch (e) {
+      sjDetails = [];
+    }
+
+    const sjItemDesc = {
+      id,
+      nomorSj,
+      poNumber: finalPoNum,
+      customer,
+      material,
+      nopol: finalNopol,
+      driver: driver || 'Supir Terjadwal',
+      tanggal,
+      waktu: waktu || '09:00',
+      nomorNota: nomorNota || '',
+      panjangCm: Number(panjangCm) || 0,
+      lebarCm: Number(lebarCm) || 0,
+      tinggiCm: Number(tinggiCm) || 0,
+      koreksiTinggiCm: Number(koreksiTinggiCm) || 0,
+      volumeAkhir: finalVolume,
+      status: status || 'Selesai',
+    };
+
+    // Hindari duplikasi jika id sama
+    const filteredDetails = sjDetails.filter((d) => d.id !== id && d.nomorSj !== nomorSj);
+    filteredDetails.push(sjItemDesc);
+
+    const updatedTotalSj = filteredDetails.length;
+    const updatedTotalVolume = Number(filteredDetails.reduce((sum, d) => sum + (Number(d.volumeAkhir) || 0), 0).toFixed(2));
+    const updatedNominalBeli = Math.round(updatedTotalVolume * (Number(jurnal.hargaBeli) || 0));
+    const updatedNominalJual = Math.round(updatedTotalVolume * (Number(jurnal.hargaJual) || 0));
+    const nowIso = new Date().toISOString();
+
+    db.prepare(`
+      UPDATE jurnal_gi
+      SET totalSj = ?, totalVolume = ?, nominalBeli = ?, nominalJual = ?,
+          poNumber = ?, status = 'Siap Tagih', suratJalanDetails = ?, updated_at = ?
+      WHERE id = ?
+    `).run(
+      updatedTotalSj,
+      updatedTotalVolume,
+      updatedNominalBeli,
+      updatedNominalJual,
+      finalPoNum,
+      JSON.stringify(filteredDetails),
+      nowIso,
+      jurnal.id
+    );
+  }
+
+  res.status(201).json({ success: true, id, jurnalId: jurnal?.id });
 });
 
 // BKK

@@ -104,7 +104,7 @@ function mkDefaultForm() {
     jenisWajibPajak: 'PKP',
     nomorPoCustomer: '',
     nomorRO: mkNomorRO(),
-    jenisRO: '',
+    jenisRO: 'JASA ANGKUT + MATERIAL',
     hubungkanNomorPoMaterial: '',
   };
 }
@@ -181,6 +181,13 @@ export default function PreOrderPage() {
 
   const showHubungkanPo = formData.jenisRO === 'JASA ANGKUT SAJA';
   const showDaftarItem = !!formData.jenisRO;
+
+  // Auto-initialize first item with database prices when items is empty
+  useEffect(() => {
+    if (items.length === 0 && availableMaterials.length > 0) {
+      setItems([createItemFromMaterial(availableMaterials[0])]);
+    }
+  }, [availableMaterials]);
 
   // Computed summary totals
   const totalKuantitas = useMemo(() => {
@@ -317,7 +324,7 @@ export default function PreOrderPage() {
   };
 
   /* ── submit ── */
-  const handleCreate = (e) => {
+  const handleCreate = async (e) => {
     e.preventDefault();
     const errs = validate();
     if (Object.keys(errs).length > 0) {
@@ -329,32 +336,40 @@ export default function PreOrderPage() {
     }
 
     setSubmitting(true);
-    const firstItem = items[0] || {};
-    createPreOrder({
-      ...formData,
-      items,
-      materialId: firstItem.materialId || 'mat-1',
-      materialName: firstItem.nama || 'SIRTU',
-      materialCategory: firstItem.category || 'Curah',
-      pphRate: Number(firstItem.pphRate) || 2.0,
-      totalOrder: totalKuantitas || Number(firstItem.kuantitas) || 0,
-      hargaJual: Number(firstItem.hargaJual) || 0,
-      hargaBeli: Number(firstItem.hargaBeli) || 0,
-      satuan: firstItem.satuan || 'm3',
-    });
+    try {
+      const firstItem = items[0] || {};
+      const custObj = (customers || []).find((c) => c.name === formData.customer || c.alias === formData.customer);
+      const customerAddress = custObj?.alamat || custObj?.customerAddress || '';
 
-    setFormData(mkDefaultForm());
-    setItems([]);
-    setErrors({});
-    setItemsLocked(false);
-    setSubmitting(false);
-    setActiveTab('list');
+      await createPreOrder({
+        ...formData,
+        customerAddress,
+        items,
+        materialId: firstItem.materialId || 'mat-1',
+        materialName: firstItem.nama || 'SIRTU',
+        materialCategory: firstItem.category || 'Curah',
+        pphRate: Number(firstItem.pphRate) || 2.0,
+        totalOrder: totalKuantitas || Number(firstItem.kuantitas) || 0,
+        hargaJual: Number(firstItem.hargaJual) || 0,
+        hargaBeli: Number(firstItem.hargaBeli) || 0,
+        satuan: firstItem.satuan || 'm3',
+      });
+
+      handleResetForm();
+      setActiveTab('list');
+    } catch (err) {
+      console.error(err);
+      addToast('Terjadi kesalahan saat mengajukan Pre Order', 'error');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   /* ── reset / cancel form ── */
   const handleResetForm = () => {
     setFormData(mkDefaultForm());
-    setItems([]);
+    const initialMat = availableMaterials[0] || allMaterials[0];
+    setItems(initialMat ? [createItemFromMaterial(initialMat)] : []);
     setErrors({});
     setItemsLocked(false);
   };
@@ -440,10 +455,15 @@ export default function PreOrderPage() {
                 <Card key={po.id} hover className="p-4.5 sm:p-5 space-y-3.5 bg-[#14171A] border border-[#22262A]">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                     <div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-mono text-xs font-bold px-2.5 py-0.5 rounded bg-[#1C1F23] text-neutral-200 border border-[#2B3037]">
                           {po.nomorPo || 'DRAFT (MENUNGGU SURAT JALAN PERTAMA)'}
                         </span>
+                        {po.nomorRO && (
+                          <span className="font-mono text-xs font-semibold px-2 py-0.5 rounded bg-[#F4511E]/10 text-[#F4511E] border border-[#F4511E]/30">
+                            {po.nomorRO}
+                          </span>
+                        )}
                         <span className="text-xs text-neutral-400 font-mono">{po.tanggal}</span>
                       </div>
                       <div className="text-sm font-bold text-white mt-1">
@@ -455,12 +475,46 @@ export default function PreOrderPage() {
                             : po.materialName}
                         </span>
                       </div>
+                      {po.status === 'APPROVED' && po.approvedBy && (
+                        <div className="text-[11px] text-emerald-400/90 font-mono mt-0.5 flex items-center gap-1">
+                          <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                          <span>Disetujui: {po.approvedBy} ({po.approvedAt || '-'})</span>
+                        </div>
+                      )}
+                      {po.status === 'REJECTED' && po.rejectionReason && (
+                        <div className="text-[11px] text-rose-400 font-mono mt-0.5 flex items-center gap-1">
+                          <XCircle className="w-3 h-3 text-rose-400" />
+                          <span>Ditolak: {po.rejectionReason}</span>
+                        </div>
+                      )}
                     </div>
-                    <div>
-                      {po.terkirim >= po.totalOrder ? (
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      {(po.status === 'MENUNGGU_APPROVAL' || po.status === 'PENDING' || po.status === 'Menunggu Approval') && (
+                        <Badge variant="warning">
+                          <span className="flex items-center gap-1">
+                            <Clock className="w-3 h-3 text-amber-400" />
+                            MENUNGGU APPROVAL
+                          </span>
+                        </Badge>
+                      )}
+                      {(po.status === 'APPROVED' || po.status === 'Disetujui') && (
+                        <Badge variant="success">
+                          <span className="flex items-center gap-1">
+                            <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                            DISETUJUI
+                          </span>
+                        </Badge>
+                      )}
+                      {(po.status === 'REJECTED' || po.status === 'Ditolak') && (
+                        <Badge variant="danger">
+                          <span className="flex items-center gap-1">
+                            <XCircle className="w-3 h-3 text-rose-400" />
+                            DITOLAK
+                          </span>
+                        </Badge>
+                      )}
+                      {po.terkirim >= po.totalOrder && po.totalOrder > 0 && (
                         <Badge variant="neutral">SELESAI</Badge>
-                      ) : (
-                        <Badge variant="success" dot>AKTIF</Badge>
                       )}
                     </div>
                   </div>
@@ -493,16 +547,58 @@ export default function PreOrderPage() {
                         Dibuat: <strong className="text-neutral-200">{po.createdBy || 'Admin'}</strong>
                       </span>
 
-                      {/* Fitur Buat Surat Jalan GI untuk Pre Order */}
-                      <Button
-                        size="sm"
-                        variant="primary"
-                        icon={FileText}
-                        onClick={() => handleBuatSuratJalan(po)}
-                        title={`Buat Surat Jalan GI untuk ${po.customer}`}
-                      >
-                        Buat Surat Jalan GI &rarr;
-                      </Button>
+                      {/* Super Admin Direct Approval Actions */}
+                      {isSuperAdmin && (po.status === 'MENUNGGU_APPROVAL' || po.status === 'PENDING' || po.status === 'Menunggu Approval') && (
+                        <>
+                          <Button
+                            size="xs"
+                            variant="primary"
+                            icon={CheckCircle2}
+                            onClick={() => approvePreOrder(po.id, `${currentUser?.name || 'David Rusiah'} (Direktur)`)}
+                            className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold"
+                            title="Setujui Pre Order ini sekarang"
+                          >
+                            Setujui RO
+                          </Button>
+                          <Button
+                            size="xs"
+                            variant="ghost"
+                            icon={XCircle}
+                            onClick={() => {
+                              const r = window.prompt('Alasan penolakan Pre Order:');
+                              if (r) rejectPreOrder(po.id, r);
+                            }}
+                            className="text-rose-400 hover:text-rose-300 hover:bg-rose-500/10"
+                            title="Tolak Pre Order"
+                          >
+                            Tolak
+                          </Button>
+                        </>
+                      )}
+
+                      {/* Fitur Buat Surat Jalan GI: Only enabled if status is APPROVED */}
+                      {(po.status === 'APPROVED' || po.status === 'Disetujui') ? (
+                        <Button
+                          size="sm"
+                          variant="primary"
+                          icon={FileText}
+                          onClick={() => handleBuatSuratJalan(po)}
+                          title={`Buat Surat Jalan GI untuk ${po.customer}`}
+                        >
+                          Buat Surat Jalan GI &rarr;
+                        </Button>
+                      ) : (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled
+                          icon={Lock}
+                          title="Pre Order harus disetujui Super Admin terlebih dahulu sebelum Surat Jalan dapat dibuat"
+                          className="opacity-50 cursor-not-allowed text-neutral-500 border-[#2D3339]"
+                        >
+                          Menunggu Approval
+                        </Button>
+                      )}
                     </div>
                   </div>
                 </Card>
@@ -975,29 +1071,29 @@ export default function PreOrderPage() {
                     </div>
                   </div>
                 </div>
-
-                {/* ── ACTION BUTTONS ── */}
-                <div className="flex flex-col sm:flex-row items-center justify-end gap-3 pt-4 border-t border-[#22262A]">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    onClick={handleCancel}
-                    disabled={submitting}
-                    title="Batalkan dan bersihkan seluruh isian form"
-                  >
-                    Batal
-                  </Button>
-                  <Button
-                    type="submit"
-                    variant="primary"
-                    disabled={submitting}
-                    className="w-full sm:w-auto px-6 py-2.5 font-bold"
-                  >
-                    {submitting ? 'Menyimpan...' : 'Simpan & Ajukan Pre Order'}
-                  </Button>
-                </div>
               </div>
             )}
+
+            {/* ── ACTION BUTTONS (ALWAYS VISIBLE AT FORM BOTTOM) ── */}
+            <div className="flex flex-col sm:flex-row items-center justify-end gap-3 pt-4 border-t border-[#22262A]">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={handleCancel}
+                disabled={submitting}
+                title="Batalkan dan bersihkan seluruh isian form"
+              >
+                Batal
+              </Button>
+              <Button
+                type="submit"
+                variant="primary"
+                disabled={submitting}
+                className="w-full sm:w-auto px-6 py-2.5 font-bold"
+              >
+                {submitting ? 'Menyimpan...' : 'Simpan & Ajukan Pre Order'}
+              </Button>
+            </div>
 
           </form>
         </div>

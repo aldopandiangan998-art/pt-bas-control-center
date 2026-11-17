@@ -105,11 +105,25 @@ export default function ApprovalRoPage() {
     return Array.from(set).sort();
   }, [preOrders]);
 
+  // Status normalization helpers
+  const isPendingStatus = (s) => {
+    const val = String(s || '').toUpperCase().trim();
+    return val === 'MENUNGGU_APPROVAL' || val === 'PENDING' || val === 'MENUNGGU APPROVAL';
+  };
+  const isApprovedStatus = (s) => {
+    const val = String(s || '').toUpperCase().trim();
+    return val === 'APPROVED' || val === 'DISETUJUI';
+  };
+  const isRejectedStatus = (s) => {
+    const val = String(s || '').toUpperCase().trim();
+    return val === 'REJECTED' || val === 'DITOLAK';
+  };
+
   // Counts for tabs
   const counts = useMemo(() => {
-    const pending = preOrders.filter((po) => po.status === 'MENUNGGU_APPROVAL').length;
-    const approved = preOrders.filter((po) => po.status === 'APPROVED').length;
-    const rejected = preOrders.filter((po) => po.status === 'REJECTED').length;
+    const pending = preOrders.filter((po) => isPendingStatus(po.status)).length;
+    const approved = preOrders.filter((po) => isApprovedStatus(po.status)).length;
+    const rejected = preOrders.filter((po) => isRejectedStatus(po.status)).length;
     return {
       pending,
       approved,
@@ -120,7 +134,7 @@ export default function ApprovalRoPage() {
 
   // Executive KPI Metrics (Specifically for Pending ROs)
   const pendingMetrics = useMemo(() => {
-    const pendingList = preOrders.filter((po) => po.status === 'MENUNGGU_APPROVAL');
+    const pendingList = preOrders.filter((po) => isPendingStatus(po.status));
     let totalVolume = 0;
     let totalNilaiPesanan = 0;
     let totalEstimasiMargin = 0;
@@ -148,9 +162,9 @@ export default function ApprovalRoPage() {
   const filteredList = useMemo(() => {
     const list = preOrders.filter((po) => {
       // 1. Status Filter
-      if (activeTab === 'pending' && po.status !== 'MENUNGGU_APPROVAL') return false;
-      if (activeTab === 'approved' && po.status !== 'APPROVED') return false;
-      if (activeTab === 'rejected' && po.status !== 'REJECTED') return false;
+      if (activeTab === 'pending' && !isPendingStatus(po.status)) return false;
+      if (activeTab === 'approved' && !isApprovedStatus(po.status)) return false;
+      if (activeTab === 'rejected' && !isRejectedStatus(po.status)) return false;
 
       // 2. Customer Filter
       if (customerFilter !== 'ALL' && po.customer !== customerFilter) return false;
@@ -225,7 +239,7 @@ export default function ApprovalRoPage() {
 
   const handleSelectAllPending = () => {
     const pendingIds = filteredList
-      .filter((po) => po.status === 'MENUNGGU_APPROVAL')
+      .filter((po) => isPendingStatus(po.status))
       .map((po) => po.id);
     if (selectedIds.size === pendingIds.length && pendingIds.length > 0) {
       setSelectedIds(new Set());
@@ -717,9 +731,9 @@ export default function ApprovalRoPage() {
         <div className="space-y-4">
           {filteredList.map((po) => {
             const fin = calculateFinancials(po);
-            const isPending = po.status === 'MENUNGGU_APPROVAL';
-            const isApproved = po.status === 'APPROVED';
-            const isRejected = po.status === 'REJECTED';
+            const isPending = isPendingStatus(po.status);
+            const isApproved = isApprovedStatus(po.status);
+            const isRejected = isRejectedStatus(po.status);
             const isSelected = selectedIds.has(po.id);
             const isExpanded = expandedIds.has(po.id);
             const hasMultipleItems = po.items && Array.isArray(po.items) && po.items.length > 1;

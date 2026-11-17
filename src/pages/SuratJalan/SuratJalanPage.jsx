@@ -195,6 +195,8 @@ export default function SuratJalanPage() {
 
     createSuratJalan({
       ...formData,
+      nopol: formData.nomorPolisi || 'W 9821 UB',
+      nomorRo: currentPo?.nomorRO || formData.nomorRo || `RO-${currentPo?.id}`,
       material: selectedMat?.name || 'SIRTU',
       volumeAkhir: kubikasi.volumeAkhir,
       driver: 'Supir Armada Terjadwal',

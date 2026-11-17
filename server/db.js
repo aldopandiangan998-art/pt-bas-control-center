@@ -103,16 +103,24 @@ export function initDb() {
       pphRate REAL,
       satuan TEXT,
       totalOrder REAL,
-      terkirim REAL,
+      terkirim REAL DEFAULT 0,
       hargaJual REAL,
       hargaBeli REAL,
       tanggal TEXT,
       top TEXT,
-      status TEXT,
+      status TEXT DEFAULT 'MENUNGGU_APPROVAL',
       createdBy TEXT,
       approvedBy TEXT,
       approvedAt TEXT,
-      rejectionReason TEXT
+      rejectionReason TEXT,
+      items TEXT,
+      nomorRO TEXT,
+      jenisRO TEXT,
+      jenis TEXT,
+      mataUang TEXT,
+      jenisWajibPajak TEXT,
+      nomorPoCustomer TEXT,
+      hubungkanNomorPoMaterial TEXT
     );
 
     CREATE TABLE IF NOT EXISTS surat_jalan (
@@ -133,6 +141,31 @@ export function initDb() {
       koreksiTinggiCm REAL,
       volumeAkhir REAL,
       status TEXT
+    );
+
+    CREATE TABLE IF NOT EXISTS jurnal_gi (
+      id TEXT PRIMARY KEY,
+      nomorRO TEXT NOT NULL,
+      preOrderId TEXT,
+      poNumber TEXT,
+      customer TEXT NOT NULL,
+      customerAddress TEXT,
+      material TEXT NOT NULL,
+      isPpn INTEGER DEFAULT 0,
+      tanggal TEXT,
+      totalSj INTEGER DEFAULT 0,
+      targetRitase INTEGER DEFAULT 0,
+      totalVolume REAL DEFAULT 0,
+      targetVolume REAL DEFAULT 0,
+      satuan TEXT DEFAULT 'm3',
+      hargaBeli REAL DEFAULT 0,
+      hargaJual REAL DEFAULT 0,
+      nominalBeli REAL DEFAULT 0,
+      nominalJual REAL DEFAULT 0,
+      status TEXT DEFAULT 'Siap Kirim',
+      suratJalanDetails TEXT DEFAULT '[]',
+      created_at TEXT,
+      updated_at TEXT
     );
 
     CREATE TABLE IF NOT EXISTS bkk (
@@ -266,19 +299,12 @@ function seedInitialData() {
       birth_date: '1992-04-10',
       gender: 'Laki-laki',
     },
-    {
-      id: 'usr-3',
-      name: 'Admin Dummy',
-      email: 'admin.dummy@ptbas.co.id',
-      password: 'admin123',
-      role: 'admin',
-      roleLabel: 'Admin',
-      branch: 'Hub Gresik',
-      phone: '0812-4567-8901',
-      birth_date: '1995-11-20',
-      gender: 'Laki-laki',
-    },
   ];
+
+  // Purge any dummy admin user if previously seeded
+  try {
+    db.prepare("DELETE FROM users WHERE id = 'usr-3' OR LOWER(email) = 'admin.dummy@ptbas.co.id'").run();
+  } catch (e) {}
 
   const insertUser = db.prepare(`
     INSERT INTO users (id, name, email, password, role, roleLabel, branch, phone, birth_date, gender, aktif, created_at)
@@ -385,18 +411,7 @@ function seedInitialData() {
     insertCust.run('cust-4', 'PT PETROKIMIA GRESIK', 'PG', 'PT', 'Jl. Jenderal Ahmad Yani, Gresik', '01.111.222.3-011.000', '031-3982200', 'PG');
   }
 
-  // Seed pre_orders if empty
-  const poCount = db.prepare('SELECT COUNT(*) as count FROM pre_orders').get().count;
-  if (poCount === 0) {
-    const insertPo = db.prepare(`
-      INSERT INTO pre_orders (id, nomorPo, customer, customerAddress, materialId, materialName, materialCategory, pphRate, satuan, totalOrder, terkirim, hargaJual, hargaBeli, tanggal, top, status, createdBy, approvedBy, approvedAt)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `);
-
-    insertPo.run('PO-DRAFT-01', 'PO-LW-2026-089', 'PT LION WINGS', 'Kawasan Industri Gresik Blok C-12', 'mat-8', 'SIRTU', 'Curah', 2.0, 'm3', 500, 161.43, 67233, 50765, '2026-11-01', '30 Hari', 'APPROVED', 'Admin Gresik', 'David Rusiah (Direktur)', '2026-11-01 10:30');
-    insertPo.run('PO-DRAFT-02', null, 'PT SEMEN INDONESIA', 'Jl. Veteran, Gresik', 'mat-4', 'LIMESTONE', 'Padat', 2.65, 'm3', 1200, 0, 42857, 38991, '2026-11-10', '14 Hari', 'APPROVED', 'Admin Gresik', 'David Rusiah (Direktur)', '2026-11-10 09:00');
-    insertPo.run('PO-DRAFT-03', 'PO-PG-2026-041', 'PT PETROKIMIA GRESIK', 'Jl. Jenderal Ahmad Yani, Gresik', 'mat-6', 'PASIR', 'Curah', 2.0, 'rit', 150, 45, 50000, 40000, '2026-11-04', 'Cash / Tunai', 'APPROVED', 'Admin Gresik', 'David Rusiah (Direktur)', '2026-11-04 14:10');
-  }
+  // Pre-orders are not seeded with dummy records, started clean for real admin input
 
   // Seed surat_jalan if empty
   const sjCount = db.prepare('SELECT COUNT(*) as count FROM surat_jalan').get().count;
@@ -409,6 +424,126 @@ function seedInitialData() {
     insertSj.run('SJ-202611-0089', '29678', 'PO-LW-2026-089', 'PT LION WINGS', 'SIRTU', 'W 9821 UB', 'Bambang Suprianto', '2026-11-07', '09:43', 'NT-88921', 0, 650, 250, 200, 0, 32.5, 'Selesai');
     insertSj.run('SJ-202611-0090', '29679', 'PO-LW-2026-089', 'PT LION WINGS', 'SIRTU', 'A9041ZN', 'Supriyadi', '2026-11-07', '11:15', 'NT-88922', 0, 788, 250, 210, -5, 40.39, 'Selesai');
     insertSj.run('SJ-202611-0091', '29680', 'PO-LW-2026-089', 'PT LION WINGS', 'SIRTU', 'A9048NM', 'Mulyono', '2026-11-07', '13:05', 'NT-88923', 0, 630, 235, 180, 0, 26.65, 'Selesai');
+  }
+
+  // Seed jurnal_gi if empty
+  const jrnCount = db.prepare('SELECT COUNT(*) as count FROM jurnal_gi').get().count;
+  if (jrnCount === 0) {
+    const insertJrn = db.prepare(`
+      INSERT INTO jurnal_gi (
+        id, nomorRO, preOrderId, poNumber, customer, customerAddress, material,
+        isPpn, tanggal, totalSj, targetRitase, totalVolume, targetVolume, satuan,
+        hargaBeli, hargaJual, nominalBeli, nominalJual, status, suratJalanDetails,
+        created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    const sjDetailsLW = [
+      {
+        id: 'SJ-202611-0089',
+        nomorSj: '29678',
+        poNumber: 'PO-LW-2026-089',
+        customer: 'PT LION WINGS',
+        material: 'SIRTU',
+        nopol: 'W 9821 UB',
+        driver: 'Bambang Suprianto',
+        tanggal: '2026-11-07',
+        waktu: '09:43',
+        nomorNota: 'NT-88921',
+        panjangCm: 650,
+        lebarCm: 250,
+        tinggiCm: 200,
+        koreksiTinggiCm: 0,
+        volumeAkhir: 32.5,
+        status: 'Selesai'
+      },
+      {
+        id: 'SJ-202611-0090',
+        nomorSj: '29679',
+        poNumber: 'PO-LW-2026-089',
+        customer: 'PT LION WINGS',
+        material: 'SIRTU',
+        nopol: 'A9041ZN',
+        driver: 'Supriyadi',
+        tanggal: '2026-11-07',
+        waktu: '11:15',
+        nomorNota: 'NT-88922',
+        panjangCm: 788,
+        lebarCm: 250,
+        tinggiCm: 210,
+        koreksiTinggiCm: -5,
+        volumeAkhir: 40.39,
+        status: 'Selesai'
+      },
+      {
+        id: 'SJ-202611-0091',
+        nomorSj: '29680',
+        poNumber: 'PO-LW-2026-089',
+        customer: 'PT LION WINGS',
+        material: 'SIRTU',
+        nopol: 'A9048NM',
+        driver: 'Mulyono',
+        tanggal: '2026-11-07',
+        waktu: '13:05',
+        nomorNota: 'NT-88923',
+        panjangCm: 630,
+        lebarCm: 235,
+        tinggiCm: 180,
+        koreksiTinggiCm: 0,
+        volumeAkhir: 26.65,
+        status: 'Selesai'
+      }
+    ];
+
+    insertJrn.run(
+      'REK-202611-0001',
+      'RO-2026-0089',
+      'PO-DRAFT-01',
+      'PO-LW-2026-089',
+      'PT LION WINGS',
+      'Kawasan Industri Gresik Blok C-12',
+      'SIRTU',
+      0,
+      '2026-11-07',
+      3,
+      15,
+      99.54,
+      500,
+      'm3',
+      50765,
+      67233,
+      5053148,
+      6692373,
+      'Siap Tagih',
+      JSON.stringify(sjDetailsLW),
+      '2026-11-01 10:30:00',
+      '2026-11-07 13:05:00'
+    );
+
+    insertJrn.run(
+      'REK-202611-0002',
+      'RO-2026-0090',
+      'PO-DRAFT-02',
+      'PO-SI-2026-014',
+      'PT SEMEN INDONESIA',
+      'Jl. Veteran, Gresik',
+      'LIMESTONE',
+      1,
+      '2026-11-10',
+      0,
+      30,
+      0,
+      1200,
+      'm3',
+      38991,
+      42857,
+      0,
+      0,
+      'Siap Kirim',
+      JSON.stringify([]),
+      '2026-11-10 09:00:00',
+      '2026-11-10 09:00:00'
+    );
   }
 
   // Seed bkk if empty

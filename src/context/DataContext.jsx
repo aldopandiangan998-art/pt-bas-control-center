@@ -14,6 +14,7 @@ const STORAGE_KEYS = {
   suratJalan: 'ptbas_suratjalan_v2',
   bkk: 'ptbas_bkk_v2',
   invoices: 'ptbas_invoices_v2',
+  rekapan: 'ptbas_rekapan_v2',
 };
 
 function loadStorage(key, fallback) {
@@ -21,7 +22,7 @@ function loadStorage(key, fallback) {
     const raw = localStorage.getItem(key);
     if (!raw) return fallback;
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) && parsed.length > 0 ? parsed : fallback;
+    return Array.isArray(parsed) ? parsed : fallback;
   } catch (e) {
     return fallback;
   }
@@ -117,79 +118,16 @@ export function DataProvider({ children }) {
   // 1. DATA TRANSAKSI OPERASIONAL
   // ==========================================
 
-  // Pre Order list per PT BAS Gresik
+  // Pre Order list per PT BAS Gresik (starts clean, dummy records removed)
   const [preOrders, setPreOrders] = useState(() => {
-    const raw = loadStorage(STORAGE_KEYS.preOrders, [
-    {
-      id: 'PO-DRAFT-01',
-      nomorPo: 'PO-LW-2026-089', // Generated upon 1st SJ
-      customer: 'PT LION WINGS',
-      customerAddress: 'Kawasan Industri Gresik (KIG) Blok C-12, Manyar, Gresik',
-      materialId: 'mat-8',
-      materialName: 'SIRTU',
-      materialCategory: 'Curah',
-      pphRate: 2.0,
-      satuan: 'm3',
-      totalOrder: 500,
-      terkirim: 161.43,
-      hargaJual: 67233,
-      hargaBeli: 50765,
-      tanggal: '2026-11-01',
-      top: '30 Hari',
-      status: 'APPROVED', // 'DRAFT' | 'APPROVED' | 'SELESAI_KIRIM'
-      createdBy: 'Admin Gresik',
-      approvedBy: 'David Rusiah (Direktur)',
-      approvedAt: '2026-11-01 10:30',
-      rejectionReason: null,
-    },
-    {
-      id: 'PO-DRAFT-02',
-      nomorPo: null, // Still waiting for 1st SJ
-      customer: 'PT SEMEN INDONESIA',
-      customerAddress: 'Jl. Veteran, Gresik',
-      materialId: 'mat-4',
-      materialName: 'LIMESTONE',
-      materialCategory: 'Padat',
-      pphRate: 2.65,
-      satuan: 'm3',
-      totalOrder: 1200,
-      terkirim: 0,
-      hargaJual: 42857,
-      hargaBeli: 38991,
-      tanggal: '2026-11-10',
-      top: '14 Hari',
-      status: 'APPROVED',
-      createdBy: 'Admin Gresik',
-      approvedBy: 'David Rusiah (Direktur)',
-      approvedAt: '2026-11-10 09:00',
-      rejectionReason: null,
-    },
-    {
-      id: 'PO-DRAFT-03',
-      nomorPo: 'PO-PG-2026-041',
-      customer: 'PT PETROKIMIA GRESIK',
-      customerAddress: 'Jl. Jenderal Ahmad Yani, Gresik',
-      materialId: 'mat-6',
-      materialName: 'PASIR',
-      materialCategory: 'Curah',
-      pphRate: 2.0,
-      satuan: 'rit',
-      totalOrder: 150,
-      terkirim: 45,
-      hargaJual: 50000,
-      hargaBeli: 40000,
-      tanggal: '2026-11-04',
-      top: 'Cash / Tunai',
-      status: 'APPROVED',
-      createdBy: 'Admin Gresik',
-      approvedBy: 'David Rusiah (Direktur)',
-      approvedAt: '2026-11-04 14:10',
-      rejectionReason: null,
-    },
-    ]);
-    return Array.isArray(raw)
-      ? raw.map((po) => ({ ...po, status: po.status === 'MENUNGGU_APPROVAL' ? 'APPROVED' : po.status }))
+    const raw = loadStorage(STORAGE_KEYS.preOrders, []);
+    const filtered = Array.isArray(raw)
+      ? raw.filter((p) => p.id !== 'PO-DRAFT-01' && p.id !== 'PO-DRAFT-02' && p.id !== 'PO-DRAFT-03')
       : [];
+    try {
+      localStorage.setItem(STORAGE_KEYS.preOrders, JSON.stringify(filtered));
+    } catch (e) {}
+    return filtered;
   });
 
   // Surat Jalan (Good Issue) list
@@ -453,6 +391,9 @@ export function DataProvider({ children }) {
       statusBayar: 'Belum Dibayar',
     },
   ]));
+
+  // Jurnal GI / Rekapan list per PT BAS
+  const [rekapanList, setRekapanList] = useState(() => loadStorage(STORAGE_KEYS.rekapan, []));
 
   // ==========================================
   // 2. DATA MASTER (FAITHFUL TO SCREENSHOTS)
@@ -969,20 +910,28 @@ export function DataProvider({ children }) {
     try { localStorage.setItem(STORAGE_KEYS.currencies, JSON.stringify(currencies)); } catch (e) { }
   }, [currencies]);
 
+  useEffect(() => {
+    try { localStorage.setItem(STORAGE_KEYS.preOrders, JSON.stringify(preOrders)); } catch (e) { }
+  }, [preOrders]);
+
+  useEffect(() => {
+    try { localStorage.setItem(STORAGE_KEYS.suratJalan, JSON.stringify(suratJalanList)); } catch (e) { }
+  }, [suratJalanList]);
+
+  useEffect(() => {
+    try { localStorage.setItem(STORAGE_KEYS.rekapan, JSON.stringify(rekapanList)); } catch (e) { }
+  }, [rekapanList]);
+
   // Sync with backend SQLite database on mount
   const fetchPreOrders = async () => {
     try {
       const res = await fetch('/api/pre-orders');
       if (res.ok) {
         const data = await res.json();
-        if (Array.isArray(data) && data.length > 0) {
-          const normalized = data.map((po) => ({
-            ...po,
-            status: po.status === 'MENUNGGU_APPROVAL' ? 'APPROVED' : po.status,
-          }));
-          setPreOrders(normalized);
+        if (Array.isArray(data)) {
+          setPreOrders(data);
           try {
-            localStorage.setItem(STORAGE_KEYS.preOrders, JSON.stringify(normalized));
+            localStorage.setItem(STORAGE_KEYS.preOrders, JSON.stringify(data));
           } catch (e) {}
         }
       }
@@ -1016,6 +965,21 @@ export function DataProvider({ children }) {
           setBkkList(normalized);
           try {
             localStorage.setItem(STORAGE_KEYS.bkk, JSON.stringify(normalized));
+          } catch (e) {}
+        }
+      }
+    } catch (err) {}
+  };
+
+  const fetchRekapan = async () => {
+    try {
+      const res = await fetch('/api/jurnal-gi');
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data)) {
+          setRekapanList(data);
+          try {
+            localStorage.setItem(STORAGE_KEYS.rekapan, JSON.stringify(data));
           } catch (e) {}
         }
       }
@@ -1066,6 +1030,7 @@ export function DataProvider({ children }) {
     fetchPreOrders();
     fetchSuratJalan();
     fetchBkk();
+    fetchRekapan();
 
     // 1. BroadcastChannel for instant cross-tab sync in same browser
     let channel = null;
@@ -1080,6 +1045,9 @@ export function DataProvider({ children }) {
         }
         if (event.data?.type === 'SYNC_BKK' || event.data?.type === 'SYNC_ALL') {
           fetchBkk();
+        }
+        if (event.data?.type === 'SYNC_REKAPAN' || event.data?.type === 'SYNC_ALL') {
+          fetchRekapan();
         }
       };
     } catch (e) {}
@@ -1104,6 +1072,12 @@ export function DataProvider({ children }) {
           if (Array.isArray(parsed)) setBkkList(parsed.map(normalizeBkkItem));
         } catch (err) {}
       }
+      if (e.key === STORAGE_KEYS.rekapan && e.newValue) {
+        try {
+          const parsed = JSON.parse(e.newValue);
+          if (Array.isArray(parsed)) setRekapanList(parsed);
+        } catch (err) {}
+      }
     };
     window.addEventListener('storage', handleStorageChange);
 
@@ -1112,12 +1086,14 @@ export function DataProvider({ children }) {
       fetchPreOrders();
       fetchSuratJalan();
       fetchBkk();
+      fetchRekapan();
     };
     window.addEventListener('focus', handleFocus);
 
     const intervalId = setInterval(() => {
       fetchPreOrders();
       fetchSuratJalan();
+      fetchRekapan();
     }, 2000); // 2-second background sync
 
     return () => {
@@ -1138,15 +1114,17 @@ export function DataProvider({ children }) {
   const createPreOrder = async (data) => {
     const timestamp = Date.now();
     const id = data.id || `PO-DRAFT-${timestamp}`;
+    const nomorRO = data.nomorRO || `RO-${new Date().getFullYear()}-${String(timestamp).slice(-4)}`;
     const newPo = {
       ...data,
       id,
+      nomorRO,
       nomorPo: data.nomorPo || null, // Generated on 1st SJ
       terkirim: Number(data.terkirim) || 0,
-      status: 'APPROVED',
+      status: 'MENUNGGU_APPROVAL',
       createdBy: data.createdBy || 'Admin Gresik',
-      approvedBy: 'Auto-Approved',
-      approvedAt: new Date().toISOString().replace('T', ' ').substring(0, 16),
+      approvedBy: null,
+      approvedAt: null,
       rejectionReason: null,
     };
 
@@ -1169,11 +1147,28 @@ export function DataProvider({ children }) {
 
     // Persist to backend SQLite
     try {
-      await fetch('/api/pre-orders', {
+      const res = await fetch('/api/pre-orders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newPo),
       });
+      if (res.ok) {
+        const result = await res.json().catch(() => null);
+        if (result?.data) {
+          setPreOrders((prev) => {
+            const updated = [result.data, ...prev.filter((p) => p.id !== id && p.id !== result.data.id)];
+            try {
+              localStorage.setItem(STORAGE_KEYS.preOrders, JSON.stringify(updated));
+            } catch (e) {}
+            return updated;
+          });
+        } else {
+          await fetchPreOrders();
+        }
+      } else {
+        const errJson = await res.json().catch(() => ({}));
+        console.warn('Backend PO sync failed:', res.status, errJson);
+      }
     } catch (err) {
       console.warn('Backend PO sync failed, saved in localStorage:', err);
     }
@@ -1209,6 +1204,7 @@ export function DataProvider({ children }) {
     try {
       const ch = new BroadcastChannel('ptbas_sync_channel');
       ch.postMessage({ type: 'SYNC_PREORDERS', action: 'approve', id });
+      ch.postMessage({ type: 'SYNC_REKAPAN', action: 'approve', id });
       ch.close();
     } catch (e) {}
 
@@ -1219,11 +1215,13 @@ export function DataProvider({ children }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ approver: approverName }),
       });
+      await fetchPreOrders();
+      await fetchRekapan();
     } catch (err) {
       console.warn('Backend PO approve sync failed, saved in localStorage:', err);
     }
 
-    addToast('Pre Order resmi DISETUJUI! Surat Jalan kini dapat dibuat.', 'success');
+    addToast('Pre Order resmi DISETUJUI! Surat Jalan kini dapat dibuat & Jurnal GI terbit.', 'success');
   };
 
   const rejectPreOrder = async (id, reason) => {
@@ -1259,6 +1257,7 @@ export function DataProvider({ children }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ reason }),
       });
+      await fetchPreOrders();
     } catch (err) {
       console.warn('Backend PO reject sync failed, saved in localStorage:', err);
     }
@@ -1270,7 +1269,7 @@ export function DataProvider({ children }) {
   const createSuratJalan = async (sjData) => {
     // Strict enforcement: Validate PO approval status
     const targetPo = preOrders.find(
-      (po) => (po.nomorPo && po.nomorPo === sjData.poNumber) || po.id === sjData.poNumber
+      (po) => (po.nomorPo && po.nomorPo === sjData.poNumber) || po.id === sjData.poNumber || (po.nomorRO && po.nomorRO === sjData.nomorRo)
     );
 
     if (targetPo && targetPo.status !== 'APPROVED') {
@@ -1307,7 +1306,7 @@ export function DataProvider({ children }) {
     // Update PO delivered volume & auto-assign PO number if first delivery
     setPreOrders((prev) => {
       const updated = prev.map((po) => {
-        if (po.nomorPo === sjData.poNumber || po.id === sjData.poNumber || po.customer === sjData.customer) {
+        if (po.nomorPo === sjData.poNumber || po.id === sjData.poNumber || po.customer === sjData.customer || (po.nomorRO && po.nomorRO === sjData.nomorRo)) {
           const generatedPoNum =
             po.nomorPo ||
             `PO-${sjData.customer.replace(/[^A-Z]/g, '').slice(0, 2)}-2026-${Math.floor(
@@ -1316,7 +1315,7 @@ export function DataProvider({ children }) {
           return {
             ...po,
             nomorPo: generatedPoNum,
-            terkirim: Number((po.terkirim + calc.volumeAkhir).toFixed(2)),
+            terkirim: Number(((po.terkirim || 0) + calc.volumeAkhir).toFixed(2)),
           };
         }
         return po;
@@ -1331,21 +1330,32 @@ export function DataProvider({ children }) {
     try {
       const ch = new BroadcastChannel('ptbas_sync_channel');
       ch.postMessage({ type: 'SYNC_SURAT_JALAN', action: 'create', id: sjId });
+      ch.postMessage({ type: 'SYNC_REKAPAN', action: 'create', id: sjId });
       ch.close();
     } catch (e) {}
 
     // Persist to backend SQLite
     try {
-      await fetch('/api/surat-jalan', {
+      const res = await fetch('/api/surat-jalan', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newSj),
       });
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        if (errJson.message) {
+          addToast(errJson.message, 'error');
+          throw new Error(errJson.message);
+        }
+      }
+      await fetchSuratJalan();
+      await fetchPreOrders();
+      await fetchRekapan();
     } catch (err) {
       console.warn('Backend Surat Jalan sync failed, saved in localStorage:', err);
     }
 
-    addToast(`Surat Jalan No. ${sjData.nomorSj} berhasil disimpan! (${calc.volumeAkhir} m³)`, 'success');
+    addToast(`Surat Jalan No. ${sjData.nomorSj} berhasil disimpan! (${calc.volumeAkhir} m³) & dicatat ke Jurnal GI.`, 'success');
     return newSj;
   };
 
@@ -1841,6 +1851,9 @@ export function DataProvider({ children }) {
         suratJalanList,
         bkkList,
         invoiceList,
+        rekapanList,
+        setRekapanList,
+        fetchRekapan,
         createPreOrder,
         approvePreOrder,
         rejectPreOrder,

@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Receipt, Banknote, ChevronRight } from 'lucide-react';
+import { X, Receipt, Banknote, ChevronRight, FileText } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 
 export default function JenisLaporanPajakModal({ isOpen, onClose, onSelect }) {
@@ -171,6 +171,52 @@ export default function JenisLaporanPajakModal({ isOpen, onClose, onSelect }) {
                   <ChevronRight
                     className={`w-4 h-4 transition-transform group-hover:translate-x-0.5 ${
                       isDark ? 'text-neutral-400 group-hover:text-emerald-400' : 'text-slate-400 group-hover:text-emerald-700'
+                    }`}
+                  />
+                </div>
+              </button>
+
+              {/* Option 3: Laporan All-In-One */}
+              <button
+                type="button"
+                onClick={() => onSelect('all-in-one')}
+                className={`w-full flex items-center justify-between p-3.5 rounded-xl border transition-all cursor-pointer group text-left ${
+                  isDark
+                    ? 'bg-[#20242B] border-[#373F4B] hover:border-[#F4511E] hover:bg-[#262C34]'
+                    : 'bg-slate-50 border-slate-200 hover:border-[#F4511E] hover:bg-orange-50/70 shadow-2xs'
+                }`}
+              >
+                <div className="flex items-center gap-3.5 min-w-0">
+                  <div className="w-10 h-10 rounded-xl bg-orange-500/15 text-[#F4511E] flex items-center justify-center font-bold text-sm shrink-0 group-hover:scale-105 transition-transform">
+                    <FileText className="w-5 h-5" />
+                  </div>
+                  <div className="min-w-0">
+                    <div
+                      className={`font-semibold text-sm transition-colors ${
+                        isDark ? 'text-white group-hover:text-[#FF7043]' : 'text-slate-900 group-hover:text-[#F4511E]'
+                      }`}
+                    >
+                      Laporan All-In-One
+                    </div>
+                    <div className={`text-[11px] mt-0.5 truncate ${isDark ? 'text-neutral-300' : 'text-slate-500'}`}>
+                      Kompilasi lengkap transaksi Surat Jalan, Rekapan, dan Tagihan per Pelanggan
+                    </div>
+                  </div>
+                </div>
+
+                <div className="shrink-0 ml-2 flex items-center gap-2">
+                  <span
+                    className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded uppercase border ${
+                      isDark
+                        ? 'bg-orange-500/15 text-[#FF7043] border-orange-500/30'
+                        : 'bg-orange-100 text-[#F4511E] border-orange-200'
+                    }`}
+                  >
+                    ALL
+                  </span>
+                  <ChevronRight
+                    className={`w-4 h-4 transition-transform group-hover:translate-x-0.5 ${
+                      isDark ? 'text-neutral-400 group-hover:text-[#FF7043]' : 'text-slate-400 group-hover:text-[#F4511E]'
                     }`}
                   />
                 </div>

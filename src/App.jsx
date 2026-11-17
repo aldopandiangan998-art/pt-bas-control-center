@@ -20,6 +20,7 @@ import BkkPage from './pages/Bkk/BkkPage';
 import InvoicePage from './pages/Invoice/InvoicePage';
 import LaporanPage from './pages/Laporan/LaporanPage';
 import BuatLaporanPajakPage from './pages/Laporan/BuatLaporanPajakPage';
+import BuatLaporanAllInOnePage from './pages/Laporan/BuatLaporanAllInOnePage';
 import MasterDataPage from './pages/MasterData/MasterDataPage';
 import SettingsPage from './pages/Settings/SettingsPage';
 import ProfilePage from './pages/Profile/ProfilePage';
@@ -147,6 +148,30 @@ export default function App() {
                     element={
                       <SuperAdminOnlyRoute>
                         <BuatLaporanPajakPage />
+                      </SuperAdminOnlyRoute>
+                    }
+                  />
+                  <Route
+                    path="laporan/all-in-one"
+                    element={
+                      <SuperAdminOnlyRoute>
+                        <BuatLaporanAllInOnePage />
+                      </SuperAdminOnlyRoute>
+                    }
+                  />
+                  <Route
+                    path="laporan-all-in-one"
+                    element={
+                      <SuperAdminOnlyRoute>
+                        <BuatLaporanAllInOnePage />
+                      </SuperAdminOnlyRoute>
+                    }
+                  />
+                  <Route
+                    path="buat-laporan-all-in-one"
+                    element={
+                      <SuperAdminOnlyRoute>
+                        <BuatLaporanAllInOnePage />
                       </SuperAdminOnlyRoute>
                     }
                   />

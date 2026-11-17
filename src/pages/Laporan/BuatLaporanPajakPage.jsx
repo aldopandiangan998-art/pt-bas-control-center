@@ -36,6 +36,13 @@ export default function BuatLaporanPajakPage() {
   const taxType = (params.type || searchParams.get('type') || 'pph23').toLowerCase();
   const isPph23 = taxType === 'pph23';
 
+  // Redirect if all-in-one requested via this route
+  useEffect(() => {
+    if (taxType === 'all-in-one' || taxType === 'all') {
+      navigate('/laporan/all-in-one', { replace: true });
+    }
+  }, [taxType, navigate]);
+
   // Title matching screenshot: "Buat Laporan PPH 23" or "Buat Laporan PPN"
   const pageTitle = isPph23 ? 'Buat Laporan PPH 23' : 'Buat Laporan PPN';
 

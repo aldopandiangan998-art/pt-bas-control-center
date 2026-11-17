@@ -165,6 +165,12 @@ export const NAV_CATEGORIES = [
         description: 'Laporan pajak PPN, PPh 23, rekapan, piutang, dan hutang',
         children: [
           {
+            path: '/laporan/all-in-one',
+            tab: 'all-in-one',
+            label: 'Buat Laporan All-In-One',
+            icon: 'FileText',
+          },
+          {
             path: '/laporan-pajak/ppn',
             tab: 'pajak-ppn',
             label: 'Buat Laporan PPN',

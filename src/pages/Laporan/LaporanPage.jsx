@@ -539,6 +539,17 @@ export default function LaporanPage() {
         </div>
 
         <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
+          {/* Direct Link to Buat Laporan All-In-One */}
+          <button
+            type="button"
+            onClick={() => navigate('/laporan/all-in-one')}
+            className="px-3 py-1.5 text-xs font-bold rounded-lg bg-[#F4511E] hover:bg-[#E04418] text-white flex items-center gap-1.5 shadow-xs transition-colors cursor-pointer"
+            title="Buka Form Buat Laporan All-In-One"
+          >
+            <FileText className="w-3.5 h-3.5" />
+            <span>Laporan All-In-One</span>
+          </button>
+
           {/* Button to Reopen Jenis Laporan Pajak Modal matching screenshot */}
           <button
             type="button"
@@ -2186,7 +2197,11 @@ export default function LaporanPage() {
         onClose={() => setTaxModalOpen(false)}
         onSelect={(type) => {
           setTaxModalOpen(false);
-          navigate(`/laporan-pajak/${type}`);
+          if (type === 'all-in-one') {
+            navigate('/laporan/all-in-one');
+          } else {
+            navigate(`/laporan-pajak/${type}`);
+          }
         }}
       />
     </div>

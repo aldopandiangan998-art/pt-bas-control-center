@@ -93,7 +93,7 @@ export default function Sidebar() {
   // Track expanded state for expandable submenus
   const [openSubmenus, setOpenSubmenus] = useState(() => ({
     '/master-data': location.pathname === '/master-data',
-    '/laporan': location.pathname === '/laporan',
+    '/laporan': location.pathname.startsWith('/laporan'),
   }));
 
   // Automatically expand submenu if on /master-data or /laporan
@@ -101,7 +101,7 @@ export default function Sidebar() {
     if (location.pathname === '/master-data') {
       setOpenSubmenus((prev) => ({ ...prev, '/master-data': true }));
     }
-    if (location.pathname === '/laporan') {
+    if (location.pathname.startsWith('/laporan')) {
       setOpenSubmenus((prev) => ({ ...prev, '/laporan': true }));
     }
   }, [location.pathname]);
@@ -225,7 +225,9 @@ export default function Sidebar() {
                   const Icon = ICON_MAP[link.icon] || LayoutDashboard;
                   const hasChildren = Boolean(link.children && link.children.length > 0);
                   const isSubmenuOpen = Boolean(openSubmenus[link.path]);
-                  const isParentActive = location.pathname === link.path;
+                  const isParentActive =
+                    location.pathname === link.path ||
+                    (link.path === '/laporan' && location.pathname.startsWith('/laporan'));
 
                   // 1. Render item with submenu (e.g. Data Master)
                   if (hasChildren) {
@@ -286,7 +288,9 @@ export default function Sidebar() {
                           }`}>
                             {link.children.map((child) => {
                               const ChildIcon = ICON_MAP[child.icon] || Database;
-                              const isChildActive = isParentActive && currentTab === child.tab;
+                              const isChildActive =
+                                location.pathname === child.path ||
+                                (isParentActive && currentTab === child.tab);
 
                               return (
                                 <button

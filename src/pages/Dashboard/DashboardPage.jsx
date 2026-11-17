@@ -864,7 +864,7 @@ export default function DashboardPage() {
         onClose={() => setTaxModalOpen(false)}
         onSelect={(type) => {
           setTaxModalOpen(false);
-          navigate(`/laporan?tab=pajak-${type}`);
+          navigate(`/laporan-pajak/${type}`);
         }}
       />
     </div>

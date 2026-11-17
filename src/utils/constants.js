@@ -158,15 +158,15 @@ export const NAV_CATEGORIES = [
         description: 'Laporan pajak PPN, PPh 23, rekapan, piutang, dan hutang',
         children: [
           {
-            path: '/laporan?tab=pajak-ppn',
+            path: '/laporan-pajak/ppn',
             tab: 'pajak-ppn',
-            label: 'Pajak PPN (11%)',
+            label: 'Buat Laporan PPN',
             icon: 'Receipt',
           },
           {
-            path: '/laporan?tab=pajak-pph23',
+            path: '/laporan-pajak/pph23',
             tab: 'pajak-pph23',
-            label: 'Pajak PPh 23',
+            label: 'Buat Laporan PPH 23',
             icon: 'Banknote',
           },
           {

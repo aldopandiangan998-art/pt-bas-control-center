@@ -18,6 +18,7 @@ import RekapanPage from './pages/Rekapan/RekapanPage';
 import BkkPage from './pages/Bkk/BkkPage';
 import InvoicePage from './pages/Invoice/InvoicePage';
 import LaporanPage from './pages/Laporan/LaporanPage';
+import BuatLaporanPajakPage from './pages/Laporan/BuatLaporanPajakPage';
 import MasterDataPage from './pages/MasterData/MasterDataPage';
 import SettingsPage from './pages/Settings/SettingsPage';
 import ProfilePage from './pages/Profile/ProfilePage';
@@ -113,6 +114,30 @@ export default function App() {
                     element={
                       <SuperAdminOnlyRoute>
                         <LaporanPage />
+                      </SuperAdminOnlyRoute>
+                    }
+                  />
+                  <Route
+                    path="laporan-pajak/:type"
+                    element={
+                      <SuperAdminOnlyRoute>
+                        <BuatLaporanPajakPage />
+                      </SuperAdminOnlyRoute>
+                    }
+                  />
+                  <Route
+                    path="buat-laporan-pajak/:type"
+                    element={
+                      <SuperAdminOnlyRoute>
+                        <BuatLaporanPajakPage />
+                      </SuperAdminOnlyRoute>
+                    }
+                  />
+                  <Route
+                    path="laporan/buat/:type"
+                    element={
+                      <SuperAdminOnlyRoute>
+                        <BuatLaporanPajakPage />
                       </SuperAdminOnlyRoute>
                     }
                   />

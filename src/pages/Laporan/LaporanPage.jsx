@@ -693,7 +693,16 @@ export default function LaporanPage() {
             </div>
 
             <div className="flex items-center gap-2 self-end sm:self-auto flex-wrap">
-              <span className={`text-xs ${isDark ? 'text-neutral-400' : 'text-slate-500'}`}>Status:</span>
+              <button
+                type="button"
+                onClick={() => navigate('/laporan-pajak/ppn')}
+                className="px-3 py-1.5 text-xs font-bold rounded-lg bg-[#F4511E] hover:bg-[#D84315] text-white flex items-center gap-1.5 transition-all cursor-pointer shadow-xs"
+              >
+                <ExternalLink className="w-3.5 h-3.5" />
+                <span>Form Buat Laporan PPN</span>
+              </button>
+
+              <span className={`text-xs ml-1 ${isDark ? 'text-neutral-400' : 'text-slate-500'}`}>Status:</span>
               {['ALL', 'Lunas', 'Belum Lunas'].map((st) => (
                 <button
                   key={st}
@@ -909,7 +918,16 @@ export default function LaporanPage() {
             </div>
 
             <div className="flex items-center gap-2 self-end sm:self-auto flex-wrap">
-              <span className={`text-xs ${isDark ? 'text-neutral-400' : 'text-slate-500'}`}>Tarif:</span>
+              <button
+                type="button"
+                onClick={() => navigate('/laporan-pajak/pph23')}
+                className="px-3 py-1.5 text-xs font-bold rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1.5 transition-all cursor-pointer shadow-xs"
+              >
+                <ExternalLink className="w-3.5 h-3.5" />
+                <span>Form Buat Laporan PPH 23</span>
+              </button>
+
+              <span className={`text-xs ml-1 ${isDark ? 'text-neutral-400' : 'text-slate-500'}`}>Tarif:</span>
               {[
                 { label: 'Semua', val: 'ALL' },
                 { label: 'Jasa Angkut (2.0%)', val: '2.0' },
@@ -1374,7 +1392,7 @@ export default function LaporanPage() {
         onClose={() => setTaxModalOpen(false)}
         onSelect={(type) => {
           setTaxModalOpen(false);
-          handleTabChange(`pajak-${type}`);
+          navigate(`/laporan-pajak/${type}`);
         }}
       />
     </div>

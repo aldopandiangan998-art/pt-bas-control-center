@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useData } from '../../context/DataContext';
+import { useToast } from '../../context/ToastContext';
 import { DEFAULT_MATERIALS } from '../../utils/constants';
 import { formatCurrency, formatVolume } from '../../utils/formatters';
 import { Button, Badge, Card } from '../../components/ui';
@@ -111,8 +112,9 @@ function mkDefaultForm() {
 /* ─────────────────────────── main component ─────────────────────────── */
 export default function PreOrderPage() {
   const navigate = useNavigate();
-  const { currentUser, roleLabel, permissions } = useAuth();
-  const { preOrders, createPreOrder, materials, customers, currencies } = useData();
+  const { currentUser, isSuperAdmin, roleLabel, permissions } = useAuth();
+  const { preOrders, createPreOrder, approvePreOrder, rejectPreOrder, materials, customers, currencies } = useData();
+  const { addToast } = useToast();
 
   const safePreOrders = Array.isArray(preOrders) ? preOrders : [];
 
@@ -363,6 +365,13 @@ export default function PreOrderPage() {
   };
 
   const handleBuatSuratJalan = (po) => {
+    if (po.status !== 'APPROVED') {
+      addToast(
+        'Surat Jalan belum dapat dibuat. Pre Order harus disetujui oleh Super Admin terlebih dahulu.',
+        'warning'
+      );
+      return;
+    }
     navigate('/surat-jalan', {
       state: {
         fromPreOrder: true,
@@ -500,15 +509,53 @@ export default function PreOrderPage() {
                         <span className="text-xs text-rose-400 font-mono">Alasan: {po.rejectionReason}</span>
                       )}
 
-                      {/* Fitur Buat Surat Jalan GI untuk setiap data Pre Order */}
+                      {/* Super Admin Quick Approval Actions */}
+                      {isSuperAdmin && po.status === 'MENUNGGU_APPROVAL' && (
+                        <div className="flex items-center gap-1.5">
+                          <Button
+                            size="sm"
+                            variant="primary"
+                            icon={CheckCircle2}
+                            onClick={() => approvePreOrder(po.id, `${currentUser?.name || 'David Rusiah'} (Direktur)`)}
+                            title="Setujui Pre Order ini (Direktur Approval)"
+                            className="bg-emerald-600 hover:bg-emerald-500 text-white"
+                          >
+                            Setujui RO
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="danger"
+                            icon={XCircle}
+                            onClick={() => {
+                              const reason = prompt('Masukkan alasan penolakan Pre Order:') || 'Harga atau kuota tidak sesuai';
+                              rejectPreOrder(po.id, reason);
+                            }}
+                            title="Tolak Pre Order"
+                          >
+                            Tolak
+                          </Button>
+                        </div>
+                      )}
+
+                      {/* Fitur Buat Surat Jalan GI untuk Pre Order (Hanya jika APPROVED) */}
                       <Button
                         size="sm"
-                        variant={po.status === 'APPROVED' ? 'primary' : 'secondary'}
-                        icon={FileText}
+                        variant={po.status === 'APPROVED' ? 'primary' : 'ghost'}
+                        icon={po.status === 'APPROVED' ? FileText : Lock}
+                        disabled={po.status !== 'APPROVED'}
                         onClick={() => handleBuatSuratJalan(po)}
-                        title={`Buat Surat Jalan GI untuk ${po.customer}`}
+                        title={
+                          po.status === 'APPROVED'
+                            ? `Buat Surat Jalan GI untuk ${po.customer}`
+                            : 'Pre Order belum disetujui Super Admin. Surat Jalan terkunci.'
+                        }
+                        className={
+                          po.status !== 'APPROVED'
+                            ? 'opacity-50 cursor-not-allowed border border-[#2B3037] text-neutral-500 hover:bg-transparent'
+                            : ''
+                        }
                       >
-                        Buat Surat Jalan GI &rarr;
+                        {po.status === 'APPROVED' ? 'Buat Surat Jalan GI \u2192' : 'Surat Jalan (Terkunci)'}
                       </Button>
                     </div>
                   </div>

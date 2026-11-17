@@ -15,8 +15,10 @@ import {
   Save,
   Camera,
   CheckCircle2,
+  AlertCircle,
 } from 'lucide-react';
 import { useData } from '../../context/DataContext';
+import { useToast } from '../../context/ToastContext';
 import { calculateKubikasi, formatVolume } from '../../utils/formatters';
 import TruckVisualizer from '../../components/common/TruckVisualizer';
 import { Button, Badge, Card, CardHeader, CardTitle, Input, Select } from '../../components/ui';
@@ -25,13 +27,34 @@ export default function SuratJalanPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { preOrders, createSuratJalan, materials, armadaList, customers } = useData();
+  const { addToast } = useToast();
 
-  const approvedPos = preOrders.filter((po) => po.status === 'APPROVED');
   const preOrderState = location.state || {};
 
+  // List of only APPROVED POs
+  const approvedPos = useMemo(() => {
+    return (preOrders || []).filter((po) => po.status === 'APPROVED');
+  }, [preOrders]);
+
+  // Check if navigation came from an unapproved PO
+  const navPo = useMemo(() => {
+    if (!preOrderState.preOrderId && !preOrderState.nomorPo) return null;
+    return (preOrders || []).find(
+      (po) => po.id === preOrderState.preOrderId || (po.nomorPo && po.nomorPo === preOrderState.nomorPo)
+    );
+  }, [preOrders, preOrderState]);
+
+  const isNavPoUnapproved = Boolean(navPo && navPo.status !== 'APPROVED');
+
   // Resolve initial data from preOrderState if navigated from PreOrder
-  const targetCustomer = preOrderState.customer || (customers[0]?.name || 'PT LION WINGS');
-  const targetPoNumber = preOrderState.nomorPo || preOrderState.preOrderId || (approvedPos[0]?.nomorPo || 'PO-LW-2026-089');
+  const targetCustomer = preOrderState.customer || (approvedPos[0]?.customer || customers[0]?.name || 'PT LION WINGS');
+  
+  const targetPoNumber = useMemo(() => {
+    if (navPo && navPo.status === 'APPROVED') return navPo.nomorPo || navPo.id;
+    const custPos = approvedPos.filter((po) => po.customer === targetCustomer);
+    if (custPos.length > 0) return custPos[0].nomorPo || custPos[0].id;
+    return approvedPos[0]?.nomorPo || approvedPos[0]?.id || '';
+  }, [navPo, approvedPos, targetCustomer]);
 
   let targetMaterialId = preOrderState.materialId;
   if (!targetMaterialId && preOrderState.materialName) {
@@ -64,6 +87,11 @@ export default function SuratJalanPage() {
     koreksiTinggiCm: 0,
   });
 
+  // Approved POs for the currently selected customer
+  const customerApprovedPos = useMemo(() => {
+    return approvedPos.filter((po) => po.customer === formData.customer);
+  }, [approvedPos, formData.customer]);
+
   // Sync state if location.state changes
   useEffect(() => {
     if (location.state?.customer) {
@@ -89,7 +117,7 @@ export default function SuratJalanPage() {
   }, [location.state, materials]);
 
   const handleCustomerChange = (newCustomer) => {
-    const custPos = preOrders.filter((po) => po.customer === newCustomer);
+    const custPos = approvedPos.filter((po) => po.customer === newCustomer);
     const firstPo = custPos[0];
     let newMatId = formData.materialId;
     if (firstPo?.materialId) {
@@ -104,7 +132,7 @@ export default function SuratJalanPage() {
     setFormData((prev) => ({
       ...prev,
       customer: newCustomer,
-      poNumber: firstPo?.nomorPo || firstPo?.id || prev.poNumber,
+      poNumber: firstPo?.nomorPo || firstPo?.id || '',
       materialId: newMatId || prev.materialId,
     }));
   };
@@ -148,6 +176,20 @@ export default function SuratJalanPage() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
+
+    if (!formData.poNumber) {
+      addToast('Harap pilih Nomor PO yang valid dan telah disetujui (APPROVED).', 'error');
+      return;
+    }
+
+    const currentPo = approvedPos.find(
+      (po) => (po.nomorPo && po.nomorPo === formData.poNumber) || po.id === formData.poNumber
+    );
+
+    if (!currentPo || currentPo.status !== 'APPROVED') {
+      addToast('Surat Jalan tidak dapat dibuat! Pre Order belum disetujui oleh Super Admin.', 'error');
+      return;
+    }
 
     const selectedMat = materials.find((m) => m.id === formData.materialId);
 
@@ -210,18 +252,56 @@ export default function SuratJalanPage() {
         </div>
       </div>
 
-      {/* Banner Informasi Asal Pre Order */}
-      {location.state?.fromPreOrder && (
+      {/* Banner Informasi Asal Pre Order / Validasi Status Approval */}
+      {isNavPoUnapproved && (
+        <div className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/40 text-rose-300 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2 font-mono shadow-sm">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+            <span>
+              Pre Order <strong>{navPo?.customer || formData.customer}</strong> ({navPo?.nomorRO || navPo?.id || 'DRAFT'}) masih berstatus <strong>MENUNGGU APPROVAL</strong> Super Admin. Surat Jalan tidak dapat diterbitkan!
+            </span>
+          </div>
+          <Button
+            size="xs"
+            variant="ghost"
+            onClick={() => navigate('/pre-orders')}
+            className="text-rose-200 hover:text-white border border-rose-500/40 shrink-0"
+          >
+            Lihat Pre Order
+          </Button>
+        </div>
+      )}
+
+      {location.state?.fromPreOrder && !isNavPoUnapproved && (
         <div className="p-3 rounded-xl bg-orange-500/10 border border-[#F4511E]/40 text-[#F4511E] text-xs flex items-center justify-between font-mono shadow-sm">
           <div className="flex items-center gap-2">
             <CheckCircle2 className="w-4 h-4 text-[#F4511E] shrink-0" />
             <span>
-              Penerbitan Surat Jalan GI dari Pre Order: <strong>{formData.customer}</strong> {formData.poNumber ? `(${formData.poNumber})` : ''}
+              Penerbitan Surat Jalan GI dari Pre Order APPROVED: <strong>{formData.customer}</strong> {formData.poNumber ? `(${formData.poNumber})` : ''}
             </span>
           </div>
           <span className="text-[11px] text-neutral-400 font-sans hidden sm:inline">
-            Customer & PO terpilih otomatis
+            Status: Disetujui Super Admin
           </span>
+        </div>
+      )}
+
+      {approvedPos.length === 0 && (
+        <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/40 text-amber-300 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2 font-mono shadow-sm">
+          <div className="flex items-center gap-2">
+            <Clock className="w-4 h-4 text-amber-400 shrink-0" />
+            <span>
+              Belum ada Pre Order yang berstatus APPROVED oleh Super Admin. Surat Jalan baru dapat dibuat setelah Super Admin menyetujui Pre Order.
+            </span>
+          </div>
+          <Button
+            size="xs"
+            variant="ghost"
+            onClick={() => navigate('/pre-orders')}
+            className="text-amber-200 hover:text-white border border-amber-500/40 shrink-0"
+          >
+            Buka Pre Order
+          </Button>
         </div>
       )}
 
@@ -248,29 +328,51 @@ export default function SuratJalanPage() {
               )}
             </Select>
 
-            {/* Field 2: Nomor PO Customer */}
-            <Select
-              label="Nomor PO Customer"
-              icon={Ticket}
-              value={formData.poNumber}
-              onChange={(e) => setFormData({ ...formData, poNumber: e.target.value })}
-            >
-              {/* Show POs for selected customer first */}
-              {preOrders
-                .filter((po) => !formData.customer || po.customer === formData.customer)
-                .map((po) => (
-                  <option key={po.id} value={po.nomorPo || po.id}>
-                    {po.nomorPo || `(Draft ${po.id})`} - {po.customer} ({po.materialName})
+            {/* Field 2: Nomor PO Customer (Hanya PO Berstatus APPROVED) */}
+            <div className="space-y-1">
+              <Select
+                label="Nomor PO Customer (Wajib Berstatus APPROVED)"
+                icon={Ticket}
+                required
+                value={formData.poNumber}
+                onChange={(e) => {
+                  const selVal = e.target.value;
+                  const selectedPo = approvedPos.find((po) => (po.nomorPo && po.nomorPo === selVal) || po.id === selVal);
+                  let newMatId = formData.materialId;
+                  if (selectedPo?.materialId) {
+                    newMatId = selectedPo.materialId;
+                  } else if (selectedPo?.materialName) {
+                    const match = materials.find(
+                      (m) => m.name.toLowerCase() === selectedPo.materialName.toLowerCase()
+                    );
+                    if (match) newMatId = match.id;
+                  }
+                  setFormData({
+                    ...formData,
+                    poNumber: selVal,
+                    materialId: newMatId || formData.materialId,
+                  });
+                }}
+              >
+                {customerApprovedPos.length === 0 ? (
+                  <option value="" disabled>
+                    -- Belum ada Pre Order disetujui (APPROVED) untuk customer ini --
                   </option>
-                ))}
-              {/* Fallback to approved POs if no POs found for customer */}
-              {preOrders.filter((po) => !formData.customer || po.customer === formData.customer).length === 0 &&
-                approvedPos.map((po) => (
-                  <option key={po.id} value={po.nomorPo || po.id}>
-                    {po.nomorPo || `(Draft ${po.id})`} - {po.customer} ({po.materialName})
-                  </option>
-                ))}
-            </Select>
+                ) : (
+                  customerApprovedPos.map((po) => (
+                    <option key={po.id} value={po.nomorPo || po.id}>
+                      {po.nomorPo || `[Draft Disetujui] ${po.id}`} - {po.customer} ({po.materialName})
+                    </option>
+                  ))
+                )}
+              </Select>
+              {customerApprovedPos.length === 0 && (
+                <p className="text-[11px] text-amber-400 font-mono flex items-center gap-1.5 pt-0.5">
+                  <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                  <span>Customer ini belum memiliki Pre Order yang disetujui Super Admin.</span>
+                </p>
+              )}
+            </div>
 
             {/* Field 3: Nomor Surat Jalan & Nomor RO */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -560,7 +662,17 @@ export default function SuratJalanPage() {
               variant="primary"
               size="md"
               icon={Save}
-              className="w-full mt-2"
+              disabled={!formData.poNumber || customerApprovedPos.length === 0 || isNavPoUnapproved}
+              className={`w-full mt-2 ${
+                !formData.poNumber || customerApprovedPos.length === 0 || isNavPoUnapproved
+                  ? 'opacity-50 cursor-not-allowed border border-[#2B3037]'
+                  : ''
+              }`}
+              title={
+                !formData.poNumber || customerApprovedPos.length === 0 || isNavPoUnapproved
+                  ? 'Pre Order harus disetujui Super Admin (APPROVED) sebelum Surat Jalan dapat disimpan'
+                  : 'Simpan Surat Jalan (Good Issue)'
+              }
             >
               Simpan Surat Jalan (Good Issue)
             </Button>

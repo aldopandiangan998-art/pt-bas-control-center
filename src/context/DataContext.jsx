@@ -897,50 +897,98 @@ export function DataProvider({ children }) {
   // AUTO-PERSISTENCE TO LOCALSTORAGE
   // ==========================================
   useEffect(() => {
-    try { localStorage.setItem(STORAGE_KEYS.preOrders, JSON.stringify(preOrders)); } catch (e) {}
+    try { localStorage.setItem(STORAGE_KEYS.preOrders, JSON.stringify(preOrders)); } catch (e) { }
   }, [preOrders]);
 
   useEffect(() => {
-    try { localStorage.setItem(STORAGE_KEYS.suratJalan, JSON.stringify(suratJalanList)); } catch (e) {}
+    try { localStorage.setItem(STORAGE_KEYS.suratJalan, JSON.stringify(suratJalanList)); } catch (e) { }
   }, [suratJalanList]);
 
   useEffect(() => {
-    try { localStorage.setItem(STORAGE_KEYS.bkk, JSON.stringify(bkkList)); } catch (e) {}
+    try { localStorage.setItem(STORAGE_KEYS.bkk, JSON.stringify(bkkList)); } catch (e) { }
   }, [bkkList]);
 
   useEffect(() => {
-    try { localStorage.setItem(STORAGE_KEYS.invoices, JSON.stringify(invoiceList)); } catch (e) {}
+    try { localStorage.setItem(STORAGE_KEYS.invoices, JSON.stringify(invoiceList)); } catch (e) { }
   }, [invoiceList]);
 
   useEffect(() => {
-    try { localStorage.setItem(STORAGE_KEYS.materials, JSON.stringify(materials)); } catch (e) {}
+    try { localStorage.setItem(STORAGE_KEYS.materials, JSON.stringify(materials)); } catch (e) { }
   }, [materials]);
 
   useEffect(() => {
-    try { localStorage.setItem(STORAGE_KEYS.suppliers, JSON.stringify(suppliers)); } catch (e) {}
+    try { localStorage.setItem(STORAGE_KEYS.suppliers, JSON.stringify(suppliers)); } catch (e) { }
   }, [suppliers]);
 
   useEffect(() => {
-    try { localStorage.setItem(STORAGE_KEYS.customers, JSON.stringify(customers)); } catch (e) {}
+    try { localStorage.setItem(STORAGE_KEYS.customers, JSON.stringify(customers)); } catch (e) { }
   }, [customers]);
 
   useEffect(() => {
-    try { localStorage.setItem(STORAGE_KEYS.armada, JSON.stringify(armadaList)); } catch (e) {}
+    try { localStorage.setItem(STORAGE_KEYS.armada, JSON.stringify(armadaList)); } catch (e) { }
   }, [armadaList]);
 
   useEffect(() => {
-    try { localStorage.setItem(STORAGE_KEYS.banks, JSON.stringify(banks)); } catch (e) {}
+    try { localStorage.setItem(STORAGE_KEYS.banks, JSON.stringify(banks)); } catch (e) { }
   }, [banks]);
 
   useEffect(() => {
-    try { localStorage.setItem(STORAGE_KEYS.bankAccounts, JSON.stringify(bankAccounts)); } catch (e) {}
+    try { localStorage.setItem(STORAGE_KEYS.bankAccounts, JSON.stringify(bankAccounts)); } catch (e) { }
   }, [bankAccounts]);
 
   useEffect(() => {
-    try { localStorage.setItem(STORAGE_KEYS.currencies, JSON.stringify(currencies)); } catch (e) {}
+    try { localStorage.setItem(STORAGE_KEYS.currencies, JSON.stringify(currencies)); } catch (e) { }
   }, [currencies]);
 
   // Sync with backend SQLite database on mount
+  const fetchPreOrders = async () => {
+    try {
+      const res = await fetch('/api/pre-orders');
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data) && data.length > 0) {
+          setPreOrders(data);
+          try {
+            localStorage.setItem(STORAGE_KEYS.preOrders, JSON.stringify(data));
+          } catch (e) {}
+        }
+      }
+    } catch (err) {
+      // Offline fallback
+    }
+  };
+
+  const fetchSuratJalan = async () => {
+    try {
+      const res = await fetch('/api/surat-jalan');
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data) && data.length > 0) {
+          setSuratJalanList(data);
+          try {
+            localStorage.setItem(STORAGE_KEYS.suratJalan, JSON.stringify(data));
+          } catch (e) {}
+        }
+      }
+    } catch (err) {}
+  };
+
+  const fetchBkk = async () => {
+    try {
+      const res = await fetch('/api/bkk');
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data) && data.length > 0) {
+          setBkkList(data);
+          try {
+            localStorage.setItem(STORAGE_KEYS.bkk, JSON.stringify(data));
+          } catch (e) {}
+        }
+      }
+    } catch (err) {}
+  };
+
+  // Sync master data and setup realtime cross-tab & cross-browser synchronization
   useEffect(() => {
     const fetchMasterData = async () => {
       try {
@@ -981,6 +1029,71 @@ export function DataProvider({ children }) {
     };
 
     fetchMasterData();
+    fetchPreOrders();
+    fetchSuratJalan();
+    fetchBkk();
+
+    // 1. BroadcastChannel for instant cross-tab sync in same browser
+    let channel = null;
+    try {
+      channel = new BroadcastChannel('ptbas_sync_channel');
+      channel.onmessage = (event) => {
+        if (event.data?.type === 'SYNC_PREORDERS' || event.data?.type === 'SYNC_ALL') {
+          fetchPreOrders();
+        }
+        if (event.data?.type === 'SYNC_SURAT_JALAN' || event.data?.type === 'SYNC_ALL') {
+          fetchSuratJalan();
+        }
+        if (event.data?.type === 'SYNC_BKK' || event.data?.type === 'SYNC_ALL') {
+          fetchBkk();
+        }
+      };
+    } catch (e) {}
+
+    // 2. Storage event listener (same browser tabs fallback)
+    const handleStorageChange = (e) => {
+      if (e.key === STORAGE_KEYS.preOrders && e.newValue) {
+        try {
+          const parsed = JSON.parse(e.newValue);
+          if (Array.isArray(parsed)) setPreOrders(parsed);
+        } catch (err) {}
+      }
+      if (e.key === STORAGE_KEYS.suratJalan && e.newValue) {
+        try {
+          const parsed = JSON.parse(e.newValue);
+          if (Array.isArray(parsed)) setSuratJalanList(parsed);
+        } catch (err) {}
+      }
+      if (e.key === STORAGE_KEYS.bkk && e.newValue) {
+        try {
+          const parsed = JSON.parse(e.newValue);
+          if (Array.isArray(parsed)) setBkkList(parsed);
+        } catch (err) {}
+      }
+    };
+    window.addEventListener('storage', handleStorageChange);
+
+    // 3. Polling & Window Focus sync (handles incognito & separate browser windows)
+    const handleFocus = () => {
+      fetchPreOrders();
+      fetchSuratJalan();
+      fetchBkk();
+    };
+    window.addEventListener('focus', handleFocus);
+
+    const intervalId = setInterval(() => {
+      fetchPreOrders();
+      fetchSuratJalan();
+    }, 2000); // 2-second background sync
+
+    return () => {
+      if (channel) {
+        try { channel.close(); } catch (e) {}
+      }
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('focus', handleFocus);
+      clearInterval(intervalId);
+    };
   }, []);
 
   // ==========================================
@@ -988,45 +1101,101 @@ export function DataProvider({ children }) {
   // ==========================================
 
   // Pre Order Actions
-  const createPreOrder = (data) => {
-    const id = `PO-DRAFT-${String(preOrders.length + 1).padStart(2, '0')}`;
+  const createPreOrder = async (data) => {
+    const timestamp = Date.now();
+    const id = data.id || `PO-DRAFT-${timestamp}`;
     const newPo = {
       ...data,
       id,
-      nomorPo: null, // Generated on 1st SJ
-      terkirim: 0,
+      nomorPo: data.nomorPo || null, // Generated on 1st SJ
+      terkirim: Number(data.terkirim) || 0,
       status: 'MENUNGGU_APPROVAL',
-      createdBy: 'Admin Gresik',
+      createdBy: data.createdBy || 'Admin Gresik',
       approvedBy: null,
       approvedAt: null,
       rejectionReason: null,
     };
-    setPreOrders((prev) => [newPo, ...prev]);
-    addToast('Pre Order berhasil diajukan! Menunggu persetujuan Direktur.', 'success');
+
+    // Optimistic update
+    setPreOrders((prev) => {
+      const filtered = prev.filter((p) => p.id !== id);
+      const updated = [newPo, ...filtered];
+      try {
+        localStorage.setItem(STORAGE_KEYS.preOrders, JSON.stringify(updated));
+      } catch (e) {}
+      return updated;
+    });
+
+    // Notify other tabs
+    try {
+      const ch = new BroadcastChannel('ptbas_sync_channel');
+      ch.postMessage({ type: 'SYNC_PREORDERS', action: 'create', id });
+      ch.close();
+    } catch (e) {}
+
+    // Persist to backend SQLite
+    try {
+      await fetch('/api/pre-orders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newPo),
+      });
+    } catch (err) {
+      console.warn('Backend PO sync failed, saved in localStorage:', err);
+    }
+
+    addToast('Pre Order berhasil diajukan! Menunggu persetujuan Super Admin.', 'success');
     return newPo;
   };
 
-  const approvePreOrder = (id, approverName = 'David Rusiah (Direktur)') => {
-    setPreOrders((prev) =>
-      prev.map((po) => {
+  const approvePreOrder = async (id, approverName = 'David Rusiah (Direktur)') => {
+    const now = new Date().toISOString().replace('T', ' ').substring(0, 16);
+
+    // Optimistic update
+    setPreOrders((prev) => {
+      const updated = prev.map((po) => {
         if (po.id === id) {
           return {
             ...po,
             status: 'APPROVED',
             approvedBy: approverName,
-            approvedAt: new Date().toISOString().replace('T', ' ').substring(0, 16),
+            approvedAt: now,
             rejectionReason: null,
           };
         }
         return po;
-      })
-    );
+      });
+      try {
+        localStorage.setItem(STORAGE_KEYS.preOrders, JSON.stringify(updated));
+      } catch (e) {}
+      return updated;
+    });
+
+    // Notify other tabs immediately
+    try {
+      const ch = new BroadcastChannel('ptbas_sync_channel');
+      ch.postMessage({ type: 'SYNC_PREORDERS', action: 'approve', id });
+      ch.close();
+    } catch (e) {}
+
+    // Persist to backend SQLite
+    try {
+      await fetch(`/api/pre-orders/${encodeURIComponent(id)}/approve`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ approver: approverName }),
+      });
+    } catch (err) {
+      console.warn('Backend PO approve sync failed, saved in localStorage:', err);
+    }
+
     addToast('Pre Order resmi DISETUJUI! Surat Jalan kini dapat dibuat.', 'success');
   };
 
-  const rejectPreOrder = (id, reason) => {
-    setPreOrders((prev) =>
-      prev.map((po) => {
+  const rejectPreOrder = async (id, reason) => {
+    // Optimistic update
+    setPreOrders((prev) => {
+      const updated = prev.map((po) => {
         if (po.id === id) {
           return {
             ...po,
@@ -1035,13 +1204,46 @@ export function DataProvider({ children }) {
           };
         }
         return po;
-      })
-    );
+      });
+      try {
+        localStorage.setItem(STORAGE_KEYS.preOrders, JSON.stringify(updated));
+      } catch (e) {}
+      return updated;
+    });
+
+    // Notify other tabs immediately
+    try {
+      const ch = new BroadcastChannel('ptbas_sync_channel');
+      ch.postMessage({ type: 'SYNC_PREORDERS', action: 'reject', id });
+      ch.close();
+    } catch (e) {}
+
+    // Persist to backend SQLite
+    try {
+      await fetch(`/api/pre-orders/${encodeURIComponent(id)}/reject`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason }),
+      });
+    } catch (err) {
+      console.warn('Backend PO reject sync failed, saved in localStorage:', err);
+    }
+
     addToast('Pre Order ditolak dan dikembalikan untuk revisi.', 'error');
   };
 
   // Surat Jalan Actions
-  const createSuratJalan = (sjData) => {
+  const createSuratJalan = async (sjData) => {
+    // Strict enforcement: Validate PO approval status
+    const targetPo = preOrders.find(
+      (po) => (po.nomorPo && po.nomorPo === sjData.poNumber) || po.id === sjData.poNumber
+    );
+
+    if (targetPo && targetPo.status !== 'APPROVED') {
+      addToast('Surat Jalan ditolak: Pre Order belum disetujui oleh Super Admin!', 'error');
+      throw new Error('Pre Order belum disetujui');
+    }
+
     const sjId = `SJ-${new Date().toISOString().slice(0, 7).replace('-', '')}-${String(
       suratJalanList.length + 1
     ).padStart(4, '0')}`;
@@ -1060,12 +1262,18 @@ export function DataProvider({ children }) {
       statusRekap: 'DRAFT',
     };
 
-    setSuratJalanList((prev) => [newSj, ...prev]);
+    setSuratJalanList((prev) => {
+      const updated = [newSj, ...prev];
+      try {
+        localStorage.setItem(STORAGE_KEYS.suratJalan, JSON.stringify(updated));
+      } catch (e) {}
+      return updated;
+    });
 
     // Update PO delivered volume & auto-assign PO number if first delivery
-    setPreOrders((prev) =>
-      prev.map((po) => {
-        if (po.nomorPo === sjData.poNumber || po.customer === sjData.customer) {
+    setPreOrders((prev) => {
+      const updated = prev.map((po) => {
+        if (po.nomorPo === sjData.poNumber || po.id === sjData.poNumber || po.customer === sjData.customer) {
           const generatedPoNum =
             po.nomorPo ||
             `PO-${sjData.customer.replace(/[^A-Z]/g, '').slice(0, 2)}-2026-${Math.floor(
@@ -1078,8 +1286,30 @@ export function DataProvider({ children }) {
           };
         }
         return po;
-      })
-    );
+      });
+      try {
+        localStorage.setItem(STORAGE_KEYS.preOrders, JSON.stringify(updated));
+      } catch (e) {}
+      return updated;
+    });
+
+    // Notify other tabs
+    try {
+      const ch = new BroadcastChannel('ptbas_sync_channel');
+      ch.postMessage({ type: 'SYNC_SURAT_JALAN', action: 'create', id: sjId });
+      ch.close();
+    } catch (e) {}
+
+    // Persist to backend SQLite
+    try {
+      await fetch('/api/surat-jalan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newSj),
+      });
+    } catch (err) {
+      console.warn('Backend Surat Jalan sync failed, saved in localStorage:', err);
+    }
 
     addToast(`Surat Jalan No. ${sjData.nomorSj} berhasil disimpan! (${calc.volumeAkhir} m³)`, 'success');
     return newSj;
@@ -1185,11 +1415,11 @@ export function DataProvider({ children }) {
       prev.map((m) =>
         m.id === id
           ? {
-              ...m,
-              ...updatedData,
-              beli: updatedData.beli !== undefined ? Number(updatedData.beli) : m.beli,
-              jual: updatedData.jual !== undefined ? Number(updatedData.jual) : m.jual,
-            }
+            ...m,
+            ...updatedData,
+            beli: updatedData.beli !== undefined ? Number(updatedData.beli) : m.beli,
+            jual: updatedData.jual !== undefined ? Number(updatedData.jual) : m.jual,
+          }
           : m
       )
     );
@@ -1240,9 +1470,9 @@ export function DataProvider({ children }) {
       prev.map((s) =>
         s.id === id
           ? {
-              ...s,
-              ...updatedData,
-            }
+            ...s,
+            ...updatedData,
+          }
           : s
       )
     );
@@ -1287,9 +1517,9 @@ export function DataProvider({ children }) {
       prev.map((c) =>
         c.id === id
           ? {
-              ...c,
-              ...updatedData,
-            }
+            ...c,
+            ...updatedData,
+          }
           : c
       )
     );
@@ -1414,9 +1644,9 @@ export function DataProvider({ children }) {
       prev.map((b) =>
         b.id === id
           ? {
-              ...b,
-              ...updatedData,
-            }
+            ...b,
+            ...updatedData,
+          }
           : b
       )
     );
@@ -1459,9 +1689,9 @@ export function DataProvider({ children }) {
       prev.map((a) =>
         a.id === id
           ? {
-              ...a,
-              ...updatedData,
-            }
+            ...a,
+            ...updatedData,
+          }
           : a
       )
     );

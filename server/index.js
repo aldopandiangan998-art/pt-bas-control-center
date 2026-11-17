@@ -871,34 +871,120 @@ app.delete('/api/master/currencies/:id', (req, res) => {
 // Pre Orders
 app.get('/api/pre-orders', (req, res) => {
   const pos = db.prepare('SELECT * FROM pre_orders ORDER BY id DESC').all();
-  res.json(pos);
+  const parsed = pos.map((po) => {
+    let items = po.items;
+    if (typeof items === 'string') {
+      try {
+        items = JSON.parse(items);
+      } catch (e) {
+        items = [];
+      }
+    }
+    return {
+      ...po,
+      items: Array.isArray(items) ? items : [],
+    };
+  });
+  res.json(parsed);
 });
 
 app.post('/api/pre-orders', (req, res) => {
-  const { customer, customerAddress, materialId, materialName, materialCategory, pphRate, satuan, totalOrder, hargaJual, hargaBeli, tanggal, top } = req.body;
-  const id = `PO-DRAFT-${Date.now()}`;
+  const {
+    id: customId,
+    nomorPo = null,
+    customer = '',
+    customerAddress = '',
+    materialId = '',
+    materialName = '',
+    materialCategory = 'Curah',
+    pphRate = 2.0,
+    satuan = 'm3',
+    totalOrder = 0,
+    terkirim = 0,
+    hargaJual = 0,
+    hargaBeli = 0,
+    tanggal = new Date().toISOString().split('T')[0],
+    top = '30 Hari',
+    status = 'MENUNGGU_APPROVAL',
+    createdBy = 'Admin Gresik',
+    approvedBy = null,
+    approvedAt = null,
+    rejectionReason = null,
+    items = [],
+    nomorRO = '',
+    jenisRO = '',
+    jenis = 'CURAH',
+    mataUang = 'IDR',
+    jenisWajibPajak = 'PKP',
+    nomorPoCustomer = '',
+    hubungkanNomorPoMaterial = '',
+  } = req.body;
+
+  const id = customId || `PO-DRAFT-${Date.now()}`;
+  const itemsJson = typeof items === 'string' ? items : JSON.stringify(items || []);
 
   db.prepare(`
-    INSERT INTO pre_orders (id, nomorPo, customer, customerAddress, materialId, materialName, materialCategory, pphRate, satuan, totalOrder, terkirim, hargaJual, hargaBeli, tanggal, top, status, createdBy, approvedBy, approvedAt)
-    VALUES (?, null, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, 'MENUNGGU_APPROVAL', 'Admin Gresik', null, null)
-  `).run(id, customer, customerAddress, materialId, materialName, materialCategory, pphRate, satuan, totalOrder, hargaJual, hargaBeli, tanggal, top);
+    INSERT OR REPLACE INTO pre_orders (
+      id, nomorPo, customer, customerAddress, materialId, materialName,
+      materialCategory, pphRate, satuan, totalOrder, terkirim, hargaJual,
+      hargaBeli, tanggal, top, status, createdBy, approvedBy, approvedAt,
+      rejectionReason, items, nomorRO, jenisRO, jenis, mataUang,
+      jenisWajibPajak, nomorPoCustomer, hubungkanNomorPoMaterial
+    ) VALUES (
+      ?, ?, ?, ?, ?, ?,
+      ?, ?, ?, ?, ?, ?,
+      ?, ?, ?, ?, ?, ?, ?,
+      ?, ?, ?, ?, ?, ?,
+      ?, ?, ?
+    )
+  `).run(
+    id, nomorPo, customer, customerAddress, materialId, materialName,
+    materialCategory, pphRate, satuan, totalOrder, terkirim, hargaJual,
+    hargaBeli, tanggal, top, status, createdBy, approvedBy, approvedAt,
+    rejectionReason, itemsJson, nomorRO, jenisRO, jenis, mataUang,
+    jenisWajibPajak, nomorPoCustomer, hubungkanNomorPoMaterial
+  );
 
-  res.status(201).json({ success: true, id });
+  const created = {
+    id, nomorPo, customer, customerAddress, materialId, materialName,
+    materialCategory, pphRate, satuan, totalOrder, terkirim, hargaJual,
+    hargaBeli, tanggal, top, status, createdBy, approvedBy, approvedAt,
+    rejectionReason, items, nomorRO, jenisRO, jenis, mataUang,
+    jenisWajibPajak, nomorPoCustomer, hubungkanNomorPoMaterial
+  };
+
+  res.status(201).json({ success: true, id, data: created });
 });
 
 app.patch('/api/pre-orders/:id/approve', (req, res) => {
   const { approver = 'David Rusiah (Direktur)' } = req.body;
-  const now = new Date().toISOString();
-  db.prepare('UPDATE pre_orders SET status = ?, approvedBy = ?, approvedAt = ? WHERE id = ?')
-    .run('APPROVED', approver, now, req.params.id);
-  res.json({ success: true });
+  const now = new Date().toISOString().replace('T', ' ').substring(0, 16);
+  db.prepare(`
+    UPDATE pre_orders
+    SET status = 'APPROVED', approvedBy = ?, approvedAt = ?, rejectionReason = NULL
+    WHERE id = ?
+  `).run(approver, now, req.params.id);
+
+  const updated = db.prepare('SELECT * FROM pre_orders WHERE id = ?').get(req.params.id);
+  if (updated && updated.items) {
+    try { updated.items = JSON.parse(updated.items); } catch (e) { updated.items = []; }
+  }
+  res.json({ success: true, data: updated });
 });
 
 app.patch('/api/pre-orders/:id/reject', (req, res) => {
   const { reason = 'Margin di bawah batas minimum' } = req.body;
-  db.prepare('UPDATE pre_orders SET status = ?, rejectionReason = ? WHERE id = ?')
-    .run('REJECTED', reason, req.params.id);
-  res.json({ success: true });
+  db.prepare(`
+    UPDATE pre_orders
+    SET status = 'REJECTED', rejectionReason = ?
+    WHERE id = ?
+  `).run(reason, req.params.id);
+
+  const updated = db.prepare('SELECT * FROM pre_orders WHERE id = ?').get(req.params.id);
+  if (updated && updated.items) {
+    try { updated.items = JSON.parse(updated.items); } catch (e) { updated.items = []; }
+  }
+  res.json({ success: true, data: updated });
 });
 
 // Surat Jalan
@@ -908,13 +994,53 @@ app.get('/api/surat-jalan', (req, res) => {
 });
 
 app.post('/api/surat-jalan', (req, res) => {
-  const { nomorSj, poNumber, customer, material, nopol, driver, tanggal, waktu, nomorNota, isPpn, panjangCm, lebarCm, tinggiCm, koreksiTinggiCm, volumeAkhir } = req.body;
-  const id = `SJ-${Date.now()}`;
+  const {
+    id: customId,
+    nomorSj,
+    poNumber,
+    customer,
+    material,
+    nopol,
+    driver,
+    tanggal,
+    waktu,
+    nomorNota,
+    isPpn,
+    panjangCm,
+    lebarCm,
+    tinggiCm,
+    koreksiTinggiCm = 0,
+    volumeAkhir,
+    status = 'Selesai'
+  } = req.body;
+
+  // Strict check: Pre Order must exist and be APPROVED before creating Surat Jalan
+  if (poNumber) {
+    const po = db.prepare('SELECT * FROM pre_orders WHERE nomorPo = ? OR id = ?').get(poNumber, poNumber);
+    if (po && po.status !== 'APPROVED') {
+      return res.status(400).json({
+        success: false,
+        message: 'Surat Jalan tidak dapat dibuat karena Pre Order belum disetujui oleh Super Admin.'
+      });
+    }
+  }
+
+  const id = customId || `SJ-${Date.now()}`;
 
   db.prepare(`
     INSERT INTO surat_jalan (id, nomorSj, poNumber, customer, material, nopol, driver, tanggal, waktu, nomorNota, isPpn, panjangCm, lebarCm, tinggiCm, koreksiTinggiCm, volumeAkhir, status)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Selesai')
-  `).run(id, nomorSj, poNumber, customer, material, nopol, driver, tanggal, waktu, nomorNota, isPpn ? 1 : 0, panjangCm, lebarCm, tinggiCm, koreksiTinggiCm, volumeAkhir);
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(id, nomorSj, poNumber, customer, material, nopol, driver, tanggal, waktu, nomorNota, isPpn ? 1 : 0, panjangCm, lebarCm, tinggiCm, koreksiTinggiCm, volumeAkhir, status);
+
+  // Update Pre Order delivery volume and assign PO number if it is the first delivery
+  if (poNumber) {
+    const po = db.prepare('SELECT * FROM pre_orders WHERE nomorPo = ? OR id = ?').get(poNumber, poNumber);
+    if (po) {
+      const newTerkirim = Number(((po.terkirim || 0) + Number(volumeAkhir)).toFixed(2));
+      const finalPoNum = po.nomorPo || `PO-${(customer || 'CS').replace(/[^A-Z]/g, '').slice(0, 2)}-2026-${Math.floor(100 + Math.random() * 900)}`;
+      db.prepare('UPDATE pre_orders SET terkirim = ?, nomorPo = ? WHERE id = ?').run(newTerkirim, finalPoNum, po.id);
+    }
+  }
 
   res.status(201).json({ success: true, id });
 });

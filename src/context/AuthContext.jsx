@@ -21,12 +21,17 @@ export function AuthProvider({ children }) {
     return INITIAL_USERS_DB;
   });
 
-  // 2. Initialize current logged-in user from localStorage or null (guest)
+  // 2. Initialize current logged-in user from sessionStorage / localStorage or null (guest)
   const [currentUser, setCurrentUser] = useState(() => {
     try {
       // Clear legacy dev auto-login key if present to enforce clean login first
       if (localStorage.getItem('ptbas_auth_user_v2')) {
         localStorage.removeItem('ptbas_auth_user_v2');
+      }
+      const sessionSaved = sessionStorage.getItem(AUTH_STORAGE_KEY);
+      if (sessionSaved) {
+        const parsed = JSON.parse(sessionSaved);
+        if (parsed && parsed.email) return parsed;
       }
       const saved = localStorage.getItem(AUTH_STORAGE_KEY);
       if (saved) {
@@ -65,16 +70,18 @@ export function AuthProvider({ children }) {
     }
   }, [users]);
 
-  // Persist auth user changes
+  // Persist auth user changes (sessionStorage for tab isolation, localStorage for default persistence)
   useEffect(() => {
     try {
       if (currentUser) {
+        sessionStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(currentUser));
         localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(currentUser));
       } else {
+        sessionStorage.removeItem(AUTH_STORAGE_KEY);
         localStorage.removeItem(AUTH_STORAGE_KEY);
       }
     } catch (e) {
-      console.warn('Failed to save auth user to localStorage:', e);
+      console.warn('Failed to save auth user to storage:', e);
     }
   }, [currentUser]);
 
@@ -419,6 +426,10 @@ export function AuthProvider({ children }) {
    */
   const logout = () => {
     setCurrentUser(null);
+    try {
+      sessionStorage.removeItem(AUTH_STORAGE_KEY);
+      localStorage.removeItem(AUTH_STORAGE_KEY);
+    } catch (e) {}
   };
 
   /**

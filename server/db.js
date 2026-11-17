@@ -212,6 +212,28 @@ export function initDb() {
     console.warn('Migration users table error:', err);
   }
 
+  // Safe migration for pre_orders additional fields
+  try {
+    const poCols = db.prepare('PRAGMA table_info(pre_orders)').all().map((c) => c.name);
+    const newPoCols = [
+      ['items', 'TEXT'],
+      ['nomorRO', 'TEXT'],
+      ['jenisRO', 'TEXT'],
+      ['jenis', 'TEXT'],
+      ['mataUang', 'TEXT'],
+      ['jenisWajibPajak', 'TEXT'],
+      ['nomorPoCustomer', 'TEXT'],
+      ['hubungkanNomorPoMaterial', 'TEXT'],
+    ];
+    for (const [col, colType] of newPoCols) {
+      if (!poCols.includes(col)) {
+        db.exec(`ALTER TABLE pre_orders ADD COLUMN ${col} ${colType};`);
+      }
+    }
+  } catch (err) {
+    console.warn('Migration pre_orders table error:', err);
+  }
+
   seedInitialData();
 }
 

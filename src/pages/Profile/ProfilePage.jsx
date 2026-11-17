@@ -217,11 +217,11 @@ export default function ProfilePage() {
     : 'U';
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6 pb-20 select-none">
+    <div className="w-full max-w-4xl mx-auto space-y-6 pb-20 select-none">
       {/* ── Top Header with Back Navigation ── */}
       <div
         className={`flex items-center gap-3 pb-3 border-b transition-colors ${
-          isDark ? 'border-[#24282C]' : 'border-slate-200'
+          isDark ? 'border-[#22262A]' : 'border-slate-200'
         }`}
       >
         <Button
@@ -245,7 +245,7 @@ export default function ProfilePage() {
               {isSuperAdmin ? 'Super Admin' : 'Admin'}
             </Badge>
           </div>
-          <p className={`text-[11px] ${isDark ? 'text-neutral-400' : 'text-slate-500'}`}>
+          <p className={`text-xs ${isDark ? 'text-neutral-400' : 'text-slate-500'}`}>
             Kelola data identitas operasional, tanggal lahir, jenis kelamin, kontak, dan keamanan kata sandi
           </p>
         </div>
@@ -255,7 +255,7 @@ export default function ProfilePage() {
       <div
         className={`p-4 sm:p-5 rounded-2xl border flex flex-col md:flex-row items-start md:items-center justify-between gap-4 transition-colors shadow-sm ${
           isDark
-            ? 'bg-gradient-to-r from-[#141A24] via-[#10141C] to-[#0D1016] border-[#222E40]'
+            ? 'bg-gradient-to-r from-[#181B1E] via-[#14171A] to-[#111315] border-[#22262A]'
             : 'bg-gradient-to-r from-orange-50/80 via-white to-slate-50 border-orange-200/80'
         }`}
       >
@@ -285,7 +285,7 @@ export default function ProfilePage() {
             <div className={`text-xs font-mono mt-0.5 ${isDark ? 'text-neutral-400' : 'text-slate-500'}`}>
               {currentUser?.email || '-'}
             </div>
-            <div className="flex items-center gap-3 mt-1.5 flex-wrap text-[11px]">
+            <div className="flex items-center gap-3 mt-1.5 flex-wrap text-xs">
               <span className={`flex items-center gap-1 ${isDark ? 'text-neutral-300' : 'text-slate-600'}`}>
                 <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
                 <span>Penugasan: {currentUser?.branch || 'Pusat & Hub Gresik'}</span>
@@ -301,7 +301,7 @@ export default function ProfilePage() {
 
         <div
           className={`md:border-l pl-0 md:pl-5 font-mono text-left md:text-right shrink-0 ${
-            isDark ? 'border-[#222E40]' : 'border-slate-200'
+            isDark ? 'border-[#22262A]' : 'border-slate-200'
           }`}
         >
           <div className="text-[10px] text-neutral-500 uppercase tracking-wider">ID Akun Pengguna</div>
@@ -315,7 +315,7 @@ export default function ProfilePage() {
       {/* ── Subtabs: Data Profil vs Keamanan Sandi ── */}
       <div
         className={`flex items-center gap-2 border-b shrink-0 transition-colors ${
-          isDark ? 'border-[#222E40]' : 'border-slate-200'
+          isDark ? 'border-[#22262A]' : 'border-slate-200'
         }`}
       >
         <button
@@ -353,7 +353,7 @@ export default function ProfilePage() {
       {activeTab === 'profile' && (
         <div
           className={`rounded-2xl border p-5 sm:p-6 transition-colors shadow-sm ${
-            isDark ? 'bg-[#13171F] border-[#222E40]' : 'bg-white border-slate-200'
+            isDark ? 'bg-[#14171A] border-[#22262A]' : 'bg-white border-slate-200'
           }`}
         >
           <div className="mb-5 pb-3 border-b border-inherit flex items-center justify-between">
@@ -361,7 +361,7 @@ export default function ProfilePage() {
               <h2 className={`text-sm font-bold uppercase tracking-wider font-mono ${isDark ? 'text-white' : 'text-slate-900'}`}>
                 Informasi Identitas Akun
               </h2>
-              <p className={`text-[11px] mt-0.5 ${isDark ? 'text-neutral-400' : 'text-slate-500'}`}>
+              <p className={`text-xs mt-0.5 ${isDark ? 'text-neutral-400' : 'text-slate-500'}`}>
                 Data ini digunakan untuk identifikasi tanda tangan Surat Jalan, approval RO, dan otorisasi BKK.
               </p>
             </div>
@@ -373,7 +373,7 @@ export default function ProfilePage() {
               {/* 1. Nama Lengkap */}
               <div>
                 <label
-                  className={`block text-[11px] font-bold uppercase tracking-wider mb-1.5 font-mono ${
+                  className={`block text-xs font-bold uppercase tracking-wider mb-1.5 font-mono ${
                     isDark ? 'text-neutral-300' : 'text-slate-700'
                   }`}
                 >
@@ -389,7 +389,7 @@ export default function ProfilePage() {
                     placeholder="Masukkan nama lengkap"
                     className={`w-full text-xs pl-9 pr-3 py-2.5 rounded-xl border transition-colors outline-none focus:ring-1 focus:ring-[#F4511E] ${
                       isDark
-                        ? 'bg-[#18202C] border-[#28364A] text-white placeholder-neutral-500 focus:border-[#F4511E]'
+                        ? 'bg-[#181B1E] border-[#2B3037] text-white placeholder-neutral-500 focus:border-[#F4511E]'
                         : 'bg-slate-50 border-slate-300 text-slate-900 placeholder-slate-400 focus:border-[#F4511E]'
                     }`}
                   />
@@ -400,7 +400,7 @@ export default function ProfilePage() {
               <div>
                 <div className="flex items-center justify-between mb-1.5">
                   <label
-                    className={`block text-[11px] font-bold uppercase tracking-wider font-mono ${
+                    className={`block text-xs font-bold uppercase tracking-wider font-mono ${
                       isDark ? 'text-neutral-300' : 'text-slate-700'
                     }`}
                   >
@@ -415,7 +415,7 @@ export default function ProfilePage() {
                     disabled
                     value={profileForm.email}
                     className={`w-full text-xs pl-9 pr-3 py-2.5 rounded-xl border font-mono cursor-not-allowed opacity-90 ${
-                      isDark ? 'bg-[#0E131A] border-[#1C2636] text-neutral-300' : 'bg-slate-100 border-slate-300 text-slate-600'
+                      isDark ? 'bg-[#111315] border-[#22262A] text-neutral-300' : 'bg-slate-100 border-slate-300 text-slate-600'
                     }`}
                   />
                 </div>
@@ -424,7 +424,7 @@ export default function ProfilePage() {
               {/* 3. Tanggal Lahir */}
               <div>
                 <label
-                  className={`block text-[11px] font-bold uppercase tracking-wider mb-1.5 font-mono ${
+                  className={`block text-xs font-bold uppercase tracking-wider mb-1.5 font-mono ${
                     isDark ? 'text-neutral-300' : 'text-slate-700'
                   }`}
                 >
@@ -438,7 +438,7 @@ export default function ProfilePage() {
                     onChange={(e) => setProfileForm({ ...profileForm, birth_date: e.target.value })}
                     className={`w-full text-xs pl-9 pr-3 py-2.5 rounded-xl border transition-colors outline-none focus:ring-1 focus:ring-[#F4511E] ${
                       isDark
-                        ? 'bg-[#18202C] border-[#28364A] text-white placeholder-neutral-500 focus:border-[#F4511E] [color-scheme:dark]'
+                        ? 'bg-[#181B1E] border-[#2B3037] text-white placeholder-neutral-500 focus:border-[#F4511E] [color-scheme:dark]'
                         : 'bg-slate-50 border-slate-300 text-slate-900 placeholder-slate-400 focus:border-[#F4511E] [color-scheme:light]'
                     }`}
                   />
@@ -448,7 +448,7 @@ export default function ProfilePage() {
               {/* 4. Jenis Kelamin */}
               <div>
                 <label
-                  className={`block text-[11px] font-bold uppercase tracking-wider mb-1.5 font-mono ${
+                  className={`block text-xs font-bold uppercase tracking-wider mb-1.5 font-mono ${
                     isDark ? 'text-neutral-300' : 'text-slate-700'
                   }`}
                 >
@@ -459,7 +459,7 @@ export default function ProfilePage() {
                   onChange={(e) => setProfileForm({ ...profileForm, gender: e.target.value })}
                   className={`w-full text-xs px-3 py-2.5 rounded-xl border transition-colors outline-none focus:ring-1 focus:ring-[#F4511E] cursor-pointer ${
                     isDark
-                      ? 'bg-[#18202C] border-[#28364A] text-white focus:border-[#F4511E]'
+                      ? 'bg-[#181B1E] border-[#2B3037] text-white focus:border-[#F4511E]'
                       : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-[#F4511E]'
                   }`}
                 >
@@ -471,7 +471,7 @@ export default function ProfilePage() {
               {/* 5. Nomor Telepon */}
               <div className="sm:col-span-2">
                 <label
-                  className={`block text-[11px] font-bold uppercase tracking-wider mb-1.5 font-mono ${
+                  className={`block text-xs font-bold uppercase tracking-wider mb-1.5 font-mono ${
                     isDark ? 'text-neutral-300' : 'text-slate-700'
                   }`}
                 >
@@ -486,7 +486,7 @@ export default function ProfilePage() {
                     placeholder="Contoh: 0811-3001-992"
                     className={`w-full text-xs pl-9 pr-3 py-2.5 rounded-xl border transition-colors outline-none focus:ring-1 focus:ring-[#F4511E] ${
                       isDark
-                        ? 'bg-[#18202C] border-[#28364A] text-white placeholder-neutral-500 focus:border-[#F4511E]'
+                        ? 'bg-[#181B1E] border-[#2B3037] text-white placeholder-neutral-500 focus:border-[#F4511E]'
                         : 'bg-slate-50 border-slate-300 text-slate-900 placeholder-slate-400 focus:border-[#F4511E]'
                     }`}
                   />
@@ -496,9 +496,9 @@ export default function ProfilePage() {
 
             {/* Note & Actions */}
             <div className={`pt-4 border-t flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 ${
-              isDark ? 'border-[#222E40]' : 'border-slate-200'
+              isDark ? 'border-[#22262A]' : 'border-slate-200'
             }`}>
-              <div className="text-[11px] text-neutral-400 flex items-center gap-1.5">
+              <div className="text-xs text-neutral-400 flex items-center gap-1.5">
                 <AlertCircle className="w-4 h-4 text-amber-500 shrink-0" />
                 <span>Perubahan profil langsung disinkronkan ke seluruh modul operasional.</span>
               </div>
@@ -507,10 +507,10 @@ export default function ProfilePage() {
                 <button
                   type="button"
                   onClick={handleResetProfileForm}
-                  className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 ${
+                  className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 border ${
                     isDark
-                      ? 'bg-[#18202C] hover:bg-[#222E40] text-neutral-300 hover:text-white'
-                      : 'bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900'
+                      ? 'bg-[#181B1E] hover:bg-[#22262A] text-neutral-300 hover:text-white border-[#2B3037]'
+                      : 'bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900 border-slate-200'
                   }`}
                 >
                   <RotateCcw className="w-3.5 h-3.5" />
@@ -537,7 +537,7 @@ export default function ProfilePage() {
           {/* Subcard 1: Ubah Kata Sandi */}
           <div
             className={`rounded-2xl border p-5 sm:p-6 transition-colors shadow-sm ${
-              isDark ? 'bg-[#13171F] border-[#222E40]' : 'bg-white border-slate-200'
+              isDark ? 'bg-[#14171A] border-[#22262A]' : 'bg-white border-slate-200'
             }`}
           >
             <div className="flex items-center gap-2.5 mb-4 pb-3 border-b border-inherit">
@@ -546,7 +546,7 @@ export default function ProfilePage() {
                 <h3 className={`text-xs sm:text-sm font-bold uppercase tracking-wider font-mono ${isDark ? 'text-white' : 'text-slate-900'}`}>
                   Ubah Kata Sandi Saat Login
                 </h3>
-                <p className={`text-[11px] ${isDark ? 'text-neutral-400' : 'text-slate-500'}`}>
+                <p className={`text-xs ${isDark ? 'text-neutral-400' : 'text-slate-500'}`}>
                   Pastikan kata sandi baru Anda aman dan tidak mudah ditebak oleh pihak lain
                 </p>
               </div>
@@ -556,7 +556,7 @@ export default function ProfilePage() {
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
                 {/* Kata Sandi Lama */}
                 <div>
-                  <label className={`block text-[11px] font-bold uppercase tracking-wider mb-1.5 font-mono ${isDark ? 'text-neutral-300' : 'text-slate-700'}`}>
+                  <label className={`block text-xs font-bold uppercase tracking-wider mb-1.5 font-mono ${isDark ? 'text-neutral-300' : 'text-slate-700'}`}>
                     Sandi Lama
                   </label>
                   <div className="relative">
@@ -569,7 +569,7 @@ export default function ProfilePage() {
                       placeholder="••••••••"
                       className={`w-full text-xs pl-8 pr-8 py-2.5 rounded-xl border outline-none focus:ring-1 focus:ring-amber-500 ${
                         isDark
-                          ? 'bg-[#18202C] border-[#28364A] text-white focus:border-amber-500'
+                          ? 'bg-[#181B1E] border-[#2B3037] text-white focus:border-amber-500'
                           : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-amber-500'
                       }`}
                     />
@@ -585,7 +585,7 @@ export default function ProfilePage() {
 
                 {/* Kata Sandi Baru */}
                 <div>
-                  <label className={`block text-[11px] font-bold uppercase tracking-wider mb-1.5 font-mono ${isDark ? 'text-neutral-300' : 'text-slate-700'}`}>
+                  <label className={`block text-xs font-bold uppercase tracking-wider mb-1.5 font-mono ${isDark ? 'text-neutral-300' : 'text-slate-700'}`}>
                     Sandi Baru
                   </label>
                   <div className="relative">
@@ -598,7 +598,7 @@ export default function ProfilePage() {
                       placeholder="Min. 6 karakter"
                       className={`w-full text-xs pl-8 pr-8 py-2.5 rounded-xl border outline-none focus:ring-1 focus:ring-amber-500 ${
                         isDark
-                          ? 'bg-[#18202C] border-[#28364A] text-white focus:border-amber-500'
+                          ? 'bg-[#181B1E] border-[#2B3037] text-white focus:border-amber-500'
                           : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-amber-500'
                       }`}
                     />
@@ -614,7 +614,7 @@ export default function ProfilePage() {
 
                 {/* Konfirmasi Kata Sandi Baru */}
                 <div>
-                  <label className={`block text-[11px] font-bold uppercase tracking-wider mb-1.5 font-mono ${isDark ? 'text-neutral-300' : 'text-slate-700'}`}>
+                  <label className={`block text-xs font-bold uppercase tracking-wider mb-1.5 font-mono ${isDark ? 'text-neutral-300' : 'text-slate-700'}`}>
                     Ulangi Sandi Baru
                   </label>
                   <div className="relative">
@@ -627,7 +627,7 @@ export default function ProfilePage() {
                       placeholder="Ulangi sandi baru"
                       className={`w-full text-xs pl-8 pr-8 py-2.5 rounded-xl border outline-none focus:ring-1 focus:ring-amber-500 ${
                         isDark
-                          ? 'bg-[#18202C] border-[#28364A] text-white focus:border-amber-500'
+                          ? 'bg-[#181B1E] border-[#2B3037] text-white focus:border-amber-500'
                           : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-amber-500'
                       }`}
                     />
@@ -643,7 +643,7 @@ export default function ProfilePage() {
               </div>
 
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pt-3">
-                <div className="text-[11px] text-neutral-400 flex items-center gap-1">
+                <div className="text-xs text-neutral-400 flex items-center gap-1">
                   <AlertCircle className="w-3.5 h-3.5 text-amber-500 shrink-0" />
                   <span>Panjang sandi minimal 6 karakter kombinasi angka & huruf.</span>
                 </div>
@@ -663,7 +663,7 @@ export default function ProfilePage() {
           {/* Subcard 2: Fitur Reset Password Gmail (Opsi B) */}
           <div
             className={`rounded-2xl border p-5 sm:p-6 transition-colors shadow-sm ${
-              isDark ? 'bg-gradient-to-r from-[#171420] to-[#121622] border-[#2E243E]' : 'bg-orange-50/70 border-orange-200'
+              isDark ? 'bg-[#14171A] border-[#22262A]' : 'bg-orange-50/70 border-orange-200'
             }`}
           >
             <div className="flex flex-col sm:flex-row items-start justify-between gap-4">
@@ -695,7 +695,7 @@ export default function ProfilePage() {
             {latestResetUrl && (
               <div
                 className={`mt-4 p-3 rounded-xl border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs font-mono transition-colors ${
-                  isDark ? 'bg-[#0B0F15] border-[#24334A] text-neutral-300' : 'bg-white border-orange-200 text-slate-800'
+                  isDark ? 'bg-[#111315] border-[#22262A] text-neutral-300' : 'bg-white border-orange-200 text-slate-800'
                 }`}
               >
                 <div className="truncate max-w-md">
@@ -710,7 +710,7 @@ export default function ProfilePage() {
                       copiedLink
                         ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40'
                         : isDark
-                        ? 'bg-[#18202C] hover:bg-[#222E40] text-neutral-200 border-[#28364A]'
+                        ? 'bg-[#181B1E] hover:bg-[#22262A] text-neutral-200 border-[#2B3037]'
                         : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300'
                     }`}
                     title="Salin Tautan"

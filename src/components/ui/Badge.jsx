@@ -17,7 +17,7 @@ const getVariantClasses = (variant, isDark) => {
         return 'bg-[#6B4219]/30 text-amber-200 border-[#6B4219]/60';
       case 'neutral':
       default:
-        return 'bg-[#151D28] text-neutral-300 border-[#1E2B3C]';
+        return 'bg-[#1C1F23] text-neutral-300 border-[#2A2E33]';
     }
   } else {
     switch (variant) {
@@ -40,9 +40,9 @@ const getVariantClasses = (variant, isDark) => {
 };
 
 const SIZES = {
-  xs: 'px-1.5 py-0.2 text-[9px]',
-  sm: 'px-2 py-0.5 text-[10px]',
-  md: 'px-2.5 py-1 text-xs',
+  xs: 'px-2 py-0.5 text-[10px]',
+  sm: 'px-2.5 py-0.5 text-xs',
+  md: 'px-3 py-1 text-xs',
 };
 
 export default function Badge({

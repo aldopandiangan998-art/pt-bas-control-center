@@ -63,7 +63,7 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6 pb-20 select-none">
+    <div className="w-full max-w-4xl mx-auto space-y-6 pb-20 select-none">
       {/* Top Header */}
       <div
         className={`flex items-center gap-3 pb-3 border-b transition-colors ${
@@ -93,7 +93,7 @@ export default function SettingsPage() {
               Super Admin
             </Badge>
           </div>
-          <p className={`text-[11px] ${isDark ? 'text-neutral-400' : 'text-slate-500'}`}>
+          <p className={`text-xs ${isDark ? 'text-neutral-400' : 'text-slate-500'}`}>
             Preferensi perangkat, autentikasi biometrik, bantuan lapangan, dan ketentuan legalitas
           </p>
         </div>
@@ -114,7 +114,7 @@ export default function SettingsPage() {
         >
           {/* Jenis Perangkat */}
           <div
-            className={`flex items-center justify-between p-3.5 transition-colors ${
+            className={`flex items-center justify-between p-4 sm:p-4.5 transition-colors ${
               isDark ? 'hover:bg-[#181B1E]' : 'hover:bg-slate-50'
             }`}
           >
@@ -124,11 +124,11 @@ export default function SettingsPage() {
               </div>
               <div>
                 <div
-                  className={`text-xs font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}
+                  className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}
                 >
                   Jenis Perangkat
                 </div>
-                <div className={`text-[11px] ${isDark ? 'text-neutral-400' : 'text-slate-500'}`}>
+                <div className={`text-xs ${isDark ? 'text-neutral-400' : 'text-slate-500'}`}>
                   {deviceType}
                 </div>
               </div>
@@ -140,7 +140,7 @@ export default function SettingsPage() {
 
           {/* Quick Login with Biometric Toggle */}
           <div
-            className={`flex items-center justify-between p-3.5 transition-colors ${
+            className={`flex items-center justify-between p-4 sm:p-4.5 transition-colors ${
               isDark ? 'hover:bg-[#181B1E]' : 'hover:bg-slate-50'
             }`}
           >
@@ -150,11 +150,11 @@ export default function SettingsPage() {
               </div>
               <div>
                 <div
-                  className={`text-xs font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}
+                  className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}
                 >
                   Quick Login
                 </div>
-                <div className={`text-[11px] ${isDark ? 'text-neutral-400' : 'text-slate-500'}`}>
+                <div className={`text-xs ${isDark ? 'text-neutral-400' : 'text-slate-500'}`}>
                   Login menggunakan biometrik
                 </div>
               </div>
@@ -185,7 +185,7 @@ export default function SettingsPage() {
                 'info'
               );
             }}
-            className={`flex items-center justify-between p-3.5 transition-colors cursor-pointer select-none ${
+            className={`flex items-center justify-between p-4 sm:p-4.5 transition-colors cursor-pointer select-none ${
               isDark ? 'hover:bg-[#181B1E]' : 'hover:bg-slate-50'
             }`}
           >
@@ -195,11 +195,11 @@ export default function SettingsPage() {
               </div>
               <div>
                 <div
-                  className={`text-xs font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}
+                  className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}
                 >
                   Mode Tampilan (Tema)
                 </div>
-                <div className={`text-[11px] ${isDark ? 'text-neutral-400' : 'text-slate-500'}`}>
+                <div className={`text-xs ${isDark ? 'text-neutral-400' : 'text-slate-500'}`}>
                   {!isDark ? 'Mode Terang (Light Mode Aktif)' : 'Mode Gelap (Dark Mode Aktif)'}
                 </div>
               </div>
@@ -232,7 +232,7 @@ export default function SettingsPage() {
                 className={`group relative inline-flex items-center h-6.5 w-13 shrink-0 cursor-pointer rounded-full p-0.5 border transition-all duration-300 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-[#F4511E] shadow-inner select-none ${
                   !isDark
                     ? 'bg-gradient-to-r from-amber-400 to-orange-400 border-amber-300 shadow-amber-500/20'
-                    : 'bg-[#151D28] border-[#2A3C56] shadow-black/40'
+                    : 'bg-[#181B1E] border-[#2B3037] shadow-black/40'
                 }`}
                 title={isDark ? 'Beralih ke Mode Terang' : 'Beralih ke Mode Gelap'}
               >
@@ -284,7 +284,7 @@ export default function SettingsPage() {
           {/* FAQ */}
           <div
             onClick={() => setActiveModal('faq')}
-            className={`flex items-center justify-between p-3.5 transition-colors cursor-pointer ${
+            className={`flex items-center justify-between p-4 sm:p-4.5 transition-colors cursor-pointer ${
               isDark ? 'hover:bg-[#181B1E]' : 'hover:bg-slate-50'
             }`}
           >
@@ -294,11 +294,11 @@ export default function SettingsPage() {
               </div>
               <div>
                 <div
-                  className={`text-xs font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}
+                  className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}
                 >
                   FAQ
                 </div>
-                <div className={`text-[11px] ${isDark ? 'text-neutral-400' : 'text-slate-500'}`}>
+                <div className={`text-xs ${isDark ? 'text-neutral-400' : 'text-slate-500'}`}>
                   Frequently Asked Questions
                 </div>
               </div>
@@ -309,7 +309,7 @@ export default function SettingsPage() {
           {/* Laporkan Masalah */}
           <div
             onClick={() => setActiveModal('report')}
-            className={`flex items-center justify-between p-3.5 transition-colors cursor-pointer ${
+            className={`flex items-center justify-between p-4 sm:p-4.5 transition-colors cursor-pointer ${
               isDark ? 'hover:bg-[#181B1E]' : 'hover:bg-slate-50'
             }`}
           >
@@ -319,11 +319,11 @@ export default function SettingsPage() {
               </div>
               <div>
                 <div
-                  className={`text-xs font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}
+                  className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}
                 >
                   Laporkan Masalah
                 </div>
-                <div className={`text-[11px] ${isDark ? 'text-neutral-400' : 'text-slate-500'}`}>
+                <div className={`text-xs ${isDark ? 'text-neutral-400' : 'text-slate-500'}`}>
                   Bantuan teknis & kendala lapangan
                 </div>
               </div>
@@ -349,7 +349,7 @@ export default function SettingsPage() {
           {/* Ketentuan-Ketentuan Penggunaan */}
           <div
             onClick={() => setActiveModal('legal')}
-            className={`flex items-center justify-between p-3.5 transition-colors cursor-pointer ${
+            className={`flex items-center justify-between p-4 sm:p-4.5 transition-colors cursor-pointer ${
               isDark ? 'hover:bg-[#181B1E]' : 'hover:bg-slate-50'
             }`}
           >
@@ -359,11 +359,11 @@ export default function SettingsPage() {
               </div>
               <div>
                 <div
-                  className={`text-xs font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}
+                  className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}
                 >
                   Ketentuan-Ketentuan Penggunaan
                 </div>
-                <div className={`text-[11px] ${isDark ? 'text-neutral-400' : 'text-slate-500'}`}>
+                <div className={`text-xs ${isDark ? 'text-neutral-400' : 'text-slate-500'}`}>
                   SOP Operasional Truk & Tagihan
                 </div>
               </div>
@@ -374,7 +374,7 @@ export default function SettingsPage() {
           {/* Kebijakan Privasi */}
           <div
             onClick={() => setActiveModal('privacy')}
-            className={`flex items-center justify-between p-3.5 transition-colors cursor-pointer ${
+            className={`flex items-center justify-between p-4 sm:p-4.5 transition-colors cursor-pointer ${
               isDark ? 'hover:bg-[#181B1E]' : 'hover:bg-slate-50'
             }`}
           >
@@ -384,11 +384,11 @@ export default function SettingsPage() {
               </div>
               <div>
                 <div
-                  className={`text-xs font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}
+                  className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}
                 >
                   Kebijakan Privasi
                 </div>
-                <div className={`text-[11px] ${isDark ? 'text-neutral-400' : 'text-slate-500'}`}>
+                <div className={`text-xs ${isDark ? 'text-neutral-400' : 'text-slate-500'}`}>
                   Keamanan data transaksi & perbankan
                 </div>
               </div>
@@ -414,7 +414,7 @@ export default function SettingsPage() {
           {/* Pengembang */}
           <div
             onClick={() => setActiveModal('developer')}
-            className={`flex items-center justify-between p-3.5 transition-colors cursor-pointer ${
+            className={`flex items-center justify-between p-4 sm:p-4.5 transition-colors cursor-pointer ${
               isDark ? 'hover:bg-[#181B1E]' : 'hover:bg-slate-50'
             }`}
           >
@@ -424,11 +424,11 @@ export default function SettingsPage() {
               </div>
               <div>
                 <div
-                  className={`text-xs font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}
+                  className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}
                 >
                   Pengembang
                 </div>
-                <div className={`text-[11px] ${isDark ? 'text-neutral-400' : 'text-slate-500'}`}>
+                <div className={`text-xs ${isDark ? 'text-neutral-400' : 'text-slate-500'}`}>
                   Tim IT PT Berkah Alam Semesta
                 </div>
               </div>
@@ -439,7 +439,7 @@ export default function SettingsPage() {
           {/* Catatan Rilis */}
           <div
             onClick={() => setActiveModal('release')}
-            className={`flex items-center justify-between p-3.5 transition-colors cursor-pointer ${
+            className={`flex items-center justify-between p-4 sm:p-4.5 transition-colors cursor-pointer ${
               isDark ? 'hover:bg-[#181B1E]' : 'hover:bg-slate-50'
             }`}
           >
@@ -449,11 +449,11 @@ export default function SettingsPage() {
               </div>
               <div>
                 <div
-                  className={`text-xs font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}
+                  className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}
                 >
                   Catatan Rilis
                 </div>
-                <div className={`text-[11px] ${isDark ? 'text-neutral-400' : 'text-slate-500'}`}>
+                <div className={`text-xs ${isDark ? 'text-neutral-400' : 'text-slate-500'}`}>
                   Pembaruan sistem & fitur terbaru
                 </div>
               </div>
@@ -463,7 +463,7 @@ export default function SettingsPage() {
 
           {/* Versi Aplikasi */}
           <div
-            className={`flex items-center justify-between p-3.5 transition-colors ${
+            className={`flex items-center justify-between p-4 sm:p-4.5 transition-colors ${
               isDark ? 'hover:bg-[#181B1E]' : 'hover:bg-slate-50'
             }`}
           >
@@ -473,7 +473,7 @@ export default function SettingsPage() {
               </div>
               <div>
                 <div
-                  className={`text-xs font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}
+                  className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}
                 >
                   Versi Aplikasi
                 </div>
@@ -488,7 +488,7 @@ export default function SettingsPage() {
           {/* Atribusi Data */}
           <div
             onClick={() => setActiveModal('attribution')}
-            className={`flex items-center justify-between p-3.5 transition-colors cursor-pointer ${
+            className={`flex items-center justify-between p-4 sm:p-4.5 transition-colors cursor-pointer ${
               isDark ? 'hover:bg-[#181B1E]' : 'hover:bg-slate-50'
             }`}
           >
@@ -498,11 +498,11 @@ export default function SettingsPage() {
               </div>
               <div>
                 <div
-                  className={`text-xs font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}
+                  className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}
                 >
                   Atribusi Data
                 </div>
-                <div className={`text-[11px] ${isDark ? 'text-neutral-400' : 'text-slate-500'}`}>
+                <div className={`text-xs ${isDark ? 'text-neutral-400' : 'text-slate-500'}`}>
                   Hak cipta sistem & izin operasional
                 </div>
               </div>

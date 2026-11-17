@@ -14,6 +14,7 @@ import {
   Plus,
   CheckCircle2,
   Search,
+  X,
   Filter,
   Calendar,
   ArrowUpDown,
@@ -403,7 +404,6 @@ export default function BkkPage() {
   useEffect(() => { lsSet('co_sortOrder', sortOrder); }, [sortOrder]);
 
   // ── Search & Filter
-  const [showSearchInput, setShowSearchInput] = useState(false);
   const [searchFilter, setSearchFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
 
@@ -594,20 +594,6 @@ export default function BkkPage() {
             </span>
 
             <div className="flex items-center gap-1">
-              {/* Search */}
-              <button
-                type="button"
-                onClick={() => setShowSearchInput((p) => !p)}
-                className={`w-8 h-8 flex items-center justify-center rounded-full transition-colors cursor-pointer ${
-                  showSearchInput
-                    ? 'bg-[#F4511E]/20 text-[#F4511E]'
-                    : 'text-neutral-300 hover:text-white hover:bg-neutral-800'
-                }`}
-                title="Cari Data"
-              >
-                <Search className="w-4 h-4" />
-              </button>
-
               {/* Status filter cycle */}
               <button
                 type="button"
@@ -731,19 +717,27 @@ export default function BkkPage() {
             </div>
           </div>
 
-          {/* Search input */}
-          {showSearchInput && (
-            <div className="relative">
-              <input
-                type="text"
-                autoFocus
-                value={searchFilter}
-                onChange={(e) => setSearchFilter(e.target.value)}
-                placeholder="Ketik nomor CO, nama customer, material..."
-                className="w-full bg-[#1C1F24] border border-[#2A2E33] focus:border-[#F4511E] rounded-xl px-4 py-2.5 text-xs text-white placeholder-neutral-500 focus:outline-none transition-colors"
-              />
-            </div>
-          )}
+          {/* Search input — always visible */}
+          <div className="relative">
+            <Search className="w-4 h-4 text-neutral-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <input
+              type="text"
+              value={searchFilter}
+              onChange={(e) => setSearchFilter(e.target.value)}
+              placeholder="Ketik nomor CO, nama customer, material..."
+              className="w-full bg-[#1C1F24] border border-[#2A2E33] focus:border-[#F4511E] rounded-xl pl-10 pr-9 py-2.5 text-xs text-white placeholder-neutral-500 focus:outline-none transition-colors"
+            />
+            {searchFilter && (
+              <button
+                type="button"
+                onClick={() => setSearchFilter('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-white p-1"
+                title="Hapus pencarian"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
 
           {/* Status filter chip */}
           {statusFilter !== 'ALL' && (
@@ -774,16 +768,6 @@ export default function BkkPage() {
             onInfo={setInfoModalItem}
             displayMode={displayMode}
           />
-
-          {/* FAB */}
-          <button
-            type="button"
-            onClick={() => setActiveTab('create')}
-            className="fixed bottom-6 right-6 z-30 w-14 h-14 rounded-full bg-[#F4511E] hover:bg-[#E04418] text-white flex items-center justify-center shadow-xl shadow-[#F4511E]/40 cursor-pointer transition-transform hover:scale-105 active:scale-95"
-            title="Tambah Cash Out"
-          >
-            <Plus className="w-6 h-6 stroke-[2.5]" />
-          </button>
         </div>
       )}
 

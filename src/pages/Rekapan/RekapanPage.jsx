@@ -122,7 +122,7 @@ export default function RekapanPage() {
   };
 
   return (
-    <div className="space-y-5 max-w-5xl mx-auto pb-20 select-none">
+    <div className="w-full space-y-6 pb-20 select-none">
       {/* Top Header Bar strictly matching PT BAS Jurnal GI */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#24282C]">
         <div className="flex items-center gap-2.5">
@@ -138,7 +138,7 @@ export default function RekapanPage() {
               <span>Buat Jurnal GI (Rekapan)</span>
               <Badge size="xs" variant="primary">Dispatch Ledger</Badge>
             </h1>
-            <p className="text-[11px] text-neutral-400">
+            <p className="text-xs text-neutral-400">
               Rekap surat jalan harian per PO pelanggan, periode pengiriman, dan pemisahan PPN/Non-PPN
             </p>
           </div>

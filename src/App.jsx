@@ -13,11 +13,13 @@ import ResetPasswordPage from './pages/Auth/ResetPasswordPage';
 // Module Pages
 import DashboardPage from './pages/Dashboard/DashboardPage';
 import PreOrderPage from './pages/PreOrder/PreOrderPage';
+import ApprovalRoPage from './pages/Approval/ApprovalRoPage';
 import SuratJalanPage from './pages/SuratJalan/SuratJalanPage';
 import RekapanPage from './pages/Rekapan/RekapanPage';
 import BkkPage from './pages/Bkk/BkkPage';
 import InvoicePage from './pages/Invoice/InvoicePage';
 import LaporanPage from './pages/Laporan/LaporanPage';
+import BuatLaporanPajakPage from './pages/Laporan/BuatLaporanPajakPage';
 import MasterDataPage from './pages/MasterData/MasterDataPage';
 import SettingsPage from './pages/Settings/SettingsPage';
 import ProfilePage from './pages/Profile/ProfilePage';
@@ -104,6 +106,14 @@ export default function App() {
                 >
                   <Route index element={<DashboardPage />} />
                   <Route path="pre-orders" element={<PreOrderPage />} />
+                  <Route
+                    path="approval-ro"
+                    element={
+                      <SuperAdminOnlyRoute>
+                        <ApprovalRoPage />
+                      </SuperAdminOnlyRoute>
+                    }
+                  />
                   <Route path="surat-jalan" element={<SuratJalanPage />} />
                   <Route path="rekapan" element={<RekapanPage />} />
                   <Route path="bkk" element={<BkkPage />} />
@@ -113,6 +123,30 @@ export default function App() {
                     element={
                       <SuperAdminOnlyRoute>
                         <LaporanPage />
+                      </SuperAdminOnlyRoute>
+                    }
+                  />
+                  <Route
+                    path="laporan-pajak/:type"
+                    element={
+                      <SuperAdminOnlyRoute>
+                        <BuatLaporanPajakPage />
+                      </SuperAdminOnlyRoute>
+                    }
+                  />
+                  <Route
+                    path="buat-laporan-pajak/:type"
+                    element={
+                      <SuperAdminOnlyRoute>
+                        <BuatLaporanPajakPage />
+                      </SuperAdminOnlyRoute>
+                    }
+                  />
+                  <Route
+                    path="laporan/buat/:type"
+                    element={
+                      <SuperAdminOnlyRoute>
+                        <BuatLaporanPajakPage />
                       </SuperAdminOnlyRoute>
                     }
                   />

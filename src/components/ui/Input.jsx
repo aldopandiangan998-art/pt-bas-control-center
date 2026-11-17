@@ -68,6 +68,12 @@ const Input = forwardRef(function Input(
             className
           )}
           {...props}
+          onFocus={(e) => {
+            if (props.type === 'number' && e.target.value === '0') {
+              e.target.select();
+            }
+            props.onFocus?.(e);
+          }}
         />
 
         {rightElement && (

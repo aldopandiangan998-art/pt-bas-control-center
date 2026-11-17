@@ -25,8 +25,10 @@ import {
 } from 'lucide-react';
 import { useData } from '../../context/DataContext';
 import { useAuth } from '../../context/AuthContext';
+import { useApp } from '../../context/AppContext';
 import { formatCurrency, formatVolume } from '../../utils/formatters';
 import { Card, Badge } from '../../components/ui';
+import JenisLaporanPajakModal from '../../components/laporan/JenisLaporanPajakModal';
 import {
   ReceivedOrderIcon,
   GoodIssueIcon,
@@ -49,8 +51,12 @@ import {
 
 export default function DashboardPage() {
   const navigate = useNavigate();
+  const { isDark } = useApp();
   const { preOrders, suratJalanList, bkkList } = useData();
   const { currentUser, isSuperAdmin } = useAuth();
+
+  // State dialog modal Jenis Laporan Pajak (PPN & PPh 23)
+  const [taxModalOpen, setTaxModalOpen] = useState(false);
 
   // Role-based view: automatically follows logged-in user role (superadmin vs admin)
   const isExecView = Boolean(isSuperAdmin);
@@ -181,6 +187,31 @@ export default function DashboardPage() {
           </span>
         </div>
       </div>
+
+      {/* Executive Alert Banner for Super Admin if ROs need approval */}
+      {isSuperAdmin && pendingPreOrders.length > 0 && (
+        <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-3 sm:p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs font-mono shadow-sm">
+          <div className="flex items-center gap-2.5 text-amber-300">
+            <span className="w-8 h-8 rounded-lg bg-amber-500/20 border border-amber-500/30 flex items-center justify-center shrink-0">
+              <ShieldCheck className="w-4 h-4 text-amber-400" />
+            </span>
+            <div>
+              <span className="font-bold text-white text-sm">Otorisasi Direksi Tertunda:</span>
+              <p className="text-neutral-300 text-xs mt-0.5">
+                Ada <strong className="text-amber-400">{pendingPreOrders.length} Received Order</strong> yang menanti persetujuan harga &amp; kontrak sebelum Surat Jalan diterbitkan.
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => navigate('/approval-ro')}
+            className="px-3.5 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-black font-bold font-sans text-xs transition-colors cursor-pointer shrink-0 shadow-xs flex items-center gap-1.5"
+          >
+            <span>Buka Approval RO</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
 
       {/* 4 SIGNATURE DASHBOARD WIDGETS WITH PT BAS OPERATIONAL CONTEXT */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
@@ -542,8 +573,15 @@ export default function DashboardPage() {
                 Kelola pesanan masuk & approval PO dari customer
               </div>
               <div className="flex items-center justify-between pt-2 border-t border-[#22262A]">
-                <span className="text-[10px] font-mono text-neutral-500 uppercase tracking-wide">PO Aktif</span>
-                <span className="text-sm font-bold font-mono text-[#F4511E]">{activePreOrders.length}</span>
+                <span className="text-[10px] font-mono text-neutral-500 uppercase tracking-wide">PO Aktif / Pending</span>
+                <div className="flex items-center gap-1.5 font-mono text-xs">
+                  <span className="font-bold text-[#F4511E]">{activePreOrders.length}</span>
+                  {pendingPreOrders.length > 0 && (
+                    <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30 font-semibold">
+                      +{pendingPreOrders.length} pending
+                    </span>
+                  )}
+                </div>
               </div>
             </button>
 
@@ -780,14 +818,26 @@ export default function DashboardPage() {
               <button
                 key={item.title}
                 type="button"
-                onClick={() => navigate(item.path)}
-                className="bg-[#16181B] hover:bg-[#1D2125] border border-[#22262A] hover:border-[#F4511E]/60 rounded-xl p-2.5 aspect-square flex flex-col items-center justify-center text-center group cursor-pointer transition-all duration-150 shadow-xs"
+                onClick={() => {
+                  if (item.title === 'Laporan Pajak') {
+                    setTaxModalOpen(true);
+                  } else {
+                    navigate(item.path);
+                  }
+                }}
+                className={`border rounded-xl p-2.5 aspect-square flex flex-col items-center justify-center text-center group cursor-pointer transition-all duration-150 shadow-xs ${
+                  isDark
+                    ? 'bg-[#16181B] hover:bg-[#1D2125] border-[#22262A] hover:border-[#F4511E]/60'
+                    : 'bg-white hover:bg-orange-50/50 border-slate-200 hover:border-[#F4511E]/60 shadow-2xs'
+                }`}
                 title={item.title}
               >
                 <div className="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center mb-1 group-hover:scale-110 transition-transform shrink-0">
                   <Icon className="w-full h-full" />
                 </div>
-                <span className="text-[10px] font-medium text-neutral-300 group-hover:text-white leading-tight line-clamp-2">
+                <span className={`text-[10px] font-medium leading-tight line-clamp-2 transition-colors ${
+                  isDark ? 'text-neutral-300 group-hover:text-white' : 'text-slate-700 group-hover:text-[#F4511E]'
+                }`}>
                   {item.title}
                 </span>
               </button>
@@ -800,10 +850,14 @@ export default function DashboardPage() {
       {isSuperAdmin && (
         <div className="pt-1">
           <div className="flex items-center justify-between mb-2.5">
-            <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-neutral-300">
+            <h3 className={`text-xs font-mono font-bold uppercase tracking-wider ${
+              isDark ? 'text-neutral-300' : 'text-slate-600'
+            }`}>
               Pusat Repositori Data Master
             </h3>
-            <span className="text-[11px] text-neutral-500 font-mono">8 Entitas Tambang & Logistik</span>
+            <span className={`text-[11px] font-mono ${isDark ? 'text-neutral-500' : 'text-slate-500'}`}>
+              8 Entitas Tambang & Logistik
+            </span>
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-8 gap-2">
@@ -814,13 +868,19 @@ export default function DashboardPage() {
                   key={item.title}
                   type="button"
                   onClick={() => navigate(`/master-data?tab=${item.tab}`)}
-                  className="bg-[#16181B] hover:bg-[#1D2125] border border-[#22262A] hover:border-[#F4511E]/60 rounded-xl p-2.5 aspect-square flex flex-col items-center justify-center text-center group cursor-pointer transition-all duration-150 shadow-xs"
+                  className={`border rounded-xl p-2.5 aspect-square flex flex-col items-center justify-center text-center group cursor-pointer transition-all duration-150 shadow-xs ${
+                    isDark
+                      ? 'bg-[#16181B] hover:bg-[#1D2125] border-[#22262A] hover:border-[#F4511E]/60'
+                      : 'bg-white hover:bg-orange-50/50 border-slate-200 hover:border-[#F4511E]/60 shadow-2xs'
+                  }`}
                   title={item.title}
                 >
                   <div className="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center mb-1 group-hover:scale-110 transition-transform shrink-0">
                     <Icon className="w-full h-full" />
                   </div>
-                  <span className="text-[10px] font-medium text-neutral-300 group-hover:text-white leading-tight line-clamp-2">
+                  <span className={`text-[10px] font-medium leading-tight line-clamp-2 transition-colors ${
+                    isDark ? 'text-neutral-300 group-hover:text-white' : 'text-slate-700 group-hover:text-[#F4511E]'
+                  }`}>
                     {item.title}
                   </span>
                 </button>
@@ -829,6 +889,16 @@ export default function DashboardPage() {
           </div>
         </div>
       )}
+
+      {/* Dialog Modal: Jenis Laporan Pajak (PPN & PPh 23) matching screenshot */}
+      <JenisLaporanPajakModal
+        isOpen={taxModalOpen}
+        onClose={() => setTaxModalOpen(false)}
+        onSelect={(type) => {
+          setTaxModalOpen(false);
+          navigate(`/laporan-pajak/${type}`);
+        }}
+      />
     </div>
   );
 }

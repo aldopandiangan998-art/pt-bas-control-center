@@ -442,10 +442,16 @@ export default function SuratJalanPage() {
                   <div className="flex items-center justify-center gap-1 font-mono font-bold text-neutral-100 text-sm">
                     <input
                       type="number"
-                      value={formData.panjangCm}
-                      onChange={(e) =>
-                        setFormData({ ...formData, panjangCm: Number(e.target.value) })
-                      }
+                      placeholder="0"
+                      value={formData.panjangCm === 0 ? '' : formData.panjangCm}
+                      onFocus={(e) => {
+                        if (e.target.value === '0') e.target.select();
+                      }}
+                      onChange={(e) => {
+                        const raw = e.target.value;
+                        const clean = raw === '' ? '' : raw.replace(/^0+(?=\d)/, '');
+                        setFormData({ ...formData, panjangCm: clean });
+                      }}
                       className="w-16 bg-transparent text-center focus:outline-none border-b border-[#3E454D] focus:border-[#F4511E]"
                     />
                     <span className="text-[10px] text-neutral-500 font-normal">cm</span>
@@ -457,10 +463,16 @@ export default function SuratJalanPage() {
                   <div className="flex items-center justify-center gap-1 font-mono font-bold text-neutral-100 text-sm">
                     <input
                       type="number"
-                      value={formData.lebarCm}
-                      onChange={(e) =>
-                        setFormData({ ...formData, lebarCm: Number(e.target.value) })
-                      }
+                      placeholder="0"
+                      value={formData.lebarCm === 0 ? '' : formData.lebarCm}
+                      onFocus={(e) => {
+                        if (e.target.value === '0') e.target.select();
+                      }}
+                      onChange={(e) => {
+                        const raw = e.target.value;
+                        const clean = raw === '' ? '' : raw.replace(/^0+(?=\d)/, '');
+                        setFormData({ ...formData, lebarCm: clean });
+                      }}
                       className="w-16 bg-transparent text-center focus:outline-none border-b border-[#3E454D] focus:border-[#F4511E]"
                     />
                     <span className="text-[10px] text-neutral-500 font-normal">cm</span>
@@ -472,10 +484,16 @@ export default function SuratJalanPage() {
                   <div className="flex items-center justify-center gap-1 font-mono font-bold text-neutral-100 text-sm">
                     <input
                       type="number"
-                      value={formData.tinggiCm}
-                      onChange={(e) =>
-                        setFormData({ ...formData, tinggiCm: Number(e.target.value) })
-                      }
+                      placeholder="0"
+                      value={formData.tinggiCm === 0 ? '' : formData.tinggiCm}
+                      onFocus={(e) => {
+                        if (e.target.value === '0') e.target.select();
+                      }}
+                      onChange={(e) => {
+                        const raw = e.target.value;
+                        const clean = raw === '' ? '' : raw.replace(/^0+(?=\d)/, '');
+                        setFormData({ ...formData, tinggiCm: clean });
+                      }}
                       className="w-16 bg-transparent text-center focus:outline-none border-b border-[#3E454D] focus:border-[#F4511E]"
                     />
                     <span className="text-[10px] text-neutral-500 font-normal">cm</span>

@@ -930,16 +930,32 @@ export default function InvoicePage() {
                     <Input
                       label="Volume Total (m³)"
                       type="number"
-                      value={formData.volume}
-                      onChange={(e) => setFormData({ ...formData, volume: Number(e.target.value) })}
+                      placeholder="0"
+                      value={formData.volume === 0 ? '' : formData.volume}
+                      onFocus={(e) => {
+                        if (e.target.value === '0') e.target.select();
+                      }}
+                      onChange={(e) => {
+                        const raw = e.target.value;
+                        const clean = raw === '' ? '' : raw.replace(/^0+(?=\d)/, '');
+                        setFormData({ ...formData, volume: clean });
+                      }}
                       className="font-mono"
                     />
 
                     <Input
                       label="Subtotal Tagihan (IDR)"
                       type="number"
-                      value={formData.subtotalJasa}
-                      onChange={(e) => setFormData({ ...formData, subtotalJasa: Number(e.target.value) })}
+                      placeholder="0"
+                      value={formData.subtotalJasa === 0 ? '' : formData.subtotalJasa}
+                      onFocus={(e) => {
+                        if (e.target.value === '0') e.target.select();
+                      }}
+                      onChange={(e) => {
+                        const raw = e.target.value;
+                        const clean = raw === '' ? '' : raw.replace(/^0+(?=\d)/, '');
+                        setFormData({ ...formData, subtotalJasa: clean });
+                      }}
                       className="font-mono"
                     />
                   </div>

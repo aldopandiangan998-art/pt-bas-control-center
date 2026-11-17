@@ -350,14 +350,14 @@ export default function MasterDataPage() {
 
   const [armadaForm, setArmadaForm] = useState({
     nopol: '',
-    panjangCm: 0,
-    lebarCm: 0,
-    tinggiCm: 0,
+    panjangCm: '',
+    lebarCm: '',
+    tinggiCm: '',
     aktif: true,
     merk: 'Hino',
     vin: '',
     mesin: '',
-    tahun: 2022,
+    tahun: '',
   });
 
   const [selectedArmada, setSelectedArmada] = useState(null);
@@ -365,14 +365,14 @@ export default function MasterDataPage() {
   const [editArmadaForm, setEditArmadaForm] = useState({
     id: '',
     nopol: '',
-    panjangCm: 650,
-    lebarCm: 250,
-    tinggiCm: 200,
+    panjangCm: '',
+    lebarCm: '',
+    tinggiCm: '',
     aktif: true,
     merk: 'Hino',
     vin: '',
     mesin: '',
-    tahun: 2022,
+    tahun: '',
   });
 
   const [customerForm, setCustomerForm] = useState({
@@ -559,17 +559,23 @@ export default function MasterDataPage() {
   const handleSubmitArmada = (e) => {
     e.preventDefault();
     if (!armadaForm.nopol) return;
-    addArmada(armadaForm);
+    addArmada({
+      ...armadaForm,
+      panjangCm: Number(armadaForm.panjangCm) || 0,
+      lebarCm: Number(armadaForm.lebarCm) || 0,
+      tinggiCm: Number(armadaForm.tinggiCm) || 0,
+      tahun: Number(armadaForm.tahun) || new Date().getFullYear(),
+    });
     setArmadaForm({
       nopol: '',
-      panjangCm: 0,
-      lebarCm: 0,
-      tinggiCm: 0,
+      panjangCm: '',
+      lebarCm: '',
+      tinggiCm: '',
       aktif: true,
       merk: 'Hino',
       vin: '',
       mesin: '',
-      tahun: 2022,
+      tahun: '',
     });
     setModalOpen(false);
   };
@@ -579,9 +585,9 @@ export default function MasterDataPage() {
     setEditArmadaForm({
       id: arm.id,
       nopol: arm.nopol || '',
-      panjangCm: arm.panjangCm !== undefined ? arm.panjangCm : 0,
-      lebarCm: arm.lebarCm !== undefined ? arm.lebarCm : 0,
-      tinggiCm: arm.tinggiCm !== undefined ? arm.tinggiCm : 0,
+      panjangCm: arm.panjangCm ? arm.panjangCm : '',
+      lebarCm: arm.lebarCm ? arm.lebarCm : '',
+      tinggiCm: arm.tinggiCm ? arm.tinggiCm : '',
       aktif: arm.aktif ?? true,
       merk: arm.merk || 'Hino',
       vin: arm.vin || '',
@@ -603,7 +609,7 @@ export default function MasterDataPage() {
       merk: editArmadaForm.merk,
       vin: editArmadaForm.vin,
       mesin: editArmadaForm.mesin,
-      tahun: Number(editArmadaForm.tahun) || 2022,
+      tahun: Number(editArmadaForm.tahun) || new Date().getFullYear(),
     });
     setEditArmadaModal(false);
     setSelectedArmada(null);
@@ -4534,23 +4540,15 @@ export default function MasterDataPage() {
                 type="number"
                 required
                 rightElement="cm"
+                placeholder="0"
                 value={armadaForm.panjangCm}
                 onFocus={(e) => {
                   if (e.target.value === '0') e.target.select();
                 }}
                 onChange={(e) => {
                   const raw = e.target.value;
-                  if (raw === '') {
-                    setArmadaForm({ ...armadaForm, panjangCm: '' });
-                  } else {
-                    const clean = raw.replace(/^0+(?=\d)/, '');
-                    setArmadaForm({ ...armadaForm, panjangCm: clean === '' ? 0 : Number(clean) });
-                  }
-                }}
-                onBlur={() => {
-                  if (armadaForm.panjangCm === '' || armadaForm.panjangCm === undefined) {
-                    setArmadaForm({ ...armadaForm, panjangCm: 0 });
-                  }
+                  const clean = raw === '' ? '' : raw.replace(/^0+(?=\d)/, '');
+                  setArmadaForm({ ...armadaForm, panjangCm: clean });
                 }}
                 className="font-mono font-bold"
               />
@@ -4559,23 +4557,15 @@ export default function MasterDataPage() {
                 type="number"
                 required
                 rightElement="cm"
+                placeholder="0"
                 value={armadaForm.lebarCm}
                 onFocus={(e) => {
                   if (e.target.value === '0') e.target.select();
                 }}
                 onChange={(e) => {
                   const raw = e.target.value;
-                  if (raw === '') {
-                    setArmadaForm({ ...armadaForm, lebarCm: '' });
-                  } else {
-                    const clean = raw.replace(/^0+(?=\d)/, '');
-                    setArmadaForm({ ...armadaForm, lebarCm: clean === '' ? 0 : Number(clean) });
-                  }
-                }}
-                onBlur={() => {
-                  if (armadaForm.lebarCm === '' || armadaForm.lebarCm === undefined) {
-                    setArmadaForm({ ...armadaForm, lebarCm: 0 });
-                  }
+                  const clean = raw === '' ? '' : raw.replace(/^0+(?=\d)/, '');
+                  setArmadaForm({ ...armadaForm, lebarCm: clean });
                 }}
                 className="font-mono font-bold"
               />
@@ -4584,23 +4574,15 @@ export default function MasterDataPage() {
                 type="number"
                 required
                 rightElement="cm"
+                placeholder="0"
                 value={armadaForm.tinggiCm}
                 onFocus={(e) => {
                   if (e.target.value === '0') e.target.select();
                 }}
                 onChange={(e) => {
                   const raw = e.target.value;
-                  if (raw === '') {
-                    setArmadaForm({ ...armadaForm, tinggiCm: '' });
-                  } else {
-                    const clean = raw.replace(/^0+(?=\d)/, '');
-                    setArmadaForm({ ...armadaForm, tinggiCm: clean === '' ? 0 : Number(clean) });
-                  }
-                }}
-                onBlur={() => {
-                  if (armadaForm.tinggiCm === '' || armadaForm.tinggiCm === undefined) {
-                    setArmadaForm({ ...armadaForm, tinggiCm: 0 });
-                  }
+                  const clean = raw === '' ? '' : raw.replace(/^0+(?=\d)/, '');
+                  setArmadaForm({ ...armadaForm, tinggiCm: clean });
                 }}
                 className="font-mono font-bold"
               />
@@ -4688,8 +4670,16 @@ export default function MasterDataPage() {
               label="Tahun Pembuatan"
               icon={Calendar}
               type="number"
+              placeholder="Contoh: 2024"
               value={armadaForm.tahun}
-              onChange={(e) => setArmadaForm({ ...armadaForm, tahun: Number(e.target.value) })}
+              onFocus={(e) => {
+                if (e.target.value === '0') e.target.select();
+              }}
+              onChange={(e) => {
+                const raw = e.target.value;
+                const clean = raw === '' ? '' : raw.replace(/^0+(?=\d)/, '');
+                setArmadaForm({ ...armadaForm, tahun: clean });
+              }}
               className="font-mono"
             />
           </div>
@@ -4740,10 +4730,16 @@ export default function MasterDataPage() {
                 type="number"
                 required
                 rightElement="cm"
+                placeholder="0"
                 value={editArmadaForm.panjangCm}
-                onChange={(e) =>
-                  setEditArmadaForm({ ...editArmadaForm, panjangCm: e.target.value })
-                }
+                onFocus={(e) => {
+                  if (e.target.value === '0') e.target.select();
+                }}
+                onChange={(e) => {
+                  const raw = e.target.value;
+                  const clean = raw === '' ? '' : raw.replace(/^0+(?=\d)/, '');
+                  setEditArmadaForm({ ...editArmadaForm, panjangCm: clean });
+                }}
                 className="font-mono font-bold"
               />
               <Input
@@ -4751,10 +4747,16 @@ export default function MasterDataPage() {
                 type="number"
                 required
                 rightElement="cm"
+                placeholder="0"
                 value={editArmadaForm.lebarCm}
-                onChange={(e) =>
-                  setEditArmadaForm({ ...editArmadaForm, lebarCm: e.target.value })
-                }
+                onFocus={(e) => {
+                  if (e.target.value === '0') e.target.select();
+                }}
+                onChange={(e) => {
+                  const raw = e.target.value;
+                  const clean = raw === '' ? '' : raw.replace(/^0+(?=\d)/, '');
+                  setEditArmadaForm({ ...editArmadaForm, lebarCm: clean });
+                }}
                 className="font-mono font-bold"
               />
               <Input
@@ -4762,10 +4764,16 @@ export default function MasterDataPage() {
                 type="number"
                 required
                 rightElement="cm"
+                placeholder="0"
                 value={editArmadaForm.tinggiCm}
-                onChange={(e) =>
-                  setEditArmadaForm({ ...editArmadaForm, tinggiCm: e.target.value })
-                }
+                onFocus={(e) => {
+                  if (e.target.value === '0') e.target.select();
+                }}
+                onChange={(e) => {
+                  const raw = e.target.value;
+                  const clean = raw === '' ? '' : raw.replace(/^0+(?=\d)/, '');
+                  setEditArmadaForm({ ...editArmadaForm, tinggiCm: clean });
+                }}
                 className="font-mono font-bold"
               />
             </div>
@@ -4854,8 +4862,15 @@ export default function MasterDataPage() {
               icon={Calendar}
               type="number"
               value={editArmadaForm.tahun}
-              onChange={(e) => setEditArmadaForm({ ...editArmadaForm, tahun: e.target.value })}
-              placeholder="Tahun Pembuatan"
+              placeholder="Contoh: 2024"
+              onFocus={(e) => {
+                if (e.target.value === '0') e.target.select();
+              }}
+              onChange={(e) => {
+                const raw = e.target.value;
+                const clean = raw === '' ? '' : raw.replace(/^0+(?=\d)/, '');
+                setEditArmadaForm({ ...editArmadaForm, tahun: clean });
+              }}
               className="font-mono"
             />
           </div>

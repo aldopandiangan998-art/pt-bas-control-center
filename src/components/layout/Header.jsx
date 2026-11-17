@@ -5,10 +5,14 @@ import { APP_CONFIG } from '../../utils/constants';
 
 export default function Header() {
   const navigate = useNavigate();
-  const { toggleMobileSidebar } = useApp();
+  const { toggleMobileSidebar, isDark } = useApp();
 
   return (
-    <header className="timber-header text-white shadow-md relative z-20 select-none shrink-0">
+    <header className={`border-b shadow-xs relative z-20 select-none shrink-0 transition-colors ${
+      isDark
+        ? 'timber-header text-white border-[#22262A]'
+        : 'bg-white border-slate-200 text-slate-800 shadow-2xs'
+    }`}>
       <div className="w-full px-3 sm:px-5 py-2.5">
         <div className="flex items-center justify-between gap-3">
 
@@ -17,7 +21,9 @@ export default function Header() {
             <button
               type="button"
               onClick={toggleMobileSidebar}
-              className="lg:hidden p-1.5 rounded bg-black/25 hover:bg-black/40 text-neutral-200 transition-colors focus-visible:ring-2 focus-visible:ring-amber-400 cursor-pointer"
+              className={`lg:hidden p-1.5 rounded transition-colors focus-visible:ring-2 focus-visible:ring-[#F4511E] cursor-pointer ${
+                isDark ? 'bg-black/25 hover:bg-black/40 text-neutral-200' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+              }`}
               aria-label="Buka Menu Navigasi"
             >
               <Menu className="w-4 h-4" />
@@ -30,21 +36,20 @@ export default function Header() {
               tabIndex={0}
               onKeyDown={(e) => e.key === 'Enter' && navigate('/')}
             >
-              <span className="font-extrabold text-sm tracking-wider uppercase text-white font-mono group-hover:text-amber-200 transition-colors">
+              <span className={`font-extrabold text-sm tracking-wider uppercase font-mono transition-colors ${
+                isDark ? 'text-white group-hover:text-amber-200' : 'text-slate-900 group-hover:text-[#F4511E]'
+              }`}>
                 {APP_CONFIG.name}
               </span>
-              <span className="hidden sm:inline-flex items-center gap-1 text-[10px] uppercase font-bold tracking-widest px-2 py-0.5 rounded bg-black/35 text-amber-200/90 border border-black/30">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              <span className={`hidden sm:inline-flex items-center gap-1 text-[10px] uppercase font-bold tracking-widest px-2 py-0.5 rounded border ${
+                isDark
+                  ? 'bg-black/35 text-amber-200/90 border-black/30'
+                  : 'bg-orange-50 text-[#F4511E] border-orange-200'
+              }`}>
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                 Gresik Hub
               </span>
             </div>
-          </div>
-
-          {/* Right: Operational Status Indicator */}
-          <div className="flex items-center gap-2 bg-black/25 px-2.5 py-1 rounded border border-white/10 text-xs font-mono select-none">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_6px_rgba(52,211,153,0.7)]" />
-            <span className="text-neutral-300 hidden sm:inline">Sistem Operasional</span>
-            <span className="text-emerald-400 font-bold uppercase tracking-wider text-[11px]">Online</span>
           </div>
 
         </div>

@@ -20,6 +20,7 @@ import InvoicePage from './pages/Invoice/InvoicePage';
 import LaporanPage from './pages/Laporan/LaporanPage';
 import MasterDataPage from './pages/MasterData/MasterDataPage';
 import SettingsPage from './pages/Settings/SettingsPage';
+import ProfilePage from './pages/Profile/ProfilePage';
 import NotFoundPage from './pages/NotFound/NotFoundPage';
 
 /**
@@ -131,6 +132,8 @@ export default function App() {
                       </SuperAdminOnlyRoute>
                     }
                   />
+                  <Route path="profile" element={<ProfilePage />} />
+                  <Route path="profil" element={<ProfilePage />} />
                   <Route path="*" element={<NotFoundPage />} />
                 </Route>
               </Routes>

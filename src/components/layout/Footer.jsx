@@ -1,12 +1,19 @@
 import { APP_CONFIG } from '../../utils/constants';
+import { useApp } from '../../context/AppContext';
 
 export default function Footer() {
   const currentYear = new Date().getFullYear();
+  const { isDark } = useApp();
 
   return (
-    <footer className="mt-8 pt-3 border-t border-[#22262A] text-[11px] text-neutral-500 font-mono flex flex-col sm:flex-row items-center justify-between gap-1 select-none">
+    <footer className={`mt-8 pt-3 border-t text-[11px] font-mono flex flex-col sm:flex-row items-center justify-between gap-1 select-none transition-colors ${
+      isDark ? 'border-[#22262A] text-neutral-500' : 'border-slate-200 text-slate-500'
+    }`}>
       <div>
-        <strong className="text-neutral-400 font-sans font-medium">{APP_CONFIG.name}</strong> • {APP_CONFIG.company} ({APP_CONFIG.location})
+        <strong className={`font-sans font-medium ${isDark ? 'text-neutral-400' : 'text-slate-700'}`}>
+          {APP_CONFIG.name}
+        </strong>{' '}
+        • {APP_CONFIG.company} ({APP_CONFIG.location})
       </div>
       <div className="flex items-center gap-2">
         <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />

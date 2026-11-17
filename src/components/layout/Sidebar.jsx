@@ -15,6 +15,7 @@ import {
   ChevronLeft,
   ChevronRight,
   ChevronDown,
+  ChevronUp,
   HardHat,
   Mountain,
   Building2,
@@ -22,10 +23,10 @@ import {
   CreditCard,
   Users,
   Coins,
-  Sun,
-  Moon,
-  RotateCcw,
   LogOut,
+  User,
+  KeyRound,
+  ShieldCheck,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { useAuth } from '../../context/AuthContext';
@@ -54,22 +55,18 @@ const ICON_MAP = {
 export default function Sidebar() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { sidebarOpen, closeMobileSidebar, sidebarCollapsed, toggleCollapseSidebar, isDark, toggleTheme } = useApp();
+  const { sidebarOpen, closeMobileSidebar, sidebarCollapsed, toggleCollapseSidebar, isDark } = useApp();
   const { currentUser, isSuperAdmin, logout } = useAuth();
   const { addToast } = useToast();
+
+  // Profile dropdown state
+  const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
+  const isProfileActive = location.pathname === '/profile' || location.pathname === '/profil';
 
   const handleLogout = () => {
     logout();
     addToast('Sesi akun telah diakhiri. Silakan masuk kembali.', 'info');
     navigate('/login');
-  };
-
-  const handleToggleTheme = () => {
-    toggleTheme();
-    addToast(
-      `Tema diubah ke ${isDark ? 'Mode Terang (Light Mode)' : 'Mode Gelap (Dark Mode)'}`,
-      'info'
-    );
   };
 
   // Filter navigation items by role: Sembunyikan Pusat Laporan dan Sistem & Master untuk role Admin
@@ -124,13 +121,19 @@ export default function Sidebar() {
 
       {/* Industrial Sidebar Shell */}
       <aside
-        className={`fixed lg:static top-0 bottom-0 left-0 z-50 flex flex-col bg-[#111315] border-r border-[#22262A] transition-all duration-200 select-none shrink-0 h-full max-h-full min-h-0 overflow-hidden ${
+        className={`fixed lg:static top-0 bottom-0 left-0 z-50 flex flex-col transition-all duration-200 select-none shrink-0 h-full max-h-full min-h-0 overflow-hidden ${
+          isDark
+            ? 'bg-[#111315] border-r border-[#22262A]'
+            : 'bg-white border-r border-slate-200 shadow-xs'
+        } ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         } ${sidebarCollapsed ? 'lg:w-16' : 'w-64 lg:w-64'}`}
       >
         {/* Top Mini Section */}
         <div
-          className={`shrink-0 flex items-center border-b border-[#22262A] bg-[#0E1012] ${
+          className={`shrink-0 flex items-center border-b transition-colors ${
+            isDark ? 'border-[#22262A] bg-[#0E1012]' : 'border-slate-200 bg-slate-50'
+          } ${
             sidebarCollapsed ? 'justify-center p-2.5 h-13' : 'justify-between px-3.5 h-13'
           }`}
         >
@@ -140,7 +143,9 @@ export default function Sidebar() {
                 <span className="w-7 h-7 rounded-md bg-[#F4511E] text-white flex items-center justify-center font-bold text-xs shrink-0 font-mono shadow-xs">
                   B
                 </span>
-                <span className="text-xs font-semibold text-neutral-200 tracking-wider uppercase font-mono truncate">
+                <span className={`text-xs font-semibold tracking-wider uppercase font-mono truncate ${
+                  isDark ? 'text-neutral-200' : 'text-slate-800'
+                }`}>
                   Modul Operasi
                 </span>
               </div>
@@ -149,7 +154,9 @@ export default function Sidebar() {
                 <button
                   type="button"
                   onClick={closeMobileSidebar}
-                  className="lg:hidden p-1.5 rounded-md text-neutral-400 hover:text-white cursor-pointer"
+                  className={`lg:hidden p-1.5 rounded-md cursor-pointer transition-colors ${
+                    isDark ? 'text-neutral-400 hover:text-white' : 'text-slate-400 hover:text-slate-800'
+                  }`}
                   aria-label="Tutup Menu"
                 >
                   <X className="w-4 h-4" />
@@ -158,7 +165,11 @@ export default function Sidebar() {
                 <button
                   type="button"
                   onClick={toggleCollapseSidebar}
-                  className="hidden lg:flex p-1.5 rounded-md text-neutral-400 hover:text-white hover:bg-neutral-800 transition-colors cursor-pointer"
+                  className={`hidden lg:flex p-1.5 rounded-md transition-colors cursor-pointer ${
+                    isDark
+                      ? 'text-neutral-400 hover:text-white hover:bg-neutral-800'
+                      : 'text-slate-400 hover:text-slate-800 hover:bg-slate-200'
+                  }`}
                   title="Persempit Sidebar"
                 >
                   <ChevronLeft className="w-4 h-4" />
@@ -169,7 +180,11 @@ export default function Sidebar() {
             <button
               type="button"
               onClick={toggleCollapseSidebar}
-              className="w-8 h-8 rounded-lg bg-[#16181B] hover:bg-neutral-800 border border-[#22262A] flex items-center justify-center text-neutral-300 hover:text-white transition-colors cursor-pointer"
+              className={`w-8 h-8 rounded-lg border flex items-center justify-center transition-colors cursor-pointer ${
+                isDark
+                  ? 'bg-[#16181B] hover:bg-neutral-800 border-[#22262A] text-neutral-300 hover:text-white'
+                  : 'bg-white hover:bg-slate-100 border-slate-200 text-slate-700 hover:text-slate-900 shadow-2xs'
+              }`}
               title="Perluas Sidebar"
             >
               <ChevronRight className="w-4 h-4" />
@@ -184,15 +199,19 @@ export default function Sidebar() {
               {/* Category Header (when expanded) or divider (when collapsed) */}
               {!sidebarCollapsed ? (
                 <div className="flex items-center justify-between px-2.5 py-1">
-                  <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-neutral-400">
+                  <span className={`text-[10px] font-mono font-bold uppercase tracking-wider ${
+                    isDark ? 'text-neutral-400' : 'text-slate-500'
+                  }`}>
                     {cat.category}
                   </span>
-                  <span className="text-[9px] font-mono text-neutral-600 bg-[#16181B] px-1.5 py-0.2 rounded">
+                  <span className={`text-[9px] font-mono px-1.5 py-0.2 rounded border ${
+                    isDark ? 'text-neutral-400 bg-[#16181B] border-transparent' : 'text-slate-500 bg-slate-100 border-slate-200'
+                  }`}>
                     {cat.items.length}
                   </span>
                 </div>
               ) : (
-                catIdx > 0 && <div className="border-t border-[#22262A] my-2 mx-1" />
+                catIdx > 0 && <div className={`border-t my-2 mx-1 ${isDark ? 'border-[#22262A]' : 'border-slate-200'}`} />
               )}
 
               {/* Items in Category */}
@@ -224,13 +243,19 @@ export default function Sidebar() {
                               : 'justify-between px-3 py-2.5'
                           } ${
                             isParentActive
-                              ? 'sidebar-parent-active bg-[#1D2125] text-white font-semibold shadow-xs'
-                              : 'text-neutral-400 hover:text-neutral-100 hover:bg-[#181B1E]'
+                              ? isDark
+                                ? 'sidebar-parent-active bg-[#1D2125] text-white font-semibold shadow-xs'
+                                : 'sidebar-parent-active bg-orange-50 text-[#F4511E] font-semibold border-l-2 border-[#F4511E] shadow-2xs'
+                              : isDark
+                                ? 'text-neutral-400 hover:text-neutral-100 hover:bg-[#181B1E]'
+                                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
                             }`}
                           title={sidebarCollapsed ? `${link.label} (${link.children.length} sub-item)` : link.description}
                         >
                           <div className={`flex items-center ${sidebarCollapsed ? 'justify-center' : 'gap-3 min-w-0'}`}>
-                            <Icon className={`w-4.5 h-4.5 shrink-0 transition-colors ${isParentActive ? 'text-[#F4511E]' : 'group-hover:scale-105'}`} />
+                            <Icon className={`w-4.5 h-4.5 shrink-0 transition-colors ${
+                              isParentActive ? 'text-[#F4511E]' : isDark ? 'text-neutral-400 group-hover:text-white' : 'text-slate-500 group-hover:text-slate-900'
+                            }`} />
                             {!sidebarCollapsed && (
                               <span className="truncate leading-none tracking-tight">{link.label}</span>
                             )}
@@ -238,12 +263,18 @@ export default function Sidebar() {
 
                           {!sidebarCollapsed && (
                             <div className="flex items-center gap-1.5 shrink-0 ml-1">
-                              <span className="sidebar-count-badge text-[10px] font-mono text-neutral-400 bg-[#151D28] px-1.5 py-0.2 rounded border border-[#1E2B3C]">
+                              <span className={`sidebar-count-badge text-[10px] font-mono px-1.5 py-0.2 rounded border ${
+                                isDark
+                                  ? 'text-neutral-400 bg-[#151D28] border-[#1E2B3C]'
+                                  : 'text-slate-500 bg-slate-100 border-slate-200'
+                              }`}>
                                 {link.children.length}
                               </span>
                               <ChevronDown
-                                className={`w-4 h-4 text-neutral-400 transition-transform duration-200 ${
-                                  isSubmenuOpen ? 'rotate-180 text-white' : ''
+                                className={`w-4 h-4 transition-transform duration-200 ${
+                                  isSubmenuOpen
+                                    ? isDark ? 'rotate-180 text-white' : 'rotate-180 text-[#F4511E]'
+                                    : isDark ? 'text-neutral-400' : 'text-slate-400'
                                 }`}
                               />
                             </div>
@@ -252,7 +283,9 @@ export default function Sidebar() {
 
                         {/* Submenu Children List */}
                         {!sidebarCollapsed && hasChildren && isSubmenuOpen && (
-                          <div className="sidebar-child-container ml-3.5 pl-2.5 border-l border-[#1E2B3C] space-y-0.5 py-1">
+                          <div className={`sidebar-child-container ml-3.5 pl-2.5 border-l space-y-0.5 py-1 ${
+                            isDark ? 'border-[#1E2B3C]' : 'border-slate-200'
+                          }`}>
                             {link.children.map((child) => {
                               const ChildIcon = ICON_MAP[child.icon] || Database;
                               const isChildActive = isParentActive && currentTab === child.tab;
@@ -267,8 +300,12 @@ export default function Sidebar() {
                                   }}
                                   className={`sidebar-child-item w-full flex items-center justify-between px-2.5 py-2 rounded-md text-xs font-medium transition-all text-left group cursor-pointer ${
                                     isChildActive
-                                      ? 'active bg-[#F4511E]/20 text-[#FF7043] font-semibold border-l-2 border-[#F4511E]'
-                                      : 'text-neutral-400 hover:text-neutral-200 hover:bg-[#151D28]'
+                                      ? isDark
+                                        ? 'active bg-[#F4511E]/20 text-[#FF7043] font-semibold border-l-2 border-[#F4511E]'
+                                        : 'active bg-orange-50 text-[#F4511E] font-semibold border-l-2 border-[#F4511E]'
+                                      : isDark
+                                        ? 'text-neutral-400 hover:text-neutral-200 hover:bg-[#151D28]'
+                                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
                                   }`}
                                 >
                                   <div className="flex items-center gap-2 truncate">
@@ -276,7 +313,9 @@ export default function Sidebar() {
                                       className={`w-4 h-4 shrink-0 ${
                                         isChildActive
                                           ? 'text-[#FF7043]'
-                                          : 'text-neutral-500 group-hover:text-neutral-300'
+                                          : isDark
+                                            ? 'text-neutral-500 group-hover:text-neutral-300'
+                                            : 'text-slate-400 group-hover:text-slate-700'
                                       }`}
                                     />
                                     <span className="truncate">{child.label}</span>
@@ -306,8 +345,12 @@ export default function Sidebar() {
                             : 'gap-3 px-3 py-2.5'
                         } ${
                           isActive
-                            ? 'bg-[#151D28] text-[#FF7043] font-semibold border-l-2 border-[#F4511E] shadow-xs'
-                            : 'text-neutral-400 hover:text-neutral-100 hover:bg-[#151D28]'
+                            ? isDark
+                              ? 'bg-[#151D28] text-[#FF7043] font-semibold border-l-2 border-[#F4511E] shadow-xs'
+                              : 'bg-orange-50 text-[#F4511E] font-semibold border-l-2 border-[#F4511E] shadow-2xs'
+                            : isDark
+                              ? 'text-neutral-400 hover:text-neutral-100 hover:bg-[#151D28]'
+                              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
                         }`
                       }
                       title={sidebarCollapsed ? `${cat.category}: ${link.label}` : link.description}
@@ -325,150 +368,327 @@ export default function Sidebar() {
         </nav>
 
         {/* Bottom Consolidated User Profile & Control Toggles */}
-        <div className="shrink-0 border-t border-[#22262A] bg-[#0E1012]">
-          {!sidebarCollapsed ? (
-            <div className="p-3 space-y-2.5">
-              {/* User Profile Block */}
-              <div
-                onClick={() => isSuperAdmin && navigate('/pengaturan')}
-                className={`flex items-center justify-between gap-2 ${isSuperAdmin ? 'cursor-pointer group' : 'cursor-default'
-                  }`}
-                title={isSuperAdmin ? 'Buka Pengaturan Akun' : `Profil: ${currentUser?.name || 'Admin'}`}
+        <div className={`shrink-0 border-t relative transition-colors ${
+          isDark ? 'border-[#22262A] bg-[#0E1012]' : 'border-slate-200 bg-slate-50'
+        }`}>
+          {/* Backdrop for closing dropdown */}
+          {profileDropdownOpen && (
+            <div
+              className={`fixed inset-0 z-40 transition-colors ${
+                isDark ? 'bg-black/40 backdrop-blur-xs' : 'bg-slate-900/20 backdrop-blur-xs'
+              }`}
+              onClick={() => setProfileDropdownOpen(false)}
+            />
+          )}
+
+          {/* Profile Dropdown Popup (Pojok Kiri Bawah) */}
+          <AnimatePresence>
+            {profileDropdownOpen && (
+              <motion.div
+                initial={{ opacity: 0, y: 8, scale: 0.96 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 8, scale: 0.96 }}
+                transition={{ duration: 0.15 }}
+                className={`absolute bottom-full mb-2 z-50 rounded-2xl border shadow-2xl overflow-hidden font-sans select-none ${
+                  sidebarCollapsed ? 'left-2 w-72' : 'left-2 right-2'
+                } ${
+                  isDark
+                    ? 'bg-[#12161D] border-[#252E3B] text-neutral-200 shadow-black/80'
+                    : 'bg-white border-slate-200 text-slate-800 shadow-xl'
+                }`}
               >
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <div className="w-7 h-7 rounded-full border border-[#333940] bg-[#16181B] flex items-center justify-center text-[10px] font-bold text-neutral-200 shrink-0">
-                    {currentUser?.name ? currentUser.name.split(' ').map((n) => n[0]).join('').slice(0, 2) : 'U'}
+                {/* Dropdown Header: User identity & info (Click to open full profile page) */}
+                <div
+                  onClick={() => {
+                    setProfileDropdownOpen(false);
+                    navigate('/profile');
+                    closeMobileSidebar();
+                  }}
+                  className={`p-3.5 border-b cursor-pointer transition-colors group ${
+                    isDark
+                      ? 'bg-gradient-to-r from-[#171E28] to-[#11161E] border-[#222A35] hover:from-[#1E2836] hover:to-[#141A24]'
+                      : 'bg-gradient-to-r from-orange-50/80 to-slate-50 border-slate-200 hover:from-orange-100/90 hover:to-slate-100'
+                  }`}
+                  title="Klik untuk membuka Halaman Profil Akun"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-[#F4511E] to-[#FF7043] text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-md">
+                      {currentUser?.name
+                        ? currentUser.name
+                            .split(' ')
+                            .map((n) => n[0])
+                            .join('')
+                            .slice(0, 2)
+                        : 'U'}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="font-bold text-xs truncate flex items-center justify-between">
+                        <span className={`transition-colors ${isDark ? 'text-white group-hover:text-amber-300' : 'text-slate-900 group-hover:text-[#F4511E]'}`}>
+                          {currentUser?.name || 'Pengguna'}
+                        </span>
+                        <span
+                          className={`text-[8px] font-bold font-mono px-1 py-0.2 rounded uppercase ${
+                            isSuperAdmin
+                              ? isDark
+                                ? 'bg-[#F4511E]/20 text-[#FF7043] border border-[#F4511E]/30'
+                                : 'bg-orange-100 text-[#F4511E] border border-orange-200'
+                              : isDark
+                                ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                                : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                          }`}
+                        >
+                          {isSuperAdmin ? 'Super Admin' : 'Admin'}
+                        </span>
+                      </div>
+                      <div
+                        className={`text-[10px] font-mono truncate ${
+                          isDark ? 'text-neutral-400' : 'text-slate-500'
+                        }`}
+                      >
+                        {currentUser?.email || '-'}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Profile Key Info (Tanggal Lahir, Gender, No HP) */}
+                  <div
+                    className={`mt-2.5 pt-2 border-t grid grid-cols-2 gap-2 text-[10px] font-mono ${
+                      isDark ? 'border-[#222A35] text-neutral-300' : 'border-slate-200 text-slate-700'
+                    }`}
+                  >
+                    <div>
+                      <span className={`block text-[9px] uppercase ${isDark ? 'text-neutral-500' : 'text-slate-400'}`}>Tanggal Lahir</span>
+                      <span className="font-semibold">{currentUser?.birth_date || '-'}</span>
+                    </div>
+                    <div>
+                      <span className={`block text-[9px] uppercase ${isDark ? 'text-neutral-500' : 'text-slate-400'}`}>Gender</span>
+                      <span className="font-semibold">{currentUser?.gender || 'Laki-laki'}</span>
+                    </div>
+                    <div className="col-span-2">
+                      <span className={`block text-[9px] uppercase ${isDark ? 'text-neutral-500' : 'text-slate-400'}`}>No. Telepon / WA</span>
+                      <span className="font-semibold">{currentUser?.phone || '-'}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Dropdown Action Menu */}
+                <div className="p-1.5 space-y-0.5 text-xs">
+                  {/* Buka Halaman Profil Akun */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setProfileDropdownOpen(false);
+                      navigate('/profile');
+                      closeMobileSidebar();
+                    }}
+                    className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl transition-colors cursor-pointer text-left ${
+                      isDark
+                        ? 'hover:bg-[#1A2330] text-neutral-200 hover:text-white'
+                        : 'hover:bg-slate-100 text-slate-700 hover:text-slate-900'
+                    }`}
+                  >
+                    <User className="w-4 h-4 text-[#F4511E] shrink-0" />
+                    <div>
+                      <div className="font-bold text-[11px]">Buka Halaman Profil Akun</div>
+                      <div className={`text-[10px] ${isDark ? 'text-neutral-400' : 'text-slate-500'}`}>
+                        Nama lengkap, tgl lahir, gender, kontak
+                      </div>
+                    </div>
+                  </button>
+
+                  {/* Ubah Kata Sandi */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setProfileDropdownOpen(false);
+                      navigate('/profile?tab=password');
+                      closeMobileSidebar();
+                    }}
+                    className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl transition-colors cursor-pointer text-left ${
+                      isDark
+                        ? 'hover:bg-[#1A2330] text-neutral-200 hover:text-white'
+                        : 'hover:bg-slate-100 text-slate-700 hover:text-slate-900'
+                    }`}
+                  >
+                    <KeyRound className="w-4 h-4 text-amber-500 shrink-0" />
+                    <div>
+                      <div className="font-bold text-[11px]">Ubah Sandi & Keamanan</div>
+                      <div className={`text-[10px] ${isDark ? 'text-neutral-400' : 'text-slate-500'}`}>
+                        Kata sandi baru & verifikasi Opsi B
+                      </div>
+                    </div>
+                  </button>
+
+                  <div className={`border-t my-1 ${isDark ? 'border-[#222A35]' : 'border-slate-200'}`} />
+
+                  {/* Logout Action */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setProfileDropdownOpen(false);
+                      handleLogout();
+                    }}
+                    className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl transition-colors cursor-pointer text-left ${
+                      isDark
+                        ? 'text-rose-300 hover:bg-rose-950/40 hover:text-rose-200'
+                        : 'text-rose-600 hover:bg-rose-50 hover:text-rose-700'
+                    }`}
+                  >
+                    <LogOut className="w-4 h-4 shrink-0" />
+                    <span className="font-bold text-[11px]">Keluar dari Akun (Logout)</span>
+                  </button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {!sidebarCollapsed ? (
+            <div className="p-3 space-y-2">
+              {/* User Profile Block Trigger */}
+              <div
+                className={`flex items-center justify-between gap-2 p-2 rounded-xl border transition-all select-none ${
+                  isProfileActive
+                    ? isDark
+                      ? 'bg-[#1C2430] border-[#F4511E] shadow-sm'
+                      : 'bg-orange-50 border-[#F4511E] shadow-xs'
+                    : profileDropdownOpen
+                    ? isDark
+                      ? 'bg-[#181D24] border-[#F4511E]/50 shadow-md'
+                      : 'bg-orange-50/70 border-[#F4511E]/40 shadow-xs'
+                    : isDark
+                      ? 'bg-[#14171B] border-[#22262A] hover:border-[#38404A]'
+                      : 'bg-white border-slate-200 hover:border-slate-300 shadow-2xs'
+                }`}
+              >
+                {/* User info area - clicks directly to /profile page */}
+                <div
+                  onClick={() => {
+                    setProfileDropdownOpen(false);
+                    navigate('/profile');
+                    closeMobileSidebar();
+                  }}
+                  className="flex items-center gap-2.5 min-w-0 cursor-pointer group flex-1"
+                  title="Klik untuk membuka Halaman Profil Akun"
+                >
+                  <div className={`w-7 h-7 rounded-full border flex items-center justify-center text-[10px] font-bold shrink-0 shadow-xs transition-colors ${
+                    isProfileActive
+                      ? 'border-[#F4511E] bg-[#F4511E] text-white'
+                      : isDark
+                      ? 'border-[#333940] bg-[#16181B] text-neutral-200'
+                      : 'border-slate-300 bg-slate-100 text-slate-700'
+                  }`}>
+                    {currentUser?.name
+                      ? currentUser.name
+                          .split(' ')
+                          .map((n) => n[0])
+                          .join('')
+                          .slice(0, 2)
+                      : 'U'}
                   </div>
                   <div className="min-w-0">
-                    <div className="text-xs font-semibold text-white truncate leading-tight group-hover:text-amber-300 transition-colors">
+                    <div className={`text-xs font-semibold truncate leading-tight transition-colors ${
+                      isProfileActive
+                        ? 'text-[#F4511E] font-bold'
+                        : isDark
+                        ? 'text-white group-hover:text-amber-300'
+                        : 'text-slate-900 group-hover:text-[#F4511E]'
+                    }`}>
                       {currentUser?.name || 'Pengguna'}
                     </div>
-                    <div className="text-[10px] text-neutral-400 font-mono truncate leading-none mt-0.5">
+                    <div className={`text-[10px] font-mono truncate leading-none mt-0.5 ${
+                      isDark ? 'text-neutral-400' : 'text-slate-500'
+                    }`}>
                       {currentUser?.email || '-'}
                     </div>
                   </div>
                 </div>
-                <span
-                  className={`text-[9px] font-bold font-mono px-1.5 py-0.5 rounded uppercase tracking-wider shrink-0 ${isSuperAdmin
-                    ? 'bg-[#F4511E]/20 text-[#FF7043] border border-[#F4511E]/40'
-                    : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
-                    }`}
+
+                {/* Chevron trigger for dropdown menu */}
+                <div
+                  onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
+                  className="flex items-center gap-1.5 shrink-0 cursor-pointer p-0.5 rounded hover:opacity-80"
+                  title={profileDropdownOpen ? 'Tutup Menu' : 'Buka Menu Opsi Akun'}
                 >
-                  {isSuperAdmin ? 'Super Admin' : 'Admin'}
-                </span>
-              </div>
-
-              {/* Consolidated Functional Tool Toggles */}
-              <div className="flex items-center justify-between pt-2 border-t border-[#22262A]">
-                <div className="flex items-center gap-1">
-                  {/* Theme Mode Toggle */}
-                  <button
-                    type="button"
-                    onClick={handleToggleTheme}
-                    className="p-1.5 rounded bg-[#16181B] hover:bg-[#1D2125] text-neutral-300 hover:text-white transition-colors cursor-pointer border border-[#22262A]"
-                    title={isDark ? 'Beralih ke Mode Terang (Light Mode)' : 'Beralih ke Mode Gelap (Dark Mode)'}
-                    aria-label="Ubah Tema Tampilan"
+                  <span
+                    className={`text-[8px] font-bold font-mono px-1.5 py-0.5 rounded uppercase tracking-wider ${
+                      isSuperAdmin
+                        ? isDark
+                          ? 'bg-[#F4511E]/20 text-[#FF7043] border border-[#F4511E]/40'
+                          : 'bg-orange-100 text-[#F4511E] border border-orange-200'
+                        : isDark
+                          ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
+                          : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                    }`}
                   >
-                    {isDark ? (
-                      <Sun className="w-3.5 h-3.5 text-amber-300" />
-                    ) : (
-                      <Moon className="w-3.5 h-3.5 text-amber-500" />
-                    )}
-                  </button>
-
-                  {/* Riwayat Transaksi (Jurnal GI) */}
-                  <button
-                    type="button"
-                    onClick={() => navigate('/rekapan')}
-                    className="p-1.5 rounded bg-[#16181B] hover:bg-[#1D2125] text-neutral-300 hover:text-white transition-colors cursor-pointer border border-[#22262A]"
-                    title="Riwayat Transaksi (Jurnal GI)"
-                    aria-label="Riwayat Transaksi"
-                  >
-                    <RotateCcw className="w-3.5 h-3.5" />
-                  </button>
-
-                  {/* Pengaturan Sistem (Super Admin Only) */}
-                  {isSuperAdmin && (
-                    <button
-                      type="button"
-                      onClick={() => navigate('/pengaturan')}
-                      className="p-1.5 rounded bg-[#16181B] hover:bg-[#1D2125] text-neutral-300 hover:text-white transition-colors cursor-pointer border border-[#22262A]"
-                      title="Konfigurasi Sistem & Pengaturan"
-                      aria-label="Pengaturan"
-                    >
-                      <Settings className="w-3.5 h-3.5" />
-                    </button>
+                    {isSuperAdmin ? 'Super Admin' : 'Admin'}
+                  </span>
+                  {profileDropdownOpen ? (
+                    <ChevronDown className="w-3.5 h-3.5 text-[#F4511E]" />
+                  ) : (
+                    <ChevronUp className={`w-3.5 h-3.5 transition-colors ${
+                      isDark ? 'text-neutral-400 group-hover:text-white' : 'text-slate-400 group-hover:text-slate-700'
+                    }`} />
                   )}
                 </div>
-
-                {/* Logout Button */}
-                <button
-                  type="button"
-                  onClick={handleLogout}
-                  className="p-1.5 rounded bg-[#16181B] hover:bg-rose-900/60 text-rose-300 hover:text-white transition-colors cursor-pointer border border-[#22262A]"
-                  title="Keluar dari Akun (Logout)"
-                  aria-label="Keluar"
-                >
-                  <LogOut className="w-3.5 h-3.5" />
-                </button>
               </div>
+
+              {/* Quick Logout Button */}
+              <button
+                type="button"
+                onClick={handleLogout}
+                className={`w-full flex items-center justify-center gap-2 py-1.5 px-3 rounded-lg transition-colors cursor-pointer border text-xs font-mono font-medium ${
+                  isDark
+                    ? 'bg-[#14171B] hover:bg-rose-950/60 text-rose-300 hover:text-white border-[#22262A]'
+                    : 'bg-white hover:bg-rose-50 text-rose-600 hover:text-rose-700 border-slate-200 shadow-2xs'
+                }`}
+                title="Keluar dari Akun (Logout)"
+                aria-label="Keluar"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                <span>Keluar Akun</span>
+              </button>
             </div>
           ) : (
-            /* Collapsed / Closed Sidebar State (w-16 = 64px, neat vertical alignment) */
+            /* Collapsed / Closed Sidebar State */
             <div className="py-2.5 px-1 flex flex-col items-center gap-1.5">
-              {/* Avatar with Role Tooltip */}
               <div
-                onClick={() => isSuperAdmin && navigate('/pengaturan')}
-                className={`w-8 h-8 rounded-full border border-[#333940] bg-[#16181B] flex items-center justify-center text-[11px] font-bold text-neutral-200 shrink-0 shadow-xs ${isSuperAdmin ? 'cursor-pointer hover:border-amber-400/60' : 'cursor-default'
-                  }`}
-                title={`${currentUser?.name || 'Pengguna'} (${isSuperAdmin ? 'Super Admin' : 'Admin'})`}
+                onClick={() => {
+                  setProfileDropdownOpen(false);
+                  navigate('/profile');
+                  closeMobileSidebar();
+                }}
+                className={`w-8 h-8 rounded-full border flex items-center justify-center text-[11px] font-bold shrink-0 shadow-xs cursor-pointer transition-all ${
+                  isProfileActive
+                    ? 'border-[#F4511E] bg-[#F4511E] text-white scale-105'
+                    : isDark
+                    ? profileDropdownOpen
+                      ? 'border-[#F4511E] bg-[#16181B] text-neutral-200 scale-105'
+                      : 'border-[#333940] bg-[#16181B] text-neutral-200 hover:border-amber-400/60'
+                    : profileDropdownOpen
+                      ? 'border-[#F4511E] bg-slate-100 text-slate-800 scale-105'
+                      : 'border-slate-300 bg-white text-slate-700 hover:border-orange-400'
+                }`}
+                title={`Profil Akun: ${currentUser?.name || 'Pengguna'} (Klik untuk buka halaman profil)`}
               >
-                {currentUser?.name ? currentUser.name.split(' ').map((n) => n[0]).join('').slice(0, 2) : 'U'}
+                {currentUser?.name
+                  ? currentUser.name
+                      .split(' ')
+                      .map((n) => n[0])
+                      .join('')
+                      .slice(0, 2)
+                  : 'U'}
               </div>
 
-              <div className="w-6 border-t border-[#22262A] my-0.5" />
-
-              {/* Vertical Stack of Toggles */}
-              <button
-                type="button"
-                onClick={handleToggleTheme}
-                className="w-8 h-8 rounded-md flex items-center justify-center hover:bg-neutral-800 text-neutral-300 hover:text-white transition-colors cursor-pointer"
-                title={isDark ? 'Mode Terang' : 'Mode Gelap'}
-                aria-label="Ubah Tema"
-              >
-                {isDark ? (
-                  <Sun className="w-3.5 h-3.5 text-amber-300" />
-                ) : (
-                  <Moon className="w-3.5 h-3.5 text-amber-500" />
-                )}
-              </button>
-
-              <button
-                type="button"
-                onClick={() => navigate('/rekapan')}
-                className="w-8 h-8 rounded-md flex items-center justify-center hover:bg-neutral-800 text-neutral-300 hover:text-white transition-colors cursor-pointer"
-                title="Riwayat Transaksi (Jurnal GI)"
-                aria-label="Riwayat Transaksi"
-              >
-                <RotateCcw className="w-3.5 h-3.5" />
-              </button>
-
-              {isSuperAdmin && (
-                <button
-                  type="button"
-                  onClick={() => navigate('/pengaturan')}
-                  className="w-8 h-8 rounded-md flex items-center justify-center hover:bg-neutral-800 text-neutral-300 hover:text-white transition-colors cursor-pointer"
-                  title="Pengaturan Sistem"
-                  aria-label="Pengaturan"
-                >
-                  <Settings className="w-3.5 h-3.5" />
-                </button>
-              )}
+              <div className={`w-6 border-t my-0.5 ${isDark ? 'border-[#22262A]' : 'border-slate-200'}`} />
 
               <button
                 type="button"
                 onClick={handleLogout}
-                className="w-8 h-8 rounded-md flex items-center justify-center hover:bg-rose-950/60 text-rose-400 hover:text-rose-200 transition-colors cursor-pointer"
+                className={`w-8 h-8 rounded-md flex items-center justify-center transition-colors cursor-pointer ${
+                  isDark
+                    ? 'hover:bg-rose-950/60 text-rose-400 hover:text-rose-200'
+                    : 'hover:bg-rose-50 text-rose-600 hover:text-rose-700'
+                }`}
                 title="Keluar (Logout)"
                 aria-label="Keluar"
               >

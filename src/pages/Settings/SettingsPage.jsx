@@ -229,37 +229,43 @@ export default function SettingsPage() {
                     'info'
                   );
                 }}
-                className={`group relative inline-flex items-center h-6.5 w-13 shrink-0 cursor-pointer rounded-full p-0.5 border transition-all duration-300 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-[#F4511E] shadow-inner select-none ${
+                className={`relative inline-flex items-center h-7 w-14 shrink-0 cursor-pointer rounded-full p-0.5 border transition-all duration-300 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-[#F4511E] select-none ${
                   !isDark
-                    ? 'bg-gradient-to-r from-amber-400 to-orange-400 border-amber-300 shadow-amber-500/20'
-                    : 'bg-[#181B1E] border-[#2B3037] shadow-black/40'
+                    ? 'bg-gradient-to-r from-amber-400 to-orange-400 border-amber-300 shadow-md shadow-amber-500/20'
+                    : 'bg-[#14171A] border-[#2B3037] shadow-inner'
                 }`}
                 title={isDark ? 'Beralih ke Mode Terang' : 'Beralih ke Mode Gelap'}
               >
                 <span className="sr-only">Toggle Mode Terang / Gelap</span>
 
+                {/* Track background icons (visible only on the opposite/uncovered side) */}
                 <div className="absolute inset-0 flex items-center justify-between px-1.5 pointer-events-none">
-                  <Moon
-                    className={`w-3 h-3 transition-opacity duration-200 ${
-                      isDark ? 'text-amber-300/80 opacity-100' : 'opacity-0'
-                    }`}
-                  />
-                  <Sun
-                    className={`w-3 h-3 transition-opacity duration-200 ${
-                      !isDark ? 'text-white opacity-100' : 'opacity-0'
-                    }`}
-                  />
+                  <div className="w-6 flex items-center justify-center">
+                    <Moon
+                      className={`w-3.5 h-3.5 transition-opacity duration-200 ${
+                        !isDark ? 'text-white/80 opacity-100' : 'opacity-0'
+                      }`}
+                    />
+                  </div>
+                  <div className="w-6 flex items-center justify-center">
+                    <Sun
+                      className={`w-3.5 h-3.5 transition-opacity duration-200 ${
+                        isDark ? 'text-neutral-500 opacity-100' : 'opacity-0'
+                      }`}
+                    />
+                  </div>
                 </div>
 
+                {/* Moving Thumb with neatly centered icon */}
                 <span
-                  className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-md transition-transform duration-300 ease-in-out z-10 flex items-center justify-center ${
-                    !isDark ? 'translate-x-6.5' : 'translate-x-0'
+                  className={`relative z-10 flex items-center justify-center h-6 w-6 rounded-full bg-white shadow-md transform transition-transform duration-300 ease-in-out ${
+                    !isDark ? 'translate-x-7' : 'translate-x-0'
                   }`}
                 >
                   {!isDark ? (
-                    <Sun className="w-3 h-3 text-amber-600" />
+                    <Sun className="w-3.5 h-3.5 text-amber-500 shrink-0" />
                   ) : (
-                    <Moon className="w-3 h-3 text-slate-800" />
+                    <Moon className="w-3.5 h-3.5 text-slate-800 shrink-0" />
                   )}
                 </span>
               </button>

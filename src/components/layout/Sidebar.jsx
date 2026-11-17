@@ -33,12 +33,14 @@ import {
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { useAuth } from '../../context/AuthContext';
+import { useData } from '../../context/DataContext';
 import { useToast } from '../../context/ToastContext';
 import { NAV_CATEGORIES } from '../../utils/constants';
 
 const ICON_MAP = {
   LayoutDashboard,
   ClipboardList,
+  ShieldCheck,
   Truck,
   BookOpen,
   Banknote,
@@ -63,7 +65,13 @@ export default function Sidebar() {
   const navigate = useNavigate();
   const { sidebarOpen, closeMobileSidebar, sidebarCollapsed, toggleCollapseSidebar, isDark } = useApp();
   const { currentUser, isSuperAdmin, logout } = useAuth();
+  const { preOrders } = useData();
   const { addToast } = useToast();
+
+  // Pending RO counter for notification badge
+  const pendingRoCount = useMemo(() => {
+    return preOrders ? preOrders.filter((po) => po.status === 'MENUNGGU_APPROVAL').length : 0;
+  }, [preOrders]);
 
   // Profile dropdown state
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
@@ -75,13 +83,19 @@ export default function Sidebar() {
     navigate('/login');
   };
 
-  // Filter navigation items by role: Sembunyikan Pusat Laporan dan Sistem & Master untuk role Admin
+  // Filter navigation items by role: Sembunyikan Pusat Laporan, Sistem & Master, dan modul SuperAdmin untuk role Admin
   const filteredNavCategories = useMemo(() => {
     return NAV_CATEGORIES.map((cat) => ({
       ...cat,
       items: cat.items.filter((item) => {
         if (!isSuperAdmin) {
-          if (item.path === '/laporan' || item.path === '/master-data' || item.path === '/pengaturan') {
+          if (
+            item.path === '/laporan' ||
+            item.path === '/master-data' ||
+            item.path === '/pengaturan' ||
+            item.path === '/approval-ro' ||
+            item.superAdminOnly
+          ) {
             return false;
           }
         }
@@ -133,7 +147,7 @@ export default function Sidebar() {
       <aside
         className={`fixed lg:static top-0 bottom-0 left-0 z-50 flex flex-col transition-all duration-200 select-none shrink-0 h-full max-h-full min-h-0 overflow-hidden ${
           isDark
-            ? 'bg-[#111315] border-r border-[#22262A]'
+            ? 'bg-[#0D0F11] border-r border-[#22262A]'
             : 'bg-white border-r border-slate-200 shadow-xs'
         } ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
@@ -203,7 +217,7 @@ export default function Sidebar() {
         </div>
 
         {/* Categorized Navigation Item List */}
-        <nav className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-2 py-3 space-y-3.5 custom-scrollbar" aria-label="Menu Utama">
+        <nav className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-2 pt-3 pb-8 space-y-3.5 custom-scrollbar" aria-label="Menu Utama">
           {filteredNavCategories.map((cat, catIdx) => (
             <div key={cat.category} className="space-y-1">
               {/* Category Header (when expanded) or divider (when collapsed) */}
@@ -259,12 +273,12 @@ export default function Sidebar() {
                             }`}
                           title={sidebarCollapsed ? `${link.label} (${link.children.length} sub-item)` : link.description}
                         >
-                          <div className={`flex items-center ${sidebarCollapsed ? 'justify-center' : 'gap-3 min-w-0'}`}>
+                          <div className={`flex items-center ${sidebarCollapsed ? 'justify-center' : 'gap-3 min-w-0 flex-1'}`}>
                             <Icon className={`w-4.5 h-4.5 shrink-0 transition-colors ${
                               isParentActive ? 'text-[#F4511E]' : isDark ? 'text-neutral-400 group-hover:text-white' : 'text-slate-500 group-hover:text-slate-900'
                             }`} />
                             {!sidebarCollapsed && (
-                              <span className="truncate leading-none tracking-tight">{link.label}</span>
+                              <span className="whitespace-nowrap leading-normal">{link.label}</span>
                             )}
                           </div>
 
@@ -284,7 +298,7 @@ export default function Sidebar() {
                         {/* Submenu Children List */}
                         {!sidebarCollapsed && hasChildren && isSubmenuOpen && (
                           <div className={`sidebar-child-container ml-3.5 pl-2.5 border-l space-y-0.5 py-1 ${
-                            isDark ? 'border-[#1E2B3C]' : 'border-slate-200'
+                            isDark ? 'border-[#22262A]' : 'border-slate-200'
                           }`}>
                             {link.children.map((child) => {
                               const ChildIcon = ICON_MAP[child.icon] || Database;
@@ -306,7 +320,7 @@ export default function Sidebar() {
                                         ? 'active bg-[#F4511E]/20 text-[#FF7043] font-semibold border-l-2 border-[#F4511E]'
                                         : 'active bg-orange-50 text-[#F4511E] font-semibold border-l-2 border-[#F4511E]'
                                       : isDark
-                                        ? 'text-neutral-400 hover:text-neutral-200 hover:bg-[#151D28]'
+                                        ? 'text-neutral-400 hover:text-neutral-200 hover:bg-[#1D2125]'
                                         : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
                                   }`}
                                 >
@@ -335,6 +349,9 @@ export default function Sidebar() {
                   }
 
                   // 2. Normal Single NavLink
+                  const isApprovalLink = link.path === '/approval-ro';
+                  const showBadge = isApprovalLink && pendingRoCount > 0;
+
                   return (
                     <NavLink
                       key={link.path}
@@ -343,23 +360,35 @@ export default function Sidebar() {
                       className={({ isActive }) =>
                         `flex items-center rounded-md text-[13px] font-medium transition-all duration-150 group cursor-pointer ${
                           sidebarCollapsed
-                            ? 'justify-center w-10 h-10 mx-auto'
+                            ? 'justify-center w-10 h-10 mx-auto relative'
                             : 'gap-3 px-3 py-2.5'
                         } ${
                           isActive
                             ? isDark
-                              ? 'bg-[#151D28] text-[#FF7043] font-semibold border-l-2 border-[#F4511E] shadow-xs'
+                              ? 'bg-[#F4511E]/15 text-[#FF7043] font-semibold border-l-2 border-[#F4511E] shadow-xs'
                               : 'bg-orange-50 text-[#F4511E] font-semibold border-l-2 border-[#F4511E] shadow-2xs'
                             : isDark
-                              ? 'text-neutral-400 hover:text-neutral-100 hover:bg-[#151D28]'
+                              ? 'text-neutral-400 hover:text-neutral-100 hover:bg-[#181B1E]'
                               : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
                         }`
                       }
-                      title={sidebarCollapsed ? `${cat.category}: ${link.label}` : link.description}
+                      title={sidebarCollapsed ? `${cat.category}: ${link.label}${showBadge ? ` (${pendingRoCount} pending)` : ''}` : link.description}
                     >
-                      <Icon className="w-4 h-4 shrink-0 transition-colors group-hover:scale-105" />
+                      <div className="relative shrink-0 flex items-center justify-center">
+                        <Icon className="w-4 h-4 shrink-0 transition-colors group-hover:scale-105" />
+                        {sidebarCollapsed && showBadge && (
+                          <span className="absolute -top-1.5 -right-1.5 w-2.5 h-2.5 rounded-full bg-amber-500 ring-2 ring-[#111315] animate-pulse" />
+                        )}
+                      </div>
+
                       {!sidebarCollapsed && (
-                        <span className="truncate leading-none tracking-tight">{link.label}</span>
+                        <span className="whitespace-nowrap leading-normal flex-1">{link.label}</span>
+                      )}
+
+                      {!sidebarCollapsed && showBadge && (
+                        <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-full bg-amber-500 text-black shadow-xs shrink-0 ml-auto animate-pulse">
+                          {pendingRoCount}
+                        </span>
                       )}
                     </NavLink>
                   );
@@ -395,7 +424,7 @@ export default function Sidebar() {
                   sidebarCollapsed ? 'left-2 w-72' : 'left-2 right-2'
                 } ${
                   isDark
-                    ? 'bg-[#12161D] border-[#252E3B] text-neutral-200 shadow-black/80'
+                    ? 'bg-[#14171A] border-[#22262A] text-neutral-200 shadow-black/80'
                     : 'bg-white border-slate-200 text-slate-800 shadow-xl'
                 }`}
               >
@@ -408,7 +437,7 @@ export default function Sidebar() {
                   }}
                   className={`p-3.5 border-b cursor-pointer transition-colors group ${
                     isDark
-                      ? 'bg-gradient-to-r from-[#171E28] to-[#11161E] border-[#222A35] hover:from-[#1E2836] hover:to-[#141A24]'
+                      ? 'bg-gradient-to-r from-[#181B1E] to-[#14171A] border-[#22262A] hover:from-[#1D2125] hover:to-[#181B1E]'
                       : 'bg-gradient-to-r from-orange-50/80 to-slate-50 border-slate-200 hover:from-orange-100/90 hover:to-slate-100'
                   }`}
                   title="Klik untuk membuka Halaman Profil Akun"
@@ -485,7 +514,7 @@ export default function Sidebar() {
                     }}
                     className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl transition-colors cursor-pointer text-left ${
                       isDark
-                        ? 'hover:bg-[#1A2330] text-neutral-200 hover:text-white'
+                        ? 'hover:bg-[#1D2125] text-neutral-200 hover:text-white'
                         : 'hover:bg-slate-100 text-slate-700 hover:text-slate-900'
                     }`}
                   >
@@ -508,7 +537,7 @@ export default function Sidebar() {
                     }}
                     className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl transition-colors cursor-pointer text-left ${
                       isDark
-                        ? 'hover:bg-[#1A2330] text-neutral-200 hover:text-white'
+                        ? 'hover:bg-[#1D2125] text-neutral-200 hover:text-white'
                         : 'hover:bg-slate-100 text-slate-700 hover:text-slate-900'
                     }`}
                   >
@@ -551,14 +580,14 @@ export default function Sidebar() {
                 className={`flex items-center justify-between gap-2 p-2 rounded-xl border transition-all select-none ${
                   isProfileActive
                     ? isDark
-                      ? 'bg-[#1C2430] border-[#F4511E] shadow-sm'
+                      ? 'bg-[#181B1E] border-[#F4511E] shadow-sm'
                       : 'bg-orange-50 border-[#F4511E] shadow-xs'
                     : profileDropdownOpen
                     ? isDark
-                      ? 'bg-[#181D24] border-[#F4511E]/50 shadow-md'
+                      ? 'bg-[#181B1E] border-[#F4511E]/50 shadow-md'
                       : 'bg-orange-50/70 border-[#F4511E]/40 shadow-xs'
                     : isDark
-                      ? 'bg-[#14171B] border-[#22262A] hover:border-[#38404A]'
+                      ? 'bg-[#14171A] border-[#22262A] hover:border-[#38404A]'
                       : 'bg-white border-slate-200 hover:border-slate-300 shadow-2xs'
                 }`}
               >

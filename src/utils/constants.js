@@ -123,6 +123,13 @@ export const NAV_CATEGORIES = [
         description: 'Pemesanan awal material dari customer',
       },
       {
+        path: '/approval-ro',
+        label: 'Approval RO',
+        icon: 'ShieldCheck',
+        description: 'Verifikasi & persetujuan kontrak pesanan customer oleh Direksi',
+        superAdminOnly: true,
+      },
+      {
         path: '/surat-jalan',
         label: 'Surat Jalan (GI)',
         icon: 'Truck',

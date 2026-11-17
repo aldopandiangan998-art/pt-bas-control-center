@@ -169,7 +169,7 @@ export default function SuratJalanPage() {
   };
 
   return (
-    <div className="space-y-4 max-w-5xl mx-auto pb-20">
+    <div className="w-full space-y-6 pb-20">
       {/* Top Header */}
       <div className="flex items-center justify-between pb-3 border-b border-[#24282C]">
         <div className="flex items-center gap-2.5">
@@ -185,7 +185,7 @@ export default function SuratJalanPage() {
               <span>Buat Good Issue (Surat Jalan)</span>
               <Badge size="xs" variant="primary">Pencatatan Ritase</Badge>
             </h1>
-            <p className="text-[11px] text-neutral-400">
+            <p className="text-xs text-neutral-400">
               Kalkulator kubikasi bak dump truck otomatis P &times; L &times; (T + K) / 1.000.000
             </p>
           </div>

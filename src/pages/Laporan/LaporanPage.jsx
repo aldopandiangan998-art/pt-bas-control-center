@@ -419,7 +419,7 @@ export default function LaporanPage() {
   };
 
   return (
-    <div className="space-y-5 max-w-6xl mx-auto pb-20 select-none">
+    <div className="w-full space-y-6 pb-20 select-none">
       {/* Top Header Bar */}
       <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b transition-colors ${
         isDark ? 'border-[#24282C]' : 'border-slate-200'
@@ -433,7 +433,7 @@ export default function LaporanPage() {
             </h1>
             <Badge size="xs" variant="primary">Audit Ready</Badge>
           </div>
-          <p className={`text-[11px] mt-0.5 ${isDark ? 'text-neutral-400' : 'text-slate-500'}`}>
+          <p className={`text-xs mt-0.5 ${isDark ? 'text-neutral-400' : 'text-slate-500'}`}>
             Faktur Pajak PPN (11%), e-Bupot PPh 23 (2.0% - 2.65%), Rekapan Belum Ditagih, dan Kas Keluar BKK
           </p>
         </div>

@@ -13,6 +13,7 @@ import ResetPasswordPage from './pages/Auth/ResetPasswordPage';
 // Module Pages
 import DashboardPage from './pages/Dashboard/DashboardPage';
 import PreOrderPage from './pages/PreOrder/PreOrderPage';
+import ApprovalRoPage from './pages/Approval/ApprovalRoPage';
 import SuratJalanPage from './pages/SuratJalan/SuratJalanPage';
 import RekapanPage from './pages/Rekapan/RekapanPage';
 import BkkPage from './pages/Bkk/BkkPage';
@@ -105,6 +106,14 @@ export default function App() {
                 >
                   <Route index element={<DashboardPage />} />
                   <Route path="pre-orders" element={<PreOrderPage />} />
+                  <Route
+                    path="approval-ro"
+                    element={
+                      <SuperAdminOnlyRoute>
+                        <ApprovalRoPage />
+                      </SuperAdminOnlyRoute>
+                    }
+                  />
                   <Route path="surat-jalan" element={<SuratJalanPage />} />
                   <Route path="rekapan" element={<RekapanPage />} />
                   <Route path="bkk" element={<BkkPage />} />

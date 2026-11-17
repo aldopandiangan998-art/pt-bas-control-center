@@ -8,15 +8,15 @@ const getVariantClass = (variant, isDark) => {
       return 'bg-[#F4511E] hover:bg-[#D84315] active:bg-[#BF360C] text-white border-transparent shadow-sm';
     case 'secondary':
       return isDark
-        ? 'bg-[#151D28] hover:bg-[#1D2838] active:bg-[#253346] text-neutral-200 border-[#1E2B3C]'
+        ? 'bg-[#16181B] hover:bg-[#1D2125] active:bg-[#22262A] text-neutral-200 border-[#2A2E33]'
         : 'bg-slate-100 hover:bg-slate-200 active:bg-slate-300 text-slate-800 border-slate-300 shadow-xs';
     case 'outline':
       return isDark
-        ? 'bg-transparent hover:bg-[#151D28] text-neutral-300 hover:text-white border-[#1E2B3C]'
+        ? 'bg-transparent hover:bg-[#1D2125] text-neutral-200 hover:text-white border-[#2A2E33]'
         : 'bg-white hover:bg-slate-100 active:bg-slate-200 text-slate-700 hover:text-slate-900 border-slate-300 shadow-xs';
     case 'ghost':
       return isDark
-        ? 'bg-transparent hover:bg-[#151D28] text-neutral-400 hover:text-white border-transparent'
+        ? 'bg-transparent hover:bg-[#1D2125] text-neutral-300 hover:text-white border-transparent'
         : 'bg-transparent hover:bg-slate-100 text-slate-600 hover:text-slate-900 border-transparent';
     case 'danger':
       return isDark
@@ -28,15 +28,15 @@ const getVariantClass = (variant, isDark) => {
         : 'bg-amber-100 hover:bg-amber-200 text-amber-900 border-amber-300 shadow-xs';
     default:
       return isDark
-        ? 'bg-[#151D28] hover:bg-[#1D2838] active:bg-[#253346] text-neutral-200 border-[#1E2B3C]'
+        ? 'bg-[#16181B] hover:bg-[#1D2125] active:bg-[#22262A] text-neutral-200 border-[#2A2E33]'
         : 'bg-slate-100 hover:bg-slate-200 text-slate-800 border-slate-300';
   }
 };
 
 const SIZES = {
-  xs: 'px-2 py-1 text-[11px] gap-1',
-  sm: 'px-3 py-1.5 text-xs gap-1.5',
-  md: 'px-4 py-2 text-xs gap-2',
+  xs: 'px-2.5 py-1 text-xs gap-1.5',
+  sm: 'px-3.5 py-1.5 text-xs sm:text-[13px] gap-2',
+  md: 'px-4 py-2 text-sm gap-2',
   lg: 'px-5 py-2.5 text-sm gap-2.5',
 };
 

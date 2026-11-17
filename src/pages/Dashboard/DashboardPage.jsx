@@ -188,6 +188,31 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      {/* Executive Alert Banner for Super Admin if ROs need approval */}
+      {isSuperAdmin && pendingPreOrders.length > 0 && (
+        <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-3 sm:p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs font-mono shadow-sm">
+          <div className="flex items-center gap-2.5 text-amber-300">
+            <span className="w-8 h-8 rounded-lg bg-amber-500/20 border border-amber-500/30 flex items-center justify-center shrink-0">
+              <ShieldCheck className="w-4 h-4 text-amber-400" />
+            </span>
+            <div>
+              <span className="font-bold text-white text-sm">Otorisasi Direksi Tertunda:</span>
+              <p className="text-neutral-300 text-xs mt-0.5">
+                Ada <strong className="text-amber-400">{pendingPreOrders.length} Received Order</strong> yang menanti persetujuan harga &amp; kontrak sebelum Surat Jalan diterbitkan.
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => navigate('/approval-ro')}
+            className="px-3.5 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-black font-bold font-sans text-xs transition-colors cursor-pointer shrink-0 shadow-xs flex items-center gap-1.5"
+          >
+            <span>Buka Approval RO</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
+
       {/* 4 SIGNATURE DASHBOARD WIDGETS WITH PT BAS OPERATIONAL CONTEXT */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
         {/* ==================================================================== */}
@@ -548,8 +573,15 @@ export default function DashboardPage() {
                 Kelola pesanan masuk & approval PO dari customer
               </div>
               <div className="flex items-center justify-between pt-2 border-t border-[#22262A]">
-                <span className="text-[10px] font-mono text-neutral-500 uppercase tracking-wide">PO Aktif</span>
-                <span className="text-sm font-bold font-mono text-[#F4511E]">{activePreOrders.length}</span>
+                <span className="text-[10px] font-mono text-neutral-500 uppercase tracking-wide">PO Aktif / Pending</span>
+                <div className="flex items-center gap-1.5 font-mono text-xs">
+                  <span className="font-bold text-[#F4511E]">{activePreOrders.length}</span>
+                  {pendingPreOrders.length > 0 && (
+                    <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30 font-semibold">
+                      +{pendingPreOrders.length} pending
+                    </span>
+                  )}
+                </div>
               </div>
             </button>
 

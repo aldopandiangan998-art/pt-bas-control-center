@@ -20,12 +20,13 @@ import {
   Building2,
   HelpCircle,
   AlertCircle,
+  Clock,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useData } from '../../context/DataContext';
 import { DEFAULT_MATERIALS } from '../../utils/constants';
 import { formatCurrency, formatVolume } from '../../utils/formatters';
-import { Button, Badge, Card, Modal } from '../../components/ui';
+import { Button, Badge, Card } from '../../components/ui';
 import {
   DateField,
   SelectField,
@@ -117,11 +118,9 @@ function mkDefaultForm() {
 export default function PreOrderPage() {
   const navigate = useNavigate();
   const { currentUser, roleLabel, permissions } = useAuth();
-  const { preOrders, createPreOrder, approvePreOrder, rejectPreOrder, materials, customers } = useData();
+  const { preOrders, createPreOrder, materials, customers } = useData();
 
   const [activeTab, setActiveTab] = useState('list');
-  const [rejectModalId, setRejectModalId] = useState(null);
-  const [rejectionReason, setRejectionReason] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState({});
   const [itemsLocked, setItemsLocked] = useState(false);
@@ -344,14 +343,6 @@ export default function PreOrderPage() {
     setActiveTab('list');
   };
 
-  const handleConfirmReject = () => {
-    if (rejectModalId) {
-      rejectPreOrder(rejectModalId, rejectionReason);
-      setRejectModalId(null);
-      setRejectionReason('');
-    }
-  };
-
   const handleBuatSuratJalan = (po) => {
     navigate('/surat-jalan', {
       state: {
@@ -371,7 +362,7 @@ export default function PreOrderPage() {
      RENDER
   ══════════════════════════════════════════════════════════════════ */
   return (
-    <div className="space-y-6 max-w-5xl mx-auto pb-24">
+    <div className="w-full space-y-6 pb-20">
 
       {/* ── Top Header Bar ── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#22262A]">
@@ -381,18 +372,18 @@ export default function PreOrderPage() {
             <h1 className="text-base sm:text-lg font-bold text-white tracking-tight">
               Pre Order &amp; Kontrak Pengiriman
             </h1>
-            <p className="text-[11px] text-neutral-400">
+            <p className="text-xs text-neutral-400">
               Pemesanan customer • Nomor PO resmi digenerate otomatis saat Surat Jalan pertama dicetak
             </p>
           </div>
         </div>
 
         <div className="flex items-center gap-1.5 bg-[#14171A] p-1 rounded-lg border border-[#22262A]">
-          <Button size="xs" variant={activeTab === 'list' ? 'primary' : 'ghost'} onClick={handleCancel}>
+          <Button size="sm" variant={activeTab === 'list' ? 'primary' : 'ghost'} onClick={handleCancel}>
             Daftar PO ({preOrders.length})
           </Button>
           <Button
-            size="xs"
+            size="sm"
             variant={activeTab === 'create' ? 'primary' : 'ghost'}
             icon={Plus}
             onClick={() => {
@@ -410,7 +401,7 @@ export default function PreOrderPage() {
       {/* ══════════ VIEW 1: DAFTAR PRE ORDER AKTIF ══════════ */}
       {activeTab === 'list' && (
         <section className="space-y-3">
-          <div className="flex items-center justify-between text-[11px] text-neutral-400 font-mono px-1">
+          <div className="flex items-center justify-between text-xs text-neutral-400 font-mono px-1">
             <span>Daftar Pre Order di Sistem Gresik:</span>
             <span>
               Role aktif:{' '}
@@ -425,14 +416,14 @@ export default function PreOrderPage() {
               const fulfillmentPct = Math.min(120, Math.round((po.terkirim / (po.totalOrder || 1)) * 100));
               const isOverDelivered = fulfillmentPct > 100;
               return (
-                <Card key={po.id} hover className="p-4 space-y-3 bg-[#14171A] border border-[#22262A]">
+                <Card key={po.id} hover className="p-4.5 sm:p-5 space-y-3.5 bg-[#14171A] border border-[#22262A]">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-[#1C1F23] text-neutral-200 border border-[#2B3037]">
+                        <span className="font-mono text-xs font-bold px-2.5 py-0.5 rounded bg-[#1C1F23] text-neutral-200 border border-[#2B3037]">
                           {po.nomorPo || 'DRAFT (MENUNGGU SURAT JALAN PERTAMA)'}
                         </span>
-                        <span className="text-[11px] text-neutral-400 font-mono">{po.tanggal}</span>
+                        <span className="text-xs text-neutral-400 font-mono">{po.tanggal}</span>
                       </div>
                       <div className="text-sm font-bold text-white mt-1">
                         {po.customer}{' '}
@@ -476,31 +467,23 @@ export default function PreOrderPage() {
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
                       {po.status === 'MENUNGGU_APPROVAL' && (
-                        <>
-                          {permissions.canApprovePreOrder ? (
-                            <>
-                              <Button size="xs" variant="danger" icon={XCircle} onClick={() => setRejectModalId(po.id)}>Tolak PO</Button>
-                              <Button size="xs" variant="primary" icon={CheckCircle2} onClick={() => approvePreOrder(po.id, `${currentUser.name} (Direktur)`)}>Setujui PO</Button>
-                            </>
-                          ) : (
-                            <span className="text-[10px] text-amber-500/90 font-mono bg-amber-950/30 px-2 py-0.5 rounded border border-amber-900/40">
-                              Memerlukan persetujuan Direktur
-                            </span>
-                          )}
-                        </>
+                        <span className="text-xs text-amber-500/90 font-mono bg-amber-950/30 px-2.5 py-1 rounded border border-amber-900/40 flex items-center gap-1.5">
+                          <Clock className="w-3.5 h-3.5 text-amber-400" />
+                          <span>Menunggu Persetujuan Direktur</span>
+                        </span>
                       )}
                       {po.status === 'APPROVED' && (
-                        <span className="text-[10px] text-neutral-400 font-mono">
+                        <span className="text-xs text-neutral-400 font-mono">
                           Disetujui: <strong className="text-emerald-400">{po.approvedBy}</strong>
                         </span>
                       )}
                       {po.status === 'REJECTED' && (
-                        <span className="text-[10px] text-rose-400 font-mono">Alasan: {po.rejectionReason}</span>
+                        <span className="text-xs text-rose-400 font-mono">Alasan: {po.rejectionReason}</span>
                       )}
 
                       {/* Fitur Buat Surat Jalan GI untuk setiap data Pre Order */}
                       <Button
-                        size="xs"
+                        size="sm"
                         variant={po.status === 'APPROVED' ? 'primary' : 'secondary'}
                         icon={FileText}
                         onClick={() => handleBuatSuratJalan(po)}
@@ -1007,28 +990,6 @@ export default function PreOrderPage() {
           </form>
         </div>
       )}
-
-      {/* ── Reject Modal ── */}
-      <Modal
-        isOpen={Boolean(rejectModalId)}
-        onClose={() => setRejectModalId(null)}
-        title="Tolak Pre Order"
-        subtitle="Berikan alasan penolakan untuk dikembalikan dan direvisi admin lapangan"
-      >
-        <div className="p-4 space-y-3">
-          <textarea
-            rows={3}
-            placeholder="Tuliskan catatan revisi (misal: harga beli vendor melebihi plafon target margin)..."
-            value={rejectionReason}
-            onChange={(e) => setRejectionReason(e.target.value)}
-            className="w-full bg-[#181B1E] border border-[#2B3037] text-white rounded-md p-2.5 text-xs focus:outline-none focus:border-[#F4511E] placeholder-neutral-500"
-          />
-          <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#22262A]">
-            <Button variant="ghost" onClick={() => setRejectModalId(null)}>Batal</Button>
-            <Button variant="danger" icon={XCircle} onClick={handleConfirmReject}>Konfirmasi Tolak</Button>
-          </div>
-        </div>
-      </Modal>
     </div>
   );
 }

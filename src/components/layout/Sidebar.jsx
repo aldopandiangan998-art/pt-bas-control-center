@@ -30,6 +30,7 @@ import {
   Clock,
   TrendingUp,
   AlertCircle,
+  FileText,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { useAuth } from '../../context/AuthContext';
@@ -58,6 +59,7 @@ const ICON_MAP = {
   Clock,
   TrendingUp,
   AlertCircle,
+  FileText,
 };
 
 export default function Sidebar() {
@@ -250,7 +252,7 @@ export default function Sidebar() {
                         <div
                           onClick={() => {
                             if (sidebarCollapsed) {
-                              navigate(link.path);
+                              navigate(link.children?.[0]?.path || link.path);
                             } else {
                               toggleSubmenu(link.path);
                             }
@@ -304,7 +306,7 @@ export default function Sidebar() {
                               const ChildIcon = ICON_MAP[child.icon] || Database;
                               const isChildActive =
                                 location.pathname === child.path ||
-                                (isParentActive && currentTab === child.tab);
+                                (child.tab && isParentActive && currentTab === child.tab);
 
                               return (
                                 <button

@@ -492,45 +492,6 @@ export default function LaporanPage() {
                   </Button>
                 </div>
               </div>
-
-              {/* KPI Mini-Cards */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs font-mono">
-                <div className="bg-[#171A1E] p-3 rounded-xl border border-[#262B32]">
-                  <span className="text-[10px] text-neutral-400 block uppercase">Total Kirim</span>
-                  <span className="text-sm font-bold text-white mt-1 block">
-                    {formatVolume(customerReports.totalVolumeKirim, 'm3')}
-                  </span>
-                  <span className="text-[10px] text-neutral-500 mt-0.5 block">
-                    {customerReports.relatedSj.length} Surat Jalan
-                  </span>
-                </div>
-
-                <div className="bg-[#171A1E] p-3 rounded-xl border border-[#262B32]">
-                  <span className="text-[10px] text-neutral-400 block uppercase">Total Tagihan</span>
-                  <span className="text-sm font-bold text-white mt-1 block">
-                    {formatCurrency(customerReports.totalTagihan)}
-                  </span>
-                  <span className="text-[10px] text-neutral-500 mt-0.5 block">
-                    {customerReports.relatedInvoices.length} Faktur
-                  </span>
-                </div>
-
-                <div className="bg-[#171A1E] p-3 rounded-xl border border-[#262B32]">
-                  <span className="text-[10px] text-neutral-400 block uppercase">Terbayar</span>
-                  <span className="text-sm font-bold text-emerald-400 mt-1 block">
-                    {formatCurrency(customerReports.totalTerbayar)}
-                  </span>
-                  <span className="text-[10px] text-neutral-500 mt-0.5 block">Lunas</span>
-                </div>
-
-                <div className="bg-[#171A1E] p-3 rounded-xl border border-[#262B32]">
-                  <span className="text-[10px] text-neutral-400 block uppercase">Sisa Piutang</span>
-                  <span className="text-sm font-bold text-amber-400 mt-1 block">
-                    {formatCurrency(customerReports.sisaPiutang)}
-                  </span>
-                  <span className="text-[10px] text-neutral-500 mt-0.5 block">Outstanding</span>
-                </div>
-              </div>
             </div>
 
             {/* Riwayat Surat Jalan */}

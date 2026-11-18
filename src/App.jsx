@@ -18,7 +18,10 @@ import SuratJalanPage from './pages/SuratJalan/SuratJalanPage';
 import RekapanPage from './pages/Rekapan/RekapanPage';
 import BkkPage from './pages/Bkk/BkkPage';
 import InvoicePage from './pages/Invoice/InvoicePage';
-import LaporanPage from './pages/Laporan/LaporanPage';
+import LaporanPpnPage from './pages/Laporan/LaporanPpnPage';
+import LaporanPph23Page from './pages/Laporan/LaporanPph23Page';
+import LaporanAllInOnePage from './pages/Laporan/LaporanAllInOnePage';
+import LaporanSupplierPage from './pages/Laporan/LaporanSupplierPage';
 import BuatLaporanPajakPage from './pages/Laporan/BuatLaporanPajakPage';
 import BuatLaporanAllInOnePage from './pages/Laporan/BuatLaporanAllInOnePage';
 import MasterDataPage from './pages/MasterData/MasterDataPage';
@@ -119,14 +122,49 @@ export default function App() {
                   <Route path="rekapan" element={<RekapanPage />} />
                   <Route path="bkk" element={<BkkPage />} />
                   <Route path="invoices" element={<InvoicePage />} />
+                  {/* Laporan Routes strictly for Super Admin */}
                   <Route
                     path="laporan"
                     element={
                       <SuperAdminOnlyRoute>
-                        <LaporanPage />
+                        <Navigate to="/laporan/ppn" replace />
                       </SuperAdminOnlyRoute>
                     }
                   />
+                  <Route
+                    path="laporan/ppn"
+                    element={
+                      <SuperAdminOnlyRoute>
+                        <LaporanPpnPage />
+                      </SuperAdminOnlyRoute>
+                    }
+                  />
+                  <Route
+                    path="laporan/pph-23"
+                    element={
+                      <SuperAdminOnlyRoute>
+                        <LaporanPph23Page />
+                      </SuperAdminOnlyRoute>
+                    }
+                  />
+                  <Route
+                    path="laporan/all-in-one"
+                    element={
+                      <SuperAdminOnlyRoute>
+                        <LaporanAllInOnePage />
+                      </SuperAdminOnlyRoute>
+                    }
+                  />
+                  <Route
+                    path="laporan/supplier"
+                    element={
+                      <SuperAdminOnlyRoute>
+                        <LaporanSupplierPage />
+                      </SuperAdminOnlyRoute>
+                    }
+                  />
+
+                  {/* Legacy & Shortcut Laporan Routes */}
                   <Route
                     path="laporan-pajak/:type"
                     element={
@@ -152,18 +190,10 @@ export default function App() {
                     }
                   />
                   <Route
-                    path="laporan/all-in-one"
-                    element={
-                      <SuperAdminOnlyRoute>
-                        <BuatLaporanAllInOnePage />
-                      </SuperAdminOnlyRoute>
-                    }
-                  />
-                  <Route
                     path="laporan-all-in-one"
                     element={
                       <SuperAdminOnlyRoute>
-                        <BuatLaporanAllInOnePage />
+                        <LaporanAllInOnePage />
                       </SuperAdminOnlyRoute>
                     }
                   />
@@ -171,7 +201,7 @@ export default function App() {
                     path="buat-laporan-all-in-one"
                     element={
                       <SuperAdminOnlyRoute>
-                        <BuatLaporanAllInOnePage />
+                        <LaporanAllInOnePage />
                       </SuperAdminOnlyRoute>
                     }
                   />

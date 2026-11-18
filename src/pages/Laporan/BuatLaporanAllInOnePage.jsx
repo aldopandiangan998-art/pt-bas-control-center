@@ -1,1 +1,1 @@
-export { default } from './LaporanPage';
+export { default } from './LaporanAllInOnePage';

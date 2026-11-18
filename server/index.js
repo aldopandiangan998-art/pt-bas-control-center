@@ -1208,14 +1208,6 @@ app.patch('/api/pre-orders/:id/reject', (req, res) => {
   res.json({ success: true, data: updated });
 });
 
-<<<<<<< HEAD
-app.delete('/api/pre-orders/:id', (req, res) => {
-  try {
-    db.prepare('DELETE FROM pre_orders WHERE id = ?').run(req.params.id);
-    res.json({ success: true, message: 'Pre Order deleted successfully' });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-=======
 // Delete Pre-Order and automatically cascade delete/clean any linked journals & waybills
 app.delete('/api/pre-orders/:id', (req, res) => {
   try {
@@ -1233,7 +1225,6 @@ app.delete('/api/pre-orders/:id', (req, res) => {
     });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
->>>>>>> 1d532521ae2118e5cadc2e79e7d4220f9f018517
   }
 });
 
@@ -1554,6 +1545,361 @@ app.patch('/api/bkk/pay', (req, res) => {
   }
 
   res.json({ success: true, count: ids.length });
+});
+
+// ==========================================
+// LAPORAN / REPORTS ROUTES (PPN, PPh 23, All in One, Supplier)
+// ==========================================
+
+function isValidDate(dateStr) {
+  if (!dateStr || typeof dateStr !== 'string') return false;
+  const regex = /^\d{4}-\d{2}-\d{2}$/;
+  if (!regex.test(dateStr)) return false;
+  const d = new Date(dateStr);
+  return d instanceof Date && !isNaN(d.getTime());
+}
+
+function checkReportPermission(req, res) {
+  const role = req.headers['x-user-role'] || req.query.user_role;
+  if (role && role !== 'superadmin') {
+    res.status(403).json({
+      success: false,
+      message: 'Akses ditolak: Menu Laporan hanya dapat diakses oleh Super Admin.',
+    });
+    return false;
+  }
+  return true;
+}
+
+// 1. PPN Report
+app.get('/api/reports/ppn', (req, res) => {
+  if (!checkReportPermission(req, res)) return;
+
+  const { start_date, end_date } = req.query;
+
+  if (!start_date || !end_date || !isValidDate(start_date) || !isValidDate(end_date)) {
+    return res.status(400).json({
+      success: false,
+      message: 'Parameter start_date dan end_date wajib diisi dengan format YYYY-MM-DD yang valid.',
+    });
+  }
+
+  if (end_date < start_date) {
+    return res.status(400).json({
+      success: false,
+      message: 'Tanggal akhir (end_date) tidak boleh lebih awal dari tanggal mulai (start_date).',
+    });
+  }
+
+  const transactions = db.prepare(`
+    SELECT * FROM invoices
+    WHERE tanggal >= ? AND tanggal <= ?
+    ORDER BY tanggal DESC, id DESC
+  `).all(start_date, end_date);
+
+  const totalDpp = transactions.reduce((acc, t) => acc + (Number(t.dpp) || 0), 0);
+  const totalPpn = transactions.reduce((acc, t) => acc + (Number(t.ppn) || 0), 0);
+  const totalAmount = transactions.reduce((acc, t) => acc + (Number(t.amount) || 0), 0);
+
+  res.json({
+    success: true,
+    data: transactions,
+    summary: {
+      totalDpp,
+      totalPpn,
+      totalAmount,
+      totalTransactions: transactions.length,
+    },
+    filters: { start_date, end_date },
+  });
+});
+
+// 2. PPh 23 Report
+app.get('/api/reports/pph-23', (req, res) => {
+  if (!checkReportPermission(req, res)) return;
+
+  const { start_date, end_date } = req.query;
+
+  if (!start_date || !end_date || !isValidDate(start_date) || !isValidDate(end_date)) {
+    return res.status(400).json({
+      success: false,
+      message: 'Parameter start_date dan end_date wajib diisi dengan format YYYY-MM-DD yang valid.',
+    });
+  }
+
+  if (end_date < start_date) {
+    return res.status(400).json({
+      success: false,
+      message: 'Tanggal akhir (end_date) tidak boleh lebih awal dari tanggal mulai (start_date).',
+    });
+  }
+
+  const transactions = db.prepare(`
+    SELECT * FROM pph23_records
+    WHERE tanggal >= ? AND tanggal <= ?
+    ORDER BY tanggal DESC, id DESC
+  `).all(start_date, end_date);
+
+  const totalDpp = transactions.reduce((acc, t) => acc + (Number(t.dpp) || 0), 0);
+  const totalPotonganPph = transactions.reduce((acc, t) => acc + (Number(t.potonganPph) || 0), 0);
+  const totalNetto = transactions.reduce((acc, t) => acc + (Number(t.nettoBkk) || 0), 0);
+
+  res.json({
+    success: true,
+    data: transactions,
+    summary: {
+      totalDpp,
+      totalPotonganPph,
+      totalNetto,
+      totalTransactions: transactions.length,
+    },
+    filters: { start_date, end_date },
+  });
+});
+
+// 3. All in One Report
+app.get('/api/reports/all-in-one', (req, res) => {
+  if (!checkReportPermission(req, res)) return;
+
+  const { customer_id, ro_id, po_customer_no } = req.query;
+
+  if (!customer_id && !ro_id && !po_customer_no) {
+    return res.status(400).json({
+      success: false,
+      message: 'Minimal salah satu filter (customer_id, ro_id, atau po_customer_no) harus diisi.',
+    });
+  }
+
+  // 1. Customer
+  let customer = null;
+  if (customer_id) {
+    customer = db.prepare(`
+      SELECT * FROM customers 
+      WHERE id = ? OR LOWER(name) LIKE ? OR LOWER(alias) = ? OR LOWER(kodePrefix) = ?
+    `).get(customer_id, `%${customer_id.toLowerCase()}%`, customer_id.toLowerCase(), customer_id.toLowerCase());
+  }
+
+  // Build flexible customer matching keywords (handles "PT LION WINGS" vs "LION WINGS, PT")
+  const customerTerms = [];
+  if (customer) {
+    customerTerms.push(`%${customer.name.toLowerCase()}%`);
+    if (customer.alias) customerTerms.push(`%${customer.alias.toLowerCase()}%`);
+    if (customer.kodePrefix) customerTerms.push(`%${customer.kodePrefix.toLowerCase()}%`);
+    const cleanWords = customer.name
+      .toLowerCase()
+      .replace(/\b(pt|cv|tbk|persero)\b/g, '')
+      .replace(/[^a-z0-9\s]/g, ' ')
+      .trim()
+      .split(/\s+/)
+      .filter((w) => w.length >= 3);
+    for (const w of cleanWords) {
+      customerTerms.push(`%${w}%`);
+    }
+  } else if (customer_id) {
+    customerTerms.push(`%${customer_id.toLowerCase()}%`);
+  }
+
+  const custClause = (colName) => {
+    if (customerTerms.length === 0) return '';
+    return ' AND (' + customerTerms.map(() => `LOWER(${colName}) LIKE ?`).join(' OR ') + ')';
+  };
+
+  // 2. Pre Orders (RO)
+  let poQuery = 'SELECT * FROM pre_orders WHERE 1=1';
+  const poParams = [];
+  if (customerTerms.length > 0) {
+    poQuery += custClause('customer');
+    poParams.push(...customerTerms);
+  }
+  if (ro_id) {
+    poQuery += ' AND (id = ? OR LOWER(nomorRO) LIKE ?)';
+    poParams.push(ro_id, `%${ro_id.toLowerCase()}%`);
+  }
+  if (po_customer_no) {
+    poQuery += ' AND (nomorPo LIKE ? OR nomorPoCustomer LIKE ?)';
+    poParams.push(`%${po_customer_no}%`, `%${po_customer_no}%`);
+  }
+  poQuery += ' ORDER BY tanggal DESC';
+  const preOrders = db.prepare(poQuery).all(...poParams);
+
+  // Parse items in pre_orders
+  preOrders.forEach((po) => {
+    if (po.items && typeof po.items === 'string') {
+      try { po.items = JSON.parse(po.items); } catch (e) { po.items = []; }
+    }
+  });
+
+  // 3. Surat Jalan
+  let sjQuery = 'SELECT * FROM surat_jalan WHERE 1=1';
+  const sjParams = [];
+  if (customerTerms.length > 0) {
+    sjQuery += custClause('customer');
+    sjParams.push(...customerTerms);
+  }
+  if (ro_id) {
+    sjQuery += ' AND (nomorRO LIKE ? OR preOrderId = ?)';
+    sjParams.push(`%${ro_id}%`, ro_id);
+  }
+  if (po_customer_no) {
+    sjQuery += ' AND poNumber LIKE ?';
+    sjParams.push(`%${po_customer_no}%`);
+  }
+  sjQuery += ' ORDER BY tanggal DESC, id DESC';
+  const suratJalan = db.prepare(sjQuery).all(...sjParams);
+
+  // 4. Invoices
+  let invQuery = 'SELECT * FROM invoices WHERE 1=1';
+  const invParams = [];
+  if (customerTerms.length > 0) {
+    invQuery += custClause('customer');
+    invParams.push(...customerTerms);
+  }
+  if (ro_id) {
+    invQuery += ' AND nomorRO LIKE ?';
+    invParams.push(`%${ro_id}%`);
+  }
+  if (po_customer_no) {
+    invQuery += ' AND poNumber LIKE ?';
+    invParams.push(`%${po_customer_no}%`);
+  }
+  invQuery += ' ORDER BY tanggal DESC, id DESC';
+  const invoices = db.prepare(invQuery).all(...invParams);
+
+  // 5. BKK
+  let bkkQuery = 'SELECT * FROM bkk WHERE 1=1';
+  const bkkParams = [];
+  if (customerTerms.length > 0) {
+    bkkQuery += ' AND (' + customerTerms.map(() => '(LOWER(perusahaan) LIKE ? OR LOWER(penerima) LIKE ?)').join(' OR ') + ')';
+    for (const term of customerTerms) {
+      bkkParams.push(term, term);
+    }
+  }
+  bkkQuery += ' ORDER BY tanggal DESC, id DESC';
+  const bkk = db.prepare(bkkQuery).all(...bkkParams);
+
+  // Summary Metrics
+  const totalVolumeKirim = suratJalan.reduce((sum, sj) => sum + (Number(sj.volumeAkhir) || 0), 0);
+  const totalTagihan = invoices.reduce((sum, inv) => sum + (Number(inv.amount) || 0), 0);
+  const totalTerbayar = invoices
+    .filter((inv) => inv.statusBayar === 'Lunas')
+    .reduce((sum, inv) => sum + (Number(inv.amount) || 0), 0);
+  const sisaPiutang = totalTagihan - totalTerbayar;
+
+  res.json({
+    success: true,
+    data: {
+      customer: customer || (customer_id ? { name: customer_id } : null),
+      preOrders,
+      suratJalan,
+      invoices,
+      bkk,
+    },
+    summary: {
+      totalVolumeKirim,
+      totalTagihan,
+      totalTerbayar,
+      sisaPiutang,
+      totalPreOrders: preOrders.length,
+      totalSuratJalan: suratJalan.length,
+      totalInvoices: invoices.length,
+      totalBkk: bkk.length,
+    },
+    filters: {
+      customer_id: customer_id || null,
+      ro_id: ro_id || null,
+      po_customer_no: po_customer_no || null,
+    },
+  });
+});
+
+// 4. Supplier Report
+app.get('/api/reports/supplier', (req, res) => {
+  if (!checkReportPermission(req, res)) return;
+
+  const { supplier_id, start_date, end_date } = req.query;
+
+  if (!supplier_id) {
+    return res.status(400).json({
+      success: false,
+      message: 'Parameter supplier_id wajib diisi.',
+    });
+  }
+
+  if (!start_date || !end_date || !isValidDate(start_date) || !isValidDate(end_date)) {
+    return res.status(400).json({
+      success: false,
+      message: 'Parameter start_date dan end_date wajib diisi dengan format YYYY-MM-DD yang valid.',
+    });
+  }
+
+  if (end_date < start_date) {
+    return res.status(400).json({
+      success: false,
+      message: 'Tanggal akhir (end_date) tidak boleh lebih awal dari tanggal mulai (start_date).',
+    });
+  }
+
+  // Lookup supplier
+  const supplier = db.prepare(`
+    SELECT * FROM suppliers 
+    WHERE id = ? OR LOWER(name) = ? OR LOWER(penerima) = ? OR LOWER(idProgram) = ?
+  `).get(supplier_id, supplier_id.toLowerCase(), supplier_id.toLowerCase(), supplier_id.toLowerCase());
+
+  if (!supplier) {
+    return res.status(404).json({
+      success: false,
+      message: `Supplier dengan ID / Nama '${supplier_id}' tidak ditemukan.`,
+    });
+  }
+
+  // Query transactions from BKK
+  const transactions = db.prepare(`
+    SELECT * FROM bkk
+    WHERE (
+      LOWER(perusahaan) = LOWER(?) OR 
+      LOWER(penerima) = LOWER(?) OR 
+      LOWER(perusahaan) LIKE ? OR
+      LOWER(penerima) LIKE ?
+    )
+    AND tanggal >= ? AND tanggal <= ?
+    ORDER BY tanggal DESC, id DESC
+  `).all(
+    supplier.name,
+    supplier.penerima,
+    `%${supplier.name.toLowerCase()}%`,
+    `%${supplier.penerima.toLowerCase()}%`,
+    start_date,
+    end_date
+  );
+
+  const totalRitase = transactions.reduce((acc, t) => acc + (Number(t.ritaseCount) || 1), 0);
+  const totalVolume = transactions.reduce((acc, t) => acc + (Number(t.kubikasi || t.volume) || 0), 0);
+  const totalAmount = transactions.reduce((acc, t) => acc + (Number(t.amount) || 0), 0);
+  const totalLunas = transactions
+    .filter((t) => t.statusBayar === 'Lunas')
+    .reduce((acc, t) => acc + (Number(t.amount) || 0), 0);
+  const totalBelumLunas = totalAmount - totalLunas;
+
+  res.json({
+    success: true,
+    data: {
+      supplier,
+      transactions,
+    },
+    summary: {
+      totalRitase,
+      totalVolume,
+      totalAmount,
+      totalLunas,
+      totalBelumLunas,
+      totalTransactions: transactions.length,
+    },
+    filters: {
+      supplier_id,
+      start_date,
+      end_date,
+    },
+  });
 });
 
 // Start listening

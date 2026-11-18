@@ -1056,8 +1056,8 @@ export default function MasterDataPage() {
 
   const handleSubmitCurrency = (e) => {
     e.preventDefault();
-    if (!currencyForm.code || !currencyForm.name) {
-      addToast('Kode mata uang dan nama mata uang wajib diisi!', 'warning');
+    if (!currencyForm.code) {
+      addToast('Kode mata uang wajib diisi!', 'warning');
       return;
     }
     const cleanCode = currencyForm.code.trim().toUpperCase();
@@ -1068,6 +1068,8 @@ export default function MasterDataPage() {
     addCurrency({
       ...currencyForm,
       code: cleanCode,
+      name: currencyForm.name || cleanCode,
+      englishName: currencyForm.englishName || cleanCode,
       symbol: currencyForm.symbol || cleanCode,
       formatSample: currencyForm.formatSample || `${currencyForm.symbol || cleanCode} 1,250.00`,
       formatPresisi: currencyForm.formatPresisi || '24.50 m³',
@@ -6410,23 +6412,6 @@ export default function MasterDataPage() {
               }
               placeholder="Contoh: 702 (SGD), 392 (JPY)"
               className="font-mono"
-            />
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <Input
-              label="Nama Mata Uang (Indonesia)"
-              required
-              value={currencyForm.name}
-              onChange={(e) => setCurrencyForm({ ...currencyForm, name: e.target.value })}
-              placeholder="Contoh: Dolar Singapura"
-            />
-
-            <Input
-              label="Nama Mata Uang (Inggris)"
-              value={currencyForm.englishName}
-              onChange={(e) => setCurrencyForm({ ...currencyForm, englishName: e.target.value })}
-              placeholder="Contoh: Singapore Dollar"
             />
           </div>
 

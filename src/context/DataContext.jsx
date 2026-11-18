@@ -130,49 +130,23 @@ export function DataProvider({ children }) {
     return filtered;
   });
 
-  // Surat Jalan (Good Issue) list
-  const [suratJalanList, setSuratJalanList] = useState(() => loadStorage(STORAGE_KEYS.suratJalan, [
-    {
-      id: 'SJ-202611-0089',
-      nomorSj: '29678',
-      poNumber: 'PO-LW-2026-089',
-      customer: 'PT LION WINGS',
-      material: 'SIRTU',
-      nopol: 'W 9821 UB',
-      driver: 'Bambang Suprianto',
-      tanggal: '2026-11-07',
-      waktu: '09:43',
-      nomorNota: 'NT-88921',
-      isPpn: false,
-      panjangCm: 650,
-      lebarCm: 250,
-      tinggiCm: 200,
-      koreksiCm: 0,
-      volumeAkhir: 32.5,
-      fotoSuratJalan: 'sj_29678_w9821ub.jpg',
-      statusRekap: 'DIREKAP', // 'DRAFT' | 'DIREKAP' | 'DITAGIH'
-    },
-    {
-      id: 'SJ-202611-0090',
-      nomorSj: '29679',
-      poNumber: 'PO-LW-2026-089',
-      customer: 'PT LION WINGS',
-      material: 'SIRTU',
-      nopol: 'W 8812 UA',
-      driver: 'Agus Triono',
-      tanggal: '2026-11-07',
-      waktu: '11:15',
-      nomorNota: 'NT-88922',
-      isPpn: false,
-      panjangCm: 620,
-      lebarCm: 240,
-      tinggiCm: 190,
-      koreksiCm: -5,
-      volumeAkhir: 27.53,
-      fotoSuratJalan: 'sj_29679_w8812ua.jpg',
-      statusRekap: 'DIREKAP',
-    },
-  ]));
+  // Surat Jalan (Good Issue) list (cleaned of dummy data, synchronized with Pre Orders)
+  const [suratJalanList, setSuratJalanList] = useState(() => {
+    const raw = loadStorage(STORAGE_KEYS.suratJalan, []);
+    const filtered = Array.isArray(raw)
+      ? raw.filter(
+          (s) =>
+            s.id !== 'SJ-202611-0089' &&
+            s.id !== 'SJ-202611-0090' &&
+            s.id !== 'SJ-202611-0091' &&
+            s.poNumber !== 'PO-LW-2026-089'
+        )
+      : [];
+    try {
+      localStorage.setItem(STORAGE_KEYS.suratJalan, JSON.stringify(filtered));
+    } catch (e) {}
+    return filtered;
+  });
 
   // BKK (Cash Out) transactions strictly matching Screenshot 2 & Image 1
   const [bkkList, setBkkList] = useState(() => {
@@ -392,8 +366,23 @@ export function DataProvider({ children }) {
     },
   ]));
 
-  // Jurnal GI / Rekapan list per PT BAS
-  const [rekapanList, setRekapanList] = useState(() => loadStorage(STORAGE_KEYS.rekapan, []));
+  // Jurnal GI / Rekapan list per PT BAS (cleaned of dummy data, synchronized with Pre Orders)
+  const [rekapanList, setRekapanList] = useState(() => {
+    const raw = loadStorage(STORAGE_KEYS.rekapan, []);
+    const filtered = Array.isArray(raw)
+      ? raw.filter(
+          (r) =>
+            r.id !== 'REK-202611-0001' &&
+            r.id !== 'REK-202611-0002' &&
+            r.poNumber !== 'PO-LW-2026-089' &&
+            r.poNumber !== 'PO-SI-2026-014'
+        )
+      : [];
+    try {
+      localStorage.setItem(STORAGE_KEYS.rekapan, JSON.stringify(filtered));
+    } catch (e) {}
+    return filtered;
+  });
 
   // ==========================================
   // 2. DATA MASTER (FAITHFUL TO SCREENSHOTS)
@@ -948,10 +937,17 @@ export function DataProvider({ children }) {
       const res = await fetch('/api/surat-jalan');
       if (res.ok) {
         const data = await res.json();
-        if (Array.isArray(data) && data.length > 0) {
-          setSuratJalanList(data);
+        if (Array.isArray(data)) {
+          const cleaned = data.filter(
+            (s) =>
+              s.id !== 'SJ-202611-0089' &&
+              s.id !== 'SJ-202611-0090' &&
+              s.id !== 'SJ-202611-0091' &&
+              s.poNumber !== 'PO-LW-2026-089'
+          );
+          setSuratJalanList(cleaned);
           try {
-            localStorage.setItem(STORAGE_KEYS.suratJalan, JSON.stringify(data));
+            localStorage.setItem(STORAGE_KEYS.suratJalan, JSON.stringify(cleaned));
           } catch (e) {}
         }
       }
@@ -980,9 +976,16 @@ export function DataProvider({ children }) {
       if (res.ok) {
         const data = await res.json();
         if (Array.isArray(data)) {
-          setRekapanList(data);
+          const cleaned = data.filter(
+            (r) =>
+              r.id !== 'REK-202611-0001' &&
+              r.id !== 'REK-202611-0002' &&
+              r.poNumber !== 'PO-LW-2026-089' &&
+              r.poNumber !== 'PO-SI-2026-014'
+          );
+          setRekapanList(cleaned);
           try {
-            localStorage.setItem(STORAGE_KEYS.rekapan, JSON.stringify(data));
+            localStorage.setItem(STORAGE_KEYS.rekapan, JSON.stringify(cleaned));
           } catch (e) {}
         }
       }
@@ -1183,17 +1186,22 @@ export function DataProvider({ children }) {
   const approvePreOrder = async (id, approverName = 'David Rusiah (Direktur)') => {
     const now = new Date().toISOString().replace('T', ' ').substring(0, 16);
 
-    // Optimistic update
+    let approvedPo = null;
+
+    // Optimistic update Pre Orders
     setPreOrders((prev) => {
       const updated = prev.map((po) => {
         if (po.id === id) {
-          return {
+          const finalRo = po.nomorRO || `RO-${new Date().getFullYear()}-${String(po.id).slice(-4)}`;
+          approvedPo = {
             ...po,
+            nomorRO: finalRo,
             status: 'APPROVED',
             approvedBy: approverName,
             approvedAt: now,
             rejectionReason: null,
           };
+          return approvedPo;
         }
         return po;
       });
@@ -1201,6 +1209,52 @@ export function DataProvider({ children }) {
         localStorage.setItem(STORAGE_KEYS.preOrders, JSON.stringify(updated));
       } catch (e) {}
       return updated;
+    });
+
+    // Otomatis buat / perbarui Jurnal Summary (Jurnal GI) untuk nomor RO pre-order ini
+    setRekapanList((prev) => {
+      const po = approvedPo || preOrders.find((p) => p.id === id);
+      if (!po) return prev;
+      const finalRo = po.nomorRO || `RO-${new Date().getFullYear()}-${String(po.id).slice(-4)}`;
+      const exists = prev.some((r) => r.preOrderId === id || r.nomorRO === finalRo);
+      if (exists) return prev;
+
+      const targetVol = Number(po.totalOrder) || 0;
+      const targetTrips = po.satuan === 'rit' ? Math.max(1, targetVol) : Math.max(1, Math.ceil(targetVol / 30));
+      const hBeli = Number(po.hargaBeli) || 0;
+      const hJual = Number(po.hargaJual) || 0;
+      const isPpn = po.jenisWajibPajak === 'PKP';
+
+      const newJurnal = {
+        id: `REK-${new Date().toISOString().slice(0, 7).replace('-', '')}-${String(Date.now()).slice(-4)}`,
+        nomorRO: finalRo,
+        preOrderId: po.id,
+        poNumber: po.nomorPo || 'MENUNGGU SURAT JALAN PERTAMA',
+        customer: po.customer,
+        customerAddress: po.customerAddress || '',
+        material: po.materialName || 'SIRTU',
+        isPpn,
+        tanggal: po.tanggal || new Date().toISOString().split('T')[0],
+        totalSj: 0,
+        targetRitase: targetTrips,
+        totalVolume: 0,
+        targetVolume: targetVol,
+        satuan: po.satuan || 'm3',
+        hargaBeli: hBeli,
+        hargaJual: hJual,
+        nominalBeli: 0,
+        nominalJual: 0,
+        status: 'Siap Kirim',
+        suratJalanDetails: [],
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+
+      const updatedRek = [newJurnal, ...prev];
+      try {
+        localStorage.setItem(STORAGE_KEYS.rekapan, JSON.stringify(updatedRek));
+      } catch (e) {}
+      return updatedRek;
     });
 
     // Notify other tabs immediately
@@ -1213,18 +1267,33 @@ export function DataProvider({ children }) {
 
     // Persist to backend SQLite
     try {
-      await fetch(`/api/pre-orders/${encodeURIComponent(id)}/approve`, {
+      const res = await fetch(`/api/pre-orders/${encodeURIComponent(id)}/approve`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ approver: approverName }),
       });
+      if (res.ok) {
+        const resJson = await res.json().catch(() => null);
+        if (resJson?.jurnal) {
+          setRekapanList((prev) => {
+            const exists = prev.some((r) => r.id === resJson.jurnal.id || r.nomorRO === resJson.jurnal.nomorRO);
+            const updated = exists
+              ? prev.map((r) => (r.id === resJson.jurnal.id || r.nomorRO === resJson.jurnal.nomorRO ? resJson.jurnal : r))
+              : [resJson.jurnal, ...prev];
+            try {
+              localStorage.setItem(STORAGE_KEYS.rekapan, JSON.stringify(updated));
+            } catch (e) {}
+            return updated;
+          });
+        }
+      }
       await fetchPreOrders();
       await fetchRekapan();
     } catch (err) {
       console.warn('Backend PO approve sync failed, saved in localStorage:', err);
     }
 
-    addToast('Pre Order resmi DISETUJUI! Surat Jalan kini dapat dibuat & Jurnal GI terbit.', 'success');
+    addToast('Pre Order resmi DISETUJUI! Surat Jalan kini dapat dibuat & Ringkasan Jurnal terbit.', 'success');
   };
 
   const rejectPreOrder = async (id, reason) => {
@@ -1297,7 +1366,10 @@ export function DataProvider({ children }) {
   const createSuratJalan = async (sjData) => {
     // Strict enforcement: Validate PO approval status
     const targetPo = preOrders.find(
-      (po) => (po.nomorPo && po.nomorPo === sjData.poNumber) || po.id === sjData.poNumber || (po.nomorRO && po.nomorRO === sjData.nomorRo)
+      (po) =>
+        (po.nomorPo && po.nomorPo === sjData.poNumber) ||
+        po.id === sjData.poNumber ||
+        (po.nomorRO && (po.nomorRO === sjData.nomorRO || po.nomorRO === sjData.nomorRo))
     );
 
     if (targetPo && targetPo.status !== 'APPROVED') {
@@ -1316,13 +1388,18 @@ export function DataProvider({ children }) {
       sjData.koreksiTinggiCm || 0
     );
 
+    const finalNomorRo = targetPo?.nomorRO || sjData.nomorRO || sjData.nomorRo || (targetPo ? `RO-${targetPo.id}` : '');
+
     const newSj = {
       ...sjData,
       id: sjId,
+      nomorRO: finalNomorRo,
+      preOrderId: targetPo?.id || sjData.preOrderId || null,
       volumeAkhir: calc.volumeAkhir,
-      statusRekap: 'DRAFT',
+      statusRekap: 'DIREKAP',
     };
 
+    // 1. Update Surat Jalan List
     setSuratJalanList((prev) => {
       const updated = [newSj, ...prev];
       try {
@@ -1331,18 +1408,25 @@ export function DataProvider({ children }) {
       return updated;
     });
 
-    // Update PO delivered volume & auto-assign PO number if first delivery
+    // 2. Update Pre Orders terkirim & auto-assign PO number if first delivery
+    let assignedPoNum = sjData.poNumber;
     setPreOrders((prev) => {
       const updated = prev.map((po) => {
-        if (po.nomorPo === sjData.poNumber || po.id === sjData.poNumber || po.customer === sjData.customer || (po.nomorRO && po.nomorRO === sjData.nomorRo)) {
-          const generatedPoNum =
+        const isMatch =
+          po.id === targetPo?.id ||
+          (po.nomorPo && po.nomorPo === sjData.poNumber) ||
+          po.id === sjData.poNumber ||
+          (po.nomorRO && finalNomorRo && po.nomorRO === finalNomorRo);
+
+        if (isMatch) {
+          assignedPoNum =
             po.nomorPo ||
             `PO-${sjData.customer.replace(/[^A-Z]/g, '').slice(0, 2)}-2026-${Math.floor(
               100 + Math.random() * 900
             )}`;
           return {
             ...po,
-            nomorPo: generatedPoNum,
+            nomorPo: assignedPoNum,
             terkirim: Number(((po.terkirim || 0) + calc.volumeAkhir).toFixed(2)),
           };
         }
@@ -1350,6 +1434,134 @@ export function DataProvider({ children }) {
       });
       try {
         localStorage.setItem(STORAGE_KEYS.preOrders, JSON.stringify(updated));
+      } catch (e) {}
+      return updated;
+    });
+
+    // 3. Otomatis Sinkronkan Keterangan Surat Jalan ke Ringkasan Jurnal (Jurnal GI)
+    setRekapanList((prev) => {
+      let matched = false;
+
+      const updated = prev.map((jrn) => {
+        const isMatch =
+          (jrn.preOrderId && targetPo && jrn.preOrderId === targetPo.id) ||
+          (jrn.nomorRO && finalNomorRo && jrn.nomorRO === finalNomorRo) ||
+          (jrn.poNumber && sjData.poNumber && jrn.poNumber === sjData.poNumber);
+
+        if (isMatch) {
+          matched = true;
+          const existingDetails = Array.isArray(jrn.suratJalanDetails) ? jrn.suratJalanDetails : [];
+          const sjItemDesc = {
+            id: sjId,
+            nomorSj: sjData.nomorSj,
+            poNumber: assignedPoNum || jrn.poNumber,
+            nomorRO: jrn.nomorRO || finalNomorRo,
+            jurnalId: jrn.id,
+            customer: sjData.customer,
+            material: sjData.material,
+            nopol: sjData.nopol || sjData.nomorPolisi || 'W 9821 UB',
+            driver: sjData.driver || 'Supir Armada Terjadwal',
+            tanggal: sjData.tanggal,
+            waktu: sjData.waktu || '09:00',
+            nomorNota: sjData.nomorNota || '',
+            panjangCm: Number(sjData.panjangCm) || 0,
+            lebarCm: Number(sjData.lebarCm) || 0,
+            tinggiCm: Number(sjData.tinggiCm) || 0,
+            koreksiTinggiCm: Number(sjData.koreksiTinggiCm) || 0,
+            volumeAkhir: calc.volumeAkhir,
+            status: 'Selesai',
+          };
+
+          const filteredDetails = existingDetails.filter((d) => d.id !== sjId && d.nomorSj !== sjData.nomorSj);
+          filteredDetails.push(sjItemDesc);
+
+          const updatedTotalSj = filteredDetails.length;
+          const updatedTotalVol = Number(filteredDetails.reduce((sum, d) => sum + (Number(d.volumeAkhir) || 0), 0).toFixed(2));
+          const updatedNominalBeli = Math.round(updatedTotalVol * (Number(jrn.hargaBeli) || 0));
+          const updatedNominalJual = Math.round(updatedTotalVol * (Number(jrn.hargaJual) || 0));
+          const targetTrips = Number(jrn.targetRitase) || 0;
+          const targetVol = Number(jrn.targetVolume) || 0;
+          const isTripsMet = targetTrips > 0 && updatedTotalSj >= targetTrips;
+          const isVolumeMet = targetVol > 0 && updatedTotalVol >= targetVol;
+          const newStatus = (isTripsMet || isVolumeMet) ? 'Selesai Kirim' : 'Dalam Pengiriman';
+
+          return {
+            ...jrn,
+            poNumber: assignedPoNum || jrn.poNumber,
+            totalSj: updatedTotalSj,
+            totalVolume: updatedTotalVol,
+            nominalBeli: updatedNominalBeli,
+            nominalJual: updatedNominalJual,
+            status: newStatus,
+            suratJalanDetails: filteredDetails,
+            updated_at: new Date().toISOString(),
+          };
+        }
+        return jrn;
+      });
+
+      if (!matched) {
+        // Jika belum ada rekapan sebelumnya, otomatis generate dan tempelkan surat jalan ini
+        const targetVol = Number(targetPo?.totalOrder) || calc.volumeAkhir;
+        const targetTrips = targetPo?.satuan === 'rit' ? Math.max(1, targetVol) : Math.max(1, Math.ceil(targetVol / 30));
+        const hBeli = Number(targetPo?.hargaBeli) || 40000;
+        const hJual = Number(targetPo?.hargaJual) || 50000;
+        const newRekId = `REK-${new Date().toISOString().slice(0, 7).replace('-', '')}-${String(Date.now()).slice(-4)}`;
+
+        const sjItemDesc = {
+          id: sjId,
+          nomorSj: sjData.nomorSj,
+          poNumber: assignedPoNum || sjData.poNumber,
+          nomorRO: finalNomorRo,
+          jurnalId: newRekId,
+          customer: sjData.customer,
+          material: sjData.material,
+          nopol: sjData.nopol || sjData.nomorPolisi || 'W 9821 UB',
+          driver: sjData.driver || 'Supir Armada Terjadwal',
+          tanggal: sjData.tanggal,
+          waktu: sjData.waktu || '09:00',
+          nomorNota: sjData.nomorNota || '',
+          panjangCm: Number(sjData.panjangCm) || 0,
+          lebarCm: Number(sjData.lebarCm) || 0,
+          tinggiCm: Number(sjData.tinggiCm) || 0,
+          koreksiTinggiCm: Number(sjData.koreksiTinggiCm) || 0,
+          volumeAkhir: calc.volumeAkhir,
+          status: 'Selesai',
+        };
+
+        const isTripsMet = targetTrips <= 1;
+        const isVolumeMet = calc.volumeAkhir >= targetVol;
+        const initialStatus = (isTripsMet || isVolumeMet) ? 'Selesai Kirim' : 'Dalam Pengiriman';
+
+        const newRek = {
+          id: newRekId,
+          nomorRO: finalNomorRo,
+          preOrderId: targetPo?.id || null,
+          poNumber: assignedPoNum || sjData.poNumber,
+          customer: sjData.customer,
+          customerAddress: targetPo?.customerAddress || '',
+          material: sjData.material,
+          isPpn: Boolean(sjData.isPpn),
+          tanggal: sjData.tanggal,
+          totalSj: 1,
+          targetRitase: targetTrips,
+          totalVolume: calc.volumeAkhir,
+          targetVolume: targetVol,
+          satuan: targetPo?.satuan || 'm3',
+          hargaBeli: hBeli,
+          hargaJual: hJual,
+          nominalBeli: Math.round(calc.volumeAkhir * hBeli),
+          nominalJual: Math.round(calc.volumeAkhir * hJual),
+          status: initialStatus,
+          suratJalanDetails: [sjItemDesc],
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        };
+        updated.unshift(newRek);
+      }
+
+      try {
+        localStorage.setItem(STORAGE_KEYS.rekapan, JSON.stringify(updated));
       } catch (e) {}
       return updated;
     });
@@ -1369,7 +1581,21 @@ export function DataProvider({ children }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newSj),
       });
-      if (!res.ok) {
+      if (res.ok) {
+        const resJson = await res.json().catch(() => null);
+        if (resJson?.jurnal) {
+          setRekapanList((prev) => {
+            const exists = prev.some((r) => r.id === resJson.jurnal.id || r.nomorRO === resJson.jurnal.nomorRO);
+            const updated = exists
+              ? prev.map((r) => (r.id === resJson.jurnal.id || r.nomorRO === resJson.jurnal.nomorRO ? resJson.jurnal : r))
+              : [resJson.jurnal, ...prev];
+            try {
+              localStorage.setItem(STORAGE_KEYS.rekapan, JSON.stringify(updated));
+            } catch (e) {}
+            return updated;
+          });
+        }
+      } else {
         const errJson = await res.json().catch(() => ({}));
         if (errJson.message) {
           addToast(errJson.message, 'error');
@@ -1383,7 +1609,7 @@ export function DataProvider({ children }) {
       console.warn('Backend Surat Jalan sync failed, saved in localStorage:', err);
     }
 
-    addToast(`Surat Jalan No. ${sjData.nomorSj} berhasil disimpan! (${calc.volumeAkhir} m³) & dicatat ke Jurnal GI.`, 'success');
+    addToast(`Surat Jalan No. ${sjData.nomorSj} berhasil disimpan! (${calc.volumeAkhir} m³) & otomatis masuk ke Ringkasan Jurnal.`, 'success');
     return newSj;
   };
 

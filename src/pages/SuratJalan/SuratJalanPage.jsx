@@ -129,11 +129,16 @@ export default function SuratJalanPage() {
       if (match) newMatId = match.id;
     }
 
+    const resolvedRo = firstPo?.nomorRO || firstPo?.nomorRo || (firstPo ? `RO-${firstPo.id}` : formData.nomorRo);
+
     setFormData((prev) => ({
       ...prev,
       customer: newCustomer,
       poNumber: firstPo?.nomorPo || firstPo?.id || '',
+      nomorRo: resolvedRo,
+      preOrderId: firstPo?.id || '',
       materialId: newMatId || prev.materialId,
+      isPpn: firstPo?.jenisWajibPajak === 'PKP' ? true : prev.isPpn,
     }));
   };
 
@@ -192,11 +197,14 @@ export default function SuratJalanPage() {
     }
 
     const selectedMat = materials.find((m) => m.id === formData.materialId);
+    const finalRoNumber = currentPo?.nomorRO || currentPo?.nomorRo || formData.nomorRo || `RO-${currentPo?.id}`;
 
     createSuratJalan({
       ...formData,
       nopol: formData.nomorPolisi || 'W 9821 UB',
-      nomorRo: currentPo?.nomorRO || formData.nomorRo || `RO-${currentPo?.id}`,
+      nomorRo: finalRoNumber,
+      nomorRO: finalRoNumber,
+      preOrderId: currentPo?.id,
       material: selectedMat?.name || 'SIRTU',
       volumeAkhir: kubikasi.volumeAkhir,
       driver: 'Supir Armada Terjadwal',
@@ -349,10 +357,14 @@ export default function SuratJalanPage() {
                     );
                     if (match) newMatId = match.id;
                   }
+                  const resolvedRo = selectedPo?.nomorRO || selectedPo?.nomorRo || (selectedPo ? `RO-${selectedPo.id}` : formData.nomorRo);
                   setFormData({
                     ...formData,
                     poNumber: selVal,
+                    nomorRo: resolvedRo,
+                    preOrderId: selectedPo?.id || '',
                     materialId: newMatId || formData.materialId,
+                    isPpn: selectedPo?.jenisWajibPajak === 'PKP' ? true : formData.isPpn,
                   });
                 }}
               >
@@ -363,7 +375,7 @@ export default function SuratJalanPage() {
                 ) : (
                   customerApprovedPos.map((po) => (
                     <option key={po.id} value={po.nomorPo || po.id}>
-                      {po.nomorPo || `[Draft Disetujui] ${po.id}`} - {po.customer} ({po.materialName})
+                      [{po.nomorRO || `RO-${po.id}`}] {po.nomorPo ? `(PO: ${po.nomorPo})` : '(Draft Terverifikasi)'} - {po.customer} ({po.materialName})
                     </option>
                   ))
                 )}

@@ -237,6 +237,7 @@ export default function MasterDataPage() {
   const setTab = (tabKey) => {
     setSearchParams({ tab: tabKey });
     setSearchQuery('');
+    setSelectedIds([]);
   };
 
   // Form States
@@ -399,36 +400,110 @@ export default function MasterDataPage() {
   // Delete confirmation modal state
   const [deleteConfirm, setDeleteConfirm] = useState({
     open: false,
-    type: '',       // 'supplier' | 'material' | 'armada' | 'customer' | 'bank' | 'rekening' | 'mata-uang'
+    type: '',       // 'supplier' | 'material' | 'armada' | 'customer' | 'bank' | 'rekening' | 'mata-uang' | 'pengguna'
     id: null,
     label: '',      // nama item untuk ditampilkan di modal
+    isBulk: false,
+    ids: [],
   });
 
   const handleAskDelete = (type, id, label) => {
     if (type === 'mata-uang') {
-      const targetCurr = currencies.find((c) => c.id === id);
-      if (targetCurr?.isBase) {
+      const targetCurr = (currencies || []).find((c) => c.id === id);
+      if (targetCurr?.isBase || targetCurr?.code === 'IDR') {
         addToast('Mata uang basis (IDR) tidak dapat dihapus karena merupakan acuan buku besar.', 'warning');
         return;
       }
     }
-    setDeleteConfirm({ open: true, type, id, label });
+    setDeleteConfirm({ open: true, type, id, label, isBulk: false, ids: [] });
+  };
+
+  const handleAskBulkDelete = () => {
+    if (selectedIds.length === 0) return;
+
+    if (currentTab === 'mata-uang') {
+      const selectedCurrs = (currencies || []).filter((c) => selectedIds.includes(c.id));
+      const onlyBase = selectedCurrs.length === 1 && (selectedCurrs[0]?.isBase || selectedCurrs[0]?.code === 'IDR');
+      if (onlyBase) {
+        addToast('Mata uang basis (IDR) tidak dapat dihapus karena merupakan acuan buku besar.', 'warning');
+        return;
+      }
+    }
+
+    setDeleteConfirm({
+      open: true,
+      type: currentTab,
+      id: null,
+      isBulk: true,
+      ids: [...selectedIds],
+      label: `${selectedIds.length} data terpilih`,
+    });
   };
 
   const handleConfirmDelete = () => {
-    const { type, id } = deleteConfirm;
-    if (type === 'supplier') deleteSupplier(id);
-    else if (type === 'material') deleteMaterial(id);
-    else if (type === 'armada') deleteArmada(id);
-    else if (type === 'customer') deleteCustomer(id);
-    else if (type === 'bank') deleteBank(id);
-    else if (type === 'rekening') deleteBankAccount(id);
-    else if (type === 'mata-uang') deleteCurrency(id);
-    setDeleteConfirm({ open: false, type: '', id: null, label: '' });
+    const { type, id, isBulk, ids } = deleteConfirm;
+    if (isBulk) {
+      const targetIds = ids || selectedIds;
+      if (type === 'supplier') {
+        targetIds.forEach((tId) => deleteSupplier(tId));
+        addToast(`${targetIds.length} supplier berhasil dihapus`, 'info');
+      } else if (type === 'material') {
+        targetIds.forEach((tId) => deleteMaterial(tId));
+        addToast(`${targetIds.length} material berhasil dihapus`, 'info');
+      } else if (type === 'armada') {
+        targetIds.forEach((tId) => deleteArmada(tId));
+        addToast(`${targetIds.length} armada berhasil dihapus`, 'info');
+      } else if (type === 'customer') {
+        targetIds.forEach((tId) => deleteCustomer(tId));
+        addToast(`${targetIds.length} customer berhasil dihapus`, 'info');
+      } else if (type === 'bank') {
+        targetIds.forEach((tId) => deleteBank(tId));
+        addToast(`${targetIds.length} bank berhasil dihapus`, 'info');
+      } else if (type === 'rekening') {
+        targetIds.forEach((tId) => deleteBankAccount(tId));
+        addToast(`${targetIds.length} rekening bank berhasil dihapus`, 'info');
+      } else if (type === 'pengguna') {
+        if (typeof deleteUser === 'function') {
+          targetIds.forEach((tId) => deleteUser(tId));
+          addToast(`${targetIds.length} pengguna berhasil dihapus`, 'info');
+        }
+      } else if (type === 'mata-uang') {
+        let deletedCount = 0;
+        let skippedBase = false;
+        targetIds.forEach((tId) => {
+          const c = (currencies || []).find((it) => it.id === tId);
+          if (c?.isBase || c?.code === 'IDR') {
+            skippedBase = true;
+          } else {
+            deleteCurrency(tId);
+            deletedCount++;
+          }
+        });
+        if (skippedBase && deletedCount === 0) {
+          addToast('Mata uang basis (IDR) tidak dapat dihapus karena merupakan acuan buku besar.', 'warning');
+        } else if (skippedBase && deletedCount > 0) {
+          addToast(`${deletedCount} mata uang berhasil dihapus (Mata uang basis IDR dikecualikan).`, 'info');
+        } else if (deletedCount > 0) {
+          addToast(`${deletedCount} mata uang berhasil dihapus.`, 'info');
+        }
+      }
+      setSelectedIds([]);
+    } else {
+      if (type === 'supplier') deleteSupplier(id);
+      else if (type === 'material') deleteMaterial(id);
+      else if (type === 'armada') deleteArmada(id);
+      else if (type === 'customer') deleteCustomer(id);
+      else if (type === 'bank') deleteBank(id);
+      else if (type === 'rekening') deleteBankAccount(id);
+      else if (type === 'mata-uang') deleteCurrency(id);
+      else if (type === 'pengguna' && typeof deleteUser === 'function') deleteUser(id);
+      setSelectedIds((prev) => prev.filter((item) => item !== id));
+    }
+    setDeleteConfirm({ open: false, type: '', id: null, label: '', isBulk: false, ids: [] });
   };
 
   const handleCancelDelete = () => {
-    setDeleteConfirm({ open: false, type: '', id: null, label: '' });
+    setDeleteConfirm({ open: false, type: '', id: null, label: '', isBulk: false, ids: [] });
   };
 
   const handleOpenEditCustomer = (cust) => {
@@ -1388,6 +1463,44 @@ export default function MasterDataPage() {
                 <option value="inactive">Hanya Non-Aktif</option>
               </select>
             </div>
+
+            {/* Quick Select All Toggle in Toolbar */}
+            {currentListCount.filtered > 0 && (
+              <label
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-[#0E1012] border border-[#22262A] text-neutral-300 text-xs cursor-pointer hover:border-[#F4511E]/40 transition-colors select-none shrink-0"
+                title="Pilih Semua / Batal Pilih"
+              >
+                <input
+                  type="checkbox"
+                  className="checkbox checkbox-xs rounded border-neutral-600 checked:border-[#F4511E] checked:bg-[#F4511E] cursor-pointer"
+                  checked={(() => {
+                    let list = [];
+                    if (currentTab === 'supplier') list = filteredSuppliers;
+                    else if (currentTab === 'material') list = filteredMaterials;
+                    else if (currentTab === 'armada') list = filteredArmada;
+                    else if (currentTab === 'customer') list = filteredCustomers;
+                    else if (currentTab === 'bank') list = filteredBanks;
+                    else if (currentTab === 'rekening') list = filteredAccounts;
+                    else if (currentTab === 'pengguna') list = filteredUsers;
+                    else if (currentTab === 'mata-uang') list = filteredCurrencies;
+                    return list.length > 0 && list.every((it) => selectedIds.includes(it.id));
+                  })()}
+                  onChange={() => {
+                    let list = [];
+                    if (currentTab === 'supplier') list = filteredSuppliers;
+                    else if (currentTab === 'material') list = filteredMaterials;
+                    else if (currentTab === 'armada') list = filteredArmada;
+                    else if (currentTab === 'customer') list = filteredCustomers;
+                    else if (currentTab === 'bank') list = filteredBanks;
+                    else if (currentTab === 'rekening') list = filteredAccounts;
+                    else if (currentTab === 'pengguna') list = filteredUsers;
+                    else if (currentTab === 'mata-uang') list = filteredCurrencies;
+                    handleToggleSelectAll(list);
+                  }}
+                />
+                <span className="text-[11px] font-mono hidden sm:inline">Pilih Semua</span>
+              </label>
+            )}
           </div>
         </div>
 
@@ -1451,6 +1564,16 @@ export default function MasterDataPage() {
             <div className="h-4 w-px bg-white/15" />
 
             <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleAskBulkDelete}
+                className="px-3 py-1.5 rounded-lg bg-rose-600/90 hover:bg-rose-600 text-white font-medium transition-all flex items-center gap-1.5 shadow-xs cursor-pointer border border-rose-500/30 active:scale-95"
+                title="Hapus data yang dipilih"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                Hapus Terpilih
+              </button>
+
               <button
                 type="button"
                 onClick={() => {
@@ -3850,6 +3973,7 @@ export default function MasterDataPage() {
                       <th className="p-3">Perhitungan Pajak</th>
                       <th className="p-3">Lingkup Modul Terintegrasi</th>
                       <th className="p-3 text-center w-32">Basis Akuntansi</th>
+                      <th className="p-3 text-center w-20">Aksi</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[#202326]">
@@ -3966,6 +4090,25 @@ export default function MasterDataPage() {
                             </span>
                           )}
                         </td>
+                        <td className="p-3 text-center">
+                          <Button
+                            size="xs"
+                            variant="ghost"
+                            icon={Trash2}
+                            disabled={curr.isBase}
+                            onClick={() => {
+                              if (curr.isBase) {
+                                addToast('Mata uang basis (IDR) tidak dapat dihapus karena merupakan acuan buku besar.', 'warning');
+                                return;
+                              }
+                              handleAskDelete('mata-uang', curr.id, `${curr.code} - ${curr.name}`);
+                            }}
+                            className={curr.isBase
+                              ? 'opacity-30 cursor-not-allowed text-neutral-500'
+                              : 'text-[#F4511E] hover:bg-[#F4511E]/10 border border-[#F4511E]/30 cursor-pointer'}
+                            title={curr.isBase ? 'Mata uang basis IDR tidak dapat dihapus' : `Hapus mata uang ${curr.code}`}
+                          />
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -3986,13 +4129,22 @@ export default function MasterDataPage() {
                     className={`master-data-card p-5 rounded-2xl border flex flex-col justify-between transition-all duration-200 ${
                       curr.isBase
                         ? 'bg-gradient-to-br from-[#141B26]/95 via-[#121822]/90 to-[#16181F]/90 border-[#F4511E]/40 shadow-lg shadow-[#F4511E]/5 ring-1 ring-[#F4511E]/20'
+                        : selectedIds.includes(curr.id)
+                        ? 'bg-[#121822]/95 border-[#F4511E] ring-1 ring-[#F4511E]/50 shadow-md shadow-[#F4511E]/10'
                         : 'bg-[#121822]/90 border-[#1E2938] hover:border-[#2C3B4E]'
                     }`}
                   >
                     <div>
-                      {/* Top Bar: Icon, Badges, & Switch */}
+                      {/* Top Bar: Checkbox, Icon, Badges, & Switch */}
                       <div className="flex items-start justify-between gap-3 mb-4">
                         <div className="flex items-center gap-3">
+                          <input
+                            type="checkbox"
+                            className="checkbox checkbox-xs rounded border-neutral-600 checked:border-[#F4511E] checked:bg-[#F4511E] cursor-pointer shrink-0"
+                            checked={selectedIds.includes(curr.id)}
+                            onChange={() => handleToggleSelectItem(curr.id)}
+                            title={`Pilih mata uang ${curr.code}`}
+                          />
                           <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-mono font-bold text-lg shadow-inner ${
                             curr.isBase
                               ? 'bg-gradient-to-br from-[#F4511E]/25 to-amber-500/10 border border-[#F4511E]/40 text-[#F4511E]'
@@ -4097,17 +4249,40 @@ export default function MasterDataPage() {
                       </div>
                     </div>
 
-                    {/* Integrated Modules Footer */}
-                    <div className="pt-3 border-t border-white/5">
-                      <div className="text-[10px] font-mono text-neutral-500 uppercase tracking-wider mb-1.5">
-                        Modul Terintegrasi:
+                    {/* Integrated Modules Footer & Actions */}
+                    <div className="pt-3 border-t border-white/5 flex items-end justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="text-[10px] font-mono text-neutral-500 uppercase tracking-wider mb-1.5">
+                          Modul Terintegrasi:
+                        </div>
+                        <div className="flex flex-wrap gap-1">
+                          {curr.lingkupModul?.map((mod, mi) => (
+                            <span key={mi} className="px-2 py-0.5 rounded-md bg-[#161D27] text-neutral-300 text-[10px] font-mono border border-white/5">
+                              {mod}
+                            </span>
+                          ))}
+                        </div>
                       </div>
-                      <div className="flex flex-wrap gap-1">
-                        {curr.lingkupModul?.map((mod, mi) => (
-                          <span key={mi} className="px-2 py-0.5 rounded-md bg-[#161D27] text-neutral-300 text-[10px] font-mono border border-white/5">
-                            {mod}
-                          </span>
-                        ))}
+
+                      {/* Tombol Hapus per Item */}
+                      <div className="shrink-0 flex items-center">
+                        <Button
+                          size="xs"
+                          variant="ghost"
+                          icon={Trash2}
+                          disabled={curr.isBase}
+                          onClick={() => {
+                            if (curr.isBase) {
+                              addToast('Mata uang basis (IDR) tidak dapat dihapus karena acuan buku besar!', 'warning');
+                              return;
+                            }
+                            handleAskDelete('mata-uang', curr.id, `${curr.code} - ${curr.name}`);
+                          }}
+                          className={curr.isBase
+                            ? 'opacity-30 cursor-not-allowed text-neutral-500'
+                            : 'text-[#F4511E] hover:bg-[#F4511E]/10 border border-[#F4511E]/30 cursor-pointer'}
+                          title={curr.isBase ? 'Mata uang basis IDR tidak dapat dihapus' : `Hapus mata uang ${curr.code}`}
+                        />
                       </div>
                     </div>
                   </motion.div>
@@ -6102,6 +6277,11 @@ export default function MasterDataPage() {
                 Apakah Anda yakin ingin menghapus data{' '}
                 <span className="font-bold text-white font-mono">{deleteConfirm.label}</span>?
               </p>
+              {deleteConfirm.isBulk && deleteConfirm.type === 'mata-uang' && (
+                <p className="text-[11px] text-amber-400 mt-1">
+                  Catatan: Mata uang basis (IDR) otomatis diproteksi sebagai acuan buku besar dan tidak akan dihapus.
+                </p>
+              )}
               <p className="text-xs text-rose-400 mt-1">
                 Data yang dihapus tidak dapat dikembalikan.
               </p>

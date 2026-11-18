@@ -547,7 +547,7 @@ export default function PreOrderPage() {
         materialId: po.materialId,
         materialName: po.materialName,
         jenis: po.jenis || 'Jasa Angkut + Material',
-        nomorRo: po.nomorRo || `RO-${po.id}`,
+        nomorRo: po.nomorRO || po.nomorRo || `RO-${po.id}`,
       },
     });
   };

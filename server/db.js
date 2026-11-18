@@ -127,6 +127,9 @@ export function initDb() {
       id TEXT PRIMARY KEY,
       nomorSj TEXT NOT NULL,
       poNumber TEXT,
+      nomorRO TEXT,
+      jurnalId TEXT,
+      preOrderId TEXT,
       customer TEXT,
       material TEXT,
       nopol TEXT,
@@ -267,7 +270,214 @@ export function initDb() {
     console.warn('Migration pre_orders table error:', err);
   }
 
+  // Safe migration for surat_jalan additional relation fields
+  try {
+    const sjCols = db.prepare('PRAGMA table_info(surat_jalan)').all().map((c) => c.name);
+    const newSjCols = [
+      ['nomorRO', 'TEXT'],
+      ['jurnalId', 'TEXT'],
+      ['preOrderId', 'TEXT'],
+    ];
+    for (const [col, colType] of newSjCols) {
+      if (!sjCols.includes(col)) {
+        db.exec(`ALTER TABLE surat_jalan ADD COLUMN ${col} ${colType};`);
+      }
+    }
+  } catch (err) {
+    console.warn('Migration surat_jalan table error:', err);
+  }
+
   seedInitialData();
+  syncJournalsAndWaybills();
+}
+
+/**
+ * Synchronize approved Pre Orders to Jurnal GI and link all Surat Jalan waybills.
+ * Strictly purges any orphan journal or waybill data not matching the Pre Orders page.
+ */
+export function syncJournalsAndWaybills() {
+  try {
+    // 0. PURGE ORPHAN DATA: Delete any journal summaries or waybills not tied to real Pre Orders
+    db.exec(`
+      DELETE FROM jurnal_gi
+      WHERE (preOrderId IS NOT NULL AND preOrderId NOT IN (SELECT id FROM pre_orders))
+         OR (preOrderId IS NULL AND (nomorRO IS NULL OR nomorRO NOT IN (SELECT nomorRO FROM pre_orders WHERE nomorRO IS NOT NULL)))
+         OR id IN ('REK-202611-0001', 'REK-202611-0002')
+         OR poNumber IN ('PO-LW-2026-089', 'PO-SI-2026-014', 'PO-DRAFT-01', 'PO-DRAFT-02');
+
+      DELETE FROM surat_jalan
+      WHERE (preOrderId IS NOT NULL AND preOrderId NOT IN (SELECT id FROM pre_orders))
+         OR (preOrderId IS NULL AND (nomorRO IS NULL OR nomorRO NOT IN (SELECT nomorRO FROM pre_orders WHERE nomorRO IS NOT NULL)))
+         OR id IN ('SJ-202611-0089', 'SJ-202611-0090', 'SJ-202611-0091')
+         OR poNumber IN ('PO-LW-2026-089', 'PO-SI-2026-014', 'PO-DRAFT-01', 'PO-DRAFT-02');
+    `);
+
+    // 1. Ensure all APPROVED Pre Orders have a nomorRO and an active Jurnal GI summary record
+    const approvedPos = db.prepare("SELECT * FROM pre_orders WHERE status = 'APPROVED'").all();
+    for (const po of approvedPos) {
+      let nomorRO = po.nomorRO;
+      if (!nomorRO) {
+        const year = po.tanggal ? String(po.tanggal).slice(0, 4) : String(new Date().getFullYear());
+        nomorRO = `RO-${year}-${String(po.id).slice(-4)}`;
+        db.prepare('UPDATE pre_orders SET nomorRO = ? WHERE id = ?').run(nomorRO, po.id);
+        po.nomorRO = nomorRO;
+      }
+
+      let jurnal = db.prepare('SELECT * FROM jurnal_gi WHERE preOrderId = ? OR nomorRO = ?').get(po.id, nomorRO);
+      if (!jurnal) {
+        const jrnId = `REK-${new Date().toISOString().slice(0, 7).replace('-', '')}-${String(Date.now()).slice(-4)}`;
+        let parsedItems = [];
+        if (po.items) {
+          try { parsedItems = JSON.parse(po.items); } catch (e) { parsedItems = []; }
+        }
+        const firstItem = parsedItems[0] || {};
+        const matName = po.materialName || firstItem.nama || 'SIRTU';
+        const targetVol = Number(po.totalOrder || firstItem.kuantitas || 0);
+        const hBeli = Number(po.hargaBeli || firstItem.hargaBeli || 0);
+        const hJual = Number(po.hargaJual || firstItem.hargaJual || 0);
+        const isPpn = po.jenisWajibPajak === 'PKP' ? 1 : 0;
+        const targetTrips = po.satuan === 'rit' ? Math.max(1, targetVol) : Math.max(1, Math.ceil(targetVol / 30));
+        const nowIso = new Date().toISOString();
+
+        db.prepare(`
+          INSERT INTO jurnal_gi (
+            id, nomorRO, preOrderId, poNumber, customer, customerAddress,
+            material, isPpn, tanggal, totalSj, targetRitase, totalVolume,
+            targetVolume, satuan, hargaBeli, hargaJual, nominalBeli,
+            nominalJual, status, suratJalanDetails, created_at, updated_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `).run(
+          jrnId,
+          nomorRO,
+          po.id,
+          po.nomorPo || 'MENUNGGU SURAT JALAN PERTAMA',
+          po.customer,
+          po.customerAddress || '',
+          matName,
+          isPpn,
+          po.tanggal || nowIso.split('T')[0],
+          0,
+          targetTrips,
+          0,
+          targetVol,
+          po.satuan || 'm3',
+          hBeli,
+          hJual,
+          0,
+          0,
+          'Siap Kirim',
+          JSON.stringify([]),
+          nowIso,
+          nowIso
+        );
+      }
+    }
+
+    // 2. Synchronize waybills (surat_jalan) to their respective Jurnal GI summaries
+    const allSj = db.prepare('SELECT * FROM surat_jalan').all();
+    for (const sj of allSj) {
+      let po = null;
+      if (sj.preOrderId) {
+        po = db.prepare('SELECT * FROM pre_orders WHERE id = ?').get(sj.preOrderId);
+      }
+      if (!po && sj.poNumber) {
+        po = db.prepare('SELECT * FROM pre_orders WHERE nomorPo = ? OR id = ?').get(sj.poNumber, sj.poNumber);
+      }
+      if (!po && sj.nomorRO) {
+        po = db.prepare('SELECT * FROM pre_orders WHERE nomorRO = ?').get(sj.nomorRO);
+      }
+
+      let jurnal = null;
+      if (sj.jurnalId) {
+        jurnal = db.prepare('SELECT * FROM jurnal_gi WHERE id = ?').get(sj.jurnalId);
+      }
+      if (!jurnal && po) {
+        jurnal = db.prepare('SELECT * FROM jurnal_gi WHERE preOrderId = ? OR (nomorRO IS NOT NULL AND nomorRO = ?)').get(po.id, po.nomorRO || '');
+      }
+      if (!jurnal && sj.nomorRO) {
+        jurnal = db.prepare('SELECT * FROM jurnal_gi WHERE nomorRO = ?').get(sj.nomorRO);
+      }
+      if (!jurnal && sj.poNumber) {
+        jurnal = db.prepare('SELECT * FROM jurnal_gi WHERE poNumber = ?').get(sj.poNumber);
+      }
+
+      if (jurnal) {
+        // Ensure relational pointers on surat_jalan
+        if (!sj.jurnalId || !sj.nomorRO || !sj.preOrderId) {
+          db.prepare('UPDATE surat_jalan SET nomorRO = ?, jurnalId = ?, preOrderId = ? WHERE id = ?').run(
+            jurnal.nomorRO,
+            jurnal.id,
+            jurnal.preOrderId || po?.id || null,
+            sj.id
+          );
+        }
+
+        // Parse details and append if missing
+        let details = [];
+        try {
+          details = typeof jurnal.suratJalanDetails === 'string' ? JSON.parse(jurnal.suratJalanDetails) : (jurnal.suratJalanDetails || []);
+        } catch (e) {
+          details = [];
+        }
+
+        const exists = details.some((d) => d.id === sj.id || d.nomorSj === sj.nomorSj);
+        if (!exists) {
+          const sjDesc = {
+            id: sj.id,
+            nomorSj: sj.nomorSj,
+            poNumber: sj.poNumber || jurnal.poNumber,
+            nomorRO: jurnal.nomorRO,
+            customer: sj.customer || jurnal.customer,
+            material: sj.material || jurnal.material,
+            nopol: sj.nopol || 'W 9821 UB',
+            driver: sj.driver || 'Supir Armada Terjadwal',
+            tanggal: sj.tanggal,
+            waktu: sj.waktu,
+            nomorNota: sj.nomorNota || '',
+            panjangCm: sj.panjangCm || 0,
+            lebarCm: sj.lebarCm || 0,
+            tinggiCm: sj.tinggiCm || 0,
+            koreksiTinggiCm: sj.koreksiTinggiCm || 0,
+            volumeAkhir: Number(sj.volumeAkhir) || 0,
+            status: sj.status || 'Selesai',
+          };
+          details.push(sjDesc);
+
+          const totalSj = details.length;
+          const totalVolume = Number(details.reduce((sum, d) => sum + (Number(d.volumeAkhir) || 0), 0).toFixed(2));
+          const nominalBeli = Math.round(totalVolume * (Number(jurnal.hargaBeli) || 0));
+          const nominalJual = Math.round(totalVolume * (Number(jurnal.hargaJual) || 0));
+          const targetTrips = Number(jurnal.targetRitase) || 0;
+          const targetVol = Number(jurnal.targetVolume) || 0;
+          const isTripsMet = targetTrips > 0 && totalSj >= targetTrips;
+          const isVolumeMet = targetVol > 0 && totalVolume >= targetVol;
+          const status = (isTripsMet || isVolumeMet) ? 'Selesai Kirim' : 'Dalam Pengiriman';
+
+          db.prepare(`
+            UPDATE jurnal_gi
+            SET totalSj = ?, totalVolume = ?, nominalBeli = ?, nominalJual = ?,
+                status = ?, suratJalanDetails = ?, updated_at = ?
+            WHERE id = ?
+          `).run(
+            totalSj,
+            totalVolume,
+            nominalBeli,
+            nominalJual,
+            status,
+            JSON.stringify(details),
+            new Date().toISOString(),
+            jurnal.id
+          );
+
+          if (po) {
+            db.prepare('UPDATE pre_orders SET terkirim = ? WHERE id = ?').run(totalVolume, po.id);
+          }
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('Error during syncJournalsAndWaybills:', err);
+  }
 }
 
 /**
@@ -411,140 +621,9 @@ function seedInitialData() {
     insertCust.run('cust-4', 'PT PETROKIMIA GRESIK', 'PG', 'PT', 'Jl. Jenderal Ahmad Yani, Gresik', '01.111.222.3-011.000', '031-3982200', 'PG');
   }
 
-  // Pre-orders are not seeded with dummy records, started clean for real admin input
+  // Pre-orders, Surat Jalan, and Jurnal GI are NOT seeded with dummy records
+  // They are strictly populated from real administrative transactions and synchronized
 
-  // Seed surat_jalan if empty
-  const sjCount = db.prepare('SELECT COUNT(*) as count FROM surat_jalan').get().count;
-  if (sjCount === 0) {
-    const insertSj = db.prepare(`
-      INSERT INTO surat_jalan (id, nomorSj, poNumber, customer, material, nopol, driver, tanggal, waktu, nomorNota, isPpn, panjangCm, lebarCm, tinggiCm, koreksiTinggiCm, volumeAkhir, status)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `);
-
-    insertSj.run('SJ-202611-0089', '29678', 'PO-LW-2026-089', 'PT LION WINGS', 'SIRTU', 'W 9821 UB', 'Bambang Suprianto', '2026-11-07', '09:43', 'NT-88921', 0, 650, 250, 200, 0, 32.5, 'Selesai');
-    insertSj.run('SJ-202611-0090', '29679', 'PO-LW-2026-089', 'PT LION WINGS', 'SIRTU', 'A9041ZN', 'Supriyadi', '2026-11-07', '11:15', 'NT-88922', 0, 788, 250, 210, -5, 40.39, 'Selesai');
-    insertSj.run('SJ-202611-0091', '29680', 'PO-LW-2026-089', 'PT LION WINGS', 'SIRTU', 'A9048NM', 'Mulyono', '2026-11-07', '13:05', 'NT-88923', 0, 630, 235, 180, 0, 26.65, 'Selesai');
-  }
-
-  // Seed jurnal_gi if empty
-  const jrnCount = db.prepare('SELECT COUNT(*) as count FROM jurnal_gi').get().count;
-  if (jrnCount === 0) {
-    const insertJrn = db.prepare(`
-      INSERT INTO jurnal_gi (
-        id, nomorRO, preOrderId, poNumber, customer, customerAddress, material,
-        isPpn, tanggal, totalSj, targetRitase, totalVolume, targetVolume, satuan,
-        hargaBeli, hargaJual, nominalBeli, nominalJual, status, suratJalanDetails,
-        created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `);
-
-    const sjDetailsLW = [
-      {
-        id: 'SJ-202611-0089',
-        nomorSj: '29678',
-        poNumber: 'PO-LW-2026-089',
-        customer: 'PT LION WINGS',
-        material: 'SIRTU',
-        nopol: 'W 9821 UB',
-        driver: 'Bambang Suprianto',
-        tanggal: '2026-11-07',
-        waktu: '09:43',
-        nomorNota: 'NT-88921',
-        panjangCm: 650,
-        lebarCm: 250,
-        tinggiCm: 200,
-        koreksiTinggiCm: 0,
-        volumeAkhir: 32.5,
-        status: 'Selesai'
-      },
-      {
-        id: 'SJ-202611-0090',
-        nomorSj: '29679',
-        poNumber: 'PO-LW-2026-089',
-        customer: 'PT LION WINGS',
-        material: 'SIRTU',
-        nopol: 'A9041ZN',
-        driver: 'Supriyadi',
-        tanggal: '2026-11-07',
-        waktu: '11:15',
-        nomorNota: 'NT-88922',
-        panjangCm: 788,
-        lebarCm: 250,
-        tinggiCm: 210,
-        koreksiTinggiCm: -5,
-        volumeAkhir: 40.39,
-        status: 'Selesai'
-      },
-      {
-        id: 'SJ-202611-0091',
-        nomorSj: '29680',
-        poNumber: 'PO-LW-2026-089',
-        customer: 'PT LION WINGS',
-        material: 'SIRTU',
-        nopol: 'A9048NM',
-        driver: 'Mulyono',
-        tanggal: '2026-11-07',
-        waktu: '13:05',
-        nomorNota: 'NT-88923',
-        panjangCm: 630,
-        lebarCm: 235,
-        tinggiCm: 180,
-        koreksiTinggiCm: 0,
-        volumeAkhir: 26.65,
-        status: 'Selesai'
-      }
-    ];
-
-    insertJrn.run(
-      'REK-202611-0001',
-      'RO-2026-0089',
-      'PO-DRAFT-01',
-      'PO-LW-2026-089',
-      'PT LION WINGS',
-      'Kawasan Industri Gresik Blok C-12',
-      'SIRTU',
-      0,
-      '2026-11-07',
-      3,
-      15,
-      99.54,
-      500,
-      'm3',
-      50765,
-      67233,
-      5053148,
-      6692373,
-      'Siap Tagih',
-      JSON.stringify(sjDetailsLW),
-      '2026-11-01 10:30:00',
-      '2026-11-07 13:05:00'
-    );
-
-    insertJrn.run(
-      'REK-202611-0002',
-      'RO-2026-0090',
-      'PO-DRAFT-02',
-      'PO-SI-2026-014',
-      'PT SEMEN INDONESIA',
-      'Jl. Veteran, Gresik',
-      'LIMESTONE',
-      1,
-      '2026-11-10',
-      0,
-      30,
-      0,
-      1200,
-      'm3',
-      38991,
-      42857,
-      0,
-      0,
-      'Siap Kirim',
-      JSON.stringify([]),
-      '2026-11-10 09:00:00',
-      '2026-11-10 09:00:00'
-    );
-  }
 
   // Seed bkk if empty
   const bkkCount = db.prepare('SELECT COUNT(*) as count FROM bkk').get().count;

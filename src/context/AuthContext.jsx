@@ -13,7 +13,15 @@ export function AuthProvider({ children }) {
       const saved = localStorage.getItem(USERS_STORAGE_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed.filter(
+            (u) =>
+              u.id !== 'usr-2' &&
+              u.id !== 'usr-3' &&
+              u.email?.toLowerCase() !== 'admin@ptbas.co.id' &&
+              u.email?.toLowerCase() !== 'admin.dummy@ptbas.co.id'
+          );
+        }
       }
     } catch (e) {
       console.warn('Failed to parse stored users:', e);
@@ -31,12 +39,34 @@ export function AuthProvider({ children }) {
       const sessionSaved = sessionStorage.getItem(AUTH_STORAGE_KEY);
       if (sessionSaved) {
         const parsed = JSON.parse(sessionSaved);
-        if (parsed && parsed.email) return parsed;
+        if (parsed && parsed.email) {
+          if (
+            parsed.id === 'usr-2' ||
+            parsed.id === 'usr-3' ||
+            parsed.email?.toLowerCase() === 'admin@ptbas.co.id' ||
+            parsed.email?.toLowerCase() === 'admin.dummy@ptbas.co.id'
+          ) {
+            sessionStorage.removeItem(AUTH_STORAGE_KEY);
+            return null;
+          }
+          return parsed;
+        }
       }
       const saved = localStorage.getItem(AUTH_STORAGE_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (parsed && parsed.email) return parsed;
+        if (parsed && parsed.email) {
+          if (
+            parsed.id === 'usr-2' ||
+            parsed.id === 'usr-3' ||
+            parsed.email?.toLowerCase() === 'admin@ptbas.co.id' ||
+            parsed.email?.toLowerCase() === 'admin.dummy@ptbas.co.id'
+          ) {
+            localStorage.removeItem(AUTH_STORAGE_KEY);
+            return null;
+          }
+          return parsed;
+        }
       }
     } catch (e) {
       console.warn('Failed to parse stored auth user:', e);
@@ -53,7 +83,33 @@ export function AuthProvider({ children }) {
       })
       .then((data) => {
         if (Array.isArray(data) && data.length > 0) {
-          setUsers(data);
+          const sanitized = data
+            .filter(
+              (u) =>
+                u.id !== 'usr-2' &&
+                u.id !== 'usr-3' &&
+                u.email?.toLowerCase() !== 'admin@ptbas.co.id' &&
+                u.email?.toLowerCase() !== 'admin.dummy@ptbas.co.id'
+            )
+            .map((u) => {
+              if (u.branch && (u.branch.includes('Site [') || u.branch.includes('// Tgl:'))) {
+                return { ...u, branch: 'Hub Gresik' };
+              }
+              return u;
+            });
+          setUsers(sanitized);
+
+          // Re-sync active currentUser session with fresh database record
+          setCurrentUser((prev) => {
+            if (!prev) return null;
+            const fresh = sanitized.find(
+              (u) => u.id === prev.id || u.email?.toLowerCase() === prev.email?.toLowerCase()
+            );
+            if (fresh) {
+              return { ...prev, ...fresh };
+            }
+            return prev;
+          });
         }
       })
       .catch(() => {
@@ -165,7 +221,15 @@ export function AuthProvider({ children }) {
    * Register new user with Node.js SQLite API
    * Admin baru selalu membutuhkan persetujuan (approval) dari Super Admin
    */
-  const register = async ({ name, email, password, branch = 'Hub Gresik', phone = '-' }) => {
+  const register = async ({
+    name,
+    email,
+    password,
+    branch = 'Hub Gresik',
+    phone = '-',
+    birth_date = null,
+    gender = 'Laki-laki',
+  }) => {
     const cleanEmail = email.trim().toLowerCase();
     const autoRole = determineRoleByEmail(cleanEmail);
     const isSuper = autoRole.role === 'superadmin';
@@ -180,6 +244,8 @@ export function AuthProvider({ children }) {
           password,
           branch,
           phone,
+          birth_date,
+          gender,
         }),
       });
 
@@ -221,6 +287,8 @@ export function AuthProvider({ children }) {
         roleLabel: autoRole.roleLabel,
         branch: branch || 'Hub Gresik',
         phone: phone || '-',
+        birth_date: birth_date || null,
+        gender: gender || 'Laki-laki',
         aktif: isSuper ? 1 : 0, // Admin butuh approval
         registeredAt: new Date().toISOString(),
       };
@@ -294,6 +362,101 @@ export function AuthProvider({ children }) {
     } catch (e) {
       setUsers((prev) => prev.filter((u) => u.id !== userId));
       return { success: true };
+    }
+  };
+
+  /**
+   * Super Admin: Ganti / Reset Password pengguna manapun secara langsung
+   */
+  const adminResetPassword = async (userId, newPassword) => {
+    try {
+      const res = await fetch(`/api/users/${userId}/admin-password`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ newPassword }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setUsers((prev) =>
+          prev.map((u) => (u.id === userId ? { ...u, password: newPassword } : u))
+        );
+        return { success: true, message: data.message };
+      }
+      return { success: false, message: data.message || 'Gagal mengubah kata sandi pengguna.' };
+    } catch (e) {
+      setUsers((prev) =>
+        prev.map((u) => (u.id === userId ? { ...u, password: newPassword } : u))
+      );
+      return { success: true, message: 'Kata sandi berhasil diperbarui (offline mode).' };
+    }
+  };
+
+  /**
+   * Super Admin: Edit data pengguna (nama, email, role, roleLabel, branch, phone, aktif, dll.)
+   */
+  const adminUpdateUser = async (userId, userData) => {
+    try {
+      const res = await fetch(`/api/users/${userId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(userData),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setUsers((prev) =>
+          prev.map((u) => (u.id === userId ? { ...u, ...data.user } : u))
+        );
+        if (currentUser && (currentUser.id === userId || currentUser.email?.toLowerCase() === data.user?.email?.toLowerCase())) {
+          setCurrentUser((prev) => ({ ...prev, ...data.user }));
+        }
+        return { success: true, message: data.message, user: data.user };
+      }
+      return { success: false, message: data.message || 'Gagal memperbarui data pengguna.' };
+    } catch (e) {
+      setUsers((prev) =>
+        prev.map((u) => (u.id === userId ? { ...u, ...userData } : u))
+      );
+      if (currentUser?.id === userId) {
+        setCurrentUser((prev) => ({ ...prev, ...userData }));
+      }
+      return { success: true, message: 'Data pengguna berhasil diperbarui (offline mode).' };
+    }
+  };
+
+  /**
+   * Super Admin: Buat akun pengguna baru secara langsung
+   */
+  const adminCreateUser = async (userData) => {
+    try {
+      const res = await fetch('/api/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(userData),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setUsers((prev) => [data.user, ...prev]);
+        return { success: true, message: data.message, user: data.user };
+      }
+      return { success: false, message: data.message || 'Gagal membuat pengguna baru.' };
+    } catch (e) {
+      const autoRole = determineRoleByEmail(userData.email);
+      const newUser = {
+        id: `usr-${Date.now()}`,
+        name: userData.name.trim(),
+        email: userData.email.trim().toLowerCase(),
+        password: userData.password,
+        role: userData.role || autoRole.role,
+        roleLabel: userData.roleLabel || autoRole.roleLabel,
+        branch: userData.branch || 'Hub Gresik',
+        phone: userData.phone || '-',
+        birth_date: userData.birth_date || null,
+        gender: userData.gender || 'Laki-laki',
+        aktif: 1,
+        created_at: new Date().toISOString(),
+      };
+      setUsers((prev) => [newUser, ...prev]);
+      return { success: true, message: 'Pengguna baru berhasil ditambahkan (offline mode).', user: newUser };
     }
   };
 
@@ -456,6 +619,9 @@ export function AuthProvider({ children }) {
         approveUser,
         toggleUserStatus,
         deleteUser,
+        adminResetPassword,
+        adminUpdateUser,
+        adminCreateUser,
         updateProfile,
         changePassword,
         requestPasswordReset,

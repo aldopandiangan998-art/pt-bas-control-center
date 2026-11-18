@@ -849,7 +849,6 @@ export function DataProvider({ children }) {
   // Data Pengguna (Users)
   const [usersList, setUsersList] = useState([
     { id: 'usr-1', name: 'David Rusiah', role: 'Super Admin', email: 'superadmin@ptbas.co.id', phone: '0811-3001-992', aktif: true },
-    { id: 'usr-2', name: 'Rudi Hartono', role: 'Admin', email: 'admin@ptbas.co.id', phone: '0813-8899-112', aktif: true },
   ]);
 
   // ==========================================

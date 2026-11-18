@@ -191,7 +191,9 @@ export default function LoginPage({ defaultMode = null }) {
         name: regData.fullName,
         email: regData.email,
         phone: regData.phone ? `+62${regData.phone.replace(/^0+/, '')}` : '-',
-        branch: `Site [${regData.gender}] // Tgl: ${regData.birthDate || '-'}`,
+        branch: 'Hub Gresik',
+        birth_date: regData.birthDate || null,
+        gender: regData.gender || 'Laki-laki',
         password: regData.password,
       });
 
@@ -383,7 +385,7 @@ export default function LoginPage({ defaultMode = null }) {
                       required
                       value={loginEmail}
                       onChange={(e) => setLoginEmail(e.target.value)}
-                      placeholder="admin@ptbas.co.id"
+                      placeholder="user@ptbas.co.id"
                       autoComplete="username"
                       className={`w-full bg-transparent text-xs sm:text-sm outline-none font-mono ${isDark
                         ? 'text-white placeholder:text-neutral-600'

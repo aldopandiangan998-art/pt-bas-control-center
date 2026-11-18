@@ -497,23 +497,12 @@ function seedInitialData() {
       birth_date: '1985-06-15',
       gender: 'Laki-laki',
     },
-    {
-      id: 'usr-2',
-      name: 'Rudi Hartono',
-      email: 'admin@ptbas.co.id',
-      password: 'admin123',
-      role: 'admin',
-      roleLabel: 'Admin',
-      branch: 'Hub Gresik',
-      phone: '0813-8899-112',
-      birth_date: '1992-04-10',
-      gender: 'Laki-laki',
-    },
   ];
 
-  // Purge any dummy admin user if previously seeded
+  // Purge any dummy admin user if previously seeded & sanitize any malformed branch
   try {
-    db.prepare("DELETE FROM users WHERE id = 'usr-3' OR LOWER(email) = 'admin.dummy@ptbas.co.id'").run();
+    db.prepare("DELETE FROM users WHERE id IN ('usr-2', 'usr-3') OR LOWER(email) IN ('admin@ptbas.co.id', 'admin.dummy@ptbas.co.id')").run();
+    db.prepare("UPDATE users SET branch = 'Hub Gresik' WHERE branch LIKE '%Site [%' OR branch LIKE '%// Tgl:%'").run();
   } catch (e) {}
 
   const insertUser = db.prepare(`

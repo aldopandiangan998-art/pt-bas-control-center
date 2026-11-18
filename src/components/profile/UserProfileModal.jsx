@@ -269,9 +269,19 @@ export default function UserProfileModal({ isOpen, onClose, initialTab = 'profil
                 <div className={`text-xs font-mono mt-0.5 ${isDark ? 'text-neutral-400' : 'text-slate-500'}`}>
                   {currentUser?.email}
                 </div>
-                <div className={`text-[10px] mt-0.5 flex items-center gap-1.5 ${isDark ? 'text-neutral-400' : 'text-slate-600'}`}>
-                  <ShieldCheck className="w-3 h-3 text-emerald-500" />
-                  <span>Penugasan: {currentUser?.branch || 'Pusat & Hub Gresik'}</span>
+                <div className={`text-[10px] mt-1.5 flex items-center gap-2 flex-wrap ${isDark ? 'text-neutral-400' : 'text-slate-600'}`}>
+                  <span className="flex items-center gap-1">
+                    <ShieldCheck className="w-3 h-3 text-emerald-500" />
+                    <span>Penugasan: {currentUser?.branch && !currentUser.branch.includes('Site [') ? currentUser.branch : 'Hub Gresik'}</span>
+                  </span>
+                  <span>•</span>
+                  <span>{currentUser?.gender || 'Laki-laki'}</span>
+                  {currentUser?.birth_date && (
+                    <>
+                      <span>•</span>
+                      <span>Lahir: {currentUser.birth_date}</span>
+                    </>
+                  )}
                 </div>
               </div>
             </div>

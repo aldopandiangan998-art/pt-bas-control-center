@@ -27,6 +27,7 @@ import {
   RotateCcw,
   SlidersHorizontal,
   ChevronDown,
+  ChevronRight,
   Filter,
   Info,
   Check,
@@ -328,6 +329,19 @@ export default function PreOrderPage() {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [sortBy, setSortBy] = useState('NEWEST');
+  const [collapsedGroups, setCollapsedGroups] = useState(new Set());
+  const [groupBy, setGroupBy] = useState('perusahaan'); // 'perusahaan' | 'none'
+
+  const toggleGroupCollapse = (key) => {
+    setCollapsedGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
+  const collapseAllGroups = () => setCollapsedGroups(new Set(filteredPreOrders.map((p) => p.customer || 'Lainnya')));
+  const expandAllGroups = () => setCollapsedGroups(new Set());
 
   const handleStartDateChange = (val) => {
     setStartDate(val);
@@ -510,6 +524,23 @@ export default function PreOrderPage() {
       return (b.tanggal || '').localeCompare(a.tanggal || '') || String(b.id).localeCompare(String(a.id));
     });
   }, [safePreOrders, searchQuery, statusFilter, customerFilter, materialFilter, startDate, endDate, sortBy]);
+
+  // ── Grouped orders by customer/perusahaan ──
+  const groupedOrders = useMemo(() => {
+    const map = new Map();
+    filteredPreOrders.forEach((po) => {
+      const key = po.customer || 'Lainnya';
+      if (!map.has(key)) map.set(key, []);
+      map.get(key).push(po);
+    });
+    return Array.from(map.entries()).map(([customer, orders]) => {
+      const totalVolume = orders.reduce((s, o) => s + (Number(o.totalOrder) || 0), 0);
+      const totalNilai = orders.reduce((s, o) => s + ((Number(o.totalOrder) || 0) * (Number(o.hargaJual || o.items?.[0]?.hargaJual) || 0)), 0);
+      const approvedCount = orders.filter((o) => o.status === 'APPROVED' || o.status === 'AKTIF').length;
+      const satuan = orders[0]?.satuan || 'm³';
+      return { customer, orders, totalVolume, totalNilai, approvedCount, satuan };
+    });
+  }, [filteredPreOrders]);
 
   // Dynamic currency options mapped from active currencies in DataContext
   const mataUangOptions = useMemo(() => {
@@ -994,183 +1025,97 @@ export default function PreOrderPage() {
       {/* ══════════ VIEW 1: DAFTAR RECEIVED ORDER (FAITHFUL TO SCREENSHOT) ══════════ */}
       {activeTab === 'list' && (
         <>
-          <main className={`px-4 space-y-3.5 mx-auto transition-all ${viewMode === 'grid' ? 'max-w-6xl' : 'max-w-4xl'}`}>
+          <main className="px-4 space-y-3 mx-auto max-w-6xl">
             {/* ── TOP TOOLBAR: SEARCH BAR & GRID / LIST TOGGLE ── */}
             <div className="pt-1 space-y-2">
-              <div className="flex items-center gap-2">
-                {/* Search Bar Input */}
-                <div className="relative flex-1">
-                  <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none" />
-                  <input
-                    ref={searchInputRef}
-                    type="text"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Cari nomor RO, PO, customer, material, tanggal..."
-                    className="w-full bg-[#14171A] border border-[#24282F] rounded-xl pl-10 pr-9 py-2.5 text-xs text-white placeholder-neutral-500 focus:outline-none focus:border-[#F4511E] font-mono transition-colors"
-                  />
-                  {searchQuery && (
-                    <button
-                      type="button"
-                      onClick={() => setSearchQuery('')}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-white p-0.5"
-                      title="Hapus pencarian"
-                    >
-                      <X className="w-3.5 h-3.5" />
-                    </button>
-                  )}
-                </div>
-
-                {/* View Mode Switcher: List vs Grid */}
-                <div className="flex items-center bg-[#14171A] border border-[#24282F] rounded-xl p-1 shrink-0 gap-1">
+              {/* Row 1: Total count kiri, icons kanan */}
+              <div className="flex items-center justify-between text-xs font-mono text-neutral-400 px-0.5">
+                <span>
+                  Total <span className="text-white font-bold">{filteredPreOrders.length}</span> Received Order
+                </span>
+                <div className="flex items-center gap-1">
                   <button
                     type="button"
-                    onClick={() => handleSetViewMode('list')}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono transition-all cursor-pointer ${
-                      viewMode === 'list'
-                        ? 'bg-[#F4511E] text-white font-bold shadow'
-                        : 'text-neutral-400 hover:text-white hover:bg-white/5'
-                    }`}
-                    title="Tampilan List (sesuai referensi)"
-                  >
-                    <List className="w-4 h-4" />
-                    <span className="hidden sm:inline text-[11px]">List</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleSetViewMode('grid')}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono transition-all cursor-pointer ${
-                      viewMode === 'grid'
-                        ? 'bg-[#F4511E] text-white font-bold shadow'
-                        : 'text-neutral-400 hover:text-white hover:bg-white/5'
-                    }`}
-                    title="Tampilan Grid (kartu komparasi)"
-                  >
-                    <LayoutGrid className="w-4 h-4" />
-                    <span className="hidden sm:inline text-[11px]">Grid</span>
-                  </button>
+                    onClick={() => { if (searchInputRef.current) { searchInputRef.current.focus(); searchInputRef.current.select(); } }}
+                    className={`p-1.5 rounded-lg transition-colors cursor-pointer ${searchQuery ? 'text-[#F4511E]' : 'text-neutral-400 hover:text-white hover:bg-white/5'}`}
+                    title="Cari"
+                  ><Filter className="w-4 h-4" /></button>
+                  <button type="button" onClick={() => setCalendarOpen(!calendarOpen)}
+                    className={`p-1.5 rounded-lg transition-colors cursor-pointer ${calendarOpen || startDate || endDate ? 'text-[#F4511E]' : 'text-neutral-400 hover:text-white hover:bg-white/5'}`}
+                    title="Rentang Tanggal"
+                  ><Calendar className="w-4 h-4" /></button>
+                  <button type="button" onClick={handleRefresh}
+                    className="p-1.5 rounded-lg text-neutral-400 hover:text-white hover:bg-white/5 transition-colors cursor-pointer"
+                    title="Refresh"
+                  ><RotateCcw className="w-4 h-4" /></button>
                 </div>
               </div>
 
-              {/* ── ACTIVE FILTER PILLS / CHIPS ── */}
-              {hasActiveFilters && (
-                <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
-                  <span className="text-[10px] font-mono text-neutral-500 uppercase tracking-wider mr-1">Filter Aktif:</span>
-                  {searchQuery && (
-                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#181B20] border border-[#2B313C] text-neutral-200 text-[11px] font-mono">
-                      <Search className="w-3 h-3 text-neutral-400" />
-                      <span className="text-white font-semibold truncate max-w-[140px]">"{searchQuery}"</span>
-                      <button
-                        type="button"
-                        onClick={() => setSearchQuery('')}
-                        className="text-neutral-400 hover:text-white ml-0.5 p-0.5 cursor-pointer"
-                        title="Hapus filter pencarian"
-                      >
-                        <X className="w-3 h-3" />
-                      </button>
-                    </span>
-                  )}
-                  {statusFilter !== 'ALL' && (
-                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#181B20] border border-[#2B313C] text-neutral-200 text-[11px] font-mono">
-                      <span className="text-neutral-400">Status:</span>
-                      <span className="text-[#F4511E] font-semibold">{statusFilter}</span>
-                      <button
-                        type="button"
-                        onClick={() => setStatusFilter('ALL')}
-                        className="text-neutral-400 hover:text-white ml-0.5 p-0.5 cursor-pointer"
-                        title="Hapus filter status"
-                      >
-                        <X className="w-3 h-3" />
-                      </button>
-                    </span>
-                  )}
-                  {customerFilter !== 'ALL' && (
-                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#181B20] border border-[#2B313C] text-neutral-200 text-[11px] font-mono">
-                      <span className="text-neutral-400">Customer:</span>
-                      <span className="text-white font-semibold truncate max-w-[150px]">{customerFilter}</span>
-                      <button
-                        type="button"
-                        onClick={() => setCustomerFilter('ALL')}
-                        className="text-neutral-400 hover:text-white ml-0.5 p-0.5 cursor-pointer"
-                        title="Hapus filter customer"
-                      >
-                        <X className="w-3 h-3" />
-                      </button>
-                    </span>
-                  )}
-                  {materialFilter !== 'ALL' && (
-                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#181B20] border border-[#2B313C] text-neutral-200 text-[11px] font-mono">
-                      <span className="text-neutral-400">Material:</span>
-                      <span className="text-white font-semibold">{materialFilter}</span>
-                      <button
-                        type="button"
-                        onClick={() => setMaterialFilter('ALL')}
-                        className="text-neutral-400 hover:text-white ml-0.5 p-0.5 cursor-pointer"
-                        title="Hapus filter material"
-                      >
-                        <X className="w-3 h-3" />
-                      </button>
-                    </span>
-                  )}
-                  {(startDate || endDate) && (
-                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#181B20] border border-[#2B313C] text-neutral-200 text-[11px] font-mono">
-                      <Calendar className="w-3 h-3 text-[#F4511E]" />
-                      <span className="text-white font-semibold">
-                        {startDate || '...'} s/d {endDate || '...'}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setStartDate('');
-                          setEndDate('');
-                        }}
-                        className="text-neutral-400 hover:text-white ml-0.5 p-0.5 cursor-pointer"
-                        title="Hapus rentang tanggal"
-                      >
-                        <X className="w-3 h-3" />
-                      </button>
-                    </span>
-                  )}
-                  <button
-                    type="button"
-                    onClick={handleResetFilters}
-                    className="text-[11px] font-mono text-[#F4511E] hover:underline px-1 cursor-pointer flex items-center gap-1"
-                  >
-                    <RotateCcw className="w-2.5 h-2.5" />
-                    Reset Semua
-                  </button>
-                </div>
-              )}
-
-              {/* Toolbar Sub-bar: Info Count, Filter Status, Select All */}
-              <div className="flex items-center justify-between text-[11px] font-mono text-neutral-400 px-1 pt-0.5">
-                <div className="flex items-center gap-2">
-                  <span>
-                    Menampilkan <span className="text-white font-bold">{filteredPreOrders.length}</span> order
-                    {filteredPreOrders.length !== safePreOrders.length && (
-                      <span className="text-neutral-500"> (dari total {safePreOrders.length})</span>
-                    )}
-                  </span>
+              {/* Row 2: List/Grid toggle, Group dropdown, Prioritas, Buka/Tutup semua */}
+              <div className="flex items-center gap-2 flex-wrap">
+                {/* View toggle */}
+                <div className="flex items-center bg-[#14171A] border border-[#24282F] rounded-lg p-0.5 shrink-0 gap-0.5">
+                  <button type="button" onClick={() => handleSetViewMode('list')}
+                    className={`flex items-center gap-1 px-2.5 py-1.5 rounded-md text-xs font-mono transition-all cursor-pointer ${viewMode === 'list' ? 'bg-[#F4511E] text-white font-bold' : 'text-neutral-400 hover:text-white hover:bg-white/5'}`}
+                    title="Tampilan List"
+                  ><List className="w-3.5 h-3.5" /></button>
+                  <button type="button" onClick={() => handleSetViewMode('grid')}
+                    className={`flex items-center gap-1 px-2.5 py-1.5 rounded-md text-xs font-mono transition-all cursor-pointer ${viewMode === 'grid' ? 'bg-[#F4511E] text-white font-bold' : 'text-neutral-400 hover:text-white hover:bg-white/5'}`}
+                    title="Tampilan Grid"
+                  ><LayoutGrid className="w-3.5 h-3.5" /></button>
                 </div>
 
-                {filteredPreOrders.length > 0 && (
+                {/* Group by: Perusahaan dropdown */}
+                <div className="relative">
+                  <select
+                    value={customerFilter}
+                    onChange={(e) => setCustomerFilter(e.target.value)}
+                    className="bg-[#14171A] border border-[#24282F] rounded-lg pl-3 pr-7 py-1.5 text-xs font-mono text-neutral-200 focus:outline-none focus:border-[#F4511E] appearance-none cursor-pointer"
+                  >
+                    <option value="ALL">Perusahaan</option>
+                    {availableCustomerOptions.map((c) => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
+                  </select>
+                  <ChevronDown className="w-3 h-3 text-neutral-400 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
+                </div>
+
+                {/* Filter status (Prioritas) */}
+                <button type="button" onClick={() => setFilterOpen(!filterOpen)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-mono transition-colors cursor-pointer ${filterOpen || hasActiveFilters ? 'border-[#F4511E] text-[#F4511E] bg-[#F4511E]/10' : 'border-[#24282F] text-neutral-300 hover:border-neutral-500 bg-[#14171A]'}`}
+                >
+                  <SlidersHorizontal className="w-3.5 h-3.5" />
+                  <span>Prioritas</span>
+                </button>
+
+                {/* Buka / Tutup semua (hanya di list mode) */}
+                {viewMode === 'list' && filteredPreOrders.length > 0 && (
+                  <div className="ml-auto flex items-center gap-2 text-[11px] font-mono">
+                    <button type="button" onClick={expandAllGroups} className="text-neutral-400 hover:text-white transition-colors cursor-pointer">Buka semua</button>
+                    <button type="button" onClick={collapseAllGroups} className="text-neutral-400 hover:text-white transition-colors cursor-pointer">Tutup semua</button>
+                  </div>
+                )}
+              </div>
+
+              {/* Row 3: Search bar */}
+              <div className="relative">
+                <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none" />
+                <input
+                  ref={searchInputRef}
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Ketik nomor RO, nomor PO, nama customer, material..."
+                  className="w-full bg-[#14171A] border border-[#24282F] rounded-xl pl-10 pr-9 py-2.5 text-xs text-white placeholder-neutral-500 focus:outline-none focus:border-[#F4511E] font-mono transition-colors"
+                />
+                {searchQuery && (
                   <button
                     type="button"
-                    onClick={handleSelectAll}
-                    className="hover:text-white transition-colors cursor-pointer flex items-center gap-1.5"
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-white p-0.5"
+                    title="Hapus pencarian"
                   >
-                    <span
-                      className={`w-3.5 h-3.5 rounded border flex items-center justify-center transition-colors ${
-                        selectedIds.size === filteredPreOrders.length && filteredPreOrders.length > 0
-                          ? 'bg-[#F4511E] border-[#F4511E] text-white'
-                          : 'border-neutral-500'
-                      }`}
-                    >
-                      {selectedIds.size === filteredPreOrders.length && filteredPreOrders.length > 0 && (
-                        <Check className="w-2.5 h-2.5 stroke-[3]" />
-                      )}
-                    </span>
-                    <span>{selectedIds.size === filteredPreOrders.length ? 'Batal Pilih Semua' : 'Pilih Semua'}</span>
+                    <X className="w-3.5 h-3.5" />
                   </button>
                 )}
               </div>
@@ -1284,137 +1229,189 @@ export default function PreOrderPage() {
                 )}
               </div>
             ) : viewMode === 'list' ? (
-              /* ── LIST VIEW: FAITHFUL TO SCREENSHOT media_1794965493152_ca523882.jpg ── */
+              /* ── LIST VIEW: GROUPED TABLE (seperti referensi gambar) ── */
               <div className="space-y-3">
-                {filteredPreOrders.map((po) => {
-                  const isSelected = selectedIds.has(po.id);
+                {groupedOrders.map(({ customer, orders, totalVolume, totalNilai, approvedCount, satuan }) => {
+                  const isCollapsed = collapsedGroups.has(customer);
+                  const allGroupSelected = orders.every((o) => selectedIds.has(o.id));
+                  const someGroupSelected = orders.some((o) => selectedIds.has(o.id));
 
                   return (
-                    <div
-                      key={po.id}
-                      className={`bg-[#121417] border rounded-xl overflow-hidden shadow-md transition-all ${
-                        isSelected
-                          ? 'border-[#F4511E] ring-1 ring-[#F4511E]'
-                          : 'border-[#20242A] hover:border-[#2C323B]'
-                      }`}
-                    >
-                      {/* Card Main Body */}
-                      <div className="p-3.5 sm:p-4 flex items-start justify-between gap-3">
-                        {/* ── Left Column (Volume, Unit, Material, Service, Terms) ── */}
-                        <div className="w-[34%] sm:w-[30%] shrink-0 font-mono">
-                          <div className="text-lg sm:text-xl font-bold text-white leading-tight">
-                            {formatNumber(po.totalOrder || po.kuantitas || 0)}
-                          </div>
-                          <div className="text-xs sm:text-sm font-bold text-white mt-0.5">
-                            {po.satuan || 'm³'}
-                          </div>
-
-                          <div
-                            className="text-xs font-bold uppercase text-white mt-2 truncate"
-                            title={po.materialName || po.items?.[0]?.nama || 'SIRTU'}
-                          >
-                            {po.materialName || po.items?.[0]?.nama || 'SIRTU'}
-                          </div>
-                          <div className="text-[10px] sm:text-[11px] text-neutral-200 uppercase leading-snug mt-0.5">
-                            {po.jenisRO || po.jenis || 'JASA ANGKUT + MATERIAL'}
-                          </div>
-                          <div className="text-[10px] text-neutral-400 mt-1">
-                            {po.jenisPajak || po.jenisWajibPajak || 'PKP'} | TOP: {po.top || '14 hari'}
-                          </div>
-                        </div>
-
-                        {/* ── Middle Column (Checkmark + Date, RO, PO, Customer, HB, HJ) ── */}
-                        <div className="flex-1 min-w-0 space-y-1 font-mono text-xs">
-                          {/* Date with green checkmark */}
-                          <div className="flex items-center justify-between gap-1.5">
-                            <div className="flex items-center gap-1.5 min-w-0">
-                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                              <span className="text-neutral-300 font-medium text-[11px]">
-                                {po.tanggal || '-'}
-                              </span>
-                            </div>
-                            {po.status && po.status !== 'AKTIF' && (
-                              <span className="text-[9px] px-1.5 py-0.5 rounded font-bold uppercase bg-blue-500/15 text-blue-400 border border-blue-500/30">
-                                {po.status}
-                              </span>
-                            )}
-                          </div>
-
-                          {/* RO Number */}
-                          <div className="text-white font-semibold truncate text-[11px] sm:text-xs">
-                            RO: {po.nomorRO || po.nomorRo || `RO-${po.id}`}
-                          </div>
-
-                          {/* PO Number (Clean formatted, avoiding duplicate 'PO: PO:') */}
-                          <div className="text-neutral-300 truncate text-[11px] sm:text-xs">
-                            {formatPoNumber(po.nomorPo)}
-                          </div>
-
-                          {/* Customer Name */}
-                          <div
-                            className="text-white font-bold uppercase truncate text-xs sm:text-sm pt-0.5"
-                            title={po.customer}
-                          >
-                            {po.customer}
-                          </div>
-
-                          {/* Harga Beli */}
-                          <div className="text-neutral-200 text-[11px] font-medium pt-0.5">
-                            HB: <span className="font-bold text-white">IDR {formatNumber(po.hargaBeli || po.items?.[0]?.hargaBeli || 0)}/{po.satuan || 'm³'}</span>
-                          </div>
-
-                          {/* Harga Jual */}
-                          <div className="text-neutral-200 text-[11px] font-medium">
-                            HJ: <span className="font-bold text-white">IDR {formatNumber(po.hargaJual || po.items?.[0]?.hargaJual || 0)}/{po.satuan || 'm³'}</span>
-                          </div>
-                        </div>
-
-                        {/* ── Right Column (Selection Checkbox) ── */}
-                        <div className="shrink-0 pt-0.5">
-                          <button
-                            type="button"
-                            onClick={() => toggleSelect(po.id)}
-                            className={`w-5 h-5 rounded border flex items-center justify-center transition-colors cursor-pointer ${
-                              isSelected
-                                ? 'bg-[#F4511E] border-[#F4511E] text-white'
-                                : 'border-neutral-500 hover:border-neutral-300 bg-transparent'
-                            }`}
-                            title="Pilih item"
-                            aria-label="Pilih item"
-                          >
-                            {isSelected && <Check className="w-3.5 h-3.5 stroke-[3]" />}
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* ── Card Bottom Action Bar: [ Trash (Orange) | Info (Orange) ] ── */}
-                      <div className="border-t border-[#20242A] grid grid-cols-2 bg-[#0E1012]">
-                        {/* Delete Button */}
+                    <div key={customer} className="bg-[#121417] border border-[#20242A] rounded-xl overflow-hidden shadow-md">
+                      {/* ── Group Header Row ── */}
+                      <div className="flex items-center gap-2 px-3 py-2.5 bg-[#14171B] border-b border-[#20242A]">
+                        {/* Group select checkbox */}
                         <button
                           type="button"
                           onClick={() => {
-                            setPoToDelete(po);
-                            setDeleteModalOpen(true);
+                            const allIds = orders.map((o) => o.id);
+                            setSelectedIds((prev) => {
+                              const next = new Set(prev);
+                              if (allGroupSelected) allIds.forEach((id) => next.delete(id));
+                              else allIds.forEach((id) => next.add(id));
+                              return next;
+                            });
                           }}
-                          className="py-2.5 flex items-center justify-center text-[#F4511E] hover:bg-[#F4511E]/10 active:bg-[#F4511E]/20 transition-colors cursor-pointer"
-                          title="Hapus Received Order"
+                          className={`w-4 h-4 rounded border flex items-center justify-center transition-colors cursor-pointer shrink-0 ${
+                            allGroupSelected
+                              ? 'bg-[#F4511E] border-[#F4511E] text-white'
+                              : someGroupSelected
+                              ? 'bg-[#F4511E]/40 border-[#F4511E] text-white'
+                              : 'border-neutral-500 hover:border-neutral-300 bg-transparent'
+                          }`}
                         >
-                          <Trash2 className="w-4 h-4" />
+                          {(allGroupSelected || someGroupSelected) && <Check className="w-2.5 h-2.5 stroke-[3]" />}
                         </button>
 
-                        {/* Info Button */}
+                        {/* Collapse toggle */}
                         <button
                           type="button"
-                          onClick={() => {
-                            setSelectedDetailPo(po);
-                            setDetailModalOpen(true);
-                          }}
-                          className="py-2.5 flex items-center justify-center text-[#F4511E] hover:bg-[#F4511E]/10 active:bg-[#F4511E]/20 transition-colors cursor-pointer border-l border-[#20242A]"
-                          title="Detail Received Order"
+                          onClick={() => toggleGroupCollapse(customer)}
+                          className="text-neutral-400 hover:text-white transition-colors cursor-pointer shrink-0"
                         >
-                          <Info className="w-4 h-4" />
+                          {isCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                         </button>
+
+                        {/* Customer name */}
+                        <span className="text-sm font-bold text-white uppercase tracking-wide flex-1 truncate">{customer}</span>
+
+                        {/* Summary badges */}
+                        <div className="flex items-center gap-2 shrink-0 font-mono text-[11px]">
+                          <span className="text-neutral-400">{orders.length} order</span>
+                          {approvedCount > 0 && (
+                            <span className="px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-400 border border-emerald-500/25 font-bold">
+                              {approvedCount} approved
+                            </span>
+                          )}
+                          <span className="text-white font-bold">
+                            IDR {formatNumber(totalNilai)}
+                          </span>
+                          <span className="text-neutral-400">{formatNumber(totalVolume)} {satuan}</span>
+                        </div>
                       </div>
+
+                      {/* ── Table ── */}
+                      {!isCollapsed && (
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-xs font-mono">
+                            <thead>
+                              <tr className="border-b border-[#1C2026] text-[10px] text-neutral-500 uppercase tracking-wider">
+                                <th className="w-8 px-3 py-2 text-left"></th>
+                                <th className="px-3 py-2 text-left min-w-[90px]">Tanggal</th>
+                                <th className="px-3 py-2 text-left min-w-[150px]">No. Dokumen</th>
+                                <th className="px-3 py-2 text-left min-w-[140px]">Material</th>
+                                <th className="px-3 py-2 text-right min-w-[90px]">Volume</th>
+                                <th className="px-3 py-2 text-right min-w-[160px]">Harga / Nilai (IDR)</th>
+                                <th className="px-3 py-2 text-center min-w-[90px]">Status</th>
+                                <th className="px-3 py-2 text-left min-w-[140px]">Customer</th>
+                                <th className="px-3 py-2 text-center min-w-[70px]">Aksi</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {orders.map((po, idx) => {
+                                const isSelected = selectedIds.has(po.id);
+                                const hargaJual = po.hargaJual || po.items?.[0]?.hargaJual || 0;
+                                const hargaBeli = po.hargaBeli || po.items?.[0]?.hargaBeli || 0;
+                                const nilaiTotal = (Number(po.totalOrder) || 0) * Number(hargaJual);
+                                const statusLabel = po.status || 'AKTIF';
+                                const statusColor =
+                                  statusLabel === 'APPROVED' || statusLabel === 'AKTIF'
+                                    ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/25'
+                                    : statusLabel === 'SELESAI'
+                                    ? 'bg-blue-500/15 text-blue-400 border-blue-500/25'
+                                    : statusLabel === 'MENUNGGU APPROVAL'
+                                    ? 'bg-amber-500/15 text-amber-400 border-amber-500/25'
+                                    : 'bg-neutral-700/40 text-neutral-400 border-neutral-600/30';
+                                return (
+                                  <tr
+                                    key={po.id}
+                                    className={`border-b border-[#1A1D22] transition-colors ${
+                                      isSelected ? 'bg-[#F4511E]/5' : idx % 2 === 0 ? 'bg-transparent' : 'bg-[#0E1012]/40'
+                                    } hover:bg-white/[0.03]`}
+                                  >
+                                    {/* Checkbox */}
+                                    <td className="px-3 py-2.5">
+                                      <button
+                                        type="button"
+                                        onClick={() => toggleSelect(po.id)}
+                                        className={`w-4 h-4 rounded border flex items-center justify-center transition-colors cursor-pointer ${
+                                          isSelected
+                                            ? 'bg-[#F4511E] border-[#F4511E] text-white'
+                                            : 'border-neutral-600 hover:border-neutral-400 bg-transparent'
+                                        }`}
+                                      >
+                                        {isSelected && <Check className="w-2.5 h-2.5 stroke-[3]" />}
+                                      </button>
+                                    </td>
+
+                                    {/* Tanggal */}
+                                    <td className="px-3 py-2.5 text-neutral-300 whitespace-nowrap">{po.tanggal || '-'}</td>
+
+                                    {/* No. Dokumen */}
+                                    <td className="px-3 py-2.5">
+                                      <div className="text-white font-semibold">{po.nomorRO || po.nomorRo || `RO-${po.id}`}</div>
+                                      {po.nomorPo && (
+                                        <div className="text-neutral-500 text-[10px]">Po: {po.nomorPo}</div>
+                                      )}
+                                    </td>
+
+                                    {/* Material */}
+                                    <td className="px-3 py-2.5">
+                                      <div className="text-white font-bold uppercase">{po.materialName || po.items?.[0]?.nama || '-'}</div>
+                                      <div className="text-neutral-400 text-[10px] uppercase">{po.jenisRO || po.jenis || '-'}</div>
+                                    </td>
+
+                                    {/* Volume */}
+                                    <td className="px-3 py-2.5 text-right">
+                                      <span className="text-white font-bold">{formatNumber(po.totalOrder || 0)}</span>
+                                      <span className="text-neutral-400 ml-1">{po.satuan || 'm³'}</span>
+                                    </td>
+
+                                    {/* Harga / Nilai */}
+                                    <td className="px-3 py-2.5 text-right">
+                                      <div className="text-white font-bold">IDR {formatNumber(nilaiTotal)}</div>
+                                      <div className="text-neutral-400 text-[10px]">HI: IDR {formatNumber(hargaJual)}/{po.satuan || 'm³'}</div>
+                                    </td>
+
+                                    {/* Status */}
+                                    <td className="px-3 py-2.5 text-center">
+                                      <span className={`px-2 py-0.5 rounded border text-[10px] font-bold uppercase ${statusColor}`}>
+                                        {statusLabel}
+                                      </span>
+                                    </td>
+
+                                    {/* Customer */}
+                                    <td className="px-3 py-2.5">
+                                      <div className="text-white font-bold uppercase truncate max-w-[130px]" title={po.customer}>{po.customer}</div>
+                                      <div className="text-neutral-500 text-[10px]">
+                                        {po.jenisPajak || 'PKP'} + TOP: {po.top || '-'}
+                                      </div>
+                                    </td>
+
+                                    {/* Aksi */}
+                                    <td className="px-3 py-2.5 text-center">
+                                      <div className="flex items-center justify-center gap-2">
+                                        <button
+                                          type="button"
+                                          onClick={() => { setPoToDelete(po); setDeleteModalOpen(true); }}
+                                          className="text-[#F4511E] hover:text-red-400 transition-colors cursor-pointer p-0.5"
+                                          title="Hapus"
+                                        ><Trash2 className="w-4 h-4" /></button>
+                                        <button
+                                          type="button"
+                                          onClick={() => { setSelectedDetailPo(po); setDetailModalOpen(true); }}
+                                          className="text-[#F4511E] hover:text-orange-300 transition-colors cursor-pointer p-0.5"
+                                          title="Detail"
+                                        ><Info className="w-4 h-4" /></button>
+                                      </div>
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
                     </div>
                   );
                 })}

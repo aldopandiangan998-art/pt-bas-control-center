@@ -148,223 +148,46 @@ export function DataProvider({ children }) {
     return filtered;
   });
 
-  // BKK (Cash Out) transactions strictly matching Screenshot 2 & Image 1
+  // BKK (Cash Out) transactions strictly synchronized with SQLite and purged of dummy records
   const [bkkList, setBkkList] = useState(() => {
-    const raw = loadStorage(STORAGE_KEYS.bkk, [
-    {
-      id: 'co-1',
-      volume: 107.87,
-      material: 'SIRTU',
-      kodeTransaksi: '4500391980 - CO - BQWIJ',
-      jenis: 'CURAH | JASA ANGKUT + MATERIAL',
-      perusahaan: 'WINGS SURYA, PT',
-      subDetail: 'ADITA JUSTIA SAPUTRA',
-      timestamp: '2026-11-09 09:34:30',
-      periode: 'Periode: 2026-09-28,2026-10-05',
-      amount: 10894870.0,
-      statusBayar: 'Belum Dibayar',
-      tanggalBayar: null,
-      rekeningSumber: null,
-    },
-    {
-      id: 'co-2',
-      volume: 331.03,
-      material: 'LIMESTONE',
-      kodeTransaksi: 'POL-2607-000079 - CO - BFZQM',
-      jenis: 'CURAH | JASA ANGKUT + MATERIAL',
-      perusahaan: 'NUTRIPRO PRIMA ASIA, PT',
-      subDetail: 'PAK TEGUH (BARU)',
-      timestamp: '2026-11-04 11:50:16',
-      periode: 'Periode: 2026-11-02,2026-11-03',
-      amount: 22179010.0,
-      statusBayar: 'Belum Dibayar',
-      tanggalBayar: null,
-      rekeningSumber: null,
-    },
-    {
-      id: 'co-3',
-      volume: 155.94,
-      material: 'SIRTU',
-      kodeTransaksi: 'POS-2608-000224 - CO - 061TX',
-      jenis: 'CURAH | JASA ANGKUT + MATERIAL',
-      perusahaan: 'KARYA INDAH ALAM SEJAHTERA, PT',
-      subDetail: 'ADITA JUSTIA SAPUTRA',
-      timestamp: '2026-10-05 13:32:15',
-      periode: 'Periode: 2026-09-29',
-      amount: 18712800.0,
-      statusBayar: 'Belum Dibayar',
-      tanggalBayar: null,
-      rekeningSumber: null,
-    },
-    {
-      id: 'co-4',
-      volume: 158.55,
-      material: 'SIRTU',
-      kodeTransaksi: 'POS-2608-000224 - CO - HF7EW',
-      jenis: 'CURAH | JASA ANGKUT + MATERIAL',
-      perusahaan: 'KARYA INDAH ALAM SEJAHTERA, PT',
-      subDetail: 'ADITA JUSTIA SAPUTRA',
-      timestamp: '2026-10-02 13:56:35',
-      periode: 'Periode: 2026-09-30,2026-10-01',
-      amount: 19026000.0,
-      statusBayar: 'Belum Dibayar',
-      tanggalBayar: null,
-      rekeningSumber: null,
-    },
-    {
-      id: 'co-5',
-      volume: 249.84,
-      material: 'SIRTU',
-      kodeTransaksi: 'POS-2608-000224 - CO - SB9QN',
-      jenis: 'CURAH | JASA ANGKUT + MATERIAL',
-      perusahaan: 'KARYA INDAH ALAM SEJAHTERA, PT',
-      subDetail: 'ADITA JUSTIA SAPUTRA',
-      timestamp: '2026-09-22 14:40:15',
-      periode: 'Periode: 2026-09-22',
-      amount: 11232000.0,
-      statusBayar: 'Belum Dibayar',
-      tanggalBayar: null,
-      rekeningSumber: null,
-    },
-    {
-      id: 'bkk-0',
-      volume: 106.38,
-      material: 'SIRTU',
-      kodeTransaksi: '2026-11-11 - RCP - UNG3H',
-      jenis: 'CURAH | JASA ANGKUT + MATERIAL',
-      perusahaan: 'LION WINGS, PT',
-      subDetail: 'LW 655 - CUR - 4590011130',
-      timestamp: '2026-11-12 09:10:40',
-      periode: 'Periode: 2026-11-11',
-      amount: 12765600.0,
-      statusBayar: 'Belum Dibayar',
-      tanggalBayar: null,
-      rekeningSumber: null,
-    },
-    {
-      id: 'bkk-1',
-      volume: 81.09,
-      material: 'SIRTU',
-      kodeTransaksi: '2026-11-07 - RCP - RU4TN',
-      jenis: 'CURAH | JASA ANGKUT + MATERIAL',
-      perusahaan: 'LION WINGS, PT',
-      subDetail: 'LW 655 - CUR - 4590011130',
-      timestamp: '2026-11-09 09:43:20',
-      periode: 'Periode: 2026-11-07',
-      amount: 9730800.0,
-      statusBayar: 'Belum Dibayar', // 'Belum Dibayar' (Hutang) | 'Lunas'
-      tanggalBayar: null,
-      rekeningSumber: null,
-    },
-    {
-      id: 'bkk-2',
-      volume: 80.34,
-      material: 'SIRTU',
-      kodeTransaksi: '2026-11-05 - RCP - XAGXH',
-      jenis: 'CURAH | JASA ANGKUT + MATERIAL',
-      perusahaan: 'LION WINGS, PT',
-      subDetail: 'LW 655 - CUR - 4590011130',
-      timestamp: '2026-11-06 09:51:40',
-      periode: 'Periode: 2026-11-05',
-      amount: 9640800.0,
-      statusBayar: 'Belum Dibayar',
-      tanggalBayar: null,
-      rekeningSumber: null,
-    },
-    {
-      id: 'bkk-3',
-      volume: 54.2,
-      material: 'TANAH',
-      kodeTransaksi: '2026-11-04 - RCP - PG99A',
-      jenis: 'CURAH | JASA ANGKUT',
-      perusahaan: 'PETROKIMIA GRESIK, PT',
-      subDetail: 'PG 102 - TNH - 0021...',
-      timestamp: '2026-11-06 14:12:00',
-      periode: 'Periode: 2026-11-04',
-      amount: 6500000.0,
-      statusBayar: 'Lunas',
-      tanggalBayar: '2026-11-08',
-      rekeningSumber: 'BCA - 0188920199 a/n PT Berkah Alam Semesta',
-    },
-    ]);
-    return Array.isArray(raw) ? raw.map(normalizeBkkItem) : [];
+    const raw = loadStorage(STORAGE_KEYS.bkk, []);
+    const filtered = Array.isArray(raw)
+      ? raw.filter(
+          (b) =>
+            !['co-1', 'co-2', 'co-3', 'co-4', 'co-5', 'bkk-0', 'bkk-1', 'bkk-2', 'bkk-3'].includes(b.id) &&
+            !String(b.id || '').startsWith('dummy') &&
+            !String(b.kodeTransaksi || '').includes('POS-2608') &&
+            !String(b.kodeTransaksi || '').includes('POL-2607') &&
+            !String(b.kodeTransaksi || '').includes('4500391980') &&
+            !String(b.kodeTransaksi || '').includes('TRX-202611-00')
+        )
+      : [];
+    try {
+      localStorage.setItem(STORAGE_KEYS.bkk, JSON.stringify(filtered));
+    } catch (e) {}
+    return filtered.map(normalizeBkkItem);
   });
 
-  // Data Invoices strictly matching Screenshot media_1794538112384_ea2f3289.jpg
-  const [invoiceList, setInvoiceList] = useState(() => loadStorage(STORAGE_KEYS.invoices, [
-    {
-      id: 'inv-1',
-      volume: 331.03,
-      material: 'LIMESTONE',
-      jenis: 'JASA ANGKUT + MATERIAL',
-      timestamp: '2026-11-12 16:13',
-      amount: 25500102.0,
-      kodeTransaksi: 'POL-2607-000079 - INV - 4ENMI',
-      perusahaan: 'NUTRIPRO PRIMA ASIA, PT',
-      periode: 'Periode: [2026-11-02, 2026-11-03]',
-      statusBayar: 'Belum Dibayar', // 'Belum Dibayar' (BELUM LUNAS) | 'Lunas'
-    },
-    {
-      id: 'inv-2',
-      volume: 1983.38,
-      material: 'SIRTU',
-      jenis: 'JASA ANGKUT + MATERIAL',
-      timestamp: '2026-11-03 11:22',
-      amount: 267682756.0,
-      kodeTransaksi: 'POS-2608-000224 - INV - A3I1R',
-      perusahaan: 'KARYA INDAH ALAM SEJAHTERA, PT',
-      periode: 'Periode: [2026-10-22, 2026-10-23, 2026-10-26, 2026-10-...]',
-      statusBayar: 'Belum Dibayar',
-    },
-    {
-      id: 'inv-3',
-      volume: 376.43,
-      material: 'SIRTU',
-      jenis: 'JASA ANGKUT + MATERIAL',
-      timestamp: '2026-11-02 09:35',
-      amount: 43477210.0,
-      kodeTransaksi: '4510010537 - INV - L5CGP',
-      perusahaan: 'WINGS SURYA, PT',
-      periode: 'Periode: [2026-10-12, 2026-10-17, 2026-10-19, 2026-10-20]',
-      statusBayar: 'Belum Dibayar',
-    },
-    {
-      id: 'inv-4',
-      volume: 107.87,
-      material: 'SIRTU',
-      jenis: 'JASA ANGKUT + MATERIAL',
-      timestamp: '2026-11-02 09:27',
-      amount: 12458854.0,
-      kodeTransaksi: '4500391980 - INV - HMPPO',
-      perusahaan: 'WINGS SURYA, PT',
-      periode: 'Periode: [2026-09-28, 2026-10-05]',
-      statusBayar: 'Belum Dibayar',
-    },
-    {
-      id: 'inv-5',
-      volume: 550.54,
-      material: 'SIRTU',
-      jenis: 'JASA ANGKUT + MATERIAL',
-      timestamp: '2026-10-29 11:44',
-      amount: 74302486.0,
-      kodeTransaksi: '4590011130 - INV - C3DBN',
-      perusahaan: 'LION WINGS, PT',
-      periode: 'Periode: [2026-10-19, 2026-10-20, 2026-10-21, 2026-10-2...]',
-      statusBayar: 'Belum Dibayar',
-    },
-    {
-      id: 'inv-6',
-      volume: 790.82,
-      material: 'SIRTU',
-      jenis: 'JASA ANGKUT + MATERIAL',
-      timestamp: '2026-10-22 12:21',
-      amount: 106731376.0,
-      kodeTransaksi: '4590011130 - INV - 7X1KP',
-      perusahaan: 'LION WINGS, PT',
-      periode: 'Periode: [2026-10-12, 2026-10-14, 2026-10-15]',
-      statusBayar: 'Belum Dibayar',
-    },
-  ]));
+  // Invoices strictly synchronized with SQLite and purged of dummy records
+  const [invoiceList, setInvoiceList] = useState(() => {
+    const raw = loadStorage(STORAGE_KEYS.invoices, []);
+    const filtered = Array.isArray(raw)
+      ? raw.filter(
+          (inv) =>
+            !['inv-1', 'inv-2', 'inv-3', 'inv-4', 'inv-5', 'inv-6'].includes(inv.id) &&
+            !String(inv.id || '').startsWith('dummy') &&
+            !String(inv.kodeTransaksi || '').includes('POS-2608') &&
+            !String(inv.kodeTransaksi || '').includes('POL-2607') &&
+            !String(inv.kodeTransaksi || '').includes('4500391980') &&
+            !String(inv.kodeTransaksi || '').includes('4510010537') &&
+            !String(inv.kodeTransaksi || '').includes('4590011130')
+        )
+      : [];
+    try {
+      localStorage.setItem(STORAGE_KEYS.invoices, JSON.stringify(filtered));
+    } catch (e) {}
+    return filtered;
+  });
 
   // Jurnal GI / Rekapan list per PT BAS (cleaned of dummy data, synchronized with Pre Orders)
   const [rekapanList, setRekapanList] = useState(() => {
@@ -958,11 +781,46 @@ export function DataProvider({ children }) {
       const res = await fetch('/api/bkk');
       if (res.ok) {
         const data = await res.json();
-        if (Array.isArray(data) && data.length > 0) {
-          const normalized = data.map(normalizeBkkItem);
-          setBkkList(normalized);
+        if (Array.isArray(data)) {
+          const cleaned = data
+            .filter(
+              (b) =>
+                !['co-1', 'co-2', 'co-3', 'co-4', 'co-5', 'bkk-0', 'bkk-1', 'bkk-2', 'bkk-3'].includes(b.id) &&
+                !String(b.id || '').startsWith('dummy') &&
+                !String(b.kodeTransaksi || '').includes('POS-2608') &&
+                !String(b.kodeTransaksi || '').includes('POL-2607') &&
+                !String(b.kodeTransaksi || '').includes('4500391980') &&
+                !String(b.kodeTransaksi || '').includes('TRX-202611-00')
+            )
+            .map(normalizeBkkItem);
+          setBkkList(cleaned);
           try {
-            localStorage.setItem(STORAGE_KEYS.bkk, JSON.stringify(normalized));
+            localStorage.setItem(STORAGE_KEYS.bkk, JSON.stringify(cleaned));
+          } catch (e) {}
+        }
+      }
+    } catch (err) {}
+  };
+
+  const fetchInvoices = async () => {
+    try {
+      const res = await fetch('/api/invoices');
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data)) {
+          const cleaned = data.filter(
+            (inv) =>
+              !['inv-1', 'inv-2', 'inv-3', 'inv-4', 'inv-5', 'inv-6'].includes(inv.id) &&
+              !String(inv.id || '').startsWith('dummy') &&
+              !String(inv.kodeTransaksi || '').includes('POS-2608') &&
+              !String(inv.kodeTransaksi || '').includes('POL-2607') &&
+              !String(inv.kodeTransaksi || '').includes('4500391980') &&
+              !String(inv.kodeTransaksi || '').includes('4510010537') &&
+              !String(inv.kodeTransaksi || '').includes('4590011130')
+          );
+          setInvoiceList(cleaned);
+          try {
+            localStorage.setItem(STORAGE_KEYS.invoices, JSON.stringify(cleaned));
           } catch (e) {}
         }
       }
@@ -991,50 +849,58 @@ export function DataProvider({ children }) {
     } catch (err) {}
   };
 
+  const fetchMasterData = async () => {
+    try {
+      const [matRes, supRes, custRes, armRes, bnkRes, accRes, currRes] = await Promise.allSettled([
+        fetch('/api/master/materials').then((r) => (r.ok ? r.json() : null)),
+        fetch('/api/master/suppliers').then((r) => (r.ok ? r.json() : null)),
+        fetch('/api/master/customers').then((r) => (r.ok ? r.json() : null)),
+        fetch('/api/master/armada').then((r) => (r.ok ? r.json() : null)),
+        fetch('/api/master/banks').then((r) => (r.ok ? r.json() : null)),
+        fetch('/api/master/bank-accounts').then((r) => (r.ok ? r.json() : null)),
+        fetch('/api/master/currencies').then((r) => (r.ok ? r.json() : null)),
+      ]);
+
+      if (matRes.status === 'fulfilled' && Array.isArray(matRes.value) && matRes.value.length > 0) {
+        setMaterials(matRes.value);
+        try { localStorage.setItem(STORAGE_KEYS.materials, JSON.stringify(matRes.value)); } catch (e) {}
+      }
+      if (supRes.status === 'fulfilled' && Array.isArray(supRes.value) && supRes.value.length > 0) {
+        setSuppliers(supRes.value);
+        try { localStorage.setItem(STORAGE_KEYS.suppliers, JSON.stringify(supRes.value)); } catch (e) {}
+      }
+      if (custRes.status === 'fulfilled' && Array.isArray(custRes.value) && custRes.value.length > 0) {
+        setCustomers(custRes.value);
+        try { localStorage.setItem(STORAGE_KEYS.customers, JSON.stringify(custRes.value)); } catch (e) {}
+      }
+      if (armRes.status === 'fulfilled' && Array.isArray(armRes.value) && armRes.value.length > 0) {
+        setArmadaList(armRes.value);
+        try { localStorage.setItem(STORAGE_KEYS.armada, JSON.stringify(armRes.value)); } catch (e) {}
+      }
+      if (bnkRes.status === 'fulfilled' && Array.isArray(bnkRes.value) && bnkRes.value.length > 0) {
+        setBanks(bnkRes.value);
+        try { localStorage.setItem(STORAGE_KEYS.banks, JSON.stringify(bnkRes.value)); } catch (e) {}
+      }
+      if (accRes.status === 'fulfilled' && Array.isArray(accRes.value) && accRes.value.length > 0) {
+        setBankAccounts(accRes.value);
+        try { localStorage.setItem(STORAGE_KEYS.bankAccounts, JSON.stringify(accRes.value)); } catch (e) {}
+      }
+      if (currRes.status === 'fulfilled' && Array.isArray(currRes.value) && currRes.value.length > 0) {
+        setCurrencies(currRes.value);
+        try { localStorage.setItem(STORAGE_KEYS.currencies, JSON.stringify(currRes.value)); } catch (e) {}
+      }
+    } catch (err) {
+      // Fall back to local storage cache smoothly
+    }
+  };
+
   // Sync master data and setup realtime cross-tab & cross-browser synchronization
   useEffect(() => {
-    const fetchMasterData = async () => {
-      try {
-        const [matRes, supRes, custRes, armRes, bnkRes, accRes, currRes] = await Promise.allSettled([
-          fetch('/api/master/materials').then((r) => (r.ok ? r.json() : null)),
-          fetch('/api/master/suppliers').then((r) => (r.ok ? r.json() : null)),
-          fetch('/api/master/customers').then((r) => (r.ok ? r.json() : null)),
-          fetch('/api/master/armada').then((r) => (r.ok ? r.json() : null)),
-          fetch('/api/master/banks').then((r) => (r.ok ? r.json() : null)),
-          fetch('/api/master/bank-accounts').then((r) => (r.ok ? r.json() : null)),
-          fetch('/api/master/currencies').then((r) => (r.ok ? r.json() : null)),
-        ]);
-
-        if (matRes.status === 'fulfilled' && Array.isArray(matRes.value) && matRes.value.length > 0) {
-          setMaterials(matRes.value);
-        }
-        if (supRes.status === 'fulfilled' && Array.isArray(supRes.value) && supRes.value.length > 0) {
-          setSuppliers(supRes.value);
-        }
-        if (custRes.status === 'fulfilled' && Array.isArray(custRes.value) && custRes.value.length > 0) {
-          setCustomers(custRes.value);
-        }
-        if (armRes.status === 'fulfilled' && Array.isArray(armRes.value) && armRes.value.length > 0) {
-          setArmadaList(armRes.value);
-        }
-        if (bnkRes.status === 'fulfilled' && Array.isArray(bnkRes.value) && bnkRes.value.length > 0) {
-          setBanks(bnkRes.value);
-        }
-        if (accRes.status === 'fulfilled' && Array.isArray(accRes.value) && accRes.value.length > 0) {
-          setBankAccounts(accRes.value);
-        }
-        if (currRes.status === 'fulfilled' && Array.isArray(currRes.value) && currRes.value.length > 0) {
-          setCurrencies(currRes.value);
-        }
-      } catch (err) {
-        // Fall back to local storage cache smoothly
-      }
-    };
-
     fetchMasterData();
     fetchPreOrders();
     fetchSuratJalan();
     fetchBkk();
+    fetchInvoices();
     fetchRekapan();
 
     // 1. BroadcastChannel for instant cross-tab sync in same browser
@@ -1042,6 +908,9 @@ export function DataProvider({ children }) {
     try {
       channel = new BroadcastChannel('ptbas_sync_channel');
       channel.onmessage = (event) => {
+        if (event.data?.type === 'SYNC_MASTER' || event.data?.type === 'SYNC_ALL') {
+          fetchMasterData();
+        }
         if (event.data?.type === 'SYNC_PREORDERS' || event.data?.type === 'SYNC_ALL') {
           fetchPreOrders();
         }
@@ -1050,6 +919,9 @@ export function DataProvider({ children }) {
         }
         if (event.data?.type === 'SYNC_BKK' || event.data?.type === 'SYNC_ALL') {
           fetchBkk();
+        }
+        if (event.data?.type === 'SYNC_INVOICES' || event.data?.type === 'SYNC_ALL') {
+          fetchInvoices();
         }
         if (event.data?.type === 'SYNC_REKAPAN' || event.data?.type === 'SYNC_ALL') {
           fetchRekapan();
@@ -1077,6 +949,12 @@ export function DataProvider({ children }) {
           if (Array.isArray(parsed)) setBkkList(parsed.map(normalizeBkkItem));
         } catch (err) {}
       }
+      if (e.key === STORAGE_KEYS.invoices && e.newValue) {
+        try {
+          const parsed = JSON.parse(e.newValue);
+          if (Array.isArray(parsed)) setInvoiceList(parsed);
+        } catch (err) {}
+      }
       if (e.key === STORAGE_KEYS.rekapan && e.newValue) {
         try {
           const parsed = JSON.parse(e.newValue);
@@ -1088,9 +966,11 @@ export function DataProvider({ children }) {
 
     // 3. Polling & Window Focus sync (handles incognito & separate browser windows)
     const handleFocus = () => {
+      fetchMasterData();
       fetchPreOrders();
       fetchSuratJalan();
       fetchBkk();
+      fetchInvoices();
       fetchRekapan();
     };
     window.addEventListener('focus', handleFocus);
@@ -1098,6 +978,8 @@ export function DataProvider({ children }) {
     const intervalId = setInterval(() => {
       fetchPreOrders();
       fetchSuratJalan();
+      fetchBkk();
+      fetchInvoices();
       fetchRekapan();
     }, 2000); // 2-second background sync
 
@@ -1613,65 +1495,192 @@ export function DataProvider({ children }) {
   };
 
   // BKK Cash Out Actions
-  const markBkkPaid = (bkkIds, paymentDetails) => {
-    setBkkList((prev) =>
-      prev.map((item) => {
+  const createBkk = async (bkkData) => {
+    const id = bkkData.id || `BKK-${new Date().toISOString().slice(0, 7).replace('-', '')}-${String(Date.now()).slice(-4)}`;
+    const newBkk = normalizeBkkItem({
+      ...bkkData,
+      id,
+      kodeTransaksi: bkkData.kodeTransaksi || `TRX-${Date.now()}`,
+      statusBayar: bkkData.statusBayar || 'Belum Dibayar',
+    });
+
+    setBkkList((prev) => {
+      const updated = [newBkk, ...prev.filter((b) => b.id !== id)];
+      try {
+        localStorage.setItem(STORAGE_KEYS.bkk, JSON.stringify(updated));
+      } catch (e) {}
+      return updated;
+    });
+
+    try {
+      await fetch('/api/bkk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newBkk),
+      });
+      const ch = new BroadcastChannel('ptbas_sync_channel');
+      ch.postMessage({ type: 'SYNC_BKK' });
+      ch.close();
+      await fetchBkk();
+    } catch (e) {}
+
+    addToast(`BKK Kas Keluar No. ${newBkk.kodeTransaksi} berhasil dibuat!`, 'success');
+    return newBkk;
+  };
+
+  const markBkkPaid = async (bkkIds, paymentDetails) => {
+    const tgl = paymentDetails?.tanggalBayar || new Date().toISOString().split('T')[0];
+    const rek = paymentDetails?.rekeningSumber || 'BCA - 0188920199 a/n PT Berkah Alam Semesta';
+
+    setBkkList((prev) => {
+      const updated = prev.map((item) => {
         if (bkkIds.includes(item.id)) {
           return {
             ...item,
             statusBayar: 'Lunas',
-            tanggalBayar: paymentDetails?.tanggalBayar || new Date().toISOString().split('T')[0],
-            rekeningSumber: paymentDetails?.rekeningSumber || 'BCA - 0188920199 a/n PT Berkah Alam Semesta',
+            tanggalBayar: tgl,
+            rekeningSumber: rek,
           };
         }
         return item;
-      })
-    );
+      });
+      try {
+        localStorage.setItem(STORAGE_KEYS.bkk, JSON.stringify(updated));
+      } catch (e) {}
+      return updated;
+    });
+
     try {
-      fetch('/api/bkk/pay', {
+      await fetch('/api/bkk/pay', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ids: bkkIds,
-          tanggalBayar: paymentDetails?.tanggalBayar || new Date().toISOString().split('T')[0],
+          tanggalBayar: tgl,
+          rekeningSumber: rek,
         }),
-      }).catch(() => {});
+      });
+      const ch = new BroadcastChannel('ptbas_sync_channel');
+      ch.postMessage({ type: 'SYNC_BKK' });
+      ch.close();
+      await fetchBkk();
     } catch (e) {}
     addToast(`${bkkIds.length} BKK berhasil dicatat LUNAS! Hutang supplier diperbarui.`, 'success');
+  };
+
+  const deleteBkk = async (bkkId) => {
+    setBkkList((prev) => {
+      const updated = prev.filter((item) => item.id !== bkkId);
+      try {
+        localStorage.setItem(STORAGE_KEYS.bkk, JSON.stringify(updated));
+      } catch (e) {}
+      return updated;
+    });
+    try {
+      await fetch(`/api/bkk/${bkkId}`, { method: 'DELETE' });
+      const ch = new BroadcastChannel('ptbas_sync_channel');
+      ch.postMessage({ type: 'SYNC_BKK' });
+      ch.close();
+    } catch (e) {}
+    addToast('BKK kas keluar berhasil dihapus', 'info');
   };
 
   // ------------------------------------------
   // INVOICE HELPERS
   // ------------------------------------------
-  const createInvoice = (invData) => {
+  const createInvoice = async (invData) => {
+    const id = invData.id || `INV-${new Date().toISOString().slice(0, 7).replace('-', '')}-${String(Date.now()).slice(-4)}`;
+    const nowIso = new Date().toISOString();
     const newInv = {
-      id: `inv-${Date.now()}`,
-      volume: invData.volume || 100,
-      material: invData.material || 'SIRTU',
+      id,
+      volume: Number(invData.volume) || 0,
+      material: invData.material || invData.materialName || 'SIRTU',
       jenis: invData.jenis || 'JASA ANGKUT + MATERIAL',
-      timestamp: new Date().toISOString().replace('T', ' ').substring(0, 16),
-      amount: invData.totalTagihan || invData.amount || 0,
-      kodeTransaksi: invData.nomorInvoice || `INV-${new Date().getFullYear()}-${String(Date.now()).slice(-5)}`,
-      perusahaan: invData.pelanggan || 'PT CUSTOMER',
-      periode: invData.periode || `Periode: [${new Date().toISOString().split('T')[0]}]`,
+      timestamp: nowIso.replace('T', ' ').substring(0, 19),
+      tanggal: invData.tanggal || nowIso.split('T')[0],
+      waktu: invData.waktu || '10:00',
+      subtotalJasa: Number(invData.subtotalJasa) || Number(invData.amount) || 0,
+      ppnNominal: Number(invData.ppnNominal) || 0,
+      pphNominal: Number(invData.pphNominal) || 0,
+      amount: Number(invData.totalTagihan) || Number(invData.amount) || 0,
+      kodeTransaksi: invData.nomorInvoice || invData.kodeTransaksi || `INV-${new Date().getFullYear()}-${String(Date.now()).slice(-5)}`,
+      perusahaan: invData.pelanggan || invData.perusahaan || 'PT CUSTOMER',
+      nomorRO: invData.idReceivedOrder || invData.nomorRO || null,
+      poNumber: invData.nomorPoCustomer || invData.poNumber || null,
+      kirimKeRekening: invData.kirimKeRekening || 'BCA - 0188920199 a/n PT Berkah Alam Semesta',
+      rekeningAtasNama: invData.rekeningAtasNama || 'PT Berkah Alam Semesta',
+      periode: invData.periode || `Periode: [${invData.tanggal || nowIso.split('T')[0]}]`,
       statusBayar: 'Belum Dibayar',
     };
-    setInvoiceList((prev) => [newInv, ...prev]);
+
+    setInvoiceList((prev) => {
+      const updated = [newInv, ...prev.filter((i) => i.id !== id)];
+      try {
+        localStorage.setItem(STORAGE_KEYS.invoices, JSON.stringify(updated));
+      } catch (e) {}
+      return updated;
+    });
+
+    try {
+      await fetch('/api/invoices', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newInv),
+      });
+      const ch = new BroadcastChannel('ptbas_sync_channel');
+      ch.postMessage({ type: 'SYNC_INVOICES' });
+      ch.close();
+      await fetchInvoices();
+    } catch (e) {}
+
     addToast(`Invoice No. ${newInv.kodeTransaksi} berhasil dibuat!`, 'success');
     return newInv;
   };
 
-  const markInvoicePaid = (invIds) => {
-    setInvoiceList((prev) =>
-      prev.map((item) =>
-        invIds.includes(item.id) ? { ...item, statusBayar: 'Lunas' } : item
-      )
-    );
+  const markInvoicePaid = async (invIds, paymentDetails) => {
+    const tgl = paymentDetails?.tanggalBayar || new Date().toISOString().split('T')[0];
+    setInvoiceList((prev) => {
+      const updated = prev.map((item) =>
+        invIds.includes(item.id) ? { ...item, statusBayar: 'Lunas', tanggalBayar: tgl } : item
+      );
+      try {
+        localStorage.setItem(STORAGE_KEYS.invoices, JSON.stringify(updated));
+      } catch (e) {}
+      return updated;
+    });
+
+    try {
+      await fetch('/api/invoices/pay', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: invIds, tanggalBayar: tgl }),
+      });
+      const ch = new BroadcastChannel('ptbas_sync_channel');
+      ch.postMessage({ type: 'SYNC_INVOICES' });
+      ch.close();
+      await fetchInvoices();
+    } catch (e) {}
+
     addToast(`${invIds.length} Invoice berhasil dicatat LUNAS!`, 'success');
   };
 
-  const deleteInvoice = (invId) => {
-    setInvoiceList((prev) => prev.filter((item) => item.id !== invId));
+  const deleteInvoice = async (invId) => {
+    setInvoiceList((prev) => {
+      const updated = prev.filter((item) => item.id !== invId);
+      try {
+        localStorage.setItem(STORAGE_KEYS.invoices, JSON.stringify(updated));
+      } catch (e) {}
+      return updated;
+    });
+
+    try {
+      await fetch(`/api/invoices/${invId}`, { method: 'DELETE' });
+      const ch = new BroadcastChannel('ptbas_sync_channel');
+      ch.postMessage({ type: 'SYNC_INVOICES' });
+      ch.close();
+      await fetchInvoices();
+    } catch (e) {}
+
     addToast('Invoice berhasil dihapus', 'info');
   };
 
@@ -1749,45 +1758,70 @@ export function DataProvider({ children }) {
     addToast('Status supplier berhasil diubah', 'info');
   };
 
-  const addSupplier = (newSup) => {
+  const addSupplier = async (newSup) => {
     const item = {
       ...newSup,
       id: newSup.id || `sup-${Date.now()}`,
       aktif: newSup.aktif !== undefined ? newSup.aktif : true,
     };
-    setSuppliers((prev) => [...prev, item]);
-    fetch('/api/master/suppliers', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(item),
-    }).catch((e) => console.error('Error adding supplier:', e));
+    setSuppliers((prev) => {
+      const updated = [...prev, item];
+      try { localStorage.setItem(STORAGE_KEYS.suppliers, JSON.stringify(updated)); } catch (e) {}
+      return updated;
+    });
+    try {
+      await fetch('/api/master/suppliers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(item),
+      });
+      const ch = new BroadcastChannel('ptbas_sync_channel');
+      ch.postMessage({ type: 'SYNC_MASTER' });
+      ch.close();
+      await fetchMasterData();
+    } catch (e) {
+      console.error('Error adding supplier:', e);
+    }
     addToast(`Supplier "${item.name}" berhasil disimpan!`, 'success');
   };
 
-  const deleteSupplier = (id) => {
-    setSuppliers((prev) => prev.filter((s) => s.id !== id));
-    fetch(`/api/master/suppliers/${id}`, { method: 'DELETE' }).catch((e) =>
-      console.error('Error deleting supplier:', e)
-    );
+  const deleteSupplier = async (id) => {
+    setSuppliers((prev) => {
+      const updated = prev.filter((s) => s.id !== id);
+      try { localStorage.setItem(STORAGE_KEYS.suppliers, JSON.stringify(updated)); } catch (e) {}
+      return updated;
+    });
+    try {
+      await fetch(`/api/master/suppliers/${id}`, { method: 'DELETE' });
+      const ch = new BroadcastChannel('ptbas_sync_channel');
+      ch.postMessage({ type: 'SYNC_MASTER' });
+      ch.close();
+      await fetchMasterData();
+    } catch (e) {
+      console.error('Error deleting supplier:', e);
+    }
     addToast('Supplier berhasil dihapus', 'info');
   };
 
-  const updateSupplier = (id, updatedData) => {
-    setSuppliers((prev) =>
-      prev.map((s) =>
-        s.id === id
-          ? {
-            ...s,
-            ...updatedData,
-          }
-          : s
-      )
-    );
-    fetch(`/api/master/suppliers/${id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(updatedData),
-    }).catch((e) => console.error('Error updating supplier:', e));
+  const updateSupplier = async (id, updatedData) => {
+    setSuppliers((prev) => {
+      const updated = prev.map((s) => (s.id === id ? { ...s, ...updatedData } : s));
+      try { localStorage.setItem(STORAGE_KEYS.suppliers, JSON.stringify(updated)); } catch (e) {}
+      return updated;
+    });
+    try {
+      await fetch(`/api/master/suppliers/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedData),
+      });
+      const ch = new BroadcastChannel('ptbas_sync_channel');
+      ch.postMessage({ type: 'SYNC_MASTER' });
+      ch.close();
+      await fetchMasterData();
+    } catch (e) {
+      console.error('Error updating supplier:', e);
+    }
     addToast('Data supplier berhasil diperbarui!', 'success');
   };
 
@@ -1802,7 +1836,7 @@ export function DataProvider({ children }) {
     addToast('Status customer berhasil diubah', 'info');
   };
 
-  const addCustomer = (newCust) => {
+  const addCustomer = async (newCust) => {
     const jbuPrefix = (newCust.jenisBadanUsaha || '').split('-')[0] || newCust.jenisBadanUsaha;
     const item = {
       ...newCust,
@@ -1810,39 +1844,64 @@ export function DataProvider({ children }) {
       aktif: newCust.aktif !== undefined ? newCust.aktif : true,
       alias: newCust.alias || `${jbuPrefix} ${newCust.name}`.trim(),
     };
-    setCustomers((prev) => [...prev, item]);
-    fetch('/api/master/customers', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(item),
-    }).catch((e) => console.error('Error adding customer:', e));
+    setCustomers((prev) => {
+      const updated = [...prev, item];
+      try { localStorage.setItem(STORAGE_KEYS.customers, JSON.stringify(updated)); } catch (e) {}
+      return updated;
+    });
+    try {
+      await fetch('/api/master/customers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(item),
+      });
+      const ch = new BroadcastChannel('ptbas_sync_channel');
+      ch.postMessage({ type: 'SYNC_MASTER' });
+      ch.close();
+      await fetchMasterData();
+    } catch (e) {
+      console.error('Error adding customer:', e);
+    }
     addToast(`Customer "${item.name}" berhasil disimpan!`, 'success');
   };
 
-  const updateCustomer = (id, updatedData) => {
-    setCustomers((prev) =>
-      prev.map((c) =>
-        c.id === id
-          ? {
-            ...c,
-            ...updatedData,
-          }
-          : c
-      )
-    );
-    fetch(`/api/master/customers/${id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(updatedData),
-    }).catch((e) => console.error('Error updating customer:', e));
+  const updateCustomer = async (id, updatedData) => {
+    setCustomers((prev) => {
+      const updated = prev.map((c) => (c.id === id ? { ...c, ...updatedData } : c));
+      try { localStorage.setItem(STORAGE_KEYS.customers, JSON.stringify(updated)); } catch (e) {}
+      return updated;
+    });
+    try {
+      await fetch(`/api/master/customers/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedData),
+      });
+      const ch = new BroadcastChannel('ptbas_sync_channel');
+      ch.postMessage({ type: 'SYNC_MASTER' });
+      ch.close();
+      await fetchMasterData();
+    } catch (e) {
+      console.error('Error updating customer:', e);
+    }
     addToast('Data customer berhasil diperbarui!', 'success');
   };
 
-  const deleteCustomer = (id) => {
-    setCustomers((prev) => prev.filter((c) => c.id !== id));
-    fetch(`/api/master/customers/${id}`, { method: 'DELETE' }).catch((e) =>
-      console.error('Error deleting customer:', e)
-    );
+  const deleteCustomer = async (id) => {
+    setCustomers((prev) => {
+      const updated = prev.filter((c) => c.id !== id);
+      try { localStorage.setItem(STORAGE_KEYS.customers, JSON.stringify(updated)); } catch (e) {}
+      return updated;
+    });
+    try {
+      await fetch(`/api/master/customers/${id}`, { method: 'DELETE' });
+      const ch = new BroadcastChannel('ptbas_sync_channel');
+      ch.postMessage({ type: 'SYNC_MASTER' });
+      ch.close();
+      await fetchMasterData();
+    } catch (e) {
+      console.error('Error deleting customer:', e);
+    }
     addToast('Customer berhasil dihapus', 'info');
   };
 
@@ -2107,12 +2166,17 @@ export function DataProvider({ children }) {
         rekapanList,
         setRekapanList,
         fetchRekapan,
+        fetchBkk,
+        fetchInvoices,
+        fetchMasterData,
         createPreOrder,
         approvePreOrder,
         rejectPreOrder,
         deletePreOrder,
         createSuratJalan,
+        createBkk,
         markBkkPaid,
+        deleteBkk,
         createInvoice,
         markInvoicePaid,
         deleteInvoice,

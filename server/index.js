@@ -1,7 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import crypto from 'node:crypto';
-import db, { initDb } from './db.js';
+import db, { initDb, syncJournalsAndWaybills, syncBkkAndInvoices } from './db.js';
 import {
   RO_TYPES,
   ITEM_TYPES,
@@ -1318,6 +1318,10 @@ app.patch('/api/pre-orders/:id/approve', (req, res) => {
     }
   }
 
+  try {
+    syncBkkAndInvoices();
+  } catch (e) {}
+
   res.json({
     success: true,
     data: { ...po, nomorRO: finalNomorRO, items: parsedItems },
@@ -1349,6 +1353,8 @@ app.delete('/api/pre-orders/:id', (req, res) => {
     const po = db.prepare('SELECT * FROM pre_orders WHERE id = ?').get(id);
     if (!po) return res.status(404).json({ success: false, message: 'Pre Order not found' });
 
+    db.prepare('DELETE FROM invoices WHERE preOrderId = ? OR (nomorRO IS NOT NULL AND nomorRO = ?)').run(id, po.nomorRO || '');
+    db.prepare('DELETE FROM bkk WHERE preOrderId = ? OR (nomorRO IS NOT NULL AND nomorRO = ?)').run(id, po.nomorRO || '');
     db.prepare('DELETE FROM jurnal_gi WHERE preOrderId = ? OR (nomorRO IS NOT NULL AND nomorRO = ?)').run(id, po.nomorRO || '');
     db.prepare('DELETE FROM surat_jalan WHERE preOrderId = ? OR (nomorRO IS NOT NULL AND nomorRO = ?)').run(id, po.nomorRO || '');
     db.prepare('DELETE FROM pre_orders WHERE id = ?').run(id);
@@ -1638,6 +1644,10 @@ app.post('/api/surat-jalan', (req, res) => {
     updated_at: nowIso,
   };
 
+  try {
+    syncBkkAndInvoices();
+  } catch (e) {}
+
   res.status(201).json({
     success: true,
     id,
@@ -1648,11 +1658,24 @@ app.post('/api/surat-jalan', (req, res) => {
   });
 });
 
-// BKK
+// ==========================================
+// BKK (CASH OUT) ROUTES
+// ==========================================
 app.get('/api/bkk', (req, res) => {
-  const bkks = db.prepare('SELECT * FROM bkk ORDER BY id DESC').all();
+  const bkks = db.prepare(`
+    SELECT b.*,
+           s.bank as supplierBank,
+           s.noRekening as supplierNoRekening,
+           s.rekeningAtasNama as supplierRekeningAtasNama,
+           s.telepon as supplierTelepon
+    FROM bkk b
+    LEFT JOIN suppliers s ON (b.supplierId = s.id OR b.perusahaan = s.name)
+    ORDER BY b.id DESC
+  `).all();
   const normalized = bkks.map((b) => ({
     ...b,
+    supplierId: b.supplierId || null,
+    customerId: b.customerId || null,
     volume: Number(b.volume ?? b.kubikasi ?? 0),
     kubikasi: Number(b.kubikasi ?? b.volume ?? 0),
     amount: Number(b.amount ?? 0),
@@ -1670,6 +1693,62 @@ app.get('/api/bkk', (req, res) => {
   res.json(normalized);
 });
 
+app.post('/api/bkk', (req, res) => {
+  const bkkData = req.body;
+  const id = bkkData.id || `BKK-${new Date().toISOString().slice(0, 7).replace('-', '')}-${String(Date.now()).slice(-4)}`;
+  const nowIso = new Date().toISOString();
+
+  let supId = bkkData.supplierId || null;
+  if (!supId && bkkData.perusahaan) {
+    supId = db.prepare('SELECT id FROM suppliers WHERE name = ? LIMIT 1').get(bkkData.perusahaan)?.id || null;
+  }
+  let custId = bkkData.customerId || null;
+  if (!custId && bkkData.subDetail) {
+    custId = db.prepare('SELECT id FROM customers WHERE ? LIKE "%" || name || "%" LIMIT 1').get(bkkData.subDetail)?.id || null;
+  }
+
+  db.prepare(`
+    INSERT INTO bkk (
+      id, kodeTransaksi, nomorRO, preOrderId, jurnalId, poNumber,
+      supplierId, customerId, perusahaan, subDetail, penerima, material, jenis, ritaseCount,
+      kubikasi, volume, satuan, hargaSatuan, amount, statusBayar,
+      tanggal, timestamp, periode, tanggalBayar, rekeningSumber, rekeningTujuan,
+      created_at, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    id,
+    bkkData.kodeTransaksi || `TRX-${Date.now()}`,
+    bkkData.nomorRO || null,
+    bkkData.preOrderId || null,
+    bkkData.jurnalId || null,
+    bkkData.poNumber || null,
+    supId,
+    custId,
+    bkkData.perusahaan || 'SUPPLIER',
+    bkkData.subDetail || '-',
+    bkkData.penerima || bkkData.subDetail || '-',
+    bkkData.material || 'SIRTU (Curah)',
+    bkkData.jenis || 'CURAH | JASA ANGKUT + MATERIAL',
+    Number(bkkData.ritaseCount) || 1,
+    Number(bkkData.volume ?? bkkData.kubikasi) || 0,
+    Number(bkkData.volume ?? bkkData.kubikasi) || 0,
+    bkkData.satuan || 'm3',
+    Number(bkkData.hargaSatuan) || 0,
+    Number(bkkData.amount) || 0,
+    bkkData.statusBayar || 'Belum Dibayar',
+    bkkData.tanggal || nowIso.split('T')[0],
+    bkkData.timestamp || nowIso.replace('T', ' ').slice(0, 19),
+    bkkData.periode || `Periode: ${bkkData.tanggal || nowIso.split('T')[0]}`,
+    bkkData.tanggalBayar || null,
+    bkkData.rekeningSumber || null,
+    bkkData.rekeningTujuan || null,
+    nowIso,
+    nowIso
+  );
+
+  res.status(201).json({ success: true, id, message: 'BKK berhasil disimpan ke database.' });
+});
+
 app.patch('/api/bkk/pay', (req, res) => {
   const { ids, tanggalBayar = new Date().toISOString().split('T')[0] } = req.body;
   if (!Array.isArray(ids)) return res.status(400).json({ message: 'IDs array required' });
@@ -1680,6 +1759,121 @@ app.patch('/api/bkk/pay', (req, res) => {
   }
 
   res.json({ success: true, count: ids.length });
+});
+
+app.delete('/api/bkk/:id', (req, res) => {
+  const { id } = req.params;
+  db.prepare('DELETE FROM bkk WHERE id = ?').run(id);
+  res.json({ success: true, message: `BKK ${id} berhasil dihapus.` });
+});
+
+// ==========================================
+// INVOICES ROUTES
+// ==========================================
+app.get('/api/invoices', (req, res) => {
+  const invs = db.prepare(`
+    SELECT i.*,
+           c.address as customerAddressMaster,
+           c.npwp as customerNpwp,
+           c.telepon as customerTelepon
+    FROM invoices i
+    LEFT JOIN customers c ON (i.customerId = c.id OR i.perusahaan = c.name)
+    ORDER BY i.id DESC
+  `).all();
+
+  const normalized = invs.map((inv) => ({
+    ...inv,
+    customerId: inv.customerId || null,
+    supplierId: inv.supplierId || null,
+    volume: Number(inv.volume || 0),
+    amount: Number(inv.amount || 0),
+    hargaSatuan: Number(inv.hargaSatuan || 0),
+    subtotalJasa: Number(inv.subtotalJasa || inv.amount || 0),
+    ppnNominal: Number(inv.ppnNominal || 0),
+    pphNominal: Number(inv.pphNominal || 0),
+    timestamp: inv.timestamp || (inv.tanggal ? `${inv.tanggal} 10:00:00` : ''),
+    tanggal: inv.tanggal || (inv.timestamp ? inv.timestamp.slice(0, 10) : ''),
+    statusBayar: inv.statusBayar || 'Belum Dibayar',
+    kodeTransaksi: inv.kodeTransaksi || '-',
+    perusahaan: inv.perusahaan || '-',
+    material: inv.material || '-',
+    jenis: inv.jenis || 'JASA ANGKUT + MATERIAL',
+    periode: inv.periode || (inv.tanggal ? `Periode: [${inv.tanggal}]` : '-'),
+  }));
+  res.json(normalized);
+});
+
+app.post('/api/invoices', (req, res) => {
+  const invData = req.body;
+  const id = invData.id || `INV-${new Date().toISOString().slice(0, 7).replace('-', '')}-${String(Date.now()).slice(-4)}`;
+  const kodeTransaksi = invData.kodeTransaksi || invData.nomorInvoice || `INV-${new Date().getFullYear()}-${String(Date.now()).slice(-5)}`;
+  const nowIso = new Date().toISOString();
+
+  let custId = invData.customerId || null;
+  if (!custId && (invData.perusahaan || invData.pelanggan)) {
+    const cName = invData.pelanggan || invData.perusahaan;
+    custId = db.prepare('SELECT id FROM customers WHERE name = ? LIMIT 1').get(cName)?.id || null;
+  }
+  let supId = invData.supplierId || null;
+
+  db.prepare(`
+    INSERT INTO invoices (
+      id, kodeTransaksi, nomorRO, preOrderId, jurnalId, poNumber,
+      customerId, supplierId, perusahaan, customerAddress, material, jenis, volume, satuan,
+      hargaSatuan, subtotalJasa, ppnNominal, pphNominal, amount, statusBayar,
+      tanggal, waktu, timestamp, periode, kirimKeRekening, rekeningAtasNama,
+      created_at, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    id,
+    kodeTransaksi,
+    invData.nomorRO || null,
+    invData.preOrderId || null,
+    invData.jurnalId || null,
+    invData.poNumber || null,
+    custId,
+    supId,
+    invData.perusahaan || invData.pelanggan || 'PT CUSTOMER',
+    invData.customerAddress || '',
+    invData.material || invData.materialName || 'SIRTU',
+    invData.jenis || 'JASA ANGKUT + MATERIAL',
+    Number(invData.volume) || 0,
+    invData.satuan || 'm3',
+    Number(invData.hargaSatuan) || 0,
+    Number(invData.subtotalJasa) || Number(invData.amount) || 0,
+    Number(invData.ppnNominal) || 0,
+    Number(invData.pphNominal) || 0,
+    Number(invData.totalTagihan) || Number(invData.amount) || 0,
+    invData.statusBayar || 'Belum Dibayar',
+    invData.tanggal || nowIso.split('T')[0],
+    invData.waktu || '10:00',
+    invData.timestamp || nowIso.replace('T', ' ').slice(0, 19),
+    invData.periode || `Periode: [${invData.tanggal || nowIso.split('T')[0]}]`,
+    invData.kirimKeRekening || 'BCA - 0188920199 a/n PT Berkah Alam Semesta',
+    invData.rekeningAtasNama || 'PT Berkah Alam Semesta',
+    nowIso,
+    nowIso
+  );
+
+  res.status(201).json({ success: true, id, message: 'Invoice berhasil disimpan ke database.' });
+});
+
+app.patch('/api/invoices/pay', (req, res) => {
+  const { ids, tanggalBayar = new Date().toISOString().split('T')[0] } = req.body;
+  if (!Array.isArray(ids)) return res.status(400).json({ message: 'IDs array required' });
+
+  for (const id of ids) {
+    db.prepare('UPDATE invoices SET statusBayar = ?, tanggalBayar = ?, updated_at = ? WHERE id = ?')
+      .run('Lunas', tanggalBayar, new Date().toISOString(), id);
+  }
+
+  res.json({ success: true, count: ids.length });
+});
+
+app.delete('/api/invoices/:id', (req, res) => {
+  const { id } = req.params;
+  db.prepare('DELETE FROM invoices WHERE id = ?').run(id);
+  res.json({ success: true, message: `Invoice ${id} berhasil dihapus.` });
 });
 
 // Start listening

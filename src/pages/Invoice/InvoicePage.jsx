@@ -1,5 +1,5 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
   ArrowLeft,
   User,
@@ -23,13 +23,21 @@ import {
   List,
   LayoutGrid,
   AlertTriangle,
+  Receipt,
+  FileText,
+  TrendingUp,
+  ShieldCheck,
+  Check,
+  Phone,
+  MapPin,
+  Package,
 } from 'lucide-react';
 import { formatCurrency } from '../../utils/formatters';
 import { TAX_RATES } from '../../utils/constants';
 import { useData } from '../../context/DataContext';
 import { useToast } from '../../context/ToastContext';
 import { groupInvoices, groupCheckState } from '../../utils/cashOutGrouping';
-import { Button, Modal, Card, Input, Select } from '../../components/ui';
+import { Button, Modal, Card, Input, Select, Badge } from '../../components/ui';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // LocalStorage helpers
@@ -406,11 +414,27 @@ function InvoiceGroupedTable({
 // ─────────────────────────────────────────────────────────────────────────────
 export default function InvoicePage() {
   const navigate = useNavigate();
-  const { customers, bankAccounts, invoiceList, createInvoice, markInvoicePaid, deleteInvoice } = useData();
+  const location = useLocation();
+  const {
+    customers,
+    bankAccounts,
+    invoiceList,
+    createInvoice,
+    markInvoicePaid,
+    deleteInvoice,
+    preOrders,
+    rekapanList,
+    fetchMasterData,
+  } = useData();
   const { addToast } = useToast();
 
   // ── Tab: 'list' | 'create'
-  const [activeTab, setActiveTab] = useState('list');
+  const [activeTab, setActiveTab] = useState(() => {
+    if (location.state?.fromRekapan || location.state?.activeTab === 'create') {
+      return 'create';
+    }
+    return 'list';
+  });
 
   // ── View preferences (persisted to localStorage)
   const [displayMode, setDisplayMode] = useState(() => lsGet('inv_displayMode', 'list')); // 'list' | 'grid'
@@ -433,23 +457,22 @@ export default function InvoicePage() {
   // ── Expanded groups (Set of group keys)
   const [expandedGroups, setExpandedGroups] = useState(new Set());
 
-  // ── Form state for creating invoice
-  const [formData, setFormData] = useState({
-    pelanggan: 'PT LION WINGS',
-    kirimKeRekening: 'BCA - 0188920199 a/n PT Berkah Alam Semesta',
-    idReceivedOrder: 'RO-202611-00042',
-    rekeningAtasNama: 'PT Berkah Alam Semesta',
-    nomorPoCustomer: 'PO-LW-2026-089',
-    tanggal: new Date().toISOString().split('T')[0],
-    waktu: '10:15',
-    materialType: 'Curah',
-    materialName: 'SIRTU',
-    volume: 100,
-    subtotalJasa: 19371600,
-  });
-
+  // ── Form state for creating invoice (Integrated with Master Data & Orders)
+  const [formCustomerId, setFormCustomerId] = useState('');
+  const [selectedOrderId, setSelectedOrderId] = useState('');
+  const [formNomorRo, setFormNomorRo] = useState('');
+  const [formPoNumber, setFormPoNumber] = useState('');
+  const [formMaterial, setFormMaterial] = useState('');
+  const [formMaterialType, setFormMaterialType] = useState('Curah');
+  const [formVolume, setFormVolume] = useState('');
+  const [formHargaSatuan, setFormHargaSatuan] = useState('');
+  const [formIsPpn, setFormIsPpn] = useState(true);
+  const [formTanggal, setFormTanggal] = useState(new Date().toISOString().split('T')[0]);
+  const [formWaktu, setFormWaktu] = useState('10:00');
+  const [formKirimKeRekening, setFormKirimKeRekening] = useState('');
   const [filterHidden, setFilterHidden] = useState(false);
   const [invoiceGenerated, setInvoiceGenerated] = useState(false);
+  const [lastCreatedInvoice, setLastCreatedInvoice] = useState(null);
 
   // Delete confirmation state (merged from user commit)
   const [deleteConfirmInvoice, setDeleteConfirmInvoice] = useState({ open: false, id: null, label: '', item: null });
@@ -467,11 +490,156 @@ export default function InvoicePage() {
     }
   };
 
+  // Pre-fill from navigation state if coming from Rekapan / Orders
+  useEffect(() => {
+    if (location.state?.order) {
+      const o = location.state.order;
+      if (o.nomorRO) {
+        setSearchFilter(o.nomorRO);
+      }
+      if (location.state.fromRekapan || location.state.activeTab === 'create') {
+        setActiveTab('create');
+        if (o.customer) {
+          const cust = customers.find(
+            (c) => c.name === o.customer || c.id === o.customerId
+          );
+          if (cust) setFormCustomerId(cust.id);
+        }
+        setSelectedOrderId(o.nomorRO || o.id || '');
+        setFormNomorRo(o.nomorRO || o.id || '');
+        setFormPoNumber(o.poNumber || '');
+        setFormMaterial(o.material || '');
+        const isCurah =
+          !String(o.material || '').toUpperCase().includes('BOULDER') &&
+          !String(o.material || '').toUpperCase().includes('BATU');
+        setFormMaterialType(isCurah ? 'Curah' : 'Padat');
+        const vol = Number(o.totalVolume || o.terkirim || o.targetVolume || o.totalOrder || 0);
+        setFormVolume(vol > 0 ? vol : (Number(o.targetVolume || o.totalOrder) || ''));
+        const price = Number(o.hargaJual || 50000);
+        setFormHargaSatuan(price);
+        setFormIsPpn(o.isPpn !== undefined ? Boolean(o.isPpn) : true);
+      }
+    }
+  }, [location.state, customers]);
+
+  // Ensure fresh master data and initial defaults on Create Tab
+  useEffect(() => {
+    if (activeTab === 'create') {
+      if (customers.length === 0 || bankAccounts.length === 0) {
+        fetchMasterData?.();
+      }
+      if (!formCustomerId && customers.length > 0) {
+        setFormCustomerId(customers[0].id);
+      }
+      if (!formKirimKeRekening && bankAccounts.length > 0) {
+        const firstAcc = bankAccounts[0];
+        setFormKirimKeRekening(`${firstAcc.bank} - ${firstAcc.nomorRekening} a/n ${firstAcc.rekeningAtasNama}`);
+      }
+    }
+  }, [activeTab, customers, bankAccounts, formCustomerId, formKirimKeRekening, fetchMasterData]);
+
+  // Available orders for the selected customer / all approved orders
+  const availableOrders = useMemo(() => {
+    const list = [];
+    const seen = new Set();
+
+    (preOrders || [])
+      .filter((p) => p.status === 'APPROVED' || p.status === 'DISETUJUI' || p.status === 'AKTIF')
+      .forEach((p) => {
+        const ro = p.nomorRO || p.id;
+        if (!seen.has(ro)) {
+          seen.add(ro);
+          list.push({
+            id: p.id,
+            nomorRO: p.nomorRO,
+            poNumber: p.nomorPo || p.nomorPoCustomer || p.poNumber || 'PO Pending',
+            customer: p.customer,
+            customerId: p.customerId,
+            material: p.materialName || p.material,
+            volume: Number(p.terkirim || p.totalOrder || 0),
+            targetVolume: Number(p.totalOrder || 0),
+            hargaJual: Number(p.hargaJual || 50000),
+            satuan: p.satuan || 'm3',
+            isPpn: p.jenisWajibPajak === 'PKP',
+          });
+        }
+      });
+
+    (rekapanList || []).forEach((r) => {
+      const ro = r.nomorRO || r.id;
+      if (!seen.has(ro)) {
+        seen.add(ro);
+        list.push({
+          id: r.id,
+          nomorRO: r.nomorRO,
+          poNumber: r.poNumber,
+          customer: r.customer,
+          customerId: r.customerId,
+          material: r.material,
+          volume: Number(r.totalVolume || 0),
+          targetVolume: Number(r.targetVolume || 0),
+          hargaJual: Number(r.hargaJual || 50000),
+          satuan: r.satuan || 'm3',
+          isPpn: r.isPpn,
+        });
+      }
+    });
+
+    if (formCustomerId) {
+      const targetCust = customers.find((c) => c.id === formCustomerId || c.name === formCustomerId);
+      if (targetCust) {
+        return list.filter(
+          (o) =>
+            o.customerId === targetCust.id ||
+            o.customer?.toLowerCase() === targetCust.name?.toLowerCase()
+        );
+      }
+    }
+
+    return list;
+  }, [preOrders, rekapanList, customers, formCustomerId]);
+
+  const handleSelectOrder = (orderId) => {
+    setSelectedOrderId(orderId);
+    if (!orderId) {
+      setFormNomorRo('');
+      setFormPoNumber('');
+      setFormMaterial('');
+      setFormVolume('');
+      setFormHargaSatuan('');
+      return;
+    }
+    const ord = availableOrders.find((o) => o.id === orderId || o.nomorRO === orderId);
+    if (ord) {
+      setFormNomorRo(ord.nomorRO || ord.id);
+      setFormPoNumber(ord.poNumber || '');
+      setFormMaterial(ord.material || 'SIRTU');
+      const isCurah =
+        !String(ord.material || '').toUpperCase().includes('BOULDER') &&
+        !String(ord.material || '').toUpperCase().includes('BATU');
+      setFormMaterialType(isCurah ? 'Curah' : 'Padat');
+      const vol = Number(ord.volume > 0 ? ord.volume : (ord.targetVolume || 0));
+      setFormVolume(vol > 0 ? vol : '');
+      setFormHargaSatuan(Number(ord.hargaJual || 50000));
+      setFormIsPpn(ord.isPpn !== undefined ? Boolean(ord.isPpn) : true);
+      if (ord.customerId && !formCustomerId) {
+        setFormCustomerId(ord.customerId);
+      }
+    }
+  };
+
+  const selectedCustomer = useMemo(
+    () => customers.find((c) => c.id === formCustomerId || c.name === formCustomerId),
+    [customers, formCustomerId]
+  );
+
   // Exact Tax calculations per Implementation Plan Section 2 (Aturan 28 - 31)
   const calculation = useMemo(() => {
-    const subtotal = formData.subtotalJasa;
-    const ppnNominal = Math.round((subtotal * TAX_RATES.PPN_PERCENT) / 100);
-    const pphRate = formData.materialType === 'Curah' ? TAX_RATES.PPH_CURAH : TAX_RATES.PPH_PADAT;
+    const vol = Number(formVolume) || 0;
+    const unitPrice = Number(formHargaSatuan) || 0;
+    const subtotal = Math.round(vol * unitPrice);
+    const ppnNominal = formIsPpn ? Math.round((subtotal * TAX_RATES.PPN_PERCENT) / 100) : 0;
+    const pphRate = formMaterialType === 'Curah' ? TAX_RATES.PPH_CURAH : TAX_RATES.PPH_PADAT;
     const pphNominal = Math.round((subtotal * pphRate) / 100);
     const totalTagihan = subtotal + ppnNominal - pphNominal;
 
@@ -482,22 +650,66 @@ export default function InvoicePage() {
       pphNominal,
       totalTagihan,
     };
-  }, [formData.subtotalJasa, formData.materialType]);
+  }, [formVolume, formHargaSatuan, formIsPpn, formMaterialType]);
 
-  // Handle Generate Invoice
-  const handleApply = (e) => {
+  // Handle Generate & Save Invoice
+  const handleApply = async (e) => {
     e.preventDefault();
-    setInvoiceGenerated(true);
-    createInvoice({
-      volume: formData.volume,
-      material: formData.materialName,
+    const targetCust = selectedCustomer;
+    const custName = targetCust?.name || 'PT CUSTOMER';
+
+    if (!targetCust && !custName) {
+      addToast('Pilih pelanggan terlebih dahulu', 'warning');
+      return;
+    }
+    if (!formVolume || Number(formVolume) <= 0) {
+      addToast('Volume tagihan harus lebih dari 0 m³', 'warning');
+      return;
+    }
+    if (!formHargaSatuan || Number(formHargaSatuan) <= 0) {
+      addToast('Harga satuan jual harus lebih dari Rp 0', 'warning');
+      return;
+    }
+
+    const cleanPo = formPoNumber ? formPoNumber.trim() : 'PO';
+    const cleanRo = formNomorRo ? formNomorRo.replace('RO-', '').replace(/[^a-zA-Z0-9]/g, '') : String(Date.now()).slice(-4);
+    const invCode = `${cleanPo} - INV - ${cleanRo}`;
+
+    const newInvData = {
+      nomorInvoice: invCode,
+      kodeTransaksi: invCode,
+      nomorRO: formNomorRo || null,
+      idReceivedOrder: formNomorRo || null,
+      poNumber: formPoNumber || null,
+      nomorPoCustomer: formPoNumber || null,
+      customerId: targetCust?.id || null,
+      pelanggan: custName,
+      perusahaan: custName,
+      customerAddress: targetCust?.address || '',
+      material: formMaterial || 'SIRTU',
+      materialName: formMaterial || 'SIRTU',
+      materialType: formMaterialType,
       jenis: 'JASA ANGKUT + MATERIAL',
-      pelanggan: formData.pelanggan,
+      volume: Number(formVolume),
+      satuan: 'm3',
+      hargaSatuan: Number(formHargaSatuan),
+      subtotalJasa: calculation.subtotal,
+      ppnNominal: calculation.ppnNominal,
+      pphNominal: calculation.pphNominal,
       totalTagihan: calculation.totalTagihan,
-      nomorInvoice: `${formData.nomorPoCustomer} - INV - ${String(Date.now()).slice(-5)}`,
-      periode: `Periode: [${formData.tanggal}]`,
-    });
-    addToast('Faktur invoice berhasil dibuat & disimpan!', 'success');
+      amount: calculation.totalTagihan,
+      kirimKeRekening: formKirimKeRekening,
+      rekeningAtasNama: 'PT Berkah Alam Semesta',
+      tanggal: formTanggal,
+      waktu: formWaktu,
+      periode: `Periode: [${formTanggal}]`,
+      statusBayar: 'Belum Dibayar',
+    };
+
+    const saved = await createInvoice(newInvData);
+    setLastCreatedInvoice(saved || newInvData);
+    setInvoiceGenerated(true);
+    addToast(`Faktur Invoice ${invCode} berhasil dibuat & disimpan ke database!`, 'success');
   };
 
   // Filtered Invoices for List View
@@ -833,173 +1045,326 @@ export default function InvoicePage() {
       )}
 
       {/* ════════════════════════════════════════════════════════════════════════
-          VIEW 2 — INPUT INVOICE (Formulir Buat Invoice)
+          VIEW 2 — INPUT INVOICE (Formulir Buat Invoice Terintegrasi)
          ════════════════════════════════════════════════════════════════════════ */}
       {activeTab === 'create' && (
-        <div className="max-w-2xl mx-auto space-y-4">
-          <Card className="p-4 sm:p-5">
-            <form onSubmit={handleApply} className="space-y-3.5">
+        <div className="max-w-4xl mx-auto space-y-4">
+          <Card className="p-4 sm:p-6 border-[#24282C] bg-[#14171A] space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-[#202428]">
+              <div>
+                <h2 className="text-sm sm:text-base font-bold text-white flex items-center gap-2">
+                  <Receipt className="w-4 h-4 text-[#F4511E]" />
+                  Formulir Faktur Tagihan Invoice (Piutang Usaha)
+                </h2>
+                <p className="text-[11px] text-neutral-400 mt-0.5">
+                  Pilih pelanggan dan tarik data pesanan RO resmi untuk mengkalkulasi tagihan dan pajak secara otomatis.
+                </p>
+              </div>
+
+              {selectedOrderId && (
+                <Badge variant="primary" size="xs">
+                  <Check className="w-3 h-3 mr-1" />
+                  Pesanan Terhubung ({selectedOrderId})
+                </Badge>
+              )}
+            </div>
+
+            <form onSubmit={handleApply} className="space-y-4">
               {!filterHidden && (
                 <>
-                  {/* Row 1: Pilih Pelanggan & Kirim ke Rekening */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {/* Step 1: Pilih Pelanggan & Rekening Tujuan PT BAS */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                    <div>
+                      <Select
+                        label="Pilih Pelanggan (Customer)"
+                        icon={User}
+                        value={formCustomerId}
+                        onChange={(e) => {
+                          const newCustId = e.target.value;
+                          setFormCustomerId(newCustId);
+                          setSelectedOrderId('');
+                          setFormNomorRo('');
+                          setFormPoNumber('');
+                          setFormMaterial('');
+                          setFormVolume('');
+                          setFormHargaSatuan('');
+                        }}
+                      >
+                        <option value="">-- Pilih Customer --</option>
+                        {customers.map((c) => (
+                          <option key={c.id} value={c.id}>
+                            {c.name} {c.alias ? `(${c.alias})` : ''}
+                          </option>
+                        ))}
+                      </Select>
+                    </div>
+
+                    <div>
+                      <Select
+                        label="Kirim ke Rekening PT BAS"
+                        icon={Building2}
+                        value={formKirimKeRekening}
+                        onChange={(e) => setFormKirimKeRekening(e.target.value)}
+                      >
+                        {bankAccounts.map((acc) => (
+                          <option
+                            key={acc.id}
+                            value={`${acc.bank} - ${acc.nomorRekening} a/n ${acc.rekeningAtasNama}`}
+                          >
+                            {acc.bank} - {acc.nomorRekening} a/n {acc.rekeningAtasNama}
+                          </option>
+                        ))}
+                      </Select>
+                    </div>
+                  </div>
+
+                  {/* Customer Information Card */}
+                  {selectedCustomer && (
+                    <div className="p-3 bg-[#111315] rounded-lg border border-[#202428] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5 font-mono text-xs">
+                      <div className="space-y-0.5">
+                        <div className="text-white font-bold flex items-center gap-2">
+                          <span>{selectedCustomer.name}</span>
+                          {selectedCustomer.alias && (
+                            <span className="text-[10px] text-neutral-400 font-normal">
+                              ({selectedCustomer.alias})
+                            </span>
+                          )}
+                          <Badge size="xs" variant={selectedCustomer.isPpn ? 'primary' : 'neutral'}>
+                            {selectedCustomer.isPpn ? 'PKP (PPN 11%)' : 'Non-PKP'}
+                          </Badge>
+                        </div>
+                        <div className="text-neutral-400 text-[11px] flex items-center gap-3 flex-wrap">
+                          {selectedCustomer.address && (
+                            <span className="flex items-center gap-1">
+                              <MapPin className="w-3 h-3 text-neutral-500" />
+                              {selectedCustomer.address}
+                            </span>
+                          )}
+                          {selectedCustomer.telepon && (
+                            <span className="flex items-center gap-1">
+                              <Phone className="w-3 h-3 text-neutral-500" />
+                              {selectedCustomer.telepon}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="text-[11px] text-neutral-400 text-right sm:self-center">
+                        <div>NPWP: <strong className="text-white">{selectedCustomer.npwp || '-'}</strong></div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Step 2: Auto-Retrieve dari Pesanan / Nomor RO */}
+                  <div>
                     <Select
-                      label="Pilih Pelanggan"
-                      icon={User}
-                      value={formData.pelanggan}
-                      onChange={(e) => setFormData({ ...formData, pelanggan: e.target.value })}
+                      label="Tarik Data dari Pesanan / Nomor RO (Auto-Retrieve)"
+                      icon={Ticket}
+                      value={selectedOrderId}
+                      onChange={(e) => handleSelectOrder(e.target.value)}
                     >
-                      {customers.map((c) => (
-                        <option key={c.id} value={c.name}>
-                          {c.name}
+                      <option value="">-- Pilih Pesanan / RO untuk Mengisi Otomatis --</option>
+                      {availableOrders.map((ord) => (
+                        <option key={ord.id || ord.nomorRO} value={ord.nomorRO || ord.id}>
+                          [{ord.nomorRO || ord.id}] {ord.material} • PO: {ord.poNumber || 'DRAFT'} ({ord.volume || ord.targetVolume} m³)
                         </option>
                       ))}
                     </Select>
-
-                    <Select
-                      label="Kirim ke Rekening PT BAS"
-                      icon={Building2}
-                      value={formData.kirimKeRekening}
-                      onChange={(e) => setFormData({ ...formData, kirimKeRekening: e.target.value })}
-                    >
-                      {bankAccounts.map((acc) => (
-                        <option
-                          key={acc.id}
-                          value={`${acc.bank} - ${acc.nomorRekening} a/n ${acc.rekeningAtasNama}`}
-                        >
-                          {acc.bank} - {acc.nomorRekening} a/n {acc.rekeningAtasNama}
-                        </option>
-                      ))}
-                    </Select>
+                    <p className="text-[10px] text-neutral-400 mt-1 font-mono">
+                      * Memilih pesanan akan otomatis mengisi nomor RO, nomor PO, material, volume realisasi, dan harga jual customer.
+                    </p>
                   </div>
 
-                  {/* Row 2: ID Received Order & Rekening Atas Nama */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {/* Step 3: Nomor Referensi Dokumen & Waktu */}
+                  <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
                     <Input
-                      label="ID Received Order"
+                      label="Nomor RO Resmi"
                       icon={Ticket}
-                      value={formData.idReceivedOrder}
-                      onChange={(e) => setFormData({ ...formData, idReceivedOrder: e.target.value })}
-                      className="font-mono"
+                      value={formNomorRo}
+                      onChange={(e) => setFormNomorRo(e.target.value)}
+                      placeholder="RO-202611-0001"
+                      className="font-mono text-white"
                     />
 
                     <Input
-                      label="Rekening Atas Nama (auto)"
-                      icon={User}
-                      readOnly
-                      value={formData.rekeningAtasNama}
-                      className="text-neutral-400 bg-[#141618]"
-                    />
-                  </div>
-
-                  {/* Row 3: ID Nomor PO Customer & Tanggal/Waktu */}
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    <Input
-                      label="ID Nomor PO Customer (auto)"
+                      label="Nomor PO Customer"
                       icon={Ticket}
-                      readOnly
-                      value={formData.nomorPoCustomer}
-                      className="font-mono font-bold text-neutral-300 bg-[#141618]"
+                      value={formPoNumber}
+                      onChange={(e) => setFormPoNumber(e.target.value)}
+                      placeholder="PO-LW-2026-089"
+                      className="font-mono text-white"
                     />
 
                     <Input
                       label="Tanggal Invoice"
                       icon={Calendar}
                       type="date"
-                      value={formData.tanggal}
-                      onChange={(e) => setFormData({ ...formData, tanggal: e.target.value })}
+                      value={formTanggal}
+                      onChange={(e) => setFormTanggal(e.target.value)}
                     />
 
                     <Input
                       label="Waktu"
                       icon={Clock}
                       type="time"
-                      value={formData.waktu}
-                      onChange={(e) => setFormData({ ...formData, waktu: e.target.value })}
+                      value={formWaktu}
+                      onChange={(e) => setFormWaktu(e.target.value)}
                     />
                   </div>
 
-                  {/* Row 4: Material & Volume */}
+                  {/* Step 4: Spesifikasi Material & Perpajakan */}
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <Input
                       label="Nama Material"
-                      value={formData.materialName}
-                      onChange={(e) => setFormData({ ...formData, materialName: e.target.value })}
+                      icon={Package}
+                      value={formMaterial}
+                      onChange={(e) => setFormMaterial(e.target.value)}
+                      placeholder="SIRTU / BASE COURSE"
+                    />
+
+                    <Select
+                      label="Kategori Material"
+                      value={formMaterialType}
+                      onChange={(e) => setFormMaterialType(e.target.value)}
+                    >
+                      <option value="Curah">Curah (PPh 23: 2.0%)</option>
+                      <option value="Padat">Padat (PPh 23: 2.65%)</option>
+                    </Select>
+
+                    <Select
+                      label="Perpajakan PPN"
+                      value={formIsPpn ? 'ppn' : 'non-ppn'}
+                      onChange={(e) => setFormIsPpn(e.target.value === 'ppn')}
+                    >
+                      <option value="ppn">PKP (PPN 11%)</option>
+                      <option value="non-ppn">Non-PPN (0%)</option>
+                    </Select>
+                  </div>
+
+                  {/* Step 5: Volume & Harga Satuan */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3.5 bg-[#111315] rounded-lg border border-[#202428]">
+                    <Input
+                      label="Volume Tagihan (m³)"
+                      type="number"
+                      placeholder="0"
+                      value={formVolume}
+                      onChange={(e) => setFormVolume(e.target.value)}
+                      className="font-mono text-amber-400 font-bold"
                     />
 
                     <Input
-                      label="Volume Total (m³)"
+                      label="Harga Satuan Jual (IDR/m³)"
                       type="number"
                       placeholder="0"
-                      value={formData.volume === 0 ? '' : formData.volume}
-                      onFocus={(e) => {
-                        if (e.target.value === '0') e.target.select();
-                      }}
-                      onChange={(e) => {
-                        const raw = e.target.value;
-                        const clean = raw === '' ? '' : raw.replace(/^0+(?=\d)/, '');
-                        setFormData({ ...formData, volume: clean });
-                      }}
-                      className="font-mono"
+                      value={formHargaSatuan}
+                      onChange={(e) => setFormHargaSatuan(e.target.value)}
+                      className="font-mono text-white font-bold"
                     />
 
-                    <Input
-                      label="Subtotal Tagihan (IDR)"
-                      type="number"
-                      placeholder="0"
-                      value={formData.subtotalJasa === 0 ? '' : formData.subtotalJasa}
-                      onFocus={(e) => {
-                        if (e.target.value === '0') e.target.select();
-                      }}
-                      onChange={(e) => {
-                        const raw = e.target.value;
-                        const clean = raw === '' ? '' : raw.replace(/^0+(?=\d)/, '');
-                        setFormData({ ...formData, subtotalJasa: clean });
-                      }}
-                      className="font-mono"
-                    />
+                    <div>
+                      <label className="block text-[11px] font-medium text-neutral-400 mb-1">
+                        Subtotal Dasar
+                      </label>
+                      <div className="w-full bg-[#181B1E] border border-[#262A2E] rounded-md px-3 py-2 text-sm font-mono font-bold text-white">
+                        {formatCurrency(calculation.subtotal)}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Kotak Ringkasan Perhitungan Resmi PT BAS */}
+                  <div className="bg-[#111315] p-4 rounded-lg border border-[#262A2E] space-y-2.5 font-mono text-xs max-w-md ml-auto">
+                    <div className="text-[10px] uppercase font-bold text-neutral-400 tracking-wider pb-1 border-b border-[#202428] flex justify-between">
+                      <span>Rincian Tagihan &amp; Pajak</span>
+                      <span className="text-[#F4511E]">PT BAS Official</span>
+                    </div>
+
+                    <div className="flex justify-between py-1 text-neutral-300">
+                      <span>Subtotal Jasa &amp; Material:</span>
+                      <strong className="text-white">{formatCurrency(calculation.subtotal)}</strong>
+                    </div>
+
+                    <div className="flex justify-between py-1 text-neutral-300">
+                      <span>PPN 11% (Pasal 22):</span>
+                      <strong className={formIsPpn ? 'text-emerald-400' : 'text-neutral-500'}>
+                        +{formatCurrency(calculation.ppnNominal)}
+                      </strong>
+                    </div>
+
+                    <div className="flex justify-between py-1 text-neutral-300">
+                      <span>PPh 23 ({calculation.pphRate}%):</span>
+                      <strong className="text-[#F4511E]">
+                        -{formatCurrency(calculation.pphNominal)}
+                      </strong>
+                    </div>
+
+                    <div className="pt-2.5 border-t border-[#262A2E] flex justify-between items-baseline">
+                      <span className="font-bold text-white text-xs">Total Bersih Tagihan:</span>
+                      <span className="text-base sm:text-lg font-bold text-[#F4511E]">
+                        {formatCurrency(calculation.totalTagihan)}
+                      </span>
+                    </div>
                   </div>
                 </>
               )}
 
-              {/* Orange Action Button: TERAPKAN */}
-              <Button
-                type="submit"
-                variant="primary"
-                size="md"
-                className="w-full uppercase font-bold tracking-wider"
-              >
-                TERAPKAN & SIMPAN INVOICE
-              </Button>
+              {/* Action Buttons */}
+              <div className="flex items-center gap-2 pt-2">
+                <Button
+                  type="submit"
+                  variant="primary"
+                  size="md"
+                  className="flex-1 bg-[#F4511E] hover:bg-[#ff6b3d] text-white uppercase font-bold tracking-wider py-2.5 cursor-pointer"
+                >
+                  TERAPKAN &amp; SIMPAN INVOICE
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="md"
+                  onClick={() => {
+                    setSelectedOrderId('');
+                    setFormNomorRo('');
+                    setFormPoNumber('');
+                    setFormMaterial('');
+                    setFormVolume('');
+                    setFormHargaSatuan('');
+                    setInvoiceGenerated(false);
+                    addToast('Formulir di-reset', 'info');
+                  }}
+                  className="cursor-pointer"
+                >
+                  Reset Form
+                </Button>
+              </div>
 
-              {/* Toggle Collapse: Sembunyikan Filter */}
+              {/* Toggle Collapse */}
               <div className="text-center pt-1">
                 <button
                   type="button"
                   onClick={() => setFilterHidden(!filterHidden)}
                   className="text-[11px] text-neutral-400 hover:text-white inline-flex items-center gap-1 font-mono transition-colors cursor-pointer"
                 >
-                  {filterHidden ? 'Tampilkan Filter' : 'Sembunyikan Filter'}
+                  {filterHidden ? 'Tampilkan Formulir' : 'Sembunyikan Formulir'}
                   {filterHidden ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronUp className="w-3.5 h-3.5" />}
                 </button>
               </div>
             </form>
           </Card>
 
-          {/* Generated Enterprise Invoice Sheet */}
+          {/* Generated Enterprise Invoice Sheet Preview */}
           {invoiceGenerated && (
-            <Card className="p-5 sm:p-6 space-y-4">
+            <Card className="p-5 sm:p-6 space-y-4 border-[#24282C] bg-[#14171A]">
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-4 border-b border-[#24282C]">
                 <div>
                   <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-[#F4511E] block">
-                    PT BERKAH ALAM SEMESTA • FAKTUR TAGIHAN
+                    PT BERKAH ALAM SEMESTA • FAKTUR TAGIHAN RESMI
                   </span>
                   <h2 className="text-lg font-bold text-white font-mono mt-0.5">
-                    INV-202611-00001
+                    {lastCreatedInvoice?.kodeTransaksi || `${formPoNumber || 'PO'} - INV - ${formNomorRo || '0001'}`}
                   </h2>
                   <p className="text-xs text-neutral-400 font-mono mt-0.5">
-                    Customer: <strong className="text-white">{formData.pelanggan}</strong> | PO:{' '}
-                    {formData.nomorPoCustomer}
+                    Customer: <strong className="text-white">{selectedCustomer?.name || 'Customer'}</strong> | PO:{' '}
+                    {formPoNumber || '-'} | RO: {formNomorRo || '-'}
                   </p>
                 </div>
 
@@ -1008,6 +1373,7 @@ export default function InvoicePage() {
                     variant="ghost"
                     size="sm"
                     onClick={() => setActiveTab('list')}
+                    className="cursor-pointer"
                   >
                     Lihat Data Invoice &rarr;
                   </Button>
@@ -1016,6 +1382,7 @@ export default function InvoicePage() {
                     size="sm"
                     icon={Printer}
                     onClick={() => window.print()}
+                    className="cursor-pointer"
                   >
                     Cetak Faktur Penjualan
                   </Button>
@@ -1025,7 +1392,7 @@ export default function InvoicePage() {
               {/* Tax Breakdown Table */}
               <div className="space-y-2 max-w-sm ml-auto font-mono text-xs">
                 <div className="flex justify-between py-1.5 border-b border-[#202326]">
-                  <span className="text-neutral-400">Total Jasa & Material:</span>
+                  <span className="text-neutral-400">Total Jasa &amp; Material:</span>
                   <span className="text-white font-medium">{formatCurrency(calculation.subtotal)}</span>
                 </div>
 
@@ -1036,7 +1403,7 @@ export default function InvoicePage() {
 
                 <div className="flex justify-between py-1.5 border-b border-[#202326]">
                   <span className="text-neutral-400">
-                    PPH {calculation.pphRate}% ({formData.materialType === 'Curah' ? 'Curah' : 'Padat'}):
+                    PPH {calculation.pphRate}% ({formMaterialType}):
                   </span>
                   <span className="text-[#F4511E] font-medium">-{formatCurrency(calculation.pphNominal)}</span>
                 </div>

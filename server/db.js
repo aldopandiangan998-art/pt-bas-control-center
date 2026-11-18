@@ -97,6 +97,8 @@ export function initDb() {
       nomorPo TEXT,
       customer TEXT,
       customerAddress TEXT,
+      customerId TEXT,
+      supplierId TEXT,
       materialId TEXT,
       materialName TEXT,
       materialCategory TEXT,
@@ -174,18 +176,65 @@ export function initDb() {
 
     CREATE TABLE IF NOT EXISTS bkk (
       id TEXT PRIMARY KEY,
-      kodeTransaksi TEXT,
-      tanggal TEXT,
-      perusahaan TEXT,
+      kodeTransaksi TEXT NOT NULL,
+      nomorRO TEXT,
+      preOrderId TEXT,
+      jurnalId TEXT,
+      poNumber TEXT,
+      supplierId TEXT,
+      customerId TEXT,
+      perusahaan TEXT NOT NULL,
+      subDetail TEXT,
+      penerima TEXT,
       material TEXT,
-      ritaseCount INTEGER,
-      kubikasi REAL,
-      hargaSatuan REAL,
-      amount REAL,
-      statusBayar TEXT,
+      jenis TEXT,
+      ritaseCount INTEGER DEFAULT 0,
+      kubikasi REAL DEFAULT 0,
+      volume REAL DEFAULT 0,
+      satuan TEXT DEFAULT 'm3',
+      hargaSatuan REAL DEFAULT 0,
+      amount REAL DEFAULT 0,
+      statusBayar TEXT DEFAULT 'Belum Dibayar',
+      tanggal TEXT,
+      timestamp TEXT,
+      periode TEXT,
       tanggalBayar TEXT,
+      rekeningSumber TEXT,
       rekeningTujuan TEXT,
-      penerima TEXT
+      created_at TEXT,
+      updated_at TEXT
+    );
+
+    CREATE TABLE IF NOT EXISTS invoices (
+      id TEXT PRIMARY KEY,
+      kodeTransaksi TEXT NOT NULL,
+      nomorRO TEXT,
+      preOrderId TEXT,
+      jurnalId TEXT,
+      poNumber TEXT,
+      customerId TEXT,
+      supplierId TEXT,
+      perusahaan TEXT NOT NULL,
+      customerAddress TEXT,
+      material TEXT,
+      jenis TEXT,
+      volume REAL DEFAULT 0,
+      satuan TEXT DEFAULT 'm3',
+      hargaSatuan REAL DEFAULT 0,
+      subtotalJasa REAL DEFAULT 0,
+      ppnNominal REAL DEFAULT 0,
+      pphNominal REAL DEFAULT 0,
+      amount REAL DEFAULT 0,
+      statusBayar TEXT DEFAULT 'Belum Dibayar',
+      tanggal TEXT,
+      waktu TEXT,
+      timestamp TEXT,
+      periode TEXT,
+      tanggalBayar TEXT,
+      kirimKeRekening TEXT,
+      rekeningAtasNama TEXT,
+      created_at TEXT,
+      updated_at TEXT
     );
 
     CREATE TABLE IF NOT EXISTS banks (
@@ -262,6 +311,8 @@ export function initDb() {
       ['nomorPoCustomer', 'TEXT'],
       ['hubungkanNomorPoMaterial', 'TEXT'],
       ['satuanJasaAngkut', 'TEXT'],
+      ['customerId', 'TEXT'],
+      ['supplierId', 'TEXT'],
     ];
     for (const [col, colType] of newPoCols) {
       if (!poCols.includes(col)) {
@@ -314,11 +365,93 @@ export function initDb() {
     }
   } catch (err) {
     console.warn('Migration surat_jalan table error:', err);
+  }
 
+  // Safe migration for bkk table relation fields
+  try {
+    const bkkCols = db.prepare('PRAGMA table_info(bkk)').all().map((c) => c.name);
+    const newBkkCols = [
+      ['nomorRO', 'TEXT'],
+      ['preOrderId', 'TEXT'],
+      ['jurnalId', 'TEXT'],
+      ['poNumber', 'TEXT'],
+      ['supplierId', 'TEXT'],
+      ['customerId', 'TEXT'],
+      ['subDetail', 'TEXT'],
+      ['volume', 'REAL DEFAULT 0'],
+      ['satuan', "TEXT DEFAULT 'm3'"],
+      ['jenis', "TEXT DEFAULT 'CURAH | JASA ANGKUT + MATERIAL'"],
+      ['timestamp', 'TEXT'],
+      ['periode', 'TEXT'],
+      ['rekeningSumber', 'TEXT'],
+      ['created_at', 'TEXT'],
+      ['updated_at', 'TEXT'],
+    ];
+    for (const [col, colType] of newBkkCols) {
+      if (!bkkCols.includes(col)) {
+        db.exec(`ALTER TABLE bkk ADD COLUMN ${col} ${colType};`);
+      }
+    }
+  } catch (err) {
+    console.warn('Migration bkk table error:', err);
+  }
+
+  // Safe migration for invoices table fields
+  try {
+    const invCols = db.prepare('PRAGMA table_info(invoices)').all().map((c) => c.name);
+    const newInvCols = [
+      ['customerId', 'TEXT'],
+      ['supplierId', 'TEXT'],
+      ['customerAddress', 'TEXT'],
+      ['subtotalJasa', 'REAL DEFAULT 0'],
+      ['ppnNominal', 'REAL DEFAULT 0'],
+      ['pphNominal', 'REAL DEFAULT 0'],
+      ['satuan', "TEXT DEFAULT 'm3'"],
+      ['hargaSatuan', 'REAL DEFAULT 0'],
+      ['waktu', 'TEXT'],
+      ['tanggalBayar', 'TEXT'],
+      ['kirimKeRekening', 'TEXT'],
+      ['rekeningAtasNama', 'TEXT'],
+    ];
+    for (const [col, colType] of newInvCols) {
+      if (!invCols.includes(col)) {
+        db.exec(`ALTER TABLE invoices ADD COLUMN ${col} ${colType};`);
+      }
+    }
+  } catch (err) {
+    console.warn('Migration invoices table error:', err);
+  }
+
+  // Auto-link relations between transactions and master tables
+  try {
+    db.exec(`
+      UPDATE pre_orders
+      SET customerId = (SELECT id FROM customers WHERE customers.name = pre_orders.customer LIMIT 1)
+      WHERE customerId IS NULL AND customer IS NOT NULL;
+
+      UPDATE pre_orders
+      SET supplierId = (SELECT id FROM suppliers WHERE aktif = 1 ORDER BY id ASC LIMIT 1)
+      WHERE supplierId IS NULL;
+
+      UPDATE bkk
+      SET supplierId = (SELECT id FROM suppliers WHERE suppliers.name = bkk.perusahaan LIMIT 1)
+      WHERE supplierId IS NULL AND perusahaan IS NOT NULL;
+
+      UPDATE bkk
+      SET customerId = (SELECT customerId FROM pre_orders WHERE pre_orders.id = bkk.preOrderId OR (bkk.nomorRO IS NOT NULL AND pre_orders.nomorRO = bkk.nomorRO) LIMIT 1)
+      WHERE customerId IS NULL;
+
+      UPDATE invoices
+      SET customerId = (SELECT id FROM customers WHERE customers.name = invoices.perusahaan LIMIT 1)
+      WHERE customerId IS NULL AND perusahaan IS NOT NULL;
+    `);
+  } catch (err) {
+    console.warn('Auto-linking master relations error:', err);
   }
 
   seedInitialData();
   syncJournalsAndWaybills();
+  syncBkkAndInvoices();
 }
 
 /**
@@ -511,6 +644,210 @@ export function syncJournalsAndWaybills() {
 }
 
 /**
+ * Synchronize approved Pre Orders and Jurnal GI summaries to BKK (Cash Out) and Invoices.
+ * Strictly purges any orphan or dummy BKK / Invoice records.
+ * Per specification:
+ * - 1 BKK Vendor and 1 Invoice Customer per Nomor RO / Jurnal Summary.
+ * - For BKK: Supplier name (e.g. UKHY DIAN) as main company, with Customer and Nomor RO in subDetail.
+ * - For Invoice: Customer name as main company.
+ */
+export function syncBkkAndInvoices() {
+  try {
+    // 0. PURGE DUMMY AND ORPHAN DATA
+    db.exec(`
+      DELETE FROM bkk
+      WHERE id IN ('bkk-1', 'bkk-2', 'bkk-3', 'co-1', 'co-2', 'co-3', 'co-4', 'co-5', 'bkk-0')
+         OR kodeTransaksi IN ('TRX-202611-001', 'TRX-202611-002', 'TRX-202611-003')
+         OR (preOrderId IS NOT NULL AND preOrderId NOT IN (SELECT id FROM pre_orders))
+         OR (preOrderId IS NULL AND (nomorRO IS NULL OR nomorRO NOT IN (SELECT nomorRO FROM pre_orders WHERE nomorRO IS NOT NULL)));
+
+      DELETE FROM invoices
+      WHERE id IN ('inv-1', 'inv-2', 'inv-3', 'inv-4', 'inv-5', 'inv-6')
+         OR (preOrderId IS NOT NULL AND preOrderId NOT IN (SELECT id FROM pre_orders))
+         OR (preOrderId IS NULL AND (nomorRO IS NULL OR nomorRO NOT IN (SELECT nomorRO FROM pre_orders WHERE nomorRO IS NOT NULL)));
+    `);
+
+    // 1. Ensure active BKK and Invoices for each Jurnal GI entry
+    const allJurnals = db.prepare('SELECT * FROM jurnal_gi').all();
+    const defaultSupplier = db.prepare("SELECT * FROM suppliers WHERE aktif = 1 LIMIT 1").get() || {
+      name: 'UKHY DIAN',
+      penerima: 'UKHY DIAN',
+      bank: 'BCA',
+      noRekening: '6150832452',
+    };
+
+    for (const jrn of allJurnals) {
+      let details = [];
+      try {
+        details = typeof jrn.suratJalanDetails === 'string' ? JSON.parse(jrn.suratJalanDetails) : (jrn.suratJalanDetails || []);
+      } catch (e) {
+        details = [];
+      }
+
+      const dates = details.map((d) => d.tanggal).filter(Boolean);
+      const uniqueDates = [...new Set(dates)].sort();
+      const minDate = uniqueDates[0] || jrn.tanggal || new Date().toISOString().split('T')[0];
+      const maxDate = uniqueDates[uniqueDates.length - 1] || minDate;
+      const periodeStr = uniqueDates.length > 1
+        ? `Periode: [${minDate}, ${maxDate}]`
+        : `Periode: [${minDate}]`;
+      const timestampStr = `${maxDate} 10:00:00`;
+
+      // ── A. INVOICE (TAGIHAN CUSTOMER) ──
+      const invCode = `${jrn.poNumber || 'PO'} - INV - ${String(jrn.nomorRO).slice(-4).replace('-', '')}`;
+      let existingInv = db.prepare('SELECT * FROM invoices WHERE jurnalId = ? OR (nomorRO IS NOT NULL AND nomorRO = ?)').get(jrn.id, jrn.nomorRO);
+
+      const invVolume = Number(jrn.totalVolume) || 0;
+      const invAmount = Number(jrn.nominalJual) || 0;
+      const nowIso = new Date().toISOString();
+
+      const custRow = db.prepare('SELECT id FROM customers WHERE name = ? LIMIT 1').get(jrn.customer);
+      const custId = custRow?.id || 'cust-1';
+      const supRow = db.prepare('SELECT id FROM suppliers WHERE name = ? LIMIT 1').get(defaultSupplier.name);
+      const supId = supRow?.id || defaultSupplier.id || 'sup-1';
+
+      // Tax calculations for synchronized invoice
+      const isCurah = !String(jrn.material || '').toUpperCase().includes('BOULDER') && !String(jrn.material || '').toUpperCase().includes('BATU');
+      const pphRate = isCurah ? 2.0 : 2.65;
+      const isPpn = Boolean(jrn.isPpn);
+      const ppnNom = isPpn ? Math.round((invAmount * 11) / 100) : 0;
+      const pphNom = Math.round((invAmount * pphRate) / 100);
+      const totalBersih = invAmount + ppnNom - pphNom;
+
+      if (!existingInv) {
+        const invId = `INV-${jrn.id.replace('REK-', '')}`;
+        db.prepare(`
+          INSERT INTO invoices (
+            id, kodeTransaksi, nomorRO, preOrderId, jurnalId, poNumber,
+            customerId, supplierId, perusahaan, customerAddress, material, jenis, volume, satuan,
+            hargaSatuan, subtotalJasa, ppnNominal, pphNominal, amount, statusBayar, tanggal, waktu,
+            timestamp, periode, kirimKeRekening, rekeningAtasNama, created_at, updated_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `).run(
+          invId,
+          invCode,
+          jrn.nomorRO,
+          jrn.preOrderId,
+          jrn.id,
+          jrn.poNumber,
+          custId,
+          supId,
+          jrn.customer,
+          jrn.customerAddress || '',
+          jrn.material,
+          'JASA ANGKUT + MATERIAL',
+          invVolume,
+          jrn.satuan || 'm3',
+          Number(jrn.hargaJual) || 0,
+          invAmount,
+          ppnNom,
+          pphNom,
+          totalBersih > 0 ? totalBersih : invAmount,
+          'Belum Dibayar',
+          maxDate,
+          '10:00',
+          timestampStr,
+          periodeStr,
+          'BCA - 0188920199 a/n PT Berkah Alam Semesta',
+          'PT Berkah Alam Semesta',
+          nowIso,
+          nowIso
+        );
+      } else {
+        db.prepare(`
+          UPDATE invoices
+          SET volume = ?, hargaSatuan = ?, subtotalJasa = ?, ppnNominal = ?, pphNominal = ?,
+              amount = ?, customerId = COALESCE(customerId, ?), poNumber = COALESCE(?, poNumber),
+              periode = ?, updated_at = ?
+          WHERE id = ?
+        `).run(
+          invVolume,
+          Number(jrn.hargaJual) || 0,
+          invAmount,
+          ppnNom,
+          pphNom,
+          totalBersih > 0 ? totalBersih : invAmount,
+          custId,
+          jrn.poNumber || null,
+          periodeStr,
+          nowIso,
+          existingInv.id
+        );
+      }
+
+      // ── B. BKK (CASH OUT VENDOR / HPP) ──
+      const coCode = `${jrn.poNumber || 'PO'} - CO - ${String(jrn.nomorRO).slice(-4).replace('-', '')}`;
+      let existingBkk = db.prepare('SELECT * FROM bkk WHERE jurnalId = ? OR (nomorRO IS NOT NULL AND nomorRO = ?)').get(jrn.id, jrn.nomorRO);
+
+      const bkkVolume = Number(jrn.totalVolume) || 0;
+      const bkkAmount = Number(jrn.nominalBeli) || 0;
+      const ritCount = Number(jrn.totalSj) || details.length || 0;
+      const subDetailStr = `${jrn.customer} (${jrn.nomorRO})`;
+
+      if (!existingBkk) {
+        const bkkId = `BKK-${jrn.id.replace('REK-', '')}`;
+        db.prepare(`
+          INSERT INTO bkk (
+            id, kodeTransaksi, nomorRO, preOrderId, jurnalId, poNumber,
+            supplierId, customerId, perusahaan, subDetail, penerima, material, jenis, ritaseCount,
+            kubikasi, volume, satuan, hargaSatuan, amount, statusBayar,
+            tanggal, timestamp, periode, rekeningTujuan, created_at, updated_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `).run(
+          bkkId,
+          coCode,
+          jrn.nomorRO,
+          jrn.preOrderId,
+          jrn.id,
+          jrn.poNumber,
+          supId,
+          custId,
+          defaultSupplier.name,
+          subDetailStr,
+          defaultSupplier.penerima || defaultSupplier.name,
+          `${jrn.material} (Curah)`,
+          'CURAH | JASA ANGKUT + MATERIAL',
+          ritCount,
+          bkkVolume,
+          bkkVolume,
+          jrn.satuan || 'm3',
+          Number(jrn.hargaBeli) || 0,
+          bkkAmount,
+          'Belum Dibayar',
+          maxDate,
+          timestampStr,
+          periodeStr,
+          `${defaultSupplier.bank || 'BCA'} - ${defaultSupplier.noRekening || ''}`,
+          nowIso,
+          nowIso
+        );
+      } else {
+        db.prepare(`
+          UPDATE bkk
+          SET volume = ?, kubikasi = ?, amount = ?, ritaseCount = ?,
+              supplierId = COALESCE(supplierId, ?), customerId = COALESCE(customerId, ?),
+              subDetail = ?, periode = ?, updated_at = ?
+          WHERE id = ?
+        `).run(
+          bkkVolume,
+          bkkVolume,
+          bkkAmount,
+          ritCount,
+          supId,
+          custId,
+          subDetailStr,
+          periodeStr,
+          nowIso,
+          existingBkk.id
+        );
+      }
+    }
+  } catch (err) {
+    console.warn('Error during syncBkkAndInvoices:', err);
+  }
+}
+
+/**
  * Seed Initial Records if empty
  */
 function seedInitialData() {
@@ -640,22 +977,8 @@ function seedInitialData() {
     insertCust.run('cust-4', 'PT PETROKIMIA GRESIK', 'PG', 'PT', 'Jl. Jenderal Ahmad Yani, Gresik', '01.111.222.3-011.000', '031-3982200', 'PG');
   }
 
-  // Pre-orders, Surat Jalan, and Jurnal GI are NOT seeded with dummy records
+  // Pre-orders, Surat Jalan, Jurnal GI, BKK, and Invoices are NOT seeded with dummy records
   // They are strictly populated from real administrative transactions and synchronized
-
-
-  // Seed bkk if empty
-  const bkkCount = db.prepare('SELECT COUNT(*) as count FROM bkk').get().count;
-  if (bkkCount === 0) {
-    const insertBkk = db.prepare(`
-      INSERT INTO bkk (id, kodeTransaksi, tanggal, perusahaan, material, ritaseCount, kubikasi, hargaSatuan, amount, statusBayar, tanggalBayar, rekeningTujuan, penerima)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `);
-
-    insertBkk.run('bkk-1', 'TRX-202611-001', '2026-11-07', 'UKHY DIAN', 'SIRTU (Curah)', 1, 32.5, 50765, 1649863, 'Belum Dibayar', null, 'BCA 6150832452', 'UKHY DIAN');
-    insertBkk.run('bkk-2', 'TRX-202611-002', '2026-11-07', 'PT TENANG JAYA SEJAHTERA', 'SIRTU (Curah)', 1, 40.39, 50765, 2050400, 'Belum Dibayar', null, 'BCA 0503800800', 'ARIF NURCAHYADI');
-    insertBkk.run('bkk-3', 'TRX-202611-003', '2026-11-07', 'PT SOYO APIK', 'SIRTU (Curah)', 1, 26.65, 50765, 1352887, 'Belum Dibayar', null, 'BCA 829-189-1888', 'PT SOYO APIK');
-  }
 
   // Seed banks if empty
   const bankCount = db.prepare('SELECT COUNT(*) as count FROM banks').get().count;

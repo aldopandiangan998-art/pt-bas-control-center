@@ -1056,8 +1056,8 @@ export default function MasterDataPage() {
 
   const handleSubmitCurrency = (e) => {
     e.preventDefault();
-    if (!currencyForm.code || !currencyForm.name) {
-      addToast('Kode mata uang dan nama mata uang wajib diisi!', 'warning');
+    if (!currencyForm.code) {
+      addToast('Kode mata uang wajib diisi!', 'warning');
       return;
     }
     const cleanCode = currencyForm.code.trim().toUpperCase();
@@ -1068,6 +1068,8 @@ export default function MasterDataPage() {
     addCurrency({
       ...currencyForm,
       code: cleanCode,
+      name: currencyForm.name || cleanCode,
+      englishName: currencyForm.englishName || cleanCode,
       symbol: currencyForm.symbol || cleanCode,
       formatSample: currencyForm.formatSample || `${currencyForm.symbol || cleanCode} 1,250.00`,
       formatPresisi: currencyForm.formatPresisi || '24.50 m³',
@@ -1749,11 +1751,10 @@ export default function MasterDataPage() {
             <button
               type="button"
               onClick={() => handleSetViewMode('grid')}
-              className={`view-toggle-btn px-2.5 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 text-xs font-medium ${
-                viewMode === 'grid'
-                  ? 'active bg-[#F4511E] text-white shadow-xs font-bold'
-                  : 'text-neutral-400 hover:text-white hover:bg-[#151D28]'
-              }`}
+              className={`view-toggle-btn px-2.5 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 text-xs font-medium ${viewMode === 'grid'
+                ? 'active bg-[#F4511E] text-white shadow-xs font-bold'
+                : 'text-neutral-400 hover:text-white hover:bg-[#151D28]'
+                }`}
               title="Tampilan Grid (Kartu)"
               aria-label="Tampilan Grid"
             >
@@ -1763,11 +1764,10 @@ export default function MasterDataPage() {
             <button
               type="button"
               onClick={() => handleSetViewMode('list')}
-              className={`view-toggle-btn px-2.5 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 text-xs font-medium ${
-                viewMode === 'list'
-                  ? 'active bg-[#F4511E] text-white shadow-xs font-bold'
-                  : 'text-neutral-400 hover:text-white hover:bg-[#151D28]'
-              }`}
+              className={`view-toggle-btn px-2.5 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 text-xs font-medium ${viewMode === 'list'
+                ? 'active bg-[#F4511E] text-white shadow-xs font-bold'
+                : 'text-neutral-400 hover:text-white hover:bg-[#151D28]'
+                }`}
               title="Tampilan List (Tabel)"
               aria-label="Tampilan List"
             >
@@ -1968,15 +1968,13 @@ export default function MasterDataPage() {
                                   <button
                                     type="button"
                                     onClick={() => toggleSupplierStatus(sup.id)}
-                                    className={`w-8 h-4.5 flex items-center rounded-full p-0.5 transition-colors cursor-pointer ${
-                                      sup.aktif ? 'bg-[#F4511E]' : 'bg-[#2A2E33]'
-                                    }`}
+                                    className={`w-8 h-4.5 flex items-center rounded-full p-0.5 transition-colors cursor-pointer ${sup.aktif ? 'bg-[#F4511E]' : 'bg-[#2A2E33]'
+                                      }`}
                                     title={sup.aktif ? 'Klik untuk non-aktifkan' : 'Klik untuk aktifkan'}
                                   >
                                     <div
-                                      className={`bg-white w-3.5 h-3.5 rounded-full shadow-md transform transition-transform ${
-                                        sup.aktif ? 'translate-x-3.5' : 'translate-x-0'
-                                      }`}
+                                      className={`bg-white w-3.5 h-3.5 rounded-full shadow-md transform transition-transform ${sup.aktif ? 'translate-x-3.5' : 'translate-x-0'
+                                        }`}
                                     />
                                   </button>
                                   <span className="text-[11px] font-mono text-neutral-400">
@@ -2086,15 +2084,13 @@ export default function MasterDataPage() {
                                   <button
                                     type="button"
                                     onClick={() => toggleSupplierStatus(sup.id)}
-                                    className={`w-8 h-4.5 flex items-center rounded-full p-0.5 transition-colors cursor-pointer ${
-                                      sup.aktif ? 'bg-[#F4511E]' : 'bg-[#2A2E33]'
-                                    }`}
+                                    className={`w-8 h-4.5 flex items-center rounded-full p-0.5 transition-colors cursor-pointer ${sup.aktif ? 'bg-[#F4511E]' : 'bg-[#2A2E33]'
+                                      }`}
                                     title={sup.aktif ? 'Klik untuk non-aktifkan' : 'Klik untuk aktifkan'}
                                   >
                                     <div
-                                      className={`bg-white w-3.5 h-3.5 rounded-full shadow-md transform transition-transform ${
-                                        sup.aktif ? 'translate-x-3.5' : 'translate-x-0'
-                                      }`}
+                                      className={`bg-white w-3.5 h-3.5 rounded-full shadow-md transform transition-transform ${sup.aktif ? 'translate-x-3.5' : 'translate-x-0'
+                                        }`}
                                     />
                                   </button>
                                   <span className="text-[10px] font-mono text-neutral-400">
@@ -2181,784 +2177,875 @@ export default function MasterDataPage() {
             );
           })()}
 
-      {/* ======================================================== */}
-      {/* 2. DATA MATERIAL */}
-      {/* ======================================================== */}
-      {currentTab === 'material' && (() => {
-        const filtered = filteredMaterials;
+          {/* ======================================================== */}
+          {/* 2. DATA MATERIAL */}
+          {/* ======================================================== */}
+          {currentTab === 'material' && (() => {
+            const filtered = filteredMaterials;
 
-        return (
-          <div className="space-y-3.5">
-            {/* Metric Summary Header Banner */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
-              <div className="master-stat-card p-3 rounded-xl bg-[#121822]/90 border border-[#1E2938] flex items-center justify-between shadow-xs">
-                <div>
-                  <div className="text-[10px] font-mono text-neutral-400 uppercase tracking-wider">Jenis Material</div>
-                  <div className="text-xl font-bold font-mono text-white mt-0.5">{materials.length}</div>
-                  <div className="text-[10px] text-neutral-400 mt-0.5">Batu, Pasir & Abu Tambang</div>
-                </div>
-                <div className="w-10 h-10 rounded-xl bg-orange-500/10 border border-orange-500/30 flex items-center justify-center text-[#F4511E]">
-                  <Mountain className="w-5 h-5" />
-                </div>
-              </div>
-              <div className="master-stat-card stat-emerald p-3 rounded-xl bg-[#121822]/90 border border-[#1E2938] flex items-center justify-between shadow-xs">
-                <div>
-                  <div className="text-[10px] font-mono text-neutral-400 uppercase tracking-wider">Material Aktif</div>
-                  <div className="text-xl font-bold font-mono text-emerald-400 mt-0.5">
-                    {materials.filter((m) => m.aktif).length}
+            return (
+              <div className="space-y-3.5">
+                {/* Metric Summary Header Banner */}
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
+                  <div className="master-stat-card p-3 rounded-xl bg-[#121822]/90 border border-[#1E2938] flex items-center justify-between shadow-xs">
+                    <div>
+                      <div className="text-[10px] font-mono text-neutral-400 uppercase tracking-wider">Jenis Material</div>
+                      <div className="text-xl font-bold font-mono text-white mt-0.5">{materials.length}</div>
+                      <div className="text-[10px] text-neutral-400 mt-0.5">Batu, Pasir & Abu Tambang</div>
+                    </div>
+                    <div className="w-10 h-10 rounded-xl bg-orange-500/10 border border-orange-500/30 flex items-center justify-center text-[#F4511E]">
+                      <Mountain className="w-5 h-5" />
+                    </div>
                   </div>
-                  <div className="text-[10px] text-emerald-400/80 mt-0.5">
-                    {Math.round((materials.filter((m) => m.aktif).length / (materials.length || 1)) * 100)}% Siap Dijual
+                  <div className="master-stat-card stat-emerald p-3 rounded-xl bg-[#121822]/90 border border-[#1E2938] flex items-center justify-between shadow-xs">
+                    <div>
+                      <div className="text-[10px] font-mono text-neutral-400 uppercase tracking-wider">Material Aktif</div>
+                      <div className="text-xl font-bold font-mono text-emerald-400 mt-0.5">
+                        {materials.filter((m) => m.aktif).length}
+                      </div>
+                      <div className="text-[10px] text-emerald-400/80 mt-0.5">
+                        {Math.round((materials.filter((m) => m.aktif).length / (materials.length || 1)) * 100)}% Siap Dijual
+                      </div>
+                    </div>
+                    <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+                      <Activity className="w-5 h-5" />
+                    </div>
+                  </div>
+                  <div className="master-stat-card stat-amber p-3 rounded-xl bg-[#121822]/90 border border-[#1E2938] flex items-center justify-between shadow-xs">
+                    <div>
+                      <div className="text-[10px] font-mono text-neutral-400 uppercase tracking-wider">Rata-rata Margin</div>
+                      <div className="text-xl font-bold font-mono text-amber-400 mt-0.5">
+                        +{(
+                          materials.reduce((sum, m) => sum + ((m.jual || 0) - (m.beli || 0)), 0) /
+                          (materials.length || 1)
+                        ).toFixed(1)}
+                      </div>
+                      <div className="text-[10px] text-neutral-400 mt-0.5">Selisih Jual vs Beli</div>
+                    </div>
+                    <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
+                      <TrendingUp className="w-5 h-5" />
+                    </div>
+                  </div>
+                  <div className="master-stat-card stat-sky p-3 rounded-xl bg-[#121822]/90 border border-[#1E2938] flex items-center justify-between shadow-xs">
+                    <div>
+                      <div className="text-[10px] font-mono text-neutral-400 uppercase tracking-wider">Kategori & PPh</div>
+                      <div className="text-xl font-bold font-mono text-sky-400 mt-0.5">
+                        {new Set(materials.map((m) => m.category)).size} Golongan
+                      </div>
+                      <div className="text-[10px] text-neutral-400 mt-0.5">PPh 22 & Satuan Tambang</div>
+                    </div>
+                    <div className="w-10 h-10 rounded-xl bg-sky-500/10 border border-sky-500/30 flex items-center justify-center text-sky-400">
+                      <Layers className="w-5 h-5" />
+                    </div>
                   </div>
                 </div>
-                <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
-                  <Activity className="w-5 h-5" />
-                </div>
-              </div>
-              <div className="master-stat-card stat-amber p-3 rounded-xl bg-[#121822]/90 border border-[#1E2938] flex items-center justify-between shadow-xs">
-                <div>
-                  <div className="text-[10px] font-mono text-neutral-400 uppercase tracking-wider">Rata-rata Margin</div>
-                  <div className="text-xl font-bold font-mono text-amber-400 mt-0.5">
-                    +{(
-                      materials.reduce((sum, m) => sum + ((m.jual || 0) - (m.beli || 0)), 0) /
-                      (materials.length || 1)
-                    ).toFixed(1)}
-                  </div>
-                  <div className="text-[10px] text-neutral-400 mt-0.5">Selisih Jual vs Beli</div>
-                </div>
-                <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
-                  <TrendingUp className="w-5 h-5" />
-                </div>
-              </div>
-              <div className="master-stat-card stat-sky p-3 rounded-xl bg-[#121822]/90 border border-[#1E2938] flex items-center justify-between shadow-xs">
-                <div>
-                  <div className="text-[10px] font-mono text-neutral-400 uppercase tracking-wider">Kategori & PPh</div>
-                  <div className="text-xl font-bold font-mono text-sky-400 mt-0.5">
-                    {new Set(materials.map((m) => m.category)).size} Golongan
-                  </div>
-                  <div className="text-[10px] text-neutral-400 mt-0.5">PPh 22 & Satuan Tambang</div>
-                </div>
-                <div className="w-10 h-10 rounded-xl bg-sky-500/10 border border-sky-500/30 flex items-center justify-center text-sky-400">
-                  <Layers className="w-5 h-5" />
-                </div>
-              </div>
-            </div>
 
-            {filtered.length === 0 ? (
-              <MasterEmptyState
-                icon={Mountain}
-                title="Material"
-                description="Daftar agregat, batu pecah, pasir cor, dan standar harga jual/beli tambang."
-                searchQuery={searchQuery}
-                statusFilter={statusFilter}
-                onReset={() => {
-                  setSearchQuery('');
-                  setStatusFilter('all');
-                }}
-                onAdd={() => setModalOpen(true)}
-                entityLabel="Material"
-              />
-            ) : viewMode === 'list' ? (
-              <motion.div
-                variants={cardItemVariants}
-                initial="hidden"
-                animate="visible"
-                className="master-table-container bg-[#131517] border border-[#24282C] rounded-xl overflow-hidden shadow-xs"
-              >
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs">
-                    <thead className="bg-[#181B1E] text-neutral-400 font-semibold border-b border-[#24282C] font-mono text-[11px]">
-                      <tr>
-                        <th className="p-3 w-10 text-center">
-                          <input
-                            type="checkbox"
-                            className="checkbox checkbox-xs rounded border-neutral-600 checked:border-[#F4511E] checked:bg-[#F4511E] cursor-pointer"
-                            checked={filtered.length > 0 && filtered.every((it) => selectedIds.includes(it.id))}
-                            onChange={() => handleToggleSelectAll(filtered)}
-                            title="Pilih semua material"
-                          />
-                        </th>
-                        <SortHeader field="status" label="Status" currentField={sortField} currentOrder={sortOrder} onSort={handleToggleSort} className="w-28" />
-                        <SortHeader field="name" label="Nama Material" currentField={sortField} currentOrder={sortOrder} onSort={handleToggleSort} />
-                        <SortHeader field="category" label="Kategori & Satuan" currentField={sortField} currentOrder={sortOrder} onSort={handleToggleSort} />
-                        <SortHeader field="beli" label="Harga Beli" currentField={sortField} currentOrder={sortOrder} onSort={handleToggleSort} align="right" />
-                        <SortHeader field="jual" label="Harga Jual" currentField={sortField} currentOrder={sortOrder} onSort={handleToggleSort} align="right" />
-                        <th className="p-3 text-center">PPH Rate</th>
-                        <th className="p-3 text-center w-28">Aksi</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-[#202326]">
-                      {filtered.map((mat) => (
-                        <tr key={mat.id} className="hover:bg-[#181B1E]/60 transition-colors">
-                          <td className="p-3 text-center">
-                            <input
-                              type="checkbox"
-                              className="checkbox checkbox-xs rounded border-neutral-600 checked:border-[#F4511E] checked:bg-[#F4511E] cursor-pointer"
-                              checked={selectedIds.includes(mat.id)}
-                              onChange={() => handleToggleSelectItem(mat.id)}
-                            />
-                          </td>
-                          <td className="p-3">
-                            <div className="flex items-center gap-2">
+                {filtered.length === 0 ? (
+                  <MasterEmptyState
+                    icon={Mountain}
+                    title="Material"
+                    description="Daftar agregat, batu pecah, pasir cor, dan standar harga jual/beli tambang."
+                    searchQuery={searchQuery}
+                    statusFilter={statusFilter}
+                    onReset={() => {
+                      setSearchQuery('');
+                      setStatusFilter('all');
+                    }}
+                    onAdd={() => setModalOpen(true)}
+                    entityLabel="Material"
+                  />
+                ) : viewMode === 'list' ? (
+                  <motion.div
+                    variants={cardItemVariants}
+                    initial="hidden"
+                    animate="visible"
+                    className="master-table-container bg-[#131517] border border-[#24282C] rounded-xl overflow-hidden shadow-xs"
+                  >
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-xs">
+                        <thead className="bg-[#181B1E] text-neutral-400 font-semibold border-b border-[#24282C] font-mono text-[11px]">
+                          <tr>
+                            <th className="p-3 w-10 text-center">
+                              <input
+                                type="checkbox"
+                                className="checkbox checkbox-xs rounded border-neutral-600 checked:border-[#F4511E] checked:bg-[#F4511E] cursor-pointer"
+                                checked={filtered.length > 0 && filtered.every((it) => selectedIds.includes(it.id))}
+                                onChange={() => handleToggleSelectAll(filtered)}
+                                title="Pilih semua material"
+                              />
+                            </th>
+                            <SortHeader field="status" label="Status" currentField={sortField} currentOrder={sortOrder} onSort={handleToggleSort} className="w-28" />
+                            <SortHeader field="name" label="Nama Material" currentField={sortField} currentOrder={sortOrder} onSort={handleToggleSort} />
+                            <SortHeader field="category" label="Kategori & Satuan" currentField={sortField} currentOrder={sortOrder} onSort={handleToggleSort} />
+                            <SortHeader field="beli" label="Harga Beli" currentField={sortField} currentOrder={sortOrder} onSort={handleToggleSort} align="right" />
+                            <SortHeader field="jual" label="Harga Jual" currentField={sortField} currentOrder={sortOrder} onSort={handleToggleSort} align="right" />
+                            <th className="p-3 text-center">PPH Rate</th>
+                            <th className="p-3 text-center w-28">Aksi</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-[#202326]">
+                          {filtered.map((mat) => (
+                            <tr key={mat.id} className="hover:bg-[#181B1E]/60 transition-colors">
+                              <td className="p-3 text-center">
+                                <input
+                                  type="checkbox"
+                                  className="checkbox checkbox-xs rounded border-neutral-600 checked:border-[#F4511E] checked:bg-[#F4511E] cursor-pointer"
+                                  checked={selectedIds.includes(mat.id)}
+                                  onChange={() => handleToggleSelectItem(mat.id)}
+                                />
+                              </td>
+                              <td className="p-3">
+                                <div className="flex items-center gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => toggleMaterialStatus(mat.id)}
+                                    className={`w-8 h-4.5 flex items-center rounded-full p-0.5 transition-colors cursor-pointer ${mat.aktif ? 'bg-[#F4511E]' : 'bg-[#2A2E33]'
+                                      }`}
+                                    title={mat.aktif ? 'Klik untuk non-aktifkan' : 'Klik untuk aktifkan'}
+                                  >
+                                    <div
+                                      className={`bg-white w-3.5 h-3.5 rounded-full shadow-md transform transition-transform ${mat.aktif ? 'translate-x-3.5' : 'translate-x-0'
+                                        }`}
+                                    />
+                                  </button>
+                                  <span className="text-[11px] font-mono text-neutral-400">
+                                    {mat.aktif ? 'Aktif' : 'Non-aktif'}
+                                  </span>
+                                </div>
+                              </td>
+                              <td className="p-3">
+                                <div className="flex items-center gap-2">
+                                  <div className="w-7 h-7 rounded-lg bg-orange-500/10 border border-orange-500/20 text-[#F4511E] flex items-center justify-center font-bold text-xs shrink-0">
+                                    <Mountain className="w-3.5 h-3.5" />
+                                  </div>
+                                  <span className="font-bold text-white uppercase tracking-wide">
+                                    {mat.name}
+                                  </span>
+                                </div>
+                              </td>
+                              <td className="p-3">
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <Badge size="xs" variant="neutral">
+                                    {mat.category}
+                                  </Badge>
+                                  <Badge size="xs" variant="timber">
+                                    {mat.satuan}
+                                  </Badge>
+                                </div>
+                              </td>
+                              <td className="p-3 text-right font-mono text-neutral-300">
+                                {mat.beli.toFixed(1)}
+                              </td>
+                              <td className="p-3 text-right font-mono font-bold text-amber-400">
+                                {mat.jual.toFixed(1)}
+                              </td>
+                              <td className="p-3 text-center">
+                                <span className="font-mono text-xs text-neutral-300">{mat.pphRate}%</span>
+                              </td>
+                              <td className="p-3 text-center">
+                                <div className="flex items-center justify-center gap-1.5">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleOpenEditMaterial(mat)}
+                                    className="p-1.5 rounded-md bg-[#F4511E]/10 hover:bg-[#F4511E] text-[#F4511E] hover:text-white transition-all cursor-pointer border border-[#F4511E]/30"
+                                    title="Perbarui Data Material"
+                                  >
+                                    <Edit2 className="w-3.5 h-3.5" />
+                                  </button>
+                                  <Button
+                                    size="xs"
+                                    variant="ghost"
+                                    icon={Trash2}
+                                    onClick={() => handleAskDelete('material', mat.id, mat.name)}
+                                    className="text-[#F4511E] hover:bg-[#F4511E]/10 border border-[#F4511E]/30"
+                                    title="Hapus Material"
+                                  />
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    variants={staggerContainerVariants}
+                    initial="hidden"
+                    animate="visible"
+                    className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3"
+                  >
+                    {filtered.map((mat) => (
+                      <motion.div
+                        key={mat.id}
+                        variants={cardItemVariants}
+                        whileHover={{ y: -3, transition: { duration: 0.15 } }}
+                        className="h-full"
+                      >
+                        <Card
+                          hover
+                          className="master-data-card p-4 flex flex-col justify-between h-full border-[#1E2938] bg-[#121822]/90 hover:border-[#F4511E]/40 shadow-xs transition-all"
+                        >
+                          <div>
+                            <div className="flex items-center justify-between mb-3">
+                              <div className="flex items-center gap-2">
+                                <input
+                                  type="checkbox"
+                                  className="checkbox checkbox-xs rounded border-neutral-600 checked:border-[#F4511E] checked:bg-[#F4511E] cursor-pointer"
+                                  checked={selectedIds.includes(mat.id)}
+                                  onChange={() => handleToggleSelectItem(mat.id)}
+                                  title="Pilih material"
+                                />
+                                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-500/20 to-orange-500/10 border border-amber-500/30 text-amber-400 flex items-center justify-center font-bold text-xs shadow-2xs shrink-0">
+                                  <Mountain className="w-4.5 h-4.5" />
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                  <button
+                                    type="button"
+                                    onClick={() => toggleMaterialStatus(mat.id)}
+                                    className={`w-8 h-4.5 flex items-center rounded-full p-0.5 transition-colors cursor-pointer ${mat.aktif ? 'bg-[#F4511E]' : 'bg-[#2A2E33]'
+                                      }`}
+                                    title={mat.aktif ? 'Klik untuk non-aktifkan' : 'Klik untuk aktifkan'}
+                                  >
+                                    <div
+                                      className={`bg-white w-3.5 h-3.5 rounded-full shadow-md transform transition-transform ${mat.aktif ? 'translate-x-3.5' : 'translate-x-0'
+                                        }`}
+                                    />
+                                  </button>
+                                  <span className="text-[10px] font-mono text-neutral-400">
+                                    {mat.aktif ? 'Aktif' : 'Non-aktif'}
+                                  </span>
+                                </div>
+                              </div>
+
                               <button
                                 type="button"
-                                onClick={() => toggleMaterialStatus(mat.id)}
-                                className={`w-8 h-4.5 flex items-center rounded-full p-0.5 transition-colors cursor-pointer ${
-                                  mat.aktif ? 'bg-[#F4511E]' : 'bg-[#2A2E33]'
-                                }`}
-                                title={mat.aktif ? 'Klik untuk non-aktifkan' : 'Klik untuk aktifkan'}
+                                onClick={() => handleOpenEditMaterial(mat)}
+                                className="w-7 h-7 rounded-full bg-[#F4511E] text-white flex items-center justify-center hover:opacity-90 active:scale-95 transition-all cursor-pointer shadow-xs"
+                                title="Perbarui Data Material"
                               >
-                                <div
-                                  className={`bg-white w-3.5 h-3.5 rounded-full shadow-md transform transition-transform ${
-                                    mat.aktif ? 'translate-x-3.5' : 'translate-x-0'
-                                  }`}
-                                />
+                                <ChevronRight className="w-4 h-4" />
                               </button>
-                              <span className="text-[11px] font-mono text-neutral-400">
-                                {mat.aktif ? 'Aktif' : 'Non-aktif'}
-                              </span>
                             </div>
-                          </td>
-                          <td className="p-3">
-                            <div className="flex items-center gap-2">
-                              <div className="w-7 h-7 rounded-lg bg-orange-500/10 border border-orange-500/20 text-[#F4511E] flex items-center justify-center font-bold text-xs shrink-0">
-                                <Mountain className="w-3.5 h-3.5" />
+
+                            <h3 className="text-sm font-bold text-white tracking-wide uppercase line-clamp-1">
+                              {mat.name}
+                            </h3>
+
+                            {/* Pricing grid */}
+                            <div className="mt-2.5 grid grid-cols-2 gap-2 p-2 rounded-lg bg-black/25 border border-white/5 text-xs font-mono">
+                              <div>
+                                <span className="text-[10px] text-neutral-400 block uppercase">Harga Beli</span>
+                                <span className="text-white font-medium">{mat.beli.toFixed(1)}</span>
                               </div>
-                              <span className="font-bold text-white uppercase tracking-wide">
-                                {mat.name}
-                              </span>
+                              <div>
+                                <span className="text-[10px] text-neutral-400 block uppercase">Harga Jual</span>
+                                <span className="text-amber-400 font-bold">{mat.jual.toFixed(1)}</span>
+                              </div>
                             </div>
-                          </td>
-                          <td className="p-3">
-                            <div className="flex items-center gap-1.5 flex-wrap">
+
+                            <div className="mt-2.5 flex items-center gap-1.5 flex-wrap">
                               <Badge size="xs" variant="neutral">
-                                {mat.category}
+                                PPH {mat.pphRate}% ({mat.category})
                               </Badge>
                               <Badge size="xs" variant="timber">
                                 {mat.satuan}
                               </Badge>
                             </div>
-                          </td>
-                          <td className="p-3 text-right font-mono text-neutral-300">
-                            {mat.beli.toFixed(1)}
-                          </td>
-                          <td className="p-3 text-right font-mono font-bold text-amber-400">
-                            {mat.jual.toFixed(1)}
-                          </td>
-                          <td className="p-3 text-center">
-                            <span className="font-mono text-xs text-neutral-300">{mat.pphRate}%</span>
-                          </td>
-                          <td className="p-3 text-center">
-                            <div className="flex items-center justify-center gap-1.5">
-                              <button
-                                type="button"
-                                onClick={() => handleOpenEditMaterial(mat)}
-                                className="p-1.5 rounded-md bg-[#F4511E]/10 hover:bg-[#F4511E] text-[#F4511E] hover:text-white transition-all cursor-pointer border border-[#F4511E]/30"
-                                title="Perbarui Data Material"
-                              >
-                                <Edit2 className="w-3.5 h-3.5" />
-                              </button>
-                              <Button
-                                size="xs"
-                                variant="ghost"
-                                icon={Trash2}
-                                onClick={() => handleAskDelete('material', mat.id, mat.name)}
-                                className="text-[#F4511E] hover:bg-[#F4511E]/10 border border-[#F4511E]/30"
-                                title="Hapus Material"
-                              />
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </motion.div>
-            ) : (
-              <motion.div
-                variants={staggerContainerVariants}
-                initial="hidden"
-                animate="visible"
-                className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3"
-              >
-                {filtered.map((mat) => (
-                  <motion.div
-                    key={mat.id}
-                    variants={cardItemVariants}
-                    whileHover={{ y: -3, transition: { duration: 0.15 } }}
-                    className="h-full"
-                  >
-                    <Card
-                      hover
-                      className="master-data-card p-4 flex flex-col justify-between h-full border-[#1E2938] bg-[#121822]/90 hover:border-[#F4511E]/40 shadow-xs transition-all"
-                    >
-                      <div>
-                        <div className="flex items-center justify-between mb-3">
-                          <div className="flex items-center gap-2">
-                            <input
-                              type="checkbox"
-                              className="checkbox checkbox-xs rounded border-neutral-600 checked:border-[#F4511E] checked:bg-[#F4511E] cursor-pointer"
-                              checked={selectedIds.includes(mat.id)}
-                              onChange={() => handleToggleSelectItem(mat.id)}
-                              title="Pilih material"
+                          </div>
+
+                          <div className="mt-4 pt-2.5 border-t border-[#1F2937] flex items-center justify-between text-xs">
+                            <button
+                              type="button"
+                              onClick={() => handleOpenEditMaterial(mat)}
+                              className="inline-flex items-center gap-1.5 text-[11px] text-[#FF7043] hover:text-white transition-colors cursor-pointer font-medium"
+                            >
+                              <Edit2 className="w-3 h-3" />
+                              <span>Ubah Tarif</span>
+                            </button>
+                            <Button
+                              size="xs"
+                              variant="ghost"
+                              icon={Trash2}
+                              onClick={() => handleAskDelete('material', mat.id, mat.name)}
+                              className="text-[#F4511E] hover:bg-[#F4511E]/10 border border-[#F4511E]/20"
+                              title="Hapus Material"
                             />
-                            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-500/20 to-orange-500/10 border border-amber-500/30 text-amber-400 flex items-center justify-center font-bold text-xs shadow-2xs shrink-0">
-                              <Mountain className="w-4.5 h-4.5" />
-                            </div>
-                            <div className="flex items-center gap-1.5">
-                              <button
-                                type="button"
-                                onClick={() => toggleMaterialStatus(mat.id)}
-                                className={`w-8 h-4.5 flex items-center rounded-full p-0.5 transition-colors cursor-pointer ${
-                                  mat.aktif ? 'bg-[#F4511E]' : 'bg-[#2A2E33]'
-                                }`}
-                                title={mat.aktif ? 'Klik untuk non-aktifkan' : 'Klik untuk aktifkan'}
-                              >
-                                <div
-                                  className={`bg-white w-3.5 h-3.5 rounded-full shadow-md transform transition-transform ${
-                                    mat.aktif ? 'translate-x-3.5' : 'translate-x-0'
-                                  }`}
-                                />
-                              </button>
-                              <span className="text-[10px] font-mono text-neutral-400">
-                                {mat.aktif ? 'Aktif' : 'Non-aktif'}
-                              </span>
-                            </div>
                           </div>
-
-                          <button
-                            type="button"
-                            onClick={() => handleOpenEditMaterial(mat)}
-                            className="w-7 h-7 rounded-full bg-[#F4511E] text-white flex items-center justify-center hover:opacity-90 active:scale-95 transition-all cursor-pointer shadow-xs"
-                            title="Perbarui Data Material"
-                          >
-                            <ChevronRight className="w-4 h-4" />
-                          </button>
-                        </div>
-
-                        <h3 className="text-sm font-bold text-white tracking-wide uppercase line-clamp-1">
-                          {mat.name}
-                        </h3>
-
-                        {/* Pricing grid */}
-                        <div className="mt-2.5 grid grid-cols-2 gap-2 p-2 rounded-lg bg-black/25 border border-white/5 text-xs font-mono">
-                          <div>
-                            <span className="text-[10px] text-neutral-400 block uppercase">Harga Beli</span>
-                            <span className="text-white font-medium">{mat.beli.toFixed(1)}</span>
-                          </div>
-                          <div>
-                            <span className="text-[10px] text-neutral-400 block uppercase">Harga Jual</span>
-                            <span className="text-amber-400 font-bold">{mat.jual.toFixed(1)}</span>
-                          </div>
-                        </div>
-
-                        <div className="mt-2.5 flex items-center gap-1.5 flex-wrap">
-                          <Badge size="xs" variant="neutral">
-                            PPH {mat.pphRate}% ({mat.category})
-                          </Badge>
-                          <Badge size="xs" variant="timber">
-                            {mat.satuan}
-                          </Badge>
-                        </div>
-                      </div>
-
-                      <div className="mt-4 pt-2.5 border-t border-[#1F2937] flex items-center justify-between text-xs">
-                        <button
-                          type="button"
-                          onClick={() => handleOpenEditMaterial(mat)}
-                          className="inline-flex items-center gap-1.5 text-[11px] text-[#FF7043] hover:text-white transition-colors cursor-pointer font-medium"
-                        >
-                          <Edit2 className="w-3 h-3" />
-                          <span>Ubah Tarif</span>
-                        </button>
-                        <Button
-                          size="xs"
-                          variant="ghost"
-                          icon={Trash2}
-                          onClick={() => handleAskDelete('material', mat.id, mat.name)}
-                          className="text-[#F4511E] hover:bg-[#F4511E]/10 border border-[#F4511E]/20"
-                          title="Hapus Material"
-                        />
-                      </div>
-                    </Card>
+                        </Card>
+                      </motion.div>
+                    ))}
                   </motion.div>
-                ))}
-              </motion.div>
-            )}
-          </div>
-        );
-      })()}
+                )}
+              </div>
+            );
+          })()}
 
-      {/* ======================================================== */}
-      {/* 3. DATA ARMADA */}
-      {/* ======================================================== */}
-      {currentTab === 'armada' && (() => {
-        const filtered = filteredArmada;
+          {/* ======================================================== */}
+          {/* 3. DATA ARMADA */}
+          {/* ======================================================== */}
+          {currentTab === 'armada' && (() => {
+            const filtered = filteredArmada;
 
-        return (
-          <div className="space-y-3.5">
-            {/* Metric Summary Header Banner */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
-              <div className="master-stat-card p-3 rounded-xl bg-[#121822]/90 border border-[#1E2938] flex items-center justify-between shadow-xs">
-                <div>
-                  <div className="text-[10px] font-mono text-neutral-400 uppercase tracking-wider">Total Armada</div>
-                  <div className="text-xl font-bold font-mono text-white mt-0.5">{armadaList.length} Unit</div>
-                  <div className="text-[10px] text-neutral-400 mt-0.5">Dump Truck Operasional</div>
-                </div>
-                <div className="w-10 h-10 rounded-xl bg-orange-500/10 border border-orange-500/30 flex items-center justify-center text-[#F4511E]">
-                  <Truck className="w-5 h-5" />
-                </div>
-              </div>
-              <div className="master-stat-card stat-emerald p-3 rounded-xl bg-[#121822]/90 border border-[#1E2938] flex items-center justify-between shadow-xs">
-                <div>
-                  <div className="text-[10px] font-mono text-neutral-400 uppercase tracking-wider">Siap Operasi</div>
-                  <div className="text-xl font-bold font-mono text-emerald-400 mt-0.5">
-                    {armadaList.filter((a) => a.aktif).length} Unit
+            return (
+              <div className="space-y-3.5">
+                {/* Metric Summary Header Banner */}
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
+                  <div className="master-stat-card p-3 rounded-xl bg-[#121822]/90 border border-[#1E2938] flex items-center justify-between shadow-xs">
+                    <div>
+                      <div className="text-[10px] font-mono text-neutral-400 uppercase tracking-wider">Total Armada</div>
+                      <div className="text-xl font-bold font-mono text-white mt-0.5">{armadaList.length} Unit</div>
+                      <div className="text-[10px] text-neutral-400 mt-0.5">Dump Truck Operasional</div>
+                    </div>
+                    <div className="w-10 h-10 rounded-xl bg-orange-500/10 border border-orange-500/30 flex items-center justify-center text-[#F4511E]">
+                      <Truck className="w-5 h-5" />
+                    </div>
                   </div>
-                  <div className="text-[10px] text-emerald-400/80 mt-0.5">
-                    {Math.round((armadaList.filter((a) => a.aktif).length / (armadaList.length || 1)) * 100)}% Siap Angkut
+                  <div className="master-stat-card stat-emerald p-3 rounded-xl bg-[#121822]/90 border border-[#1E2938] flex items-center justify-between shadow-xs">
+                    <div>
+                      <div className="text-[10px] font-mono text-neutral-400 uppercase tracking-wider">Siap Operasi</div>
+                      <div className="text-xl font-bold font-mono text-emerald-400 mt-0.5">
+                        {armadaList.filter((a) => a.aktif).length} Unit
+                      </div>
+                      <div className="text-[10px] text-emerald-400/80 mt-0.5">
+                        {Math.round((armadaList.filter((a) => a.aktif).length / (armadaList.length || 1)) * 100)}% Siap Angkut
+                      </div>
+                    </div>
+                    <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+                      <CheckCircle2 className="w-5 h-5" />
+                    </div>
+                  </div>
+                  <div className="master-stat-card stat-amber p-3 rounded-xl bg-[#121822]/90 border border-[#1E2938] flex items-center justify-between shadow-xs">
+                    <div>
+                      <div className="text-[10px] font-mono text-neutral-400 uppercase tracking-wider">Total Ritase Kumulatif</div>
+                      <div className="text-xl font-bold font-mono text-amber-400 mt-0.5">
+                        {armadaList.reduce((sum, a) => sum + (parseFloat(a.kapasitas) || 0), 0).toFixed(1)} m³
+                      </div>
+                      <div className="text-[10px] text-neutral-400 mt-0.5">Kapasitas 1 Putaran</div>
+                    </div>
+                    <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
+                      <Box className="w-5 h-5" />
+                    </div>
+                  </div>
+                  <div className="master-stat-card stat-sky p-3 rounded-xl bg-[#121822]/90 border border-[#1E2938] flex items-center justify-between shadow-xs">
+                    <div>
+                      <div className="text-[10px] font-mono text-neutral-400 uppercase tracking-wider">Rata-rata Bak</div>
+                      <div className="text-xl font-bold font-mono text-sky-400 mt-0.5">
+                        {(
+                          armadaList.reduce((sum, a) => sum + (parseFloat(a.kapasitas) || 0), 0) /
+                          (armadaList.length || 1)
+                        ).toFixed(2)} m³
+                      </div>
+                      <div className="text-[10px] text-neutral-400 mt-0.5">Ukuran Bak Efektif</div>
+                    </div>
+                    <div className="w-10 h-10 rounded-xl bg-sky-500/10 border border-sky-500/30 flex items-center justify-center text-sky-400">
+                      <Activity className="w-5 h-5" />
+                    </div>
                   </div>
                 </div>
-                <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
-                  <CheckCircle2 className="w-5 h-5" />
-                </div>
-              </div>
-              <div className="master-stat-card stat-amber p-3 rounded-xl bg-[#121822]/90 border border-[#1E2938] flex items-center justify-between shadow-xs">
-                <div>
-                  <div className="text-[10px] font-mono text-neutral-400 uppercase tracking-wider">Total Ritase Kumulatif</div>
-                  <div className="text-xl font-bold font-mono text-amber-400 mt-0.5">
-                    {armadaList.reduce((sum, a) => sum + (parseFloat(a.kapasitas) || 0), 0).toFixed(1)} m³
-                  </div>
-                  <div className="text-[10px] text-neutral-400 mt-0.5">Kapasitas 1 Putaran</div>
-                </div>
-                <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
-                  <Box className="w-5 h-5" />
-                </div>
-              </div>
-              <div className="master-stat-card stat-sky p-3 rounded-xl bg-[#121822]/90 border border-[#1E2938] flex items-center justify-between shadow-xs">
-                <div>
-                  <div className="text-[10px] font-mono text-neutral-400 uppercase tracking-wider">Rata-rata Bak</div>
-                  <div className="text-xl font-bold font-mono text-sky-400 mt-0.5">
-                    {(
-                      armadaList.reduce((sum, a) => sum + (parseFloat(a.kapasitas) || 0), 0) /
-                      (armadaList.length || 1)
-                    ).toFixed(2)} m³
-                  </div>
-                  <div className="text-[10px] text-neutral-400 mt-0.5">Ukuran Bak Efektif</div>
-                </div>
-                <div className="w-10 h-10 rounded-xl bg-sky-500/10 border border-sky-500/30 flex items-center justify-center text-sky-400">
-                  <Activity className="w-5 h-5" />
-                </div>
-              </div>
-            </div>
 
-            {filtered.length === 0 ? (
-              <MasterEmptyState
-                icon={Truck}
-                title="Armada Truk"
-                description="Pencatatan nomor polisi dump truck, kapasitas bak m³, dan sopir utama."
-                searchQuery={searchQuery}
-                statusFilter={statusFilter}
-                onReset={() => {
-                  setSearchQuery('');
-                  setStatusFilter('all');
-                }}
-                onAdd={() => setModalOpen(true)}
-                entityLabel="Armada"
-              />
-            ) : viewMode === 'list' ? (
-              <motion.div
-                variants={cardItemVariants}
-                initial="hidden"
-                animate="visible"
-                className="master-table-container bg-[#131517] border border-[#24282C] rounded-xl overflow-hidden shadow-xs"
-              >
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs">
-                    <thead className="bg-[#181B1E] text-neutral-400 font-semibold border-b border-[#24282C] font-mono text-[11px]">
-                      <tr>
-                        <th className="p-3 w-10 text-center">
-                          <input
-                            type="checkbox"
-                            className="checkbox checkbox-xs rounded border-neutral-600 checked:border-[#F4511E] checked:bg-[#F4511E] cursor-pointer"
-                            checked={filtered.length > 0 && filtered.every((it) => selectedIds.includes(it.id))}
-                            onChange={() => handleToggleSelectAll(filtered)}
-                            title="Pilih semua armada"
-                          />
-                        </th>
-                        <SortHeader field="status" label="Status" currentField={sortField} currentOrder={sortOrder} onSort={handleToggleSort} className="w-28" />
-                        <SortHeader field="nopol" label="No. Polisi" currentField={sortField} currentOrder={sortOrder} onSort={handleToggleSort} />
-                        <SortHeader field="merk" label="Merk & Tahun" currentField={sortField} currentOrder={sortOrder} onSort={handleToggleSort} />
-                        <th className="p-3">Dimensi Bak (P x L x T)</th>
-                        <SortHeader field="kapasitas" label="Kapasitas Bak" currentField={sortField} currentOrder={sortOrder} onSort={handleToggleSort} align="right" />
-                        <th className="p-3 text-center w-28">Aksi</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-[#202326]">
-                      {filtered.map((arm) => (
-                        <tr key={arm.id} className="hover:bg-[#181B1E]/60 transition-colors">
-                          <td className="p-3 text-center">
-                            <input
-                              type="checkbox"
-                              className="checkbox checkbox-xs rounded border-neutral-600 checked:border-[#F4511E] checked:bg-[#F4511E] cursor-pointer"
-                              checked={selectedIds.includes(arm.id)}
-                              onChange={() => handleToggleSelectItem(arm.id)}
-                            />
-                          </td>
-                          <td className="p-3">
-                            <div className="flex items-center gap-2">
-                              <button
-                                type="button"
-                                onClick={() => toggleArmadaStatus(arm.id)}
-                                className={`w-8 h-4.5 flex items-center rounded-full p-0.5 transition-colors cursor-pointer ${
-                                  arm.aktif ? 'bg-[#F4511E]' : 'bg-[#2A2E33]'
-                                }`}
-                                title={arm.aktif ? 'Klik untuk non-aktifkan' : 'Klik untuk aktifkan'}
-                              >
-                                <div
-                                  className={`bg-white w-3.5 h-3.5 rounded-full shadow-md transform transition-transform ${
-                                    arm.aktif ? 'translate-x-3.5' : 'translate-x-0'
-                                  }`}
+                {filtered.length === 0 ? (
+                  <MasterEmptyState
+                    icon={Truck}
+                    title="Armada Truk"
+                    description="Pencatatan nomor polisi dump truck, kapasitas bak m³, dan sopir utama."
+                    searchQuery={searchQuery}
+                    statusFilter={statusFilter}
+                    onReset={() => {
+                      setSearchQuery('');
+                      setStatusFilter('all');
+                    }}
+                    onAdd={() => setModalOpen(true)}
+                    entityLabel="Armada"
+                  />
+                ) : viewMode === 'list' ? (
+                  <motion.div
+                    variants={cardItemVariants}
+                    initial="hidden"
+                    animate="visible"
+                    className="master-table-container bg-[#131517] border border-[#24282C] rounded-xl overflow-hidden shadow-xs"
+                  >
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-xs">
+                        <thead className="bg-[#181B1E] text-neutral-400 font-semibold border-b border-[#24282C] font-mono text-[11px]">
+                          <tr>
+                            <th className="p-3 w-10 text-center">
+                              <input
+                                type="checkbox"
+                                className="checkbox checkbox-xs rounded border-neutral-600 checked:border-[#F4511E] checked:bg-[#F4511E] cursor-pointer"
+                                checked={filtered.length > 0 && filtered.every((it) => selectedIds.includes(it.id))}
+                                onChange={() => handleToggleSelectAll(filtered)}
+                                title="Pilih semua armada"
+                              />
+                            </th>
+                            <SortHeader field="status" label="Status" currentField={sortField} currentOrder={sortOrder} onSort={handleToggleSort} className="w-28" />
+                            <SortHeader field="nopol" label="No. Polisi" currentField={sortField} currentOrder={sortOrder} onSort={handleToggleSort} />
+                            <SortHeader field="merk" label="Merk & Tahun" currentField={sortField} currentOrder={sortOrder} onSort={handleToggleSort} />
+                            <th className="p-3">Dimensi Bak (P x L x T)</th>
+                            <SortHeader field="kapasitas" label="Kapasitas Bak" currentField={sortField} currentOrder={sortOrder} onSort={handleToggleSort} align="right" />
+                            <th className="p-3 text-center w-28">Aksi</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-[#202326]">
+                          {filtered.map((arm) => (
+                            <tr key={arm.id} className="hover:bg-[#181B1E]/60 transition-colors">
+                              <td className="p-3 text-center">
+                                <input
+                                  type="checkbox"
+                                  className="checkbox checkbox-xs rounded border-neutral-600 checked:border-[#F4511E] checked:bg-[#F4511E] cursor-pointer"
+                                  checked={selectedIds.includes(arm.id)}
+                                  onChange={() => handleToggleSelectItem(arm.id)}
                                 />
-                              </button>
-                              <span className="text-[11px] font-mono text-neutral-400">
-                                {arm.aktif ? 'Aktif' : 'Non-aktif'}
-                              </span>
-                            </div>
-                          </td>
-                          <td className="p-3">
-                            <div className="flex items-center gap-2">
-                              <div className="w-7 h-7 rounded-lg bg-sky-500/10 border border-sky-500/20 text-sky-400 flex items-center justify-center font-bold text-xs shrink-0">
-                                <Truck className="w-3.5 h-3.5" />
+                              </td>
+                              <td className="p-3">
+                                <div className="flex items-center gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => toggleArmadaStatus(arm.id)}
+                                    className={`w-8 h-4.5 flex items-center rounded-full p-0.5 transition-colors cursor-pointer ${arm.aktif ? 'bg-[#F4511E]' : 'bg-[#2A2E33]'
+                                      }`}
+                                    title={arm.aktif ? 'Klik untuk non-aktifkan' : 'Klik untuk aktifkan'}
+                                  >
+                                    <div
+                                      className={`bg-white w-3.5 h-3.5 rounded-full shadow-md transform transition-transform ${arm.aktif ? 'translate-x-3.5' : 'translate-x-0'
+                                        }`}
+                                    />
+                                  </button>
+                                  <span className="text-[11px] font-mono text-neutral-400">
+                                    {arm.aktif ? 'Aktif' : 'Non-aktif'}
+                                  </span>
+                                </div>
+                              </td>
+                              <td className="p-3">
+                                <div className="flex items-center gap-2">
+                                  <div className="w-7 h-7 rounded-lg bg-sky-500/10 border border-sky-500/20 text-sky-400 flex items-center justify-center font-bold text-xs shrink-0">
+                                    <Truck className="w-3.5 h-3.5" />
+                                  </div>
+                                  <span className="font-bold text-white font-mono tracking-wider text-sm">
+                                    {arm.nopol}
+                                  </span>
+                                </div>
+                              </td>
+                              <td className="p-3">
+                                <div className="flex items-center gap-2">
+                                  <span className="px-1.5 py-0.5 rounded bg-black/40 border border-[#2E3339] text-neutral-300 text-[11px]">
+                                    {arm.merk}
+                                  </span>
+                                  <span className="text-neutral-400 text-xs">Thn {arm.tahun}</span>
+                                </div>
+                              </td>
+                              <td className="p-3 font-mono text-neutral-300">
+                                {arm.panjangCm} × {arm.lebarCm} × {arm.tinggiCm} cm
+                              </td>
+                              <td className="p-3 text-right font-mono font-bold text-amber-400">
+                                {arm.kapasitas} m³
+                              </td>
+                              <td className="p-3 text-center">
+                                <div className="flex items-center justify-center gap-1.5">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleOpenEditArmada(arm)}
+                                    className="p-1.5 rounded-md bg-[#F4511E]/10 hover:bg-[#F4511E] text-[#F4511E] hover:text-white transition-all cursor-pointer border border-[#F4511E]/30"
+                                    title="Perbarui Data Armada"
+                                  >
+                                    <Edit2 className="w-3.5 h-3.5" />
+                                  </button>
+                                  <Button
+                                    size="xs"
+                                    variant="ghost"
+                                    icon={Trash2}
+                                    onClick={() => handleAskDelete('armada', arm.id, arm.nopol)}
+                                    className="text-[#F4511E] hover:bg-[#F4511E]/10 border border-[#F4511E]/30"
+                                    title="Hapus Armada"
+                                  />
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    variants={staggerContainerVariants}
+                    initial="hidden"
+                    animate="visible"
+                    className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3"
+                  >
+                    {filtered.map((arm) => (
+                      <motion.div
+                        key={arm.id}
+                        variants={cardItemVariants}
+                        whileHover={{ y: -3, transition: { duration: 0.15 } }}
+                        className="h-full"
+                      >
+                        <Card
+                          hover
+                          className="master-data-card p-4 flex flex-col justify-between h-full border-[#1E2938] bg-[#121822]/90 hover:border-[#F4511E]/40 shadow-xs transition-all"
+                        >
+                          <div>
+                            <div className="flex items-center justify-between mb-3">
+                              <div className="flex items-center gap-2">
+                                <input
+                                  type="checkbox"
+                                  className="checkbox checkbox-xs rounded border-neutral-600 checked:border-[#F4511E] checked:bg-[#F4511E] cursor-pointer"
+                                  checked={selectedIds.includes(arm.id)}
+                                  onChange={() => handleToggleSelectItem(arm.id)}
+                                  title="Pilih armada"
+                                />
+                                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-sky-500/20 to-blue-500/10 border border-sky-500/30 text-sky-400 flex items-center justify-center font-bold text-xs shadow-2xs shrink-0">
+                                  <Truck className="w-4.5 h-4.5" />
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                  <button
+                                    type="button"
+                                    onClick={() => toggleArmadaStatus(arm.id)}
+                                    className={`w-8 h-4.5 flex items-center rounded-full p-0.5 transition-colors cursor-pointer ${arm.aktif ? 'bg-[#F4511E]' : 'bg-[#2A2E33]'
+                                      }`}
+                                    title={arm.aktif ? 'Klik untuk non-aktifkan' : 'Klik untuk aktifkan'}
+                                  >
+                                    <div
+                                      className={`bg-white w-3.5 h-3.5 rounded-full shadow-md transform transition-transform ${arm.aktif ? 'translate-x-3.5' : 'translate-x-0'
+                                        }`}
+                                    />
+                                  </button>
+                                  <span className="text-[10px] font-mono text-neutral-400">
+                                    {arm.aktif ? 'Aktif' : 'Non-aktif'}
+                                  </span>
+                                </div>
                               </div>
-                              <span className="font-bold text-white font-mono tracking-wider text-sm">
-                                {arm.nopol}
-                              </span>
-                            </div>
-                          </td>
-                          <td className="p-3">
-                            <div className="flex items-center gap-2">
-                              <span className="px-1.5 py-0.5 rounded bg-black/40 border border-[#2E3339] text-neutral-300 text-[11px]">
-                                {arm.merk}
-                              </span>
-                              <span className="text-neutral-400 text-xs">Thn {arm.tahun}</span>
-                            </div>
-                          </td>
-                          <td className="p-3 font-mono text-neutral-300">
-                            {arm.panjangCm} × {arm.lebarCm} × {arm.tinggiCm} cm
-                          </td>
-                          <td className="p-3 text-right font-mono font-bold text-amber-400">
-                            {arm.kapasitas} m³
-                          </td>
-                          <td className="p-3 text-center">
-                            <div className="flex items-center justify-center gap-1.5">
+
                               <button
                                 type="button"
                                 onClick={() => handleOpenEditArmada(arm)}
-                                className="p-1.5 rounded-md bg-[#F4511E]/10 hover:bg-[#F4511E] text-[#F4511E] hover:text-white transition-all cursor-pointer border border-[#F4511E]/30"
+                                className="w-7 h-7 rounded-full bg-[#F4511E] text-white flex items-center justify-center hover:opacity-90 active:scale-95 transition-all cursor-pointer shadow-xs"
                                 title="Perbarui Data Armada"
                               >
-                                <Edit2 className="w-3.5 h-3.5" />
+                                <ChevronRight className="w-4 h-4" />
                               </button>
-                              <Button
-                                size="xs"
-                                variant="ghost"
-                                icon={Trash2}
-                                onClick={() => handleAskDelete('armada', arm.id, arm.nopol)}
-                                className="text-[#F4511E] hover:bg-[#F4511E]/10 border border-[#F4511E]/30"
-                                title="Hapus Armada"
-                              />
                             </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </motion.div>
-            ) : (
-              <motion.div
-                variants={staggerContainerVariants}
-                initial="hidden"
-                animate="visible"
-                className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3"
-              >
-                {filtered.map((arm) => (
-                  <motion.div
-                    key={arm.id}
-                    variants={cardItemVariants}
-                    whileHover={{ y: -3, transition: { duration: 0.15 } }}
-                    className="h-full"
-                  >
-                    <Card
-                      hover
-                      className="master-data-card p-4 flex flex-col justify-between h-full border-[#1E2938] bg-[#121822]/90 hover:border-[#F4511E]/40 shadow-xs transition-all"
-                    >
-                      <div>
-                        <div className="flex items-center justify-between mb-3">
-                          <div className="flex items-center gap-2">
-                            <input
-                              type="checkbox"
-                              className="checkbox checkbox-xs rounded border-neutral-600 checked:border-[#F4511E] checked:bg-[#F4511E] cursor-pointer"
-                              checked={selectedIds.includes(arm.id)}
-                              onChange={() => handleToggleSelectItem(arm.id)}
-                              title="Pilih armada"
-                            />
-                            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-sky-500/20 to-blue-500/10 border border-sky-500/30 text-sky-400 flex items-center justify-center font-bold text-xs shadow-2xs shrink-0">
-                              <Truck className="w-4.5 h-4.5" />
-                            </div>
-                            <div className="flex items-center gap-1.5">
-                              <button
-                                type="button"
-                                onClick={() => toggleArmadaStatus(arm.id)}
-                                className={`w-8 h-4.5 flex items-center rounded-full p-0.5 transition-colors cursor-pointer ${
-                                  arm.aktif ? 'bg-[#F4511E]' : 'bg-[#2A2E33]'
-                                }`}
-                                title={arm.aktif ? 'Klik untuk non-aktifkan' : 'Klik untuk aktifkan'}
-                              >
-                                <div
-                                  className={`bg-white w-3.5 h-3.5 rounded-full shadow-md transform transition-transform ${
-                                    arm.aktif ? 'translate-x-3.5' : 'translate-x-0'
-                                  }`}
-                                />
-                              </button>
-                              <span className="text-[10px] font-mono text-neutral-400">
-                                {arm.aktif ? 'Aktif' : 'Non-aktif'}
+
+                            {/* Nopol badge */}
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="inline-block px-2.5 py-1 rounded-lg bg-black/40 border border-white/10 font-bold text-white tracking-widest font-mono text-sm">
+                                {arm.nopol}
+                              </span>
+                              <span className="text-xs text-neutral-400 font-mono">
+                                Thn {arm.tahun}
                               </span>
                             </div>
-                          </div>
 
-                          <button
-                            type="button"
-                            onClick={() => handleOpenEditArmada(arm)}
-                            className="w-7 h-7 rounded-full bg-[#F4511E] text-white flex items-center justify-center hover:opacity-90 active:scale-95 transition-all cursor-pointer shadow-xs"
-                            title="Perbarui Data Armada"
-                          >
-                            <ChevronRight className="w-4 h-4" />
-                          </button>
-                        </div>
-
-                        {/* Nopol badge */}
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="inline-block px-2.5 py-1 rounded-lg bg-black/40 border border-white/10 font-bold text-white tracking-widest font-mono text-sm">
-                            {arm.nopol}
-                          </span>
-                          <span className="text-xs text-neutral-400 font-mono">
-                            Thn {arm.tahun}
-                          </span>
-                        </div>
-
-                        {/* Dimensions & Capacity box */}
-                        <div className="mt-3 p-2.5 rounded-lg bg-black/25 border border-white/5 space-y-1.5 text-xs font-mono">
-                          <div className="flex items-center justify-between">
-                            <span className="text-neutral-400 text-[11px]">Dimensi Bak</span>
-                            <span className="text-neutral-200">
-                              {arm.panjangCm} × {arm.lebarCm} × {arm.tinggiCm} cm
-                            </span>
-                          </div>
-                          <div className="flex items-center justify-between pt-1 border-t border-white/5">
-                            <span className="text-neutral-400 text-[11px]">Kapasitas Kubikasi</span>
-                            <span className="text-amber-400 font-bold text-sm">
-                              {arm.kapasitas} m³
-                            </span>
-                          </div>
-                        </div>
-
-                        <div className="mt-2.5 flex items-center gap-2">
-                          <span className="px-2 py-0.5 rounded-md bg-[#18202C] border border-[#253245] text-[11px] text-neutral-300 font-mono">
-                            {arm.merk}
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="mt-4 pt-2.5 border-t border-[#1F2937] flex items-center justify-between text-xs">
-                        <button
-                          type="button"
-                          onClick={() => handleOpenEditArmada(arm)}
-                          className="inline-flex items-center gap-1.5 text-[11px] text-[#FF7043] hover:text-white transition-colors cursor-pointer font-medium"
-                        >
-                          <Edit2 className="w-3 h-3" />
-                          <span>Ubah Dimensi</span>
-                        </button>
-                        <Button
-                          size="xs"
-                          variant="ghost"
-                          icon={Trash2}
-                          onClick={() => handleAskDelete('armada', arm.id, arm.nopol)}
-                          className="text-[#F4511E] hover:bg-[#F4511E]/10 border border-[#F4511E]/20"
-                          title="Hapus Armada"
-                        />
-                      </div>
-                    </Card>
-                  </motion.div>
-                ))}
-              </motion.div>
-            )}
-          </div>
-        );
-      })()}
-
-      {/* ======================================================== */}
-      {/* 4. DATA CUSTOMER */}
-      {/* ======================================================== */}
-      {currentTab === 'customer' && (() => {
-        const filtered = filteredCustomers;
-
-        return (
-          <div className="space-y-3.5">
-            {/* Metric Summary Header Banner */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
-              <div className="master-stat-card p-3 rounded-xl bg-[#121822]/90 border border-[#1E2938] flex items-center justify-between shadow-xs">
-                <div>
-                  <div className="text-[10px] font-mono text-neutral-400 uppercase tracking-wider">Total Customer</div>
-                  <div className="text-xl font-bold font-mono text-white mt-0.5">{customers.length}</div>
-                  <div className="text-[10px] text-neutral-400 mt-0.5">Klien Perusahaan & Proyek</div>
-                </div>
-                <div className="w-10 h-10 rounded-xl bg-orange-500/10 border border-orange-500/30 flex items-center justify-center text-[#F4511E]">
-                  <Building2 className="w-5 h-5" />
-                </div>
-              </div>
-              <div className="master-stat-card stat-emerald p-3 rounded-xl bg-[#121822]/90 border border-[#1E2938] flex items-center justify-between shadow-xs">
-                <div>
-                  <div className="text-[10px] font-mono text-neutral-400 uppercase tracking-wider">Customer Aktif</div>
-                  <div className="text-xl font-bold font-mono text-emerald-400 mt-0.5">
-                    {customers.filter((c) => c.aktif).length}
-                  </div>
-                  <div className="text-[10px] text-emerald-400/80 mt-0.5">
-                    {Math.round((customers.filter((c) => c.aktif).length / (customers.length || 1)) * 100)}% Kontrak Berjalan
-                  </div>
-                </div>
-                <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
-                  <CheckCircle2 className="w-5 h-5" />
-                </div>
-              </div>
-              <div className="master-stat-card stat-sky p-3 rounded-xl bg-[#121822]/90 border border-[#1E2938] flex items-center justify-between shadow-xs">
-                <div>
-                  <div className="text-[10px] font-mono text-neutral-400 uppercase tracking-wider">NPWP Terdaftar</div>
-                  <div className="text-xl font-bold font-mono text-sky-400 mt-0.5">
-                    {customers.filter((c) => c.npwp && c.npwp !== '-').length}
-                  </div>
-                  <div className="text-[10px] text-neutral-400 mt-0.5">Faktur Pajak Elektronik</div>
-                </div>
-                <div className="w-10 h-10 rounded-xl bg-sky-500/10 border border-sky-500/30 flex items-center justify-center text-sky-400">
-                  <ShieldCheck className="w-5 h-5" />
-                </div>
-              </div>
-              <div className="master-stat-card stat-amber p-3 rounded-xl bg-[#121822]/90 border border-[#1E2938] flex items-center justify-between shadow-xs">
-                <div>
-                  <div className="text-[10px] font-mono text-neutral-400 uppercase tracking-wider">Prefix Kode</div>
-                  <div className="text-xl font-bold font-mono text-amber-400 mt-0.5">
-                    {new Set(customers.map((c) => c.kodePrefix)).size} Prefix
-                  </div>
-                  <div className="text-[10px] text-neutral-400 mt-0.5">Identitas Unik Surat Jalan</div>
-                </div>
-                <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
-                  <Hash className="w-5 h-5" />
-                </div>
-              </div>
-            </div>
-
-            {filtered.length === 0 ? (
-              <MasterEmptyState
-                icon={Building2}
-                title="Customer"
-                description="Data kontraktor dan proyek penerima material tambang."
-                searchQuery={searchQuery}
-                statusFilter={statusFilter}
-                onReset={() => {
-                  setSearchQuery('');
-                  setStatusFilter('all');
-                }}
-                onAdd={() => setModalOpen(true)}
-                entityLabel="Customer"
-              />
-            ) : viewMode === 'list' ? (
-              <motion.div
-                variants={cardItemVariants}
-                initial="hidden"
-                animate="visible"
-                className="master-table-container bg-[#131517] border border-[#24282C] rounded-xl overflow-hidden shadow-xs"
-              >
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs">
-                    <thead className="bg-[#181B1E] text-neutral-400 font-semibold border-b border-[#24282C] font-mono text-[11px]">
-                      <tr>
-                        <th className="p-3 w-10 text-center">
-                          <input
-                            type="checkbox"
-                            className="checkbox checkbox-xs rounded border-neutral-600 checked:border-[#F4511E] checked:bg-[#F4511E] cursor-pointer"
-                            checked={filtered.length > 0 && filtered.every((it) => selectedIds.includes(it.id))}
-                            onChange={() => handleToggleSelectAll(filtered)}
-                            title="Pilih semua customer"
-                          />
-                        </th>
-                        <SortHeader field="status" label="Status" currentField={sortField} currentOrder={sortOrder} onSort={handleToggleSort} className="w-28" />
-                        <SortHeader field="kodePrefix" label="Kode Prefix" currentField={sortField} currentOrder={sortOrder} onSort={handleToggleSort} />
-                        <SortHeader field="name" label="Nama Customer" currentField={sortField} currentOrder={sortOrder} onSort={handleToggleSort} />
-                        <SortHeader field="alamat" label="Alamat" currentField={sortField} currentOrder={sortOrder} onSort={handleToggleSort} />
-                        <th className="p-3">Telepon</th>
-                        <th className="p-3">NPWP</th>
-                        <th className="p-3 text-center w-24">Aksi</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-[#202326]">
-                      {filtered.map((cust) => (
-                        <tr key={cust.id} className="hover:bg-[#181B1E]/60 transition-colors">
-                          <td className="p-3 text-center">
-                            <input
-                              type="checkbox"
-                              className="checkbox checkbox-xs rounded border-neutral-600 checked:border-[#F4511E] checked:bg-[#F4511E] cursor-pointer"
-                              checked={selectedIds.includes(cust.id)}
-                              onChange={() => handleToggleSelectItem(cust.id)}
-                            />
-                          </td>
-                          <td className="p-3">
-                            <div className="flex items-center gap-2">
-                              <button
-                                type="button"
-                                onClick={() => toggleCustomerStatus(cust.id)}
-                                className={`w-8 h-4.5 flex items-center rounded-full p-0.5 transition-colors cursor-pointer ${
-                                  cust.aktif ? 'bg-[#F4511E]' : 'bg-[#2A2E33]'
-                                }`}
-                                title={cust.aktif ? 'Klik untuk non-aktifkan' : 'Klik untuk aktifkan'}
-                              >
-                                <div
-                                  className={`bg-white w-3.5 h-3.5 rounded-full shadow-md transform transition-transform ${
-                                    cust.aktif ? 'translate-x-3.5' : 'translate-x-0'
-                                  }`}
-                                />
-                              </button>
-                              <span className="text-[11px] font-mono text-neutral-400">
-                                {cust.aktif ? 'Aktif' : 'Non-aktif'}
-                              </span>
-                            </div>
-                          </td>
-                          <td className="p-3 font-mono font-bold text-[#F4511E]">
-                            <span className="px-2 py-0.5 rounded bg-[#F4511E]/10 border border-[#F4511E]/20">
-                              {cust.kodePrefix}
-                            </span>
-                          </td>
-                          <td className="p-3">
-                            <div className="flex items-center gap-2">
-                              <div className="w-7 h-7 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold text-xs shrink-0 font-mono">
-                                {cust.name.slice(0, 2).toUpperCase()}
+                            {/* Dimensions & Capacity box */}
+                            <div className="mt-3 p-2.5 rounded-lg bg-black/25 border border-white/5 space-y-1.5 text-xs font-mono">
+                              <div className="flex items-center justify-between">
+                                <span className="text-neutral-400 text-[11px]">Dimensi Bak</span>
+                                <span className="text-neutral-200">
+                                  {arm.panjangCm} × {arm.lebarCm} × {arm.tinggiCm} cm
+                                </span>
                               </div>
-                              <span className="font-bold text-white uppercase tracking-wide">
-                                {cust.name}
+                              <div className="flex items-center justify-between pt-1 border-t border-white/5">
+                                <span className="text-neutral-400 text-[11px]">Kapasitas Kubikasi</span>
+                                <span className="text-amber-400 font-bold text-sm">
+                                  {arm.kapasitas} m³
+                                </span>
+                              </div>
+                            </div>
+
+                            <div className="mt-2.5 flex items-center gap-2">
+                              <span className="px-2 py-0.5 rounded-md bg-[#18202C] border border-[#253245] text-[11px] text-neutral-300 font-mono">
+                                {arm.merk}
                               </span>
                             </div>
-                          </td>
-                          <td className="p-3 text-neutral-300 max-w-xs truncate">
-                            {cust.alamat}
-                          </td>
-                          <td className="p-3 font-mono text-neutral-300">
-                            {cust.telepon || '-'}
-                          </td>
-                          <td className="p-3 font-mono text-neutral-400">
-                            {cust.npwp || '-'}
-                          </td>
-                          <td className="p-3 text-center">
-                            <div className="flex items-center justify-center gap-1">
+                          </div>
+
+                          <div className="mt-4 pt-2.5 border-t border-[#1F2937] flex items-center justify-between text-xs">
+                            <button
+                              type="button"
+                              onClick={() => handleOpenEditArmada(arm)}
+                              className="inline-flex items-center gap-1.5 text-[11px] text-[#FF7043] hover:text-white transition-colors cursor-pointer font-medium"
+                            >
+                              <Edit2 className="w-3 h-3" />
+                              <span>Ubah Dimensi</span>
+                            </button>
+                            <Button
+                              size="xs"
+                              variant="ghost"
+                              icon={Trash2}
+                              onClick={() => handleAskDelete('armada', arm.id, arm.nopol)}
+                              className="text-[#F4511E] hover:bg-[#F4511E]/10 border border-[#F4511E]/20"
+                              title="Hapus Armada"
+                            />
+                          </div>
+                        </Card>
+                      </motion.div>
+                    ))}
+                  </motion.div>
+                )}
+              </div>
+            );
+          })()}
+
+          {/* ======================================================== */}
+          {/* 4. DATA CUSTOMER */}
+          {/* ======================================================== */}
+          {currentTab === 'customer' && (() => {
+            const filtered = filteredCustomers;
+
+            return (
+              <div className="space-y-3.5">
+                {/* Metric Summary Header Banner */}
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
+                  <div className="master-stat-card p-3 rounded-xl bg-[#121822]/90 border border-[#1E2938] flex items-center justify-between shadow-xs">
+                    <div>
+                      <div className="text-[10px] font-mono text-neutral-400 uppercase tracking-wider">Total Customer</div>
+                      <div className="text-xl font-bold font-mono text-white mt-0.5">{customers.length}</div>
+                      <div className="text-[10px] text-neutral-400 mt-0.5">Klien Perusahaan & Proyek</div>
+                    </div>
+                    <div className="w-10 h-10 rounded-xl bg-orange-500/10 border border-orange-500/30 flex items-center justify-center text-[#F4511E]">
+                      <Building2 className="w-5 h-5" />
+                    </div>
+                  </div>
+                  <div className="master-stat-card stat-emerald p-3 rounded-xl bg-[#121822]/90 border border-[#1E2938] flex items-center justify-between shadow-xs">
+                    <div>
+                      <div className="text-[10px] font-mono text-neutral-400 uppercase tracking-wider">Customer Aktif</div>
+                      <div className="text-xl font-bold font-mono text-emerald-400 mt-0.5">
+                        {customers.filter((c) => c.aktif).length}
+                      </div>
+                      <div className="text-[10px] text-emerald-400/80 mt-0.5">
+                        {Math.round((customers.filter((c) => c.aktif).length / (customers.length || 1)) * 100)}% Kontrak Berjalan
+                      </div>
+                    </div>
+                    <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+                      <CheckCircle2 className="w-5 h-5" />
+                    </div>
+                  </div>
+                  <div className="master-stat-card stat-sky p-3 rounded-xl bg-[#121822]/90 border border-[#1E2938] flex items-center justify-between shadow-xs">
+                    <div>
+                      <div className="text-[10px] font-mono text-neutral-400 uppercase tracking-wider">NPWP Terdaftar</div>
+                      <div className="text-xl font-bold font-mono text-sky-400 mt-0.5">
+                        {customers.filter((c) => c.npwp && c.npwp !== '-').length}
+                      </div>
+                      <div className="text-[10px] text-neutral-400 mt-0.5">Faktur Pajak Elektronik</div>
+                    </div>
+                    <div className="w-10 h-10 rounded-xl bg-sky-500/10 border border-sky-500/30 flex items-center justify-center text-sky-400">
+                      <ShieldCheck className="w-5 h-5" />
+                    </div>
+                  </div>
+                  <div className="master-stat-card stat-amber p-3 rounded-xl bg-[#121822]/90 border border-[#1E2938] flex items-center justify-between shadow-xs">
+                    <div>
+                      <div className="text-[10px] font-mono text-neutral-400 uppercase tracking-wider">Prefix Kode</div>
+                      <div className="text-xl font-bold font-mono text-amber-400 mt-0.5">
+                        {new Set(customers.map((c) => c.kodePrefix)).size} Prefix
+                      </div>
+                      <div className="text-[10px] text-neutral-400 mt-0.5">Identitas Unik Surat Jalan</div>
+                    </div>
+                    <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
+                      <Hash className="w-5 h-5" />
+                    </div>
+                  </div>
+                </div>
+
+                {filtered.length === 0 ? (
+                  <MasterEmptyState
+                    icon={Building2}
+                    title="Customer"
+                    description="Data kontraktor dan proyek penerima material tambang."
+                    searchQuery={searchQuery}
+                    statusFilter={statusFilter}
+                    onReset={() => {
+                      setSearchQuery('');
+                      setStatusFilter('all');
+                    }}
+                    onAdd={() => setModalOpen(true)}
+                    entityLabel="Customer"
+                  />
+                ) : viewMode === 'list' ? (
+                  <motion.div
+                    variants={cardItemVariants}
+                    initial="hidden"
+                    animate="visible"
+                    className="master-table-container bg-[#131517] border border-[#24282C] rounded-xl overflow-hidden shadow-xs"
+                  >
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-xs">
+                        <thead className="bg-[#181B1E] text-neutral-400 font-semibold border-b border-[#24282C] font-mono text-[11px]">
+                          <tr>
+                            <th className="p-3 w-10 text-center">
+                              <input
+                                type="checkbox"
+                                className="checkbox checkbox-xs rounded border-neutral-600 checked:border-[#F4511E] checked:bg-[#F4511E] cursor-pointer"
+                                checked={filtered.length > 0 && filtered.every((it) => selectedIds.includes(it.id))}
+                                onChange={() => handleToggleSelectAll(filtered)}
+                                title="Pilih semua customer"
+                              />
+                            </th>
+                            <SortHeader field="status" label="Status" currentField={sortField} currentOrder={sortOrder} onSort={handleToggleSort} className="w-28" />
+                            <SortHeader field="kodePrefix" label="Kode Prefix" currentField={sortField} currentOrder={sortOrder} onSort={handleToggleSort} />
+                            <SortHeader field="name" label="Nama Customer" currentField={sortField} currentOrder={sortOrder} onSort={handleToggleSort} />
+                            <SortHeader field="alamat" label="Alamat" currentField={sortField} currentOrder={sortOrder} onSort={handleToggleSort} />
+                            <th className="p-3">Telepon</th>
+                            <th className="p-3">NPWP</th>
+                            <th className="p-3 text-center w-24">Aksi</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-[#202326]">
+                          {filtered.map((cust) => (
+                            <tr key={cust.id} className="hover:bg-[#181B1E]/60 transition-colors">
+                              <td className="p-3 text-center">
+                                <input
+                                  type="checkbox"
+                                  className="checkbox checkbox-xs rounded border-neutral-600 checked:border-[#F4511E] checked:bg-[#F4511E] cursor-pointer"
+                                  checked={selectedIds.includes(cust.id)}
+                                  onChange={() => handleToggleSelectItem(cust.id)}
+                                />
+                              </td>
+                              <td className="p-3">
+                                <div className="flex items-center gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => toggleCustomerStatus(cust.id)}
+                                    className={`w-8 h-4.5 flex items-center rounded-full p-0.5 transition-colors cursor-pointer ${cust.aktif ? 'bg-[#F4511E]' : 'bg-[#2A2E33]'
+                                      }`}
+                                    title={cust.aktif ? 'Klik untuk non-aktifkan' : 'Klik untuk aktifkan'}
+                                  >
+                                    <div
+                                      className={`bg-white w-3.5 h-3.5 rounded-full shadow-md transform transition-transform ${cust.aktif ? 'translate-x-3.5' : 'translate-x-0'
+                                        }`}
+                                    />
+                                  </button>
+                                  <span className="text-[11px] font-mono text-neutral-400">
+                                    {cust.aktif ? 'Aktif' : 'Non-aktif'}
+                                  </span>
+                                </div>
+                              </td>
+                              <td className="p-3 font-mono font-bold text-[#F4511E]">
+                                <span className="px-2 py-0.5 rounded bg-[#F4511E]/10 border border-[#F4511E]/20">
+                                  {cust.kodePrefix}
+                                </span>
+                              </td>
+                              <td className="p-3">
+                                <div className="flex items-center gap-2">
+                                  <div className="w-7 h-7 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold text-xs shrink-0 font-mono">
+                                    {cust.name.slice(0, 2).toUpperCase()}
+                                  </div>
+                                  <span className="font-bold text-white uppercase tracking-wide">
+                                    {cust.name}
+                                  </span>
+                                </div>
+                              </td>
+                              <td className="p-3 text-neutral-300 max-w-xs truncate">
+                                {cust.alamat}
+                              </td>
+                              <td className="p-3 font-mono text-neutral-300">
+                                {cust.telepon || '-'}
+                              </td>
+                              <td className="p-3 font-mono text-neutral-400">
+                                {cust.npwp || '-'}
+                              </td>
+                              <td className="p-3 text-center">
+                                <div className="flex items-center justify-center gap-1">
+                                  <Button
+                                    size="xs"
+                                    variant="ghost"
+                                    icon={Edit2}
+                                    onClick={() => handleOpenEditCustomer(cust)}
+                                    className="text-neutral-300 hover:text-white hover:bg-neutral-800"
+                                    title="Edit Customer"
+                                  />
+                                  <Button
+                                    size="xs"
+                                    variant="ghost"
+                                    icon={Trash2}
+                                    onClick={() => handleAskDelete('customer', cust.id, cust.name)}
+                                    className="text-[#F4511E] hover:bg-[#F4511E]/10 border border-[#F4511E]/30"
+                                    title="Hapus Customer"
+                                  />
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    variants={staggerContainerVariants}
+                    initial="hidden"
+                    animate="visible"
+                    className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3"
+                  >
+                    {filtered.map((cust) => (
+                      <motion.div
+                        key={cust.id}
+                        variants={cardItemVariants}
+                        whileHover={{ y: -3, transition: { duration: 0.15 } }}
+                        className="h-full"
+                      >
+                        <Card
+                          hover
+                          className="master-data-card p-4 flex flex-col justify-between h-full border-[#1E2938] bg-[#121822]/90 hover:border-[#F4511E]/40 shadow-xs transition-all"
+                        >
+                          <div>
+                            <div className="flex items-center justify-between mb-3">
+                              <div className="flex items-center gap-2">
+                                <input
+                                  type="checkbox"
+                                  className="checkbox checkbox-xs rounded border-neutral-600 checked:border-[#F4511E] checked:bg-[#F4511E] cursor-pointer"
+                                  checked={selectedIds.includes(cust.id)}
+                                  onChange={() => handleToggleSelectItem(cust.id)}
+                                  title="Pilih customer"
+                                />
+                                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500/20 to-teal-500/10 border border-emerald-500/30 text-emerald-400 flex items-center justify-center font-bold text-xs shadow-2xs shrink-0">
+                                  <Building2 className="w-4.5 h-4.5" />
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                  <button
+                                    type="button"
+                                    onClick={() => toggleCustomerStatus(cust.id)}
+                                    className={`w-8 h-4.5 flex items-center rounded-full p-0.5 transition-colors cursor-pointer ${cust.aktif ? 'bg-[#F4511E]' : 'bg-[#2A2E33]'
+                                      }`}
+                                    title={cust.aktif ? 'Klik untuk non-aktifkan' : 'Klik untuk aktifkan'}
+                                  >
+                                    <div
+                                      className={`bg-white w-3.5 h-3.5 rounded-full shadow-md transform transition-transform ${cust.aktif ? 'translate-x-3.5' : 'translate-x-0'
+                                        }`}
+                                    />
+                                  </button>
+                                  <span className="text-[10px] font-mono text-neutral-400">
+                                    {cust.aktif ? 'Aktif' : 'Non-aktif'}
+                                  </span>
+                                </div>
+                              </div>
+
+                              <span className="px-2 py-0.5 rounded-md bg-[#F4511E]/15 border border-[#F4511E]/30 text-[#FF7043] font-mono font-bold text-xs">
+                                {cust.kodePrefix}
+                              </span>
+                            </div>
+
+                            <h3 className="text-sm font-bold text-white tracking-wide uppercase line-clamp-1 group-hover:text-[#FF7043] transition-colors">
+                              {cust.name}
+                            </h3>
+
+                            {/* Address & Contacts */}
+                            <div className="mt-2.5 p-2 rounded-lg bg-black/25 border border-white/5 space-y-1.5 text-xs">
+                              <div className="flex items-start gap-1.5 text-neutral-300">
+                                <MapPin className="w-3.5 h-3.5 text-neutral-500 shrink-0 mt-0.5" />
+                                <span className="line-clamp-2 text-[11px] leading-tight">{cust.alamat}</span>
+                              </div>
+                              <div className="flex items-center justify-between pt-1 border-t border-white/5 text-[11px] font-mono text-neutral-400">
+                                <span>NPWP: {cust.npwp || '-'}</span>
+                                <span>Telp: {cust.telepon || '-'}</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="mt-4 pt-2.5 border-t border-[#1F2937] flex items-center justify-between text-xs">
+                            <span className="text-[11px] text-neutral-500 font-mono">
+                              ID: {cust.id}
+                            </span>
+                            <div className="flex items-center gap-1">
                               <Button
                                 size="xs"
                                 variant="ghost"
@@ -2972,543 +3059,546 @@ export default function MasterDataPage() {
                                 variant="ghost"
                                 icon={Trash2}
                                 onClick={() => handleAskDelete('customer', cust.id, cust.name)}
-                                className="text-[#F4511E] hover:bg-[#F4511E]/10 border border-[#F4511E]/30"
+                                className="text-[#F4511E] hover:bg-[#F4511E]/10 border border-[#F4511E]/20"
                                 title="Hapus Customer"
                               />
                             </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </motion.div>
-            ) : (
-              <motion.div
-                variants={staggerContainerVariants}
-                initial="hidden"
-                animate="visible"
-                className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3"
-              >
-                {filtered.map((cust) => (
-                  <motion.div
-                    key={cust.id}
-                    variants={cardItemVariants}
-                    whileHover={{ y: -3, transition: { duration: 0.15 } }}
-                    className="h-full"
-                  >
-                    <Card
-                      hover
-                      className="master-data-card p-4 flex flex-col justify-between h-full border-[#1E2938] bg-[#121822]/90 hover:border-[#F4511E]/40 shadow-xs transition-all"
-                    >
-                      <div>
-                        <div className="flex items-center justify-between mb-3">
-                          <div className="flex items-center gap-2">
-                            <input
-                              type="checkbox"
-                              className="checkbox checkbox-xs rounded border-neutral-600 checked:border-[#F4511E] checked:bg-[#F4511E] cursor-pointer"
-                              checked={selectedIds.includes(cust.id)}
-                              onChange={() => handleToggleSelectItem(cust.id)}
-                              title="Pilih customer"
-                            />
-                            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500/20 to-teal-500/10 border border-emerald-500/30 text-emerald-400 flex items-center justify-center font-bold text-xs shadow-2xs shrink-0">
-                              <Building2 className="w-4.5 h-4.5" />
-                            </div>
-                            <div className="flex items-center gap-1.5">
-                              <button
-                                type="button"
-                                onClick={() => toggleCustomerStatus(cust.id)}
-                                className={`w-8 h-4.5 flex items-center rounded-full p-0.5 transition-colors cursor-pointer ${
-                                  cust.aktif ? 'bg-[#F4511E]' : 'bg-[#2A2E33]'
-                                }`}
-                                title={cust.aktif ? 'Klik untuk non-aktifkan' : 'Klik untuk aktifkan'}
-                              >
-                                <div
-                                  className={`bg-white w-3.5 h-3.5 rounded-full shadow-md transform transition-transform ${
-                                    cust.aktif ? 'translate-x-3.5' : 'translate-x-0'
-                                  }`}
-                                />
-                              </button>
-                              <span className="text-[10px] font-mono text-neutral-400">
-                                {cust.aktif ? 'Aktif' : 'Non-aktif'}
-                              </span>
-                            </div>
                           </div>
-
-                          <span className="px-2 py-0.5 rounded-md bg-[#F4511E]/15 border border-[#F4511E]/30 text-[#FF7043] font-mono font-bold text-xs">
-                            {cust.kodePrefix}
-                          </span>
-                        </div>
-
-                        <h3 className="text-sm font-bold text-white tracking-wide uppercase line-clamp-1 group-hover:text-[#FF7043] transition-colors">
-                          {cust.name}
-                        </h3>
-
-                        {/* Address & Contacts */}
-                        <div className="mt-2.5 p-2 rounded-lg bg-black/25 border border-white/5 space-y-1.5 text-xs">
-                          <div className="flex items-start gap-1.5 text-neutral-300">
-                            <MapPin className="w-3.5 h-3.5 text-neutral-500 shrink-0 mt-0.5" />
-                            <span className="line-clamp-2 text-[11px] leading-tight">{cust.alamat}</span>
-                          </div>
-                          <div className="flex items-center justify-between pt-1 border-t border-white/5 text-[11px] font-mono text-neutral-400">
-                            <span>NPWP: {cust.npwp || '-'}</span>
-                            <span>Telp: {cust.telepon || '-'}</span>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="mt-4 pt-2.5 border-t border-[#1F2937] flex items-center justify-between text-xs">
-                        <span className="text-[11px] text-neutral-500 font-mono">
-                          ID: {cust.id}
-                        </span>
-                        <div className="flex items-center gap-1">
-                          <Button
-                            size="xs"
-                            variant="ghost"
-                            icon={Edit2}
-                            onClick={() => handleOpenEditCustomer(cust)}
-                            className="text-neutral-300 hover:text-white hover:bg-neutral-800"
-                            title="Edit Customer"
-                          />
-                          <Button
-                            size="xs"
-                            variant="ghost"
-                            icon={Trash2}
-                            onClick={() => handleAskDelete('customer', cust.id, cust.name)}
-                            className="text-[#F4511E] hover:bg-[#F4511E]/10 border border-[#F4511E]/20"
-                            title="Hapus Customer"
-                          />
-                        </div>
-                      </div>
-                    </Card>
+                        </Card>
+                      </motion.div>
+                    ))}
                   </motion.div>
-                ))}
-              </motion.div>
-            )}
-          </div>
-        );
-      })()}
-
-      {/* ======================================================== */}
-      {/* 5. DATA BANK */}
-      {/* ======================================================== */}
-      {currentTab === 'bank' && (() => {
-        const filtered = filteredBanks;
-
-        return (
-          <div className="space-y-3.5">
-            {/* Metric Summary Header Banner */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
-              <div className="master-stat-card p-3 rounded-xl bg-[#121822]/90 border border-[#1E2938] flex items-center justify-between shadow-xs">
-                <div>
-                  <div className="text-[10px] font-mono text-neutral-400 uppercase tracking-wider">Mitra Bank</div>
-                  <div className="text-xl font-bold font-mono text-white mt-0.5">{banks.length}</div>
-                  <div className="text-[10px] text-neutral-400 mt-0.5">Jaringan Kliring BI</div>
-                </div>
-                <div className="w-10 h-10 rounded-xl bg-orange-500/10 border border-orange-500/30 flex items-center justify-center text-[#F4511E]">
-                  <Landmark className="w-5 h-5" />
-                </div>
+                )}
               </div>
-              <div className="master-stat-card stat-emerald p-3 rounded-xl bg-[#121822]/90 border border-[#1E2938] flex items-center justify-between shadow-xs">
-                <div>
-                  <div className="text-[10px] font-mono text-neutral-400 uppercase tracking-wider">Bank Aktif</div>
-                  <div className="text-xl font-bold font-mono text-emerald-400 mt-0.5">
-                    {banks.filter((b) => b.aktif).length}
+            );
+          })()}
+
+          {/* ======================================================== */}
+          {/* 5. DATA BANK */}
+          {/* ======================================================== */}
+          {currentTab === 'bank' && (() => {
+            const filtered = filteredBanks;
+
+            return (
+              <div className="space-y-3.5">
+                {/* Metric Summary Header Banner */}
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
+                  <div className="master-stat-card p-3 rounded-xl bg-[#121822]/90 border border-[#1E2938] flex items-center justify-between shadow-xs">
+                    <div>
+                      <div className="text-[10px] font-mono text-neutral-400 uppercase tracking-wider">Mitra Bank</div>
+                      <div className="text-xl font-bold font-mono text-white mt-0.5">{banks.length}</div>
+                      <div className="text-[10px] text-neutral-400 mt-0.5">Jaringan Kliring BI</div>
+                    </div>
+                    <div className="w-10 h-10 rounded-xl bg-orange-500/10 border border-orange-500/30 flex items-center justify-center text-[#F4511E]">
+                      <Landmark className="w-5 h-5" />
+                    </div>
                   </div>
-                  <div className="text-[10px] text-emerald-400/80 mt-0.5">Siap Transfer Dana</div>
-                </div>
-                <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
-                  <CheckCircle2 className="w-5 h-5" />
-                </div>
-              </div>
-              <div className="master-stat-card stat-sky p-3 rounded-xl bg-[#121822]/90 border border-[#1E2938] flex items-center justify-between shadow-xs">
-                <div>
-                  <div className="text-[10px] font-mono text-neutral-400 uppercase tracking-wider">Kode SWIFT</div>
-                  <div className="text-xl font-bold font-mono text-sky-400 mt-0.5">
-                    {banks.filter((b) => b.kodeSwift && b.kodeSwift !== '-').length}
+                  <div className="master-stat-card stat-emerald p-3 rounded-xl bg-[#121822]/90 border border-[#1E2938] flex items-center justify-between shadow-xs">
+                    <div>
+                      <div className="text-[10px] font-mono text-neutral-400 uppercase tracking-wider">Bank Aktif</div>
+                      <div className="text-xl font-bold font-mono text-emerald-400 mt-0.5">
+                        {banks.filter((b) => b.aktif).length}
+                      </div>
+                      <div className="text-[10px] text-emerald-400/80 mt-0.5">Siap Transfer Dana</div>
+                    </div>
+                    <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+                      <CheckCircle2 className="w-5 h-5" />
+                    </div>
                   </div>
-                  <div className="text-[10px] text-neutral-400 mt-0.5">Standar Valuta Asing</div>
+                  <div className="master-stat-card stat-sky p-3 rounded-xl bg-[#121822]/90 border border-[#1E2938] flex items-center justify-between shadow-xs">
+                    <div>
+                      <div className="text-[10px] font-mono text-neutral-400 uppercase tracking-wider">Kode SWIFT</div>
+                      <div className="text-xl font-bold font-mono text-sky-400 mt-0.5">
+                        {banks.filter((b) => b.kodeSwift && b.kodeSwift !== '-').length}
+                      </div>
+                      <div className="text-[10px] text-neutral-400 mt-0.5">Standar Valuta Asing</div>
+                    </div>
+                    <div className="w-10 h-10 rounded-xl bg-sky-500/10 border border-sky-500/30 flex items-center justify-center text-sky-400">
+                      <Shield className="w-5 h-5" />
+                    </div>
+                  </div>
+                  <div className="master-stat-card stat-amber p-3 rounded-xl bg-[#121822]/90 border border-[#1E2938] flex items-center justify-between shadow-xs">
+                    <div>
+                      <div className="text-[10px] font-mono text-neutral-400 uppercase tracking-wider">Kode Kliring</div>
+                      <div className="text-xl font-bold font-mono text-amber-400 mt-0.5">100% Valid</div>
+                      <div className="text-[10px] text-neutral-400 mt-0.5">Terverifikasi Sistem</div>
+                    </div>
+                    <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
+                      <Layers className="w-5 h-5" />
+                    </div>
+                  </div>
                 </div>
-                <div className="w-10 h-10 rounded-xl bg-sky-500/10 border border-sky-500/30 flex items-center justify-center text-sky-400">
-                  <Shield className="w-5 h-5" />
-                </div>
-              </div>
-              <div className="master-stat-card stat-amber p-3 rounded-xl bg-[#121822]/90 border border-[#1E2938] flex items-center justify-between shadow-xs">
-                <div>
-                  <div className="text-[10px] font-mono text-neutral-400 uppercase tracking-wider">Kode Kliring</div>
-                  <div className="text-xl font-bold font-mono text-amber-400 mt-0.5">100% Valid</div>
-                  <div className="text-[10px] text-neutral-400 mt-0.5">Terverifikasi Sistem</div>
-                </div>
-                <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
-                  <Layers className="w-5 h-5" />
-                </div>
-              </div>
-            </div>
 
-            {filtered.length === 0 ? (
-              <MasterEmptyState
-                icon={Landmark}
-                title="Bank Mitra"
-                description="Daftar bank mitra transaksi, kode kliring BI, dan format SWIFT internasional."
-                searchQuery={searchQuery}
-                statusFilter={statusFilter}
-                onReset={() => {
-                  setSearchQuery('');
-                  setStatusFilter('all');
-                }}
-                onAdd={() => setModalOpen(true)}
-                entityLabel="Bank"
-              />
-            ) : viewMode === 'list' ? (
-              <motion.div
-                variants={cardItemVariants}
-                initial="hidden"
-                animate="visible"
-                className="master-table-container bg-[#131517] border border-[#24282C] rounded-xl overflow-hidden shadow-xs"
-              >
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs">
-                    <thead className="bg-[#181B1E] text-neutral-400 font-semibold border-b border-[#24282C] font-mono text-[11px]">
-                      <tr>
-                        <th className="p-3 w-10 text-center">
-                          <input
-                            type="checkbox"
-                            className="checkbox checkbox-xs rounded border-neutral-600 checked:border-[#F4511E] checked:bg-[#F4511E] cursor-pointer"
-                            checked={filtered.length > 0 && filtered.every((it) => selectedIds.includes(it.id))}
-                            onChange={() => handleToggleSelectAll(filtered)}
-                            title="Pilih semua bank"
-                          />
-                        </th>
-                        <SortHeader field="status" label="Status" currentField={sortField} currentOrder={sortOrder} onSort={handleToggleSort} className="w-28" />
-                        <SortHeader field="namaAlias" label="Nama Alias" currentField={sortField} currentOrder={sortOrder} onSort={handleToggleSort} />
-                        <SortHeader field="namaBank" label="Nama Bank Resmi" currentField={sortField} currentOrder={sortOrder} onSort={handleToggleSort} />
-                        <SortHeader field="kodeBank" label="Kode Bank" currentField={sortField} currentOrder={sortOrder} onSort={handleToggleSort} />
-                        <SortHeader field="kodeSwift" label="Kode SWIFT" currentField={sortField} currentOrder={sortOrder} onSort={handleToggleSort} />
-                        <th className="p-3 text-center w-28">Aksi</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-[#202326]">
-                      {filtered.map((bank) => (
-                        <tr key={bank.id} className="hover:bg-[#181B1E]/60 transition-colors">
-                          <td className="p-3 text-center">
-                            <input
-                              type="checkbox"
-                              className="checkbox checkbox-xs rounded border-neutral-600 checked:border-[#F4511E] checked:bg-[#F4511E] cursor-pointer"
-                              checked={selectedIds.includes(bank.id)}
-                              onChange={() => handleToggleSelectItem(bank.id)}
-                            />
-                          </td>
-                          <td className="p-3">
-                            <div className="flex items-center gap-2">
-                              <button
-                                type="button"
-                                onClick={() => toggleBankStatus(bank.id)}
-                                className={`w-8 h-4.5 flex items-center rounded-full p-0.5 transition-colors cursor-pointer ${
-                                  bank.aktif ? 'bg-[#F4511E]' : 'bg-[#2A2E33]'
-                                }`}
-                                title={bank.aktif ? 'Klik untuk non-aktifkan' : 'Klik untuk aktifkan'}
-                              >
-                                <div
-                                  className={`bg-white w-3.5 h-3.5 rounded-full shadow-md transform transition-transform ${
-                                    bank.aktif ? 'translate-x-3.5' : 'translate-x-0'
-                                  }`}
+                {filtered.length === 0 ? (
+                  <MasterEmptyState
+                    icon={Landmark}
+                    title="Bank Mitra"
+                    description="Daftar bank mitra transaksi, kode kliring BI, dan format SWIFT internasional."
+                    searchQuery={searchQuery}
+                    statusFilter={statusFilter}
+                    onReset={() => {
+                      setSearchQuery('');
+                      setStatusFilter('all');
+                    }}
+                    onAdd={() => setModalOpen(true)}
+                    entityLabel="Bank"
+                  />
+                ) : viewMode === 'list' ? (
+                  <motion.div
+                    variants={cardItemVariants}
+                    initial="hidden"
+                    animate="visible"
+                    className="master-table-container bg-[#131517] border border-[#24282C] rounded-xl overflow-hidden shadow-xs"
+                  >
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-xs">
+                        <thead className="bg-[#181B1E] text-neutral-400 font-semibold border-b border-[#24282C] font-mono text-[11px]">
+                          <tr>
+                            <th className="p-3 w-10 text-center">
+                              <input
+                                type="checkbox"
+                                className="checkbox checkbox-xs rounded border-neutral-600 checked:border-[#F4511E] checked:bg-[#F4511E] cursor-pointer"
+                                checked={filtered.length > 0 && filtered.every((it) => selectedIds.includes(it.id))}
+                                onChange={() => handleToggleSelectAll(filtered)}
+                                title="Pilih semua bank"
+                              />
+                            </th>
+                            <SortHeader field="status" label="Status" currentField={sortField} currentOrder={sortOrder} onSort={handleToggleSort} className="w-28" />
+                            <SortHeader field="namaAlias" label="Nama Alias" currentField={sortField} currentOrder={sortOrder} onSort={handleToggleSort} />
+                            <SortHeader field="namaBank" label="Nama Bank Resmi" currentField={sortField} currentOrder={sortOrder} onSort={handleToggleSort} />
+                            <SortHeader field="kodeBank" label="Kode Bank" currentField={sortField} currentOrder={sortOrder} onSort={handleToggleSort} />
+                            <SortHeader field="kodeSwift" label="Kode SWIFT" currentField={sortField} currentOrder={sortOrder} onSort={handleToggleSort} />
+                            <th className="p-3 text-center w-28">Aksi</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-[#202326]">
+                          {filtered.map((bank) => (
+                            <tr key={bank.id} className="hover:bg-[#181B1E]/60 transition-colors">
+                              <td className="p-3 text-center">
+                                <input
+                                  type="checkbox"
+                                  className="checkbox checkbox-xs rounded border-neutral-600 checked:border-[#F4511E] checked:bg-[#F4511E] cursor-pointer"
+                                  checked={selectedIds.includes(bank.id)}
+                                  onChange={() => handleToggleSelectItem(bank.id)}
                                 />
-                              </button>
-                              <span className="text-[11px] font-mono text-neutral-400">
-                                {bank.aktif ? 'Aktif' : 'Non-aktif'}
-                              </span>
-                            </div>
-                          </td>
-                          <td className="p-3">
-                            <div className="flex items-center gap-2">
-                              <div className="w-7 h-7 rounded-lg bg-orange-500/10 border border-orange-500/20 text-[#F4511E] flex items-center justify-center font-bold text-xs shrink-0 font-mono">
-                                {bank.namaAlias.slice(0, 3)}
+                              </td>
+                              <td className="p-3">
+                                <div className="flex items-center gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => toggleBankStatus(bank.id)}
+                                    className={`w-8 h-4.5 flex items-center rounded-full p-0.5 transition-colors cursor-pointer ${bank.aktif ? 'bg-[#F4511E]' : 'bg-[#2A2E33]'
+                                      }`}
+                                    title={bank.aktif ? 'Klik untuk non-aktifkan' : 'Klik untuk aktifkan'}
+                                  >
+                                    <div
+                                      className={`bg-white w-3.5 h-3.5 rounded-full shadow-md transform transition-transform ${bank.aktif ? 'translate-x-3.5' : 'translate-x-0'
+                                        }`}
+                                    />
+                                  </button>
+                                  <span className="text-[11px] font-mono text-neutral-400">
+                                    {bank.aktif ? 'Aktif' : 'Non-aktif'}
+                                  </span>
+                                </div>
+                              </td>
+                              <td className="p-3">
+                                <div className="flex items-center gap-2">
+                                  <div className="w-7 h-7 rounded-lg bg-orange-500/10 border border-orange-500/20 text-[#F4511E] flex items-center justify-center font-bold text-xs shrink-0 font-mono">
+                                    {bank.namaAlias.slice(0, 3)}
+                                  </div>
+                                  <span className="font-bold text-white font-mono tracking-wider">
+                                    {bank.namaAlias}
+                                  </span>
+                                </div>
+                              </td>
+                              <td className="p-3 text-neutral-300">
+                                {bank.namaBank}
+                              </td>
+                              <td className="p-3 font-mono text-neutral-300">
+                                <span className="px-2 py-0.5 rounded bg-black/30 border border-white/10 font-bold">
+                                  {bank.kodeBank}
+                                </span>
+                              </td>
+                              <td className="p-3 font-mono text-neutral-400">
+                                {bank.kodeSwift || '-'}
+                              </td>
+                              <td className="p-3 text-center">
+                                <div className="flex items-center justify-center gap-1.5">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleOpenEditBank(bank)}
+                                    className="p-1.5 rounded-md bg-[#F4511E]/10 hover:bg-[#F4511E] text-[#F4511E] hover:text-white transition-all cursor-pointer border border-[#F4511E]/30"
+                                    title="Perbarui Data Bank"
+                                  >
+                                    <Edit2 className="w-3.5 h-3.5" />
+                                  </button>
+                                  <Button
+                                    size="xs"
+                                    variant="ghost"
+                                    icon={Trash2}
+                                    onClick={() => handleAskDelete('bank', bank.id, bank.namaAlias || bank.namaBank)}
+                                    className="text-[#F4511E] hover:bg-[#F4511E]/10 border border-[#F4511E]/30"
+                                    title="Hapus Bank"
+                                  />
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    variants={staggerContainerVariants}
+                    initial="hidden"
+                    animate="visible"
+                    className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3"
+                  >
+                    {filtered.map((bank) => (
+                      <motion.div
+                        key={bank.id}
+                        variants={cardItemVariants}
+                        whileHover={{ y: -3, transition: { duration: 0.15 } }}
+                        className="h-full"
+                      >
+                        <Card
+                          hover
+                          className="master-data-card p-4 flex flex-col justify-between h-full border-[#1E2938] bg-[#121822]/90 hover:border-[#F4511E]/40 shadow-xs transition-all"
+                        >
+                          <div>
+                            <div className="flex items-center justify-between mb-3">
+                              <div className="flex items-center gap-2">
+                                <input
+                                  type="checkbox"
+                                  className="checkbox checkbox-xs rounded border-neutral-600 checked:border-[#F4511E] checked:bg-[#F4511E] cursor-pointer"
+                                  checked={selectedIds.includes(bank.id)}
+                                  onChange={() => handleToggleSelectItem(bank.id)}
+                                  title="Pilih bank"
+                                />
+                                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-500/20 to-orange-500/10 border border-amber-500/30 text-amber-400 flex items-center justify-center font-bold text-xs shadow-2xs shrink-0">
+                                  <Landmark className="w-4.5 h-4.5" />
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                  <button
+                                    type="button"
+                                    onClick={() => toggleBankStatus(bank.id)}
+                                    className={`w-8 h-4.5 flex items-center rounded-full p-0.5 transition-colors cursor-pointer ${bank.aktif ? 'bg-[#F4511E]' : 'bg-[#2A2E33]'
+                                      }`}
+                                    title={bank.aktif ? 'Klik untuk non-aktifkan' : 'Klik untuk aktifkan'}
+                                  >
+                                    <div
+                                      className={`bg-white w-3.5 h-3.5 rounded-full shadow-md transform transition-transform ${bank.aktif ? 'translate-x-3.5' : 'translate-x-0'
+                                        }`}
+                                    />
+                                  </button>
+                                  <span className="text-[10px] font-mono text-neutral-400">
+                                    {bank.aktif ? 'Aktif' : 'Non-aktif'}
+                                  </span>
+                                </div>
                               </div>
-                              <span className="font-bold text-white font-mono tracking-wider">
-                                {bank.namaAlias}
-                              </span>
-                            </div>
-                          </td>
-                          <td className="p-3 text-neutral-300">
-                            {bank.namaBank}
-                          </td>
-                          <td className="p-3 font-mono text-neutral-300">
-                            <span className="px-2 py-0.5 rounded bg-black/30 border border-white/10 font-bold">
-                              {bank.kodeBank}
-                            </span>
-                          </td>
-                          <td className="p-3 font-mono text-neutral-400">
-                            {bank.kodeSwift || '-'}
-                          </td>
-                          <td className="p-3 text-center">
-                            <div className="flex items-center justify-center gap-1.5">
+
                               <button
                                 type="button"
                                 onClick={() => handleOpenEditBank(bank)}
-                                className="p-1.5 rounded-md bg-[#F4511E]/10 hover:bg-[#F4511E] text-[#F4511E] hover:text-white transition-all cursor-pointer border border-[#F4511E]/30"
+                                className="w-7 h-7 rounded-full bg-[#F4511E] text-white flex items-center justify-center hover:opacity-90 active:scale-95 transition-all cursor-pointer shadow-xs"
                                 title="Perbarui Data Bank"
                               >
-                                <Edit2 className="w-3.5 h-3.5" />
+                                <ChevronRight className="w-4 h-4" />
                               </button>
-                              <Button
-                                size="xs"
-                                variant="ghost"
-                                icon={Trash2}
-                                onClick={() => handleAskDelete('bank', bank.id, bank.namaAlias || bank.namaBank)}
-                                className="text-[#F4511E] hover:bg-[#F4511E]/10 border border-[#F4511E]/30"
-                                title="Hapus Bank"
-                              />
                             </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </motion.div>
-            ) : (
-              <motion.div
-                variants={staggerContainerVariants}
-                initial="hidden"
-                animate="visible"
-                className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3"
-              >
-                {filtered.map((bank) => (
-                  <motion.div
-                    key={bank.id}
-                    variants={cardItemVariants}
-                    whileHover={{ y: -3, transition: { duration: 0.15 } }}
-                    className="h-full"
-                  >
-                    <Card
-                      hover
-                      className="master-data-card p-4 flex flex-col justify-between h-full border-[#1E2938] bg-[#121822]/90 hover:border-[#F4511E]/40 shadow-xs transition-all"
-                    >
-                      <div>
-                        <div className="flex items-center justify-between mb-3">
-                          <div className="flex items-center gap-2">
-                            <input
-                              type="checkbox"
-                              className="checkbox checkbox-xs rounded border-neutral-600 checked:border-[#F4511E] checked:bg-[#F4511E] cursor-pointer"
-                              checked={selectedIds.includes(bank.id)}
-                              onChange={() => handleToggleSelectItem(bank.id)}
-                              title="Pilih bank"
-                            />
-                            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-500/20 to-orange-500/10 border border-amber-500/30 text-amber-400 flex items-center justify-center font-bold text-xs shadow-2xs shrink-0">
-                              <Landmark className="w-4.5 h-4.5" />
-                            </div>
-                            <div className="flex items-center gap-1.5">
-                              <button
-                                type="button"
-                                onClick={() => toggleBankStatus(bank.id)}
-                                className={`w-8 h-4.5 flex items-center rounded-full p-0.5 transition-colors cursor-pointer ${
-                                  bank.aktif ? 'bg-[#F4511E]' : 'bg-[#2A2E33]'
-                                }`}
-                                title={bank.aktif ? 'Klik untuk non-aktifkan' : 'Klik untuk aktifkan'}
-                              >
-                                <div
-                                  className={`bg-white w-3.5 h-3.5 rounded-full shadow-md transform transition-transform ${
-                                    bank.aktif ? 'translate-x-3.5' : 'translate-x-0'
-                                  }`}
-                                />
-                              </button>
-                              <span className="text-[10px] font-mono text-neutral-400">
-                                {bank.aktif ? 'Aktif' : 'Non-aktif'}
+
+                            <div className="flex items-center justify-between gap-2">
+                              <h3 className="text-base font-bold text-white tracking-wider font-mono">
+                                {bank.namaAlias}
+                              </h3>
+                              <span className="px-2 py-0.5 rounded bg-black/40 border border-white/10 text-xs font-mono text-amber-400 font-bold">
+                                Kode: {bank.kodeBank}
                               </span>
+                            </div>
+
+                            <p className="text-xs text-neutral-300 mt-1 line-clamp-1">{bank.namaBank}</p>
+
+                            <div className="mt-3 p-2 rounded-lg bg-black/25 border border-white/5 flex items-center justify-between text-xs font-mono text-neutral-400">
+                              <span>Kode SWIFT</span>
+                              <span className="text-white font-semibold">{bank.kodeSwift || '-'}</span>
                             </div>
                           </div>
 
-                          <button
-                            type="button"
-                            onClick={() => handleOpenEditBank(bank)}
-                            className="w-7 h-7 rounded-full bg-[#F4511E] text-white flex items-center justify-center hover:opacity-90 active:scale-95 transition-all cursor-pointer shadow-xs"
-                            title="Perbarui Data Bank"
-                          >
-                            <ChevronRight className="w-4 h-4" />
-                          </button>
-                        </div>
-
-                        <div className="flex items-center justify-between gap-2">
-                          <h3 className="text-base font-bold text-white tracking-wider font-mono">
-                            {bank.namaAlias}
-                          </h3>
-                          <span className="px-2 py-0.5 rounded bg-black/40 border border-white/10 text-xs font-mono text-amber-400 font-bold">
-                            Kode: {bank.kodeBank}
-                          </span>
-                        </div>
-
-                        <p className="text-xs text-neutral-300 mt-1 line-clamp-1">{bank.namaBank}</p>
-
-                        <div className="mt-3 p-2 rounded-lg bg-black/25 border border-white/5 flex items-center justify-between text-xs font-mono text-neutral-400">
-                          <span>Kode SWIFT</span>
-                          <span className="text-white font-semibold">{bank.kodeSwift || '-'}</span>
-                        </div>
-                      </div>
-
-                      <div className="mt-4 pt-2.5 border-t border-[#1F2937] flex items-center justify-between text-xs">
-                        <button
-                          type="button"
-                          onClick={() => handleOpenEditBank(bank)}
-                          className="inline-flex items-center gap-1.5 text-[11px] text-[#FF7043] hover:text-white transition-colors cursor-pointer font-medium"
-                        >
-                          <Edit2 className="w-3 h-3" />
-                          <span>Ubah Info Bank</span>
-                        </button>
-                        <Button
-                          size="xs"
-                          variant="ghost"
-                          icon={Trash2}
-                          onClick={() => handleAskDelete('bank', bank.id, bank.namaAlias || bank.namaBank)}
-                          className="text-[#F4511E] hover:bg-[#F4511E]/10 border border-[#F4511E]/20"
-                          title="Hapus Bank"
-                        />
-                      </div>
-                    </Card>
-                  </motion.div>
-                ))}
-              </motion.div>
-            )}
-          </div>
-        );
-      })()}
-
-      {/* ======================================================== */}
-      {/* 6. DATA REKENING BANK */}
-      {/* ======================================================== */}
-      {currentTab === 'rekening' && (() => {
-        const filtered = filteredAccounts;
-
-        return (
-          <div className="space-y-3.5">
-            {/* Metric Summary Header Banner */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
-              <div className="master-stat-card p-3 rounded-xl bg-[#121822]/90 border border-[#1E2938] flex items-center justify-between shadow-xs">
-                <div>
-                  <div className="text-[10px] font-mono text-neutral-400 uppercase tracking-wider">Rekening PT BAS</div>
-                  <div className="text-xl font-bold font-mono text-white mt-0.5">{bankAccounts.length}</div>
-                  <div className="text-[10px] text-neutral-400 mt-0.5">Kas & Bank Utama</div>
-                </div>
-                <div className="w-10 h-10 rounded-xl bg-orange-500/10 border border-orange-500/30 flex items-center justify-center text-[#F4511E]">
-                  <CreditCard className="w-5 h-5" />
-                </div>
-              </div>
-              <div className="master-stat-card stat-emerald p-3 rounded-xl bg-[#121822]/90 border border-[#1E2938] flex items-center justify-between shadow-xs">
-                <div>
-                  <div className="text-[10px] font-mono text-neutral-400 uppercase tracking-wider">Rekening Aktif</div>
-                  <div className="text-xl font-bold font-mono text-emerald-400 mt-0.5">
-                    {bankAccounts.filter((a) => a.aktif).length}
-                  </div>
-                  <div className="text-[10px] text-emerald-400/80 mt-0.5">Transaksi Masuk & Keluar</div>
-                </div>
-                <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
-                  <CheckCircle2 className="w-5 h-5" />
-                </div>
-              </div>
-              <div className="master-stat-card stat-sky p-3 rounded-xl bg-[#121822]/90 border border-[#1E2938] flex items-center justify-between shadow-xs">
-                <div>
-                  <div className="text-[10px] font-mono text-neutral-400 uppercase tracking-wider">Giro Operasional</div>
-                  <div className="text-xl font-bold font-mono text-sky-400 mt-0.5">
-                    {bankAccounts.filter((a) => a.jenisRekening?.toLowerCase().includes('giro')).length}
-                  </div>
-                  <div className="text-[10px] text-neutral-400 mt-0.5">Arus Kas Perusahaan</div>
-                </div>
-                <div className="w-10 h-10 rounded-xl bg-sky-500/10 border border-sky-500/30 flex items-center justify-center text-sky-400">
-                  <Landmark className="w-5 h-5" />
-                </div>
-              </div>
-              <div className="master-stat-card stat-amber p-3 rounded-xl bg-[#121822]/90 border border-[#1E2938] flex items-center justify-between shadow-xs">
-                <div>
-                  <div className="text-[10px] font-mono text-neutral-400 uppercase tracking-wider">Tabungan & Kas</div>
-                  <div className="text-xl font-bold font-mono text-amber-400 mt-0.5">
-                    {bankAccounts.filter((a) => !a.jenisRekening?.toLowerCase().includes('giro')).length}
-                  </div>
-                  <div className="text-[10px] text-neutral-400 mt-0.5">Cadangan Likuiditas</div>
-                </div>
-                <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
-                  <Coins className="w-5 h-5" />
-                </div>
-              </div>
-            </div>
-
-            {filtered.length === 0 ? (
-              <MasterEmptyState
-                icon={CreditCard}
-                title="Rekening Bank"
-                description="Daftar rekening bank perusahaan untuk pencairan BKK dan penagihan invoice."
-                searchQuery={searchQuery}
-                statusFilter={statusFilter}
-                onReset={() => {
-                  setSearchQuery('');
-                  setStatusFilter('all');
-                }}
-                onAdd={() => setModalOpen(true)}
-                entityLabel="Rekening Bank"
-              />
-            ) : viewMode === 'list' ? (
-              <motion.div
-                variants={cardItemVariants}
-                initial="hidden"
-                animate="visible"
-                className="master-table-container bg-[#131517] border border-[#24282C] rounded-xl overflow-hidden shadow-xs"
-              >
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs">
-                    <thead className="bg-[#181B1E] text-neutral-400 font-semibold border-b border-[#24282C] font-mono text-[11px]">
-                      <tr>
-                        <th className="p-3 w-10 text-center">
-                          <input
-                            type="checkbox"
-                            className="checkbox checkbox-xs rounded border-neutral-600 checked:border-[#F4511E] checked:bg-[#F4511E] cursor-pointer"
-                            checked={filtered.length > 0 && filtered.every((it) => selectedIds.includes(it.id))}
-                            onChange={() => handleToggleSelectAll(filtered)}
-                            title="Pilih semua rekening"
-                          />
-                        </th>
-                        <SortHeader field="status" label="Status" currentField={sortField} currentOrder={sortOrder} onSort={handleToggleSort} className="w-28" />
-                        <SortHeader field="nomorRekening" label="Nomor Rekening" currentField={sortField} currentOrder={sortOrder} onSort={handleToggleSort} />
-                        <SortHeader field="bank" label="Bank & Jenis Rekening" currentField={sortField} currentOrder={sortOrder} onSort={handleToggleSort} />
-                        <SortHeader field="rekeningAtasNama" label="Atas Nama" currentField={sortField} currentOrder={sortOrder} onSort={handleToggleSort} />
-                        <th className="p-3">Alias / Label</th>
-                        <th className="p-3 text-center w-24">Aksi</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-[#202326]">
-                      {filtered.map((acc) => (
-                        <tr key={acc.id} className="hover:bg-[#181B1E]/60 transition-colors">
-                          <td className="p-3 text-center">
-                            <input
-                              type="checkbox"
-                              className="checkbox checkbox-xs rounded border-neutral-600 checked:border-[#F4511E] checked:bg-[#F4511E] cursor-pointer"
-                              checked={selectedIds.includes(acc.id)}
-                              onChange={() => handleToggleSelectItem(acc.id)}
+                          <div className="mt-4 pt-2.5 border-t border-[#1F2937] flex items-center justify-between text-xs">
+                            <button
+                              type="button"
+                              onClick={() => handleOpenEditBank(bank)}
+                              className="inline-flex items-center gap-1.5 text-[11px] text-[#FF7043] hover:text-white transition-colors cursor-pointer font-medium"
+                            >
+                              <Edit2 className="w-3 h-3" />
+                              <span>Ubah Info Bank</span>
+                            </button>
+                            <Button
+                              size="xs"
+                              variant="ghost"
+                              icon={Trash2}
+                              onClick={() => handleAskDelete('bank', bank.id, bank.namaAlias || bank.namaBank)}
+                              className="text-[#F4511E] hover:bg-[#F4511E]/10 border border-[#F4511E]/20"
+                              title="Hapus Bank"
                             />
-                          </td>
-                          <td className="p-3">
-                            <div className="flex items-center gap-2">
-                              <button
-                                type="button"
-                                onClick={() => toggleBankAccountStatus(acc.id)}
-                                className={`w-8 h-4.5 flex items-center rounded-full p-0.5 transition-colors cursor-pointer ${
-                                  acc.aktif ? 'bg-[#F4511E]' : 'bg-[#2A2E33]'
-                                }`}
-                                title={acc.aktif ? 'Klik untuk non-aktifkan' : 'Klik untuk aktifkan'}
-                              >
-                                <div
-                                  className={`bg-white w-3.5 h-3.5 rounded-full shadow-md transform transition-transform ${
-                                    acc.aktif ? 'translate-x-3.5' : 'translate-x-0'
-                                  }`}
+                          </div>
+                        </Card>
+                      </motion.div>
+                    ))}
+                  </motion.div>
+                )}
+              </div>
+            );
+          })()}
+
+          {/* ======================================================== */}
+          {/* 6. DATA REKENING BANK */}
+          {/* ======================================================== */}
+          {currentTab === 'rekening' && (() => {
+            const filtered = filteredAccounts;
+
+            return (
+              <div className="space-y-3.5">
+                {/* Metric Summary Header Banner */}
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
+                  <div className="master-stat-card p-3 rounded-xl bg-[#121822]/90 border border-[#1E2938] flex items-center justify-between shadow-xs">
+                    <div>
+                      <div className="text-[10px] font-mono text-neutral-400 uppercase tracking-wider">Rekening PT BAS</div>
+                      <div className="text-xl font-bold font-mono text-white mt-0.5">{bankAccounts.length}</div>
+                      <div className="text-[10px] text-neutral-400 mt-0.5">Kas & Bank Utama</div>
+                    </div>
+                    <div className="w-10 h-10 rounded-xl bg-orange-500/10 border border-orange-500/30 flex items-center justify-center text-[#F4511E]">
+                      <CreditCard className="w-5 h-5" />
+                    </div>
+                  </div>
+                  <div className="master-stat-card stat-emerald p-3 rounded-xl bg-[#121822]/90 border border-[#1E2938] flex items-center justify-between shadow-xs">
+                    <div>
+                      <div className="text-[10px] font-mono text-neutral-400 uppercase tracking-wider">Rekening Aktif</div>
+                      <div className="text-xl font-bold font-mono text-emerald-400 mt-0.5">
+                        {bankAccounts.filter((a) => a.aktif).length}
+                      </div>
+                      <div className="text-[10px] text-emerald-400/80 mt-0.5">Transaksi Masuk & Keluar</div>
+                    </div>
+                    <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+                      <CheckCircle2 className="w-5 h-5" />
+                    </div>
+                  </div>
+                  <div className="master-stat-card stat-sky p-3 rounded-xl bg-[#121822]/90 border border-[#1E2938] flex items-center justify-between shadow-xs">
+                    <div>
+                      <div className="text-[10px] font-mono text-neutral-400 uppercase tracking-wider">Giro Operasional</div>
+                      <div className="text-xl font-bold font-mono text-sky-400 mt-0.5">
+                        {bankAccounts.filter((a) => a.jenisRekening?.toLowerCase().includes('giro')).length}
+                      </div>
+                      <div className="text-[10px] text-neutral-400 mt-0.5">Arus Kas Perusahaan</div>
+                    </div>
+                    <div className="w-10 h-10 rounded-xl bg-sky-500/10 border border-sky-500/30 flex items-center justify-center text-sky-400">
+                      <Landmark className="w-5 h-5" />
+                    </div>
+                  </div>
+                  <div className="master-stat-card stat-amber p-3 rounded-xl bg-[#121822]/90 border border-[#1E2938] flex items-center justify-between shadow-xs">
+                    <div>
+                      <div className="text-[10px] font-mono text-neutral-400 uppercase tracking-wider">Tabungan & Kas</div>
+                      <div className="text-xl font-bold font-mono text-amber-400 mt-0.5">
+                        {bankAccounts.filter((a) => !a.jenisRekening?.toLowerCase().includes('giro')).length}
+                      </div>
+                      <div className="text-[10px] text-neutral-400 mt-0.5">Cadangan Likuiditas</div>
+                    </div>
+                    <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
+                      <Coins className="w-5 h-5" />
+                    </div>
+                  </div>
+                </div>
+
+                {filtered.length === 0 ? (
+                  <MasterEmptyState
+                    icon={CreditCard}
+                    title="Rekening Bank"
+                    description="Daftar rekening bank perusahaan untuk pencairan BKK dan penagihan invoice."
+                    searchQuery={searchQuery}
+                    statusFilter={statusFilter}
+                    onReset={() => {
+                      setSearchQuery('');
+                      setStatusFilter('all');
+                    }}
+                    onAdd={() => setModalOpen(true)}
+                    entityLabel="Rekening Bank"
+                  />
+                ) : viewMode === 'list' ? (
+                  <motion.div
+                    variants={cardItemVariants}
+                    initial="hidden"
+                    animate="visible"
+                    className="master-table-container bg-[#131517] border border-[#24282C] rounded-xl overflow-hidden shadow-xs"
+                  >
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-xs">
+                        <thead className="bg-[#181B1E] text-neutral-400 font-semibold border-b border-[#24282C] font-mono text-[11px]">
+                          <tr>
+                            <th className="p-3 w-10 text-center">
+                              <input
+                                type="checkbox"
+                                className="checkbox checkbox-xs rounded border-neutral-600 checked:border-[#F4511E] checked:bg-[#F4511E] cursor-pointer"
+                                checked={filtered.length > 0 && filtered.every((it) => selectedIds.includes(it.id))}
+                                onChange={() => handleToggleSelectAll(filtered)}
+                                title="Pilih semua rekening"
+                              />
+                            </th>
+                            <SortHeader field="status" label="Status" currentField={sortField} currentOrder={sortOrder} onSort={handleToggleSort} className="w-28" />
+                            <SortHeader field="nomorRekening" label="Nomor Rekening" currentField={sortField} currentOrder={sortOrder} onSort={handleToggleSort} />
+                            <SortHeader field="bank" label="Bank & Jenis Rekening" currentField={sortField} currentOrder={sortOrder} onSort={handleToggleSort} />
+                            <SortHeader field="rekeningAtasNama" label="Atas Nama" currentField={sortField} currentOrder={sortOrder} onSort={handleToggleSort} />
+                            <th className="p-3">Alias / Label</th>
+                            <th className="p-3 text-center w-24">Aksi</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-[#202326]">
+                          {filtered.map((acc) => (
+                            <tr key={acc.id} className="hover:bg-[#181B1E]/60 transition-colors">
+                              <td className="p-3 text-center">
+                                <input
+                                  type="checkbox"
+                                  className="checkbox checkbox-xs rounded border-neutral-600 checked:border-[#F4511E] checked:bg-[#F4511E] cursor-pointer"
+                                  checked={selectedIds.includes(acc.id)}
+                                  onChange={() => handleToggleSelectItem(acc.id)}
                                 />
-                              </button>
-                              <span className="text-[11px] font-mono text-neutral-400">
-                                {acc.aktif ? 'Aktif' : 'Non-aktif'}
+                              </td>
+                              <td className="p-3">
+                                <div className="flex items-center gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => toggleBankAccountStatus(acc.id)}
+                                    className={`w-8 h-4.5 flex items-center rounded-full p-0.5 transition-colors cursor-pointer ${acc.aktif ? 'bg-[#F4511E]' : 'bg-[#2A2E33]'
+                                      }`}
+                                    title={acc.aktif ? 'Klik untuk non-aktifkan' : 'Klik untuk aktifkan'}
+                                  >
+                                    <div
+                                      className={`bg-white w-3.5 h-3.5 rounded-full shadow-md transform transition-transform ${acc.aktif ? 'translate-x-3.5' : 'translate-x-0'
+                                        }`}
+                                    />
+                                  </button>
+                                  <span className="text-[11px] font-mono text-neutral-400">
+                                    {acc.aktif ? 'Aktif' : 'Non-aktif'}
+                                  </span>
+                                </div>
+                              </td>
+                              <td className="p-3 font-mono font-bold text-white text-sm tracking-wider">
+                                <div className="flex items-center gap-1.5">
+                                  <span className="px-2 py-0.5 rounded bg-black/40 border border-white/10 font-mono">
+                                    {acc.nomorRekening}
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleCopyText(acc.nomorRekening, 'Nomor Rekening')}
+                                    className="p-1 rounded text-neutral-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+                                    title="Salin Nomor Rekening"
+                                  >
+                                    {copiedId === acc.nomorRekening ? (
+                                      <Check className="w-3.5 h-3.5 text-emerald-400" />
+                                    ) : (
+                                      <Copy className="w-3.5 h-3.5" />
+                                    )}
+                                  </button>
+                                </div>
+                              </td>
+                              <td className="p-3 font-mono text-neutral-300">
+                                <span className="font-semibold text-white">{acc.bank}</span> &bull; {acc.jenisRekening}
+                              </td>
+                              <td className="p-3 text-neutral-300">
+                                {acc.rekeningAtasNama}
+                              </td>
+                              <td className="p-3 font-mono font-bold text-amber-300">
+                                {acc.namaAlias}
+                              </td>
+                              <td className="p-3 text-center">
+                                <div className="flex items-center justify-center gap-1">
+                                  <Button
+                                    size="xs"
+                                    variant="ghost"
+                                    icon={Edit2}
+                                    onClick={() => handleOpenEditRekening(acc)}
+                                    className="text-neutral-300 hover:text-white hover:bg-neutral-800"
+                                    title="Edit Rekening"
+                                  />
+                                  <Button
+                                    size="xs"
+                                    variant="ghost"
+                                    icon={Trash2}
+                                    onClick={() => handleAskDelete('rekening', acc.id, acc.nomorRekening)}
+                                    className="text-[#F4511E] hover:bg-[#F4511E]/10 border border-[#F4511E]/30"
+                                    title="Hapus Rekening"
+                                  />
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    variants={staggerContainerVariants}
+                    initial="hidden"
+                    animate="visible"
+                    className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3"
+                  >
+                    {filtered.map((acc) => (
+                      <motion.div
+                        key={acc.id}
+                        variants={cardItemVariants}
+                        whileHover={{ y: -3, transition: { duration: 0.15 } }}
+                        className="h-full"
+                      >
+                        <Card
+                          hover
+                          className="master-data-card p-4 flex flex-col justify-between h-full border-[#1E2938] bg-[#121822]/90 hover:border-[#F4511E]/40 shadow-xs transition-all"
+                        >
+                          <div>
+                            <div className="flex items-center justify-between mb-3">
+                              <div className="flex items-center gap-2">
+                                <input
+                                  type="checkbox"
+                                  className="checkbox checkbox-xs rounded border-neutral-600 checked:border-[#F4511E] checked:bg-[#F4511E] cursor-pointer"
+                                  checked={selectedIds.includes(acc.id)}
+                                  onChange={() => handleToggleSelectItem(acc.id)}
+                                  title="Pilih rekening"
+                                />
+                                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-500/20 to-orange-500/10 border border-amber-500/30 text-amber-400 flex items-center justify-center font-bold text-xs shadow-2xs shrink-0">
+                                  <CreditCard className="w-4.5 h-4.5" />
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                  <button
+                                    type="button"
+                                    onClick={() => toggleBankAccountStatus(acc.id)}
+                                    className={`w-8 h-4.5 flex items-center rounded-full p-0.5 transition-colors cursor-pointer ${acc.aktif ? 'bg-[#F4511E]' : 'bg-[#2A2E33]'
+                                      }`}
+                                    title={acc.aktif ? 'Klik untuk non-aktifkan' : 'Klik untuk aktifkan'}
+                                  >
+                                    <div
+                                      className={`bg-white w-3.5 h-3.5 rounded-full shadow-md transform transition-transform ${acc.aktif ? 'translate-x-3.5' : 'translate-x-0'
+                                        }`}
+                                    />
+                                  </button>
+                                  <span className="text-[10px] font-mono text-neutral-400">
+                                    {acc.aktif ? 'Aktif' : 'Non-aktif'}
+                                  </span>
+                                </div>
+                              </div>
+
+                              <span className="text-xs font-mono font-bold text-amber-400 px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/20">
+                                {acc.namaAlias}
                               </span>
                             </div>
-                          </td>
-                          <td className="p-3 font-mono font-bold text-white text-sm tracking-wider">
-                            <div className="flex items-center gap-1.5">
-                              <span className="px-2 py-0.5 rounded bg-black/40 border border-white/10 font-mono">
+
+                            <div className="text-[11px] font-mono text-neutral-400">
+                              {acc.bank} &bull; {acc.jenisRekening}
+                            </div>
+
+                            <div className="flex items-center justify-between mt-1">
+                              <h3 className="text-base font-bold text-white tracking-wider font-mono">
                                 {acc.nomorRekening}
-                              </span>
+                              </h3>
                               <button
                                 type="button"
                                 onClick={() => handleCopyText(acc.nomorRekening, 'Nomor Rekening')}
@@ -3522,18 +3612,18 @@ export default function MasterDataPage() {
                                 )}
                               </button>
                             </div>
-                          </td>
-                          <td className="p-3 font-mono text-neutral-300">
-                            <span className="font-semibold text-white">{acc.bank}</span> &bull; {acc.jenisRekening}
-                          </td>
-                          <td className="p-3 text-neutral-300">
-                            {acc.rekeningAtasNama}
-                          </td>
-                          <td className="p-3 font-mono font-bold text-amber-300">
-                            {acc.namaAlias}
-                          </td>
-                          <td className="p-3 text-center">
-                            <div className="flex items-center justify-center gap-1">
+
+                            <div className="mt-2.5 p-2 rounded-lg bg-black/25 border border-white/5 text-xs text-neutral-300">
+                              <span className="text-[10px] text-neutral-400 block uppercase font-mono">Atas Nama Rekening</span>
+                              <span className="font-medium text-white">{acc.rekeningAtasNama}</span>
+                            </div>
+                          </div>
+
+                          <div className="mt-4 pt-2.5 border-t border-[#1F2937] flex items-center justify-between text-xs">
+                            <span className="text-[11px] text-neutral-500 font-mono">
+                              ID: {acc.id}
+                            </span>
+                            <div className="flex items-center gap-1">
                               <Button
                                 size="xs"
                                 variant="ghost"
@@ -3547,349 +3637,412 @@ export default function MasterDataPage() {
                                 variant="ghost"
                                 icon={Trash2}
                                 onClick={() => handleAskDelete('rekening', acc.id, acc.nomorRekening)}
-                                className="text-[#F4511E] hover:bg-[#F4511E]/10 border border-[#F4511E]/30"
+                                className="text-[#F4511E] hover:bg-[#F4511E]/10 border border-[#F4511E]/20"
                                 title="Hapus Rekening"
                               />
                             </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </motion.div>
-            ) : (
-              <motion.div
-                variants={staggerContainerVariants}
-                initial="hidden"
-                animate="visible"
-                className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3"
-              >
-                {filtered.map((acc) => (
-                  <motion.div
-                    key={acc.id}
-                    variants={cardItemVariants}
-                    whileHover={{ y: -3, transition: { duration: 0.15 } }}
-                    className="h-full"
-                  >
-                    <Card
-                      hover
-                      className="master-data-card p-4 flex flex-col justify-between h-full border-[#1E2938] bg-[#121822]/90 hover:border-[#F4511E]/40 shadow-xs transition-all"
-                    >
-                      <div>
-                        <div className="flex items-center justify-between mb-3">
-                          <div className="flex items-center gap-2">
-                            <input
-                              type="checkbox"
-                              className="checkbox checkbox-xs rounded border-neutral-600 checked:border-[#F4511E] checked:bg-[#F4511E] cursor-pointer"
-                              checked={selectedIds.includes(acc.id)}
-                              onChange={() => handleToggleSelectItem(acc.id)}
-                              title="Pilih rekening"
-                            />
-                            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-500/20 to-orange-500/10 border border-amber-500/30 text-amber-400 flex items-center justify-center font-bold text-xs shadow-2xs shrink-0">
-                              <CreditCard className="w-4.5 h-4.5" />
-                            </div>
-                            <div className="flex items-center gap-1.5">
-                              <button
-                                type="button"
-                                onClick={() => toggleBankAccountStatus(acc.id)}
-                                className={`w-8 h-4.5 flex items-center rounded-full p-0.5 transition-colors cursor-pointer ${
-                                  acc.aktif ? 'bg-[#F4511E]' : 'bg-[#2A2E33]'
-                                }`}
-                                title={acc.aktif ? 'Klik untuk non-aktifkan' : 'Klik untuk aktifkan'}
-                              >
-                                <div
-                                  className={`bg-white w-3.5 h-3.5 rounded-full shadow-md transform transition-transform ${
-                                    acc.aktif ? 'translate-x-3.5' : 'translate-x-0'
-                                  }`}
-                                />
-                              </button>
-                              <span className="text-[10px] font-mono text-neutral-400">
-                                {acc.aktif ? 'Aktif' : 'Non-aktif'}
-                              </span>
-                            </div>
                           </div>
-
-                          <span className="text-xs font-mono font-bold text-amber-400 px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/20">
-                            {acc.namaAlias}
-                          </span>
-                        </div>
-
-                        <div className="text-[11px] font-mono text-neutral-400">
-                          {acc.bank} &bull; {acc.jenisRekening}
-                        </div>
-
-                        <div className="flex items-center justify-between mt-1">
-                          <h3 className="text-base font-bold text-white tracking-wider font-mono">
-                            {acc.nomorRekening}
-                          </h3>
-                          <button
-                            type="button"
-                            onClick={() => handleCopyText(acc.nomorRekening, 'Nomor Rekening')}
-                            className="p-1 rounded text-neutral-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
-                            title="Salin Nomor Rekening"
-                          >
-                            {copiedId === acc.nomorRekening ? (
-                              <Check className="w-3.5 h-3.5 text-emerald-400" />
-                            ) : (
-                              <Copy className="w-3.5 h-3.5" />
-                            )}
-                          </button>
-                        </div>
-
-                        <div className="mt-2.5 p-2 rounded-lg bg-black/25 border border-white/5 text-xs text-neutral-300">
-                          <span className="text-[10px] text-neutral-400 block uppercase font-mono">Atas Nama Rekening</span>
-                          <span className="font-medium text-white">{acc.rekeningAtasNama}</span>
-                        </div>
-                      </div>
-
-                      <div className="mt-4 pt-2.5 border-t border-[#1F2937] flex items-center justify-between text-xs">
-                        <span className="text-[11px] text-neutral-500 font-mono">
-                          ID: {acc.id}
-                        </span>
-                        <div className="flex items-center gap-1">
-                          <Button
-                            size="xs"
-                            variant="ghost"
-                            icon={Edit2}
-                            onClick={() => handleOpenEditRekening(acc)}
-                            className="text-neutral-300 hover:text-white hover:bg-neutral-800"
-                            title="Edit Rekening"
-                          />
-                          <Button
-                            size="xs"
-                            variant="ghost"
-                            icon={Trash2}
-                            onClick={() => handleAskDelete('rekening', acc.id, acc.nomorRekening)}
-                            className="text-[#F4511E] hover:bg-[#F4511E]/10 border border-[#F4511E]/20"
-                            title="Hapus Rekening"
-                          />
-                        </div>
-                      </div>
-                    </Card>
+                        </Card>
+                      </motion.div>
+                    ))}
                   </motion.div>
-                ))}
-              </motion.div>
-            )}
-          </div>
-        );
-      })()}
-
-      {/* ======================================================== */}
-      {/* 7. DATA PENGGUNA (USERS) */}
-      {/* ======================================================== */}
-      {currentTab === 'pengguna' && (() => {
-        const filtered = filteredUsers;
-
-        return (
-          <div className="space-y-3.5">
-            {/* Metric Summary Header Banner */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
-              <div className="master-stat-card p-3 rounded-xl bg-[#121822]/90 border border-[#1E2938] flex items-center justify-between shadow-xs">
-                <div>
-                  <div className="text-[10px] font-mono text-neutral-400 uppercase tracking-wider">Total Akun</div>
-                  <div className="text-xl font-bold font-mono text-white mt-0.5">{activeUsers.length}</div>
-                  <div className="text-[10px] text-neutral-400 mt-0.5">Karyawan & Manajemen</div>
-                </div>
-                <div className="w-10 h-10 rounded-xl bg-orange-500/10 border border-orange-500/30 flex items-center justify-center text-[#F4511E]">
-                  <Users className="w-5 h-5" />
-                </div>
-              </div>
-              <div className="master-stat-card stat-amber p-3 rounded-xl bg-[#121822]/90 border border-[#1E2938] flex items-center justify-between shadow-xs">
-                <div>
-                  <div className="text-[10px] font-mono text-neutral-400 uppercase tracking-wider">Super Admin</div>
-                  <div className="text-xl font-bold font-mono text-amber-400 mt-0.5">
-                    {activeUsers.filter((u) => u.role === 'superadmin' || u.roleLabel === 'Super Admin').length}
-                  </div>
-                  <div className="text-[10px] text-amber-400/80 mt-0.5">Otoritas Direksi</div>
-                </div>
-                <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
-                  <ShieldCheck className="w-5 h-5" />
-                </div>
-              </div>
-              <div className="master-stat-card stat-emerald p-3 rounded-xl bg-[#121822]/90 border border-[#1E2938] flex items-center justify-between shadow-xs">
-                <div>
-                  <div className="text-[10px] font-mono text-neutral-400 uppercase tracking-wider">Admin Aktif</div>
-                  <div className="text-xl font-bold font-mono text-emerald-400 mt-0.5">
-                    {activeUsers.filter((u) => (u.aktif === 1 || u.aktif === true) && u.role !== 'superadmin').length}
-                  </div>
-                  <div className="text-[10px] text-emerald-400/80 mt-0.5">Akses Operasional</div>
-                </div>
-                <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
-                  <CheckCircle2 className="w-5 h-5" />
-                </div>
-              </div>
-              <div className="master-stat-card stat-rose p-3 rounded-xl bg-[#121822]/90 border border-[#1E2938] flex items-center justify-between shadow-xs">
-                <div>
-                  <div className="text-[10px] font-mono text-neutral-400 uppercase tracking-wider">Menunggu Approval</div>
-                  <div className="text-xl font-bold font-mono text-rose-400 mt-0.5">
-                    {activeUsers.filter((u) => !u.aktif || u.aktif === 0).length}
-                  </div>
-                  <div className="text-[10px] text-neutral-400 mt-0.5">Registrasi Akun Baru</div>
-                </div>
-                <div className="w-10 h-10 rounded-xl bg-rose-500/10 border border-rose-500/30 flex items-center justify-center text-rose-400">
-                  <Shield className="w-5 h-5" />
-                </div>
-              </div>
-            </div>
-
-            {/* Header Info Banner for Super Admin */}
-            {isSuperAdmin && (
-              <div className="p-3.5 rounded-xl bg-[#131922] border border-[#232F3E] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs shadow-xs">
-                <div className="flex items-center gap-2.5 text-neutral-300">
-                  <div className="w-7 h-7 rounded-lg bg-amber-500/15 border border-amber-500/30 flex items-center justify-center shrink-0 text-amber-400">
-                    <ShieldCheck className="w-4 h-4" />
-                  </div>
-                  <span>
-                    <strong className="text-white">Otoritas Direksi:</strong> Super Admin dapat menyetujui (<span className="text-emerald-400">approve</span>), mengaktifkan, atau menolak pendaftaran akun Admin baru.
-                  </span>
-                </div>
-                {activeUsers.some((u) => !u.aktif || u.aktif === 0) && (
-                  <Badge size="xs" variant="warning" dot className="animate-pulse shrink-0">
-                    {activeUsers.filter((u) => !u.aktif || u.aktif === 0).length} Menunggu Persetujuan
-                  </Badge>
                 )}
               </div>
-            )}
+            );
+          })()}
 
-            {filtered.length === 0 ? (
-              <MasterEmptyState
-                icon={Users}
-                title="Pengguna Sistem"
-                description="Manajemen akun karyawan, role operasional, dan persetujuan akses."
-                searchQuery={searchQuery}
-                statusFilter={statusFilter}
-                onReset={() => {
-                  setSearchQuery('');
-                  setStatusFilter('all');
-                }}
-              />
-            ) : viewMode === 'list' ? (
-              <motion.div
-                variants={cardItemVariants}
-                initial="hidden"
-                animate="visible"
-                className="master-table-container bg-[#131517] border border-[#24282C] rounded-xl overflow-hidden shadow-xs"
-              >
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs">
-                    <thead className="bg-[#181B1E] text-neutral-400 font-semibold border-b border-[#24282C] font-mono text-[11px]">
-                      <tr>
-                        <th className="p-3 w-10 text-center">
-                          <input
-                            type="checkbox"
-                            className="checkbox checkbox-xs rounded border-neutral-600 checked:border-[#F4511E] checked:bg-[#F4511E] cursor-pointer"
-                            checked={filtered.length > 0 && filtered.every((it) => selectedIds.includes(it.id))}
-                            onChange={() => handleToggleSelectAll(filtered)}
-                            title="Pilih semua pengguna"
-                          />
-                        </th>
-                        <SortHeader field="name" label="Pengguna" currentField={sortField} currentOrder={sortOrder} onSort={handleToggleSort} />
-                        <SortHeader field="role" label="Role" currentField={sortField} currentOrder={sortOrder} onSort={handleToggleSort} />
-                        <th className="p-3">Kontak & Unit</th>
-                        <SortHeader field="status" label="Status Akun" currentField={sortField} currentOrder={sortOrder} onSort={handleToggleSort} />
-                        <th className="p-3">Terdaftar</th>
-                        {isSuperAdmin && <th className="p-3 text-center w-36">Otoritas Admin</th>}
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-[#202326]">
-                      {filtered.map((user) => {
-                        const isPending = user.pendingApproval === true || user.isApproved === false || (!user.aktif && user.id?.startsWith('usr-reg-'));
-                        const isSuper = user.role === 'superadmin' || user.roleLabel === 'Super Admin';
-                        const isUserActive = user.aktif === 1 || user.aktif === true;
+          {/* ======================================================== */}
+          {/* 7. DATA PENGGUNA (USERS) */}
+          {/* ======================================================== */}
+          {currentTab === 'pengguna' && (() => {
+            const filtered = filteredUsers;
 
-                        return (
-                          <tr key={user.id} className="hover:bg-[#181B1E]/60 transition-colors">
-                            <td className="p-3 text-center">
+            return (
+              <div className="space-y-3.5">
+                {/* Metric Summary Header Banner */}
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
+                  <div className="master-stat-card p-3 rounded-xl bg-[#121822]/90 border border-[#1E2938] flex items-center justify-between shadow-xs">
+                    <div>
+                      <div className="text-[10px] font-mono text-neutral-400 uppercase tracking-wider">Total Akun</div>
+                      <div className="text-xl font-bold font-mono text-white mt-0.5">{activeUsers.length}</div>
+                      <div className="text-[10px] text-neutral-400 mt-0.5">Karyawan & Manajemen</div>
+                    </div>
+                    <div className="w-10 h-10 rounded-xl bg-orange-500/10 border border-orange-500/30 flex items-center justify-center text-[#F4511E]">
+                      <Users className="w-5 h-5" />
+                    </div>
+                  </div>
+                  <div className="master-stat-card stat-amber p-3 rounded-xl bg-[#121822]/90 border border-[#1E2938] flex items-center justify-between shadow-xs">
+                    <div>
+                      <div className="text-[10px] font-mono text-neutral-400 uppercase tracking-wider">Super Admin</div>
+                      <div className="text-xl font-bold font-mono text-amber-400 mt-0.5">
+                        {activeUsers.filter((u) => u.role === 'superadmin' || u.roleLabel === 'Super Admin').length}
+                      </div>
+                      <div className="text-[10px] text-amber-400/80 mt-0.5">Otoritas Direksi</div>
+                    </div>
+                    <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
+                      <ShieldCheck className="w-5 h-5" />
+                    </div>
+                  </div>
+                  <div className="master-stat-card stat-emerald p-3 rounded-xl bg-[#121822]/90 border border-[#1E2938] flex items-center justify-between shadow-xs">
+                    <div>
+                      <div className="text-[10px] font-mono text-neutral-400 uppercase tracking-wider">Admin Aktif</div>
+                      <div className="text-xl font-bold font-mono text-emerald-400 mt-0.5">
+                        {activeUsers.filter((u) => (u.aktif === 1 || u.aktif === true) && u.role !== 'superadmin').length}
+                      </div>
+                      <div className="text-[10px] text-emerald-400/80 mt-0.5">Akses Operasional</div>
+                    </div>
+                    <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+                      <CheckCircle2 className="w-5 h-5" />
+                    </div>
+                  </div>
+                  <div className="master-stat-card stat-rose p-3 rounded-xl bg-[#121822]/90 border border-[#1E2938] flex items-center justify-between shadow-xs">
+                    <div>
+                      <div className="text-[10px] font-mono text-neutral-400 uppercase tracking-wider">Menunggu Approval</div>
+                      <div className="text-xl font-bold font-mono text-rose-400 mt-0.5">
+                        {activeUsers.filter((u) => !u.aktif || u.aktif === 0).length}
+                      </div>
+                      <div className="text-[10px] text-neutral-400 mt-0.5">Registrasi Akun Baru</div>
+                    </div>
+                    <div className="w-10 h-10 rounded-xl bg-rose-500/10 border border-rose-500/30 flex items-center justify-center text-rose-400">
+                      <Shield className="w-5 h-5" />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Header Info Banner for Super Admin */}
+                {isSuperAdmin && (
+                  <div className="p-3.5 rounded-xl bg-[#131922] border border-[#232F3E] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs shadow-xs">
+                    <div className="flex items-center gap-2.5 text-neutral-300">
+                      <div className="w-7 h-7 rounded-lg bg-amber-500/15 border border-amber-500/30 flex items-center justify-center shrink-0 text-amber-400">
+                        <ShieldCheck className="w-4 h-4" />
+                      </div>
+                      <span>
+                        <strong className="text-white">Otoritas Direksi:</strong> Super Admin dapat menyetujui (<span className="text-emerald-400">approve</span>), mengaktifkan, atau menolak pendaftaran akun Admin baru.
+                      </span>
+                    </div>
+                    {activeUsers.some((u) => !u.aktif || u.aktif === 0) && (
+                      <Badge size="xs" variant="warning" dot className="animate-pulse shrink-0">
+                        {activeUsers.filter((u) => !u.aktif || u.aktif === 0).length} Menunggu Persetujuan
+                      </Badge>
+                    )}
+                  </div>
+                )}
+
+                {filtered.length === 0 ? (
+                  <MasterEmptyState
+                    icon={Users}
+                    title="Pengguna Sistem"
+                    description="Manajemen akun karyawan, role operasional, dan persetujuan akses."
+                    searchQuery={searchQuery}
+                    statusFilter={statusFilter}
+                    onReset={() => {
+                      setSearchQuery('');
+                      setStatusFilter('all');
+                    }}
+                  />
+                ) : viewMode === 'list' ? (
+                  <motion.div
+                    variants={cardItemVariants}
+                    initial="hidden"
+                    animate="visible"
+                    className="master-table-container bg-[#131517] border border-[#24282C] rounded-xl overflow-hidden shadow-xs"
+                  >
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-xs">
+                        <thead className="bg-[#181B1E] text-neutral-400 font-semibold border-b border-[#24282C] font-mono text-[11px]">
+                          <tr>
+                            <th className="p-3 w-10 text-center">
                               <input
                                 type="checkbox"
                                 className="checkbox checkbox-xs rounded border-neutral-600 checked:border-[#F4511E] checked:bg-[#F4511E] cursor-pointer"
-                                checked={selectedIds.includes(user.id)}
-                                onChange={() => handleToggleSelectItem(user.id)}
+                                checked={filtered.length > 0 && filtered.every((it) => selectedIds.includes(it.id))}
+                                onChange={() => handleToggleSelectAll(filtered)}
+                                title="Pilih semua pengguna"
                               />
-                            </td>
-                            <td className="p-3">
-                              <div className="flex items-center gap-2.5">
-                                <span className="w-8 h-8 rounded-xl bg-[#F4511E]/20 border border-[#F4511E]/30 text-[#F4511E] font-bold text-xs flex items-center justify-center font-mono shrink-0 shadow-2xs">
-                                  {user.name.split(' ').map((n) => n[0]).join('')}
-                                </span>
-                                <div>
-                                  <div className="font-bold text-white text-xs">{user.name}</div>
-                                  <div className="text-[11px] text-neutral-400 font-mono truncate">{user.email}</div>
-                                </div>
-                              </div>
-                            </td>
-                            <td className="p-3">
-                              <Badge size="xs" variant={isSuper ? 'primary' : 'neutral'}>
-                                {user.roleLabel || user.role}
-                              </Badge>
-                            </td>
-                            <td className="p-3 font-mono text-neutral-300">
-                              <div>{user.phone || '-'}</div>
-                              {(user.gender || user.birth_date) && (
-                                <div className="text-[10px] text-neutral-400">
-                                  {[user.gender, user.birth_date ? `Lahir: ${user.birth_date}` : null].filter(Boolean).join(' • ')}
-                                </div>
-                              )}
-                              {user.branch && <div className="text-[10px] text-neutral-500">{user.branch}</div>}
-                            </td>
-                            <td className="p-3">
-                              {isPending ? (
-                                <Badge size="xs" variant="warning" dot className="animate-pulse">
-                                  Menunggu Approval
-                                </Badge>
-                              ) : (
+                            </th>
+                            <SortHeader field="name" label="Pengguna" currentField={sortField} currentOrder={sortOrder} onSort={handleToggleSort} />
+                            <SortHeader field="role" label="Role" currentField={sortField} currentOrder={sortOrder} onSort={handleToggleSort} />
+                            <th className="p-3">Kontak & Unit</th>
+                            <SortHeader field="status" label="Status Akun" currentField={sortField} currentOrder={sortOrder} onSort={handleToggleSort} />
+                            <th className="p-3">Terdaftar</th>
+                            {isSuperAdmin && <th className="p-3 text-center w-36">Otoritas Admin</th>}
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-[#202326]">
+                          {filtered.map((user) => {
+                            const isPending = user.pendingApproval === true || user.isApproved === false || (!user.aktif && user.id?.startsWith('usr-reg-'));
+                            const isSuper = user.role === 'superadmin' || user.roleLabel === 'Super Admin';
+                            const isUserActive = user.aktif === 1 || user.aktif === true;
+
+                            return (
+                              <tr key={user.id} className="hover:bg-[#181B1E]/60 transition-colors">
+                                <td className="p-3 text-center">
+                                  <input
+                                    type="checkbox"
+                                    className="checkbox checkbox-xs rounded border-neutral-600 checked:border-[#F4511E] checked:bg-[#F4511E] cursor-pointer"
+                                    checked={selectedIds.includes(user.id)}
+                                    onChange={() => handleToggleSelectItem(user.id)}
+                                  />
+                                </td>
+                                <td className="p-3">
+                                  <div className="flex items-center gap-2.5">
+                                    <span className="w-8 h-8 rounded-xl bg-[#F4511E]/20 border border-[#F4511E]/30 text-[#F4511E] font-bold text-xs flex items-center justify-center font-mono shrink-0 shadow-2xs">
+                                      {user.name.split(' ').map((n) => n[0]).join('')}
+                                    </span>
+                                    <div>
+                                      <div className="font-bold text-white text-xs">{user.name}</div>
+                                      <div className="text-[11px] text-neutral-400 font-mono truncate">{user.email}</div>
+                                    </div>
+                                  </div>
+                                </td>
+                                <td className="p-3">
+                                  <Badge size="xs" variant={isSuper ? 'primary' : 'neutral'}>
+                                    {user.roleLabel || user.role}
+                                  </Badge>
+                                </td>
+                                <td className="p-3 font-mono text-neutral-300">
+                                  <div>{user.phone || '-'}</div>
+                                  {(user.gender || user.birth_date) && (
+                                    <div className="text-[10px] text-neutral-400">
+                                      {[user.gender, user.birth_date ? `Lahir: ${user.birth_date}` : null].filter(Boolean).join(' • ')}
+                                    </div>
+                                  )}
+                                  {user.branch && <div className="text-[10px] text-neutral-500">{user.branch}</div>}
+                                </td>
+                                <td className="p-3">
+                                  {isPending ? (
+                                    <Badge size="xs" variant="warning" dot className="animate-pulse">
+                                      Menunggu Approval
+                                    </Badge>
+                                  ) : (
+                                    <div className="flex items-center gap-2">
+                                      <button
+                                        type="button"
+                                        disabled={isSuper}
+                                        onClick={async () => {
+                                          if (isSuper) {
+                                            addToast('Akun Super Admin utama tidak dapat dinonaktifkan.', 'warning');
+                                            return;
+                                          }
+                                          const res = await toggleUserStatus(user.id);
+                                          if (res?.success) {
+                                            addToast(
+                                              `Status akun ${user.name} diubah menjadi ${res.aktif ? 'Aktif' : 'Nonaktif'}.`,
+                                              'info'
+                                            );
+                                          }
+                                        }}
+                                        className={`w-8 h-4.5 flex items-center rounded-full p-0.5 transition-colors ${isSuper
+                                          ? 'opacity-60 cursor-not-allowed bg-[#F4511E]'
+                                          : isUserActive
+                                            ? 'bg-[#F4511E] cursor-pointer'
+                                            : 'bg-[#2A2E33] cursor-pointer'
+                                          }`}
+                                        title={
+                                          isSuper
+                                            ? 'Akun Super Admin tidak dapat dinonaktifkan'
+                                            : isUserActive
+                                              ? 'Klik untuk non-aktifkan'
+                                              : 'Klik untuk aktifkan'
+                                        }
+                                      >
+                                        <div
+                                          className={`bg-white w-3.5 h-3.5 rounded-full shadow-md transform transition-transform ${isUserActive ? 'translate-x-3.5' : 'translate-x-0'
+                                            }`}
+                                        />
+                                      </button>
+                                      <span className="text-[11px] font-mono text-neutral-400">
+                                        {isUserActive ? 'Aktif' : 'Non-aktif'}
+                                      </span>
+                                    </div>
+                                  )}
+                                </td>
+                                <td className="p-3 font-mono text-[11px] text-neutral-400">
+                                  {user.created_at ? new Date(user.created_at).toLocaleDateString('id-ID') : 'Gresik Hub'}
+                                </td>
+                                {isSuperAdmin && (
+                                  <td className="p-3 text-center">
+                                    <div className="flex items-center justify-center gap-1.5">
+                                      {isPending && (
+                                        <Button
+                                          size="xs"
+                                          variant="primary"
+                                          icon={CheckCircle2}
+                                          onClick={async () => {
+                                            const res = await approveUser(user.id);
+                                            if (res?.success) {
+                                              addToast(`Akun Admin ${user.name} berhasil disetujui!`, 'success');
+                                            } else {
+                                              addToast(res?.message || 'Gagal menyetujui akun.', 'error');
+                                            }
+                                          }}
+                                          className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[10px] px-2 py-1"
+                                        >
+                                          Setujui
+                                        </Button>
+                                      )}
+
+                                      {/* Ubah Kata Sandi */}
+                                      <button
+                                        type="button"
+                                        onClick={() => handleOpenPasswordModal(user)}
+                                        className="p-1.5 rounded-lg bg-[#1E242C] hover:bg-amber-500/20 text-neutral-400 hover:text-amber-400 border border-[#2B3542] hover:border-amber-500/40 transition-all cursor-pointer shadow-2xs"
+                                        title="Ubah Kata Sandi Akun"
+                                      >
+                                        <Key className="w-3.5 h-3.5" />
+                                      </button>
+
+                                      {/* Edit Profil & Peran */}
+                                      <button
+                                        type="button"
+                                        onClick={() => handleOpenEditUserModal(user)}
+                                        className="p-1.5 rounded-lg bg-[#1E242C] hover:bg-[#F4511E]/20 text-neutral-400 hover:text-[#F4511E] border border-[#2B3542] hover:border-[#F4511E]/40 transition-all cursor-pointer shadow-2xs"
+                                        title="Edit Profil & Peran"
+                                      >
+                                        <Edit2 className="w-3.5 h-3.5" />
+                                      </button>
+
+                                      {/* Hapus Akun (Kecuali Super Admin Utama) */}
+                                      {user.id !== 'usr-1' && user.email !== 'superadmin@ptbas.co.id' && (
+                                        <button
+                                          type="button"
+                                          onClick={() => handleAskDelete('pengguna', user.id, user.name)}
+                                          className="p-1.5 rounded-lg bg-[#1E242C] hover:bg-rose-500/20 text-neutral-400 hover:text-rose-400 border border-[#2B3542] hover:border-rose-500/40 transition-all cursor-pointer shadow-2xs"
+                                          title="Hapus Akun"
+                                        >
+                                          <Trash2 className="w-3.5 h-3.5" />
+                                        </button>
+                                      )}
+                                    </div>
+                                  </td>
+                                )}
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    variants={staggerContainerVariants}
+                    initial="hidden"
+                    animate="visible"
+                    className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3.5"
+                  >
+                    {filtered.map((user) => {
+                      const isPending = user.pendingApproval === true || user.isApproved === false || (!user.aktif && user.id?.startsWith('usr-reg-'));
+                      const isSuper = user.role === 'superadmin' || user.roleLabel === 'Super Admin';
+                      const isUserActive = user.aktif === 1 || user.aktif === true;
+
+                      return (
+                        <motion.div
+                          key={user.id}
+                          variants={cardItemVariants}
+                          whileHover={{ y: -3, transition: { duration: 0.15 } }}
+                          className="h-full"
+                        >
+                          <Card
+                            hover
+                            className={`master-data-card p-4 flex flex-col justify-between h-full border-[#1E2938] bg-[#121822]/90 shadow-xs transition-all ${isPending ? 'border-amber-500/50 bg-amber-950/15 ring-1 ring-amber-500/20' : 'hover:border-[#F4511E]/40'
+                              }`}
+                          >
+                            <div>
+                              <div className="flex items-center justify-between mb-3">
                                 <div className="flex items-center gap-2">
-                                  <button
-                                    type="button"
-                                    disabled={isSuper}
-                                    onClick={async () => {
-                                      if (isSuper) {
-                                        addToast('Akun Super Admin utama tidak dapat dinonaktifkan.', 'warning');
-                                        return;
-                                      }
-                                      const res = await toggleUserStatus(user.id);
-                                      if (res?.success) {
-                                        addToast(
-                                          `Status akun ${user.name} diubah menjadi ${res.aktif ? 'Aktif' : 'Nonaktif'}.`,
-                                          'info'
-                                        );
-                                      }
-                                    }}
-                                    className={`w-8 h-4.5 flex items-center rounded-full p-0.5 transition-colors ${
-                                      isSuper
-                                        ? 'opacity-60 cursor-not-allowed bg-[#F4511E]'
-                                        : isUserActive
-                                        ? 'bg-[#F4511E] cursor-pointer'
-                                        : 'bg-[#2A2E33] cursor-pointer'
-                                    }`}
-                                    title={
-                                      isSuper
-                                        ? 'Akun Super Admin tidak dapat dinonaktifkan'
-                                        : isUserActive
-                                        ? 'Klik untuk non-aktifkan'
-                                        : 'Klik untuk aktifkan'
-                                    }
-                                  >
-                                    <div
-                                      className={`bg-white w-3.5 h-3.5 rounded-full shadow-md transform transition-transform ${
-                                        isUserActive ? 'translate-x-3.5' : 'translate-x-0'
-                                      }`}
-                                    />
-                                  </button>
-                                  <span className="text-[11px] font-mono text-neutral-400">
-                                    {isUserActive ? 'Aktif' : 'Non-aktif'}
+                                  <input
+                                    type="checkbox"
+                                    className="checkbox checkbox-xs rounded border-neutral-600 checked:border-[#F4511E] checked:bg-[#F4511E] cursor-pointer"
+                                    checked={selectedIds.includes(user.id)}
+                                    onChange={() => handleToggleSelectItem(user.id)}
+                                    title="Pilih pengguna"
+                                  />
+                                  <span className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#F4511E]/20 to-[#FF8A65]/10 border border-[#F4511E]/30 text-[#F4511E] font-bold text-xs flex items-center justify-center font-mono shadow-2xs">
+                                    {user.name.split(' ').map((n) => n[0]).join('')}
                                   </span>
                                 </div>
+                                <div className="flex items-center gap-1.5">
+                                  <Badge size="xs" variant={isSuper ? 'primary' : 'neutral'}>
+                                    {user.roleLabel || user.role}
+                                  </Badge>
+                                  {!isPending && (
+                                    <div className="flex items-center gap-1">
+                                      <button
+                                        type="button"
+                                        disabled={isSuper}
+                                        onClick={async () => {
+                                          if (isSuper) {
+                                            addToast('Akun Super Admin tidak dapat dinonaktifkan.', 'warning');
+                                            return;
+                                          }
+                                          const res = await toggleUserStatus(user.id);
+                                          if (res?.success) {
+                                            addToast(
+                                              `Status akun ${user.name} diubah menjadi ${res.aktif ? 'Aktif' : 'Nonaktif'}.`,
+                                              'info'
+                                            );
+                                          }
+                                        }}
+                                        className={`w-8 h-4.5 flex items-center rounded-full p-0.5 transition-colors ${isSuper
+                                          ? 'opacity-60 cursor-not-allowed bg-[#F4511E]'
+                                          : isUserActive
+                                            ? 'bg-[#F4511E] cursor-pointer'
+                                            : 'bg-[#2A2E33] cursor-pointer'
+                                          }`}
+                                        title={
+                                          isSuper
+                                            ? 'Akun Super Admin tidak dapat dinonaktifkan'
+                                            : isUserActive
+                                              ? 'Klik untuk non-aktifkan'
+                                              : 'Klik untuk aktifkan'
+                                        }
+                                      >
+                                        <div
+                                          className={`bg-white w-3.5 h-3.5 rounded-full shadow-md transform transition-transform ${isUserActive ? 'translate-x-3.5' : 'translate-x-0'
+                                            }`}
+                                        />
+                                      </button>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+
+                              <h3 className="text-sm font-bold text-white line-clamp-1">{user.name}</h3>
+                              <p className="text-xs text-neutral-400 font-mono mt-0.5 truncate">{user.email}</p>
+                              <p className="text-xs text-neutral-400 font-mono mt-0.5">{user.phone || '-'}</p>
+                              {(user.gender || user.birth_date) && (
+                                <p className="text-[10px] text-neutral-400 font-mono mt-1">
+                                  {[user.gender, user.birth_date ? `Lahir: ${user.birth_date}` : null].filter(Boolean).join(' • ')}
+                                </p>
                               )}
-                            </td>
-                            <td className="p-3 font-mono text-[11px] text-neutral-400">
-                              {user.created_at ? new Date(user.created_at).toLocaleDateString('id-ID') : 'Gresik Hub'}
-                            </td>
-                            {isSuperAdmin && (
-                              <td className="p-3 text-center">
-                                <div className="flex items-center justify-center gap-1.5">
-                                  {isPending && (
+                              {user.branch && (
+                                <p className="text-[11px] text-neutral-400 mt-1.5 flex items-center gap-1.5 font-mono px-2 py-0.5 rounded bg-black/25 border border-white/5">
+                                  <MapPin className="w-3 h-3 text-neutral-500" />
+                                  <span className="truncate">{user.branch}</span>
+                                </p>
+                              )}
+                            </div>
+
+                            <div className="mt-3 pt-2.5 border-t border-[#1F2937] space-y-2">
+                              <div className="flex items-center justify-between text-[11px]">
+                                {isPending ? (
+                                  <Badge size="xs" variant="warning" dot className="animate-pulse">
+                                    Menunggu Approval
+                                  </Badge>
+                                ) : (
+                                  <Badge size="xs" variant={isUserActive ? 'success' : 'neutral'} dot>
+                                    {isUserActive ? 'Aktif' : 'Non-aktif'}
+                                  </Badge>
+                                )}
+                                <span className="font-mono text-[10px] text-neutral-500">
+                                  {user.created_at ? new Date(user.created_at).toLocaleDateString('id-ID') : 'Gresik Hub'}
+                                </span>
+                              </div>
+
+                              {/* Super Admin Action Controls */}
+                              {isSuperAdmin && (
+                                <div className="pt-2 flex items-center justify-between gap-1.5 border-t border-[#1C2024]">
+                                  {isPending ? (
                                     <Button
                                       size="xs"
                                       variant="primary"
@@ -3902,665 +4055,476 @@ export default function MasterDataPage() {
                                           addToast(res?.message || 'Gagal menyetujui akun.', 'error');
                                         }
                                       }}
-                                      className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[10px] px-2 py-1"
+                                      className="justify-center bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[10px] px-2 py-1"
                                     >
                                       Setujui
                                     </Button>
+                                  ) : (
+                                    <span className="text-[10px] font-mono text-neutral-500">
+                                      ID: {user.id}
+                                    </span>
                                   )}
 
-                                  {/* Ubah Kata Sandi */}
-                                  <button
-                                    type="button"
-                                    onClick={() => handleOpenPasswordModal(user)}
-                                    className="p-1.5 rounded-lg bg-[#1E242C] hover:bg-amber-500/20 text-neutral-400 hover:text-amber-400 border border-[#2B3542] hover:border-amber-500/40 transition-all cursor-pointer shadow-2xs"
-                                    title="Ubah Kata Sandi Akun"
-                                  >
-                                    <Key className="w-3.5 h-3.5" />
-                                  </button>
-
-                                  {/* Edit Profil & Peran */}
-                                  <button
-                                    type="button"
-                                    onClick={() => handleOpenEditUserModal(user)}
-                                    className="p-1.5 rounded-lg bg-[#1E242C] hover:bg-[#F4511E]/20 text-neutral-400 hover:text-[#F4511E] border border-[#2B3542] hover:border-[#F4511E]/40 transition-all cursor-pointer shadow-2xs"
-                                    title="Edit Profil & Peran"
-                                  >
-                                    <Edit2 className="w-3.5 h-3.5" />
-                                  </button>
-
-                                  {/* Hapus Akun (Kecuali Super Admin Utama) */}
-                                  {user.id !== 'usr-1' && user.email !== 'superadmin@ptbas.co.id' && (
+                                  <div className="flex items-center gap-1.5">
                                     <button
                                       type="button"
-                                      onClick={() => handleAskDelete('pengguna', user.id, user.name)}
-                                      className="p-1.5 rounded-lg bg-[#1E242C] hover:bg-rose-500/20 text-neutral-400 hover:text-rose-400 border border-[#2B3542] hover:border-rose-500/40 transition-all cursor-pointer shadow-2xs"
-                                      title="Hapus Akun"
+                                      onClick={() => handleOpenPasswordModal(user)}
+                                      className="px-2 py-1 rounded-lg bg-[#1E242C] hover:bg-amber-500/20 text-neutral-300 hover:text-amber-400 border border-[#2B3542] hover:border-amber-500/40 transition-all cursor-pointer text-[10px] font-mono flex items-center gap-1 shadow-2xs"
+                                      title="Ubah Kata Sandi Akun"
                                     >
-                                      <Trash2 className="w-3.5 h-3.5" />
+                                      <Key className="w-3 h-3 text-amber-400" />
+                                      <span>Password</span>
                                     </button>
-                                  )}
-                                </div>
-                              </td>
-                            )}
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              </motion.div>
-            ) : (
-              <motion.div
-                variants={staggerContainerVariants}
-                initial="hidden"
-                animate="visible"
-                className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3.5"
-              >
-                {filtered.map((user) => {
-                  const isPending = user.pendingApproval === true || user.isApproved === false || (!user.aktif && user.id?.startsWith('usr-reg-'));
-                  const isSuper = user.role === 'superadmin' || user.roleLabel === 'Super Admin';
-                  const isUserActive = user.aktif === 1 || user.aktif === true;
 
-                  return (
-                    <motion.div
-                      key={user.id}
-                      variants={cardItemVariants}
-                      whileHover={{ y: -3, transition: { duration: 0.15 } }}
-                      className="h-full"
-                    >
-                      <Card
-                        hover
-                        className={`master-data-card p-4 flex flex-col justify-between h-full border-[#1E2938] bg-[#121822]/90 shadow-xs transition-all ${
-                          isPending ? 'border-amber-500/50 bg-amber-950/15 ring-1 ring-amber-500/20' : 'hover:border-[#F4511E]/40'
-                        }`}
-                      >
-                        <div>
-                          <div className="flex items-center justify-between mb-3">
-                            <div className="flex items-center gap-2">
-                              <input
-                                type="checkbox"
-                                className="checkbox checkbox-xs rounded border-neutral-600 checked:border-[#F4511E] checked:bg-[#F4511E] cursor-pointer"
-                                checked={selectedIds.includes(user.id)}
-                                onChange={() => handleToggleSelectItem(user.id)}
-                                title="Pilih pengguna"
-                              />
-                              <span className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#F4511E]/20 to-[#FF8A65]/10 border border-[#F4511E]/30 text-[#F4511E] font-bold text-xs flex items-center justify-center font-mono shadow-2xs">
-                                {user.name.split(' ').map((n) => n[0]).join('')}
-                              </span>
-                            </div>
-                            <div className="flex items-center gap-1.5">
-                              <Badge size="xs" variant={isSuper ? 'primary' : 'neutral'}>
-                                {user.roleLabel || user.role}
-                              </Badge>
-                              {!isPending && (
-                                <div className="flex items-center gap-1">
-                                  <button
-                                    type="button"
-                                    disabled={isSuper}
-                                    onClick={async () => {
-                                      if (isSuper) {
-                                        addToast('Akun Super Admin tidak dapat dinonaktifkan.', 'warning');
-                                        return;
-                                      }
-                                      const res = await toggleUserStatus(user.id);
-                                      if (res?.success) {
-                                        addToast(
-                                          `Status akun ${user.name} diubah menjadi ${res.aktif ? 'Aktif' : 'Nonaktif'}.`,
-                                          'info'
-                                        );
-                                      }
-                                    }}
-                                    className={`w-8 h-4.5 flex items-center rounded-full p-0.5 transition-colors ${
-                                      isSuper
-                                        ? 'opacity-60 cursor-not-allowed bg-[#F4511E]'
-                                        : isUserActive
-                                        ? 'bg-[#F4511E] cursor-pointer'
-                                        : 'bg-[#2A2E33] cursor-pointer'
-                                    }`}
-                                    title={
-                                      isSuper
-                                        ? 'Akun Super Admin tidak dapat dinonaktifkan'
-                                        : isUserActive
-                                        ? 'Klik untuk non-aktifkan'
-                                        : 'Klik untuk aktifkan'
-                                    }
-                                  >
-                                    <div
-                                      className={`bg-white w-3.5 h-3.5 rounded-full shadow-md transform transition-transform ${
-                                        isUserActive ? 'translate-x-3.5' : 'translate-x-0'
-                                      }`}
-                                    />
-                                  </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleOpenEditUserModal(user)}
+                                      className="p-1.5 rounded-lg bg-[#1E242C] hover:bg-[#F4511E]/20 text-neutral-400 hover:text-[#F4511E] border border-[#2B3542] hover:border-[#F4511E]/40 transition-all cursor-pointer shadow-2xs"
+                                      title="Edit Profil & Peran"
+                                    >
+                                      <Edit2 className="w-3.5 h-3.5" />
+                                    </button>
+
+                                    {user.id !== 'usr-1' && user.email !== 'superadmin@ptbas.co.id' && (
+                                      <button
+                                        type="button"
+                                        onClick={() => handleAskDelete('pengguna', user.id, user.name)}
+                                        className="p-1.5 rounded-lg bg-[#1E242C] hover:bg-rose-500/20 text-neutral-400 hover:text-rose-400 border border-[#2B3542] hover:border-rose-500/40 transition-all cursor-pointer shadow-2xs"
+                                        title="Hapus Akun"
+                                      >
+                                        <Trash2 className="w-3.5 h-3.5" />
+                                      </button>
+                                    )}
+                                  </div>
                                 </div>
                               )}
                             </div>
-                          </div>
-
-                          <h3 className="text-sm font-bold text-white line-clamp-1">{user.name}</h3>
-                          <p className="text-xs text-neutral-400 font-mono mt-0.5 truncate">{user.email}</p>
-                          <p className="text-xs text-neutral-400 font-mono mt-0.5">{user.phone || '-'}</p>
-                          {(user.gender || user.birth_date) && (
-                            <p className="text-[10px] text-neutral-400 font-mono mt-1">
-                              {[user.gender, user.birth_date ? `Lahir: ${user.birth_date}` : null].filter(Boolean).join(' • ')}
-                            </p>
-                          )}
-                          {user.branch && (
-                            <p className="text-[11px] text-neutral-400 mt-1.5 flex items-center gap-1.5 font-mono px-2 py-0.5 rounded bg-black/25 border border-white/5">
-                              <MapPin className="w-3 h-3 text-neutral-500" />
-                              <span className="truncate">{user.branch}</span>
-                            </p>
-                          )}
-                        </div>
-
-                        <div className="mt-3 pt-2.5 border-t border-[#1F2937] space-y-2">
-                          <div className="flex items-center justify-between text-[11px]">
-                            {isPending ? (
-                              <Badge size="xs" variant="warning" dot className="animate-pulse">
-                                Menunggu Approval
-                              </Badge>
-                            ) : (
-                              <Badge size="xs" variant={isUserActive ? 'success' : 'neutral'} dot>
-                                {isUserActive ? 'Aktif' : 'Non-aktif'}
-                              </Badge>
-                            )}
-                            <span className="font-mono text-[10px] text-neutral-500">
-                              {user.created_at ? new Date(user.created_at).toLocaleDateString('id-ID') : 'Gresik Hub'}
-                            </span>
-                          </div>
-
-                          {/* Super Admin Action Controls */}
-                          {isSuperAdmin && (
-                            <div className="pt-2 flex items-center justify-between gap-1.5 border-t border-[#1C2024]">
-                              {isPending ? (
-                                <Button
-                                  size="xs"
-                                  variant="primary"
-                                  icon={CheckCircle2}
-                                  onClick={async () => {
-                                    const res = await approveUser(user.id);
-                                    if (res?.success) {
-                                      addToast(`Akun Admin ${user.name} berhasil disetujui!`, 'success');
-                                    } else {
-                                      addToast(res?.message || 'Gagal menyetujui akun.', 'error');
-                                    }
-                                  }}
-                                  className="justify-center bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[10px] px-2 py-1"
-                                >
-                                  Setujui
-                                </Button>
-                              ) : (
-                                <span className="text-[10px] font-mono text-neutral-500">
-                                  ID: {user.id}
-                                </span>
-                              )}
-
-                              <div className="flex items-center gap-1.5">
-                                <button
-                                  type="button"
-                                  onClick={() => handleOpenPasswordModal(user)}
-                                  className="px-2 py-1 rounded-lg bg-[#1E242C] hover:bg-amber-500/20 text-neutral-300 hover:text-amber-400 border border-[#2B3542] hover:border-amber-500/40 transition-all cursor-pointer text-[10px] font-mono flex items-center gap-1 shadow-2xs"
-                                  title="Ubah Kata Sandi Akun"
-                                >
-                                  <Key className="w-3 h-3 text-amber-400" />
-                                  <span>Password</span>
-                                </button>
-
-                                <button
-                                  type="button"
-                                  onClick={() => handleOpenEditUserModal(user)}
-                                  className="p-1.5 rounded-lg bg-[#1E242C] hover:bg-[#F4511E]/20 text-neutral-400 hover:text-[#F4511E] border border-[#2B3542] hover:border-[#F4511E]/40 transition-all cursor-pointer shadow-2xs"
-                                  title="Edit Profil & Peran"
-                                >
-                                  <Edit2 className="w-3.5 h-3.5" />
-                                </button>
-
-                                {user.id !== 'usr-1' && user.email !== 'superadmin@ptbas.co.id' && (
-                                  <button
-                                    type="button"
-                                    onClick={() => handleAskDelete('pengguna', user.id, user.name)}
-                                    className="p-1.5 rounded-lg bg-[#1E242C] hover:bg-rose-500/20 text-neutral-400 hover:text-rose-400 border border-[#2B3542] hover:border-rose-500/40 transition-all cursor-pointer shadow-2xs"
-                                    title="Hapus Akun"
-                                  >
-                                    <Trash2 className="w-3.5 h-3.5" />
-                                  </button>
-                                )}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      </Card>
-                    </motion.div>
-                  );
-                })}
-              </motion.div>
-            )}
-          </div>
-        );
-      })()}
-
-      {/* ======================================================== */}
-      {/* 8. DATA MATA UANG */}
-      {/* ======================================================== */}
-      {currentTab === 'mata-uang' && (
-        <motion.div
-          key={`mata-uang-${viewMode}`}
-          variants={cardItemVariants}
-          initial="hidden"
-          animate="visible"
-          className="space-y-4"
-        >
-          {/* Top Quick Stat Banners */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            <div className="master-stat-card p-3.5 rounded-xl bg-[#121822]/90 border border-[#1E2938] shadow-xs">
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] font-mono text-neutral-400 uppercase tracking-wider">Basis Akuntansi</span>
-                <div className="w-6 h-6 rounded-lg bg-[#F4511E]/15 border border-[#F4511E]/30 text-[#F4511E] flex items-center justify-center">
-                  <Coins className="w-3.5 h-3.5" />
-                </div>
+                          </Card>
+                        </motion.div>
+                      );
+                    })}
+                  </motion.div>
+                )}
               </div>
-              <div className="text-xl font-bold font-mono text-white mt-1">IDR (Rp)</div>
-              <div className="text-[11px] text-neutral-400 mt-0.5">Indonesian Rupiah • ISO 360</div>
-            </div>
+            );
+          })()}
 
-            <div className="master-stat-card stat-amber p-3.5 rounded-xl bg-[#121822]/90 border border-[#1E2938] shadow-xs">
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] font-mono text-neutral-400 uppercase tracking-wider">Format Angka</span>
-                <div className="w-6 h-6 rounded-lg bg-amber-500/15 border border-amber-500/30 text-amber-400 flex items-center justify-center">
-                  <Calculator className="w-3.5 h-3.5" />
-                </div>
-              </div>
-              <div className="text-xl font-bold font-mono text-amber-400 mt-1">Titik (.)</div>
-              <div className="text-[11px] text-neutral-400 mt-0.5">Format: Rp 18.712.800,00</div>
-            </div>
-
-            <div className="master-stat-card stat-emerald p-3.5 rounded-xl bg-[#121822]/90 border border-[#1E2938] shadow-xs">
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] font-mono text-neutral-400 uppercase tracking-wider">Presisi Kubikasi</span>
-                <div className="w-6 h-6 rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 flex items-center justify-center">
-                  <Layers className="w-3.5 h-3.5" />
-                </div>
-              </div>
-              <div className="text-xl font-bold font-mono text-emerald-400 mt-1">2 Digit Koma</div>
-              <div className="text-[11px] text-neutral-400 mt-0.5">Standar Dump Truck: 155,94 m³</div>
-            </div>
-
-            <div className="master-stat-card p-3.5 rounded-xl bg-[#121822]/90 border border-[#1E2938] shadow-xs">
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] font-mono text-neutral-400 uppercase tracking-wider">Regulasi Pajak</span>
-                <div className="w-6 h-6 rounded-lg bg-sky-500/15 border border-sky-500/30 text-sky-400 flex items-center justify-center">
-                  <Receipt className="w-3.5 h-3.5" />
-                </div>
-              </div>
-              <div className="text-xl font-bold font-mono text-sky-400 mt-1">PPN 11% + PPh 22</div>
-              <div className="text-[11px] text-neutral-400 mt-0.5">Tarif: 0,25% (Industri) - 1,5%</div>
-            </div>
-          </div>
-
-          {filteredCurrencies.length === 0 ? (
-            <MasterEmptyState
-              icon={Coins}
-              title="Mata Uang"
-              description="Konfigurasi mata uang acuan buku besar akuntansi PT BAS."
-              searchQuery={searchQuery}
-              statusFilter={statusFilter}
-              onReset={() => {
-                setSearchQuery('');
-                setStatusFilter('all');
-              }}
-              onAdd={() => setModalOpen(true)}
-              entityLabel="Mata Uang"
-            />
-          ) : viewMode === 'list' ? (
-            /* ======================================================== */
-            /* TAMPILAN LIST: BARIS LIST TABEL LENGKAP */
-            /* ======================================================== */
+          {/* ======================================================== */}
+          {/* 8. DATA MATA UANG */}
+          {/* ======================================================== */}
+          {currentTab === 'mata-uang' && (
             <motion.div
+              key={`mata-uang-${viewMode}`}
               variants={cardItemVariants}
               initial="hidden"
               animate="visible"
-              className="master-table-container bg-[#131517] border border-[#24282C] rounded-xl overflow-hidden shadow-xs"
+              className="space-y-4"
             >
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs">
-                  <thead className="bg-[#181B1E] text-neutral-400 font-semibold border-b border-[#24282C] font-mono text-[11px]">
-                    <tr>
-                      <th className="p-3 w-10 text-center">
-                        <input
-                          type="checkbox"
-                          className="checkbox checkbox-xs rounded border-neutral-600 checked:border-[#F4511E] checked:bg-[#F4511E] cursor-pointer"
-                          checked={filteredCurrencies.length > 0 && filteredCurrencies.every((it) => selectedIds.includes(it.id))}
-                          onChange={() => handleToggleSelectAll(filteredCurrencies)}
-                          title="Pilih semua mata uang"
-                        />
-                      </th>
-                      <SortHeader field="status" label="Status" currentField={sortField} currentOrder={sortOrder} onSort={handleToggleSort} className="w-28" />
-                      <SortHeader field="code" label="Mata Uang & Simbol" currentField={sortField} currentOrder={sortOrder} onSort={handleToggleSort} />
-                      <SortHeader field="name" label="Nama Mata Uang" currentField={sortField} currentOrder={sortOrder} onSort={handleToggleSort} />
-                      <th className="p-3">Kode ISO 4217</th>
-                      <th className="p-3">Pemisah Ribuan</th>
-                      <th className="p-3">Presisi Kubikasi</th>
-                      <th className="p-3">Perhitungan Pajak</th>
-                      <th className="p-3">Lingkup Modul Terintegrasi</th>
-                      <th className="p-3 text-center w-32">Basis Akuntansi</th>
-                      <th className="p-3 text-center w-20">Aksi</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-[#202326]">
+              {/* Top Quick Stat Banners */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                <div className="master-stat-card p-3.5 rounded-xl bg-[#121822]/90 border border-[#1E2938] shadow-xs">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-mono text-neutral-400 uppercase tracking-wider">Basis Akuntansi</span>
+                    <div className="w-6 h-6 rounded-lg bg-[#F4511E]/15 border border-[#F4511E]/30 text-[#F4511E] flex items-center justify-center">
+                      <Coins className="w-3.5 h-3.5" />
+                    </div>
+                  </div>
+                  <div className="text-xl font-bold font-mono text-white mt-1">IDR (Rp)</div>
+                  <div className="text-[11px] text-neutral-400 mt-0.5">Indonesian Rupiah • ISO 360</div>
+                </div>
+
+                <div className="master-stat-card stat-amber p-3.5 rounded-xl bg-[#121822]/90 border border-[#1E2938] shadow-xs">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-mono text-neutral-400 uppercase tracking-wider">Format Angka</span>
+                    <div className="w-6 h-6 rounded-lg bg-amber-500/15 border border-amber-500/30 text-amber-400 flex items-center justify-center">
+                      <Calculator className="w-3.5 h-3.5" />
+                    </div>
+                  </div>
+                  <div className="text-xl font-bold font-mono text-amber-400 mt-1">Titik (.)</div>
+                  <div className="text-[11px] text-neutral-400 mt-0.5">Format: Rp 18.712.800,00</div>
+                </div>
+
+                <div className="master-stat-card stat-emerald p-3.5 rounded-xl bg-[#121822]/90 border border-[#1E2938] shadow-xs">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-mono text-neutral-400 uppercase tracking-wider">Presisi Kubikasi</span>
+                    <div className="w-6 h-6 rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 flex items-center justify-center">
+                      <Layers className="w-3.5 h-3.5" />
+                    </div>
+                  </div>
+                  <div className="text-xl font-bold font-mono text-emerald-400 mt-1">2 Digit Koma</div>
+                  <div className="text-[11px] text-neutral-400 mt-0.5">Standar Dump Truck: 155,94 m³</div>
+                </div>
+
+                <div className="master-stat-card p-3.5 rounded-xl bg-[#121822]/90 border border-[#1E2938] shadow-xs">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-mono text-neutral-400 uppercase tracking-wider">Regulasi Pajak</span>
+                    <div className="w-6 h-6 rounded-lg bg-sky-500/15 border border-sky-500/30 text-sky-400 flex items-center justify-center">
+                      <Receipt className="w-3.5 h-3.5" />
+                    </div>
+                  </div>
+                  <div className="text-xl font-bold font-mono text-sky-400 mt-1">PPN 11% + PPh 22</div>
+                  <div className="text-[11px] text-neutral-400 mt-0.5">Tarif: 0,25% (Industri) - 1,5%</div>
+                </div>
+              </div>
+
+              {filteredCurrencies.length === 0 ? (
+                <MasterEmptyState
+                  icon={Coins}
+                  title="Mata Uang"
+                  description="Konfigurasi mata uang acuan buku besar akuntansi PT BAS."
+                  searchQuery={searchQuery}
+                  statusFilter={statusFilter}
+                  onReset={() => {
+                    setSearchQuery('');
+                    setStatusFilter('all');
+                  }}
+                  onAdd={() => setModalOpen(true)}
+                  entityLabel="Mata Uang"
+                />
+              ) : viewMode === 'list' ? (
+                /* ======================================================== */
+                /* TAMPILAN LIST: BARIS LIST TABEL LENGKAP */
+                /* ======================================================== */
+                <motion.div
+                  variants={cardItemVariants}
+                  initial="hidden"
+                  animate="visible"
+                  className="master-table-container bg-[#131517] border border-[#24282C] rounded-xl overflow-hidden shadow-xs"
+                >
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs">
+                      <thead className="bg-[#181B1E] text-neutral-400 font-semibold border-b border-[#24282C] font-mono text-[11px]">
+                        <tr>
+                          <th className="p-3 w-10 text-center">
+                            <input
+                              type="checkbox"
+                              className="checkbox checkbox-xs rounded border-neutral-600 checked:border-[#F4511E] checked:bg-[#F4511E] cursor-pointer"
+                              checked={filteredCurrencies.length > 0 && filteredCurrencies.every((it) => selectedIds.includes(it.id))}
+                              onChange={() => handleToggleSelectAll(filteredCurrencies)}
+                              title="Pilih semua mata uang"
+                            />
+                          </th>
+                          <SortHeader field="status" label="Status" currentField={sortField} currentOrder={sortOrder} onSort={handleToggleSort} className="w-28" />
+                          <SortHeader field="code" label="Mata Uang & Simbol" currentField={sortField} currentOrder={sortOrder} onSort={handleToggleSort} />
+                          <SortHeader field="name" label="Nama Mata Uang" currentField={sortField} currentOrder={sortOrder} onSort={handleToggleSort} />
+                          <th className="p-3">Kode ISO 4217</th>
+                          <th className="p-3">Pemisah Ribuan</th>
+                          <th className="p-3">Presisi Kubikasi</th>
+                          <th className="p-3">Perhitungan Pajak</th>
+                          <th className="p-3">Lingkup Modul Terintegrasi</th>
+                          <th className="p-3 text-center w-32">Basis Akuntansi</th>
+                          <th className="p-3 text-center w-20">Aksi</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-[#202326]">
+                        {filteredCurrencies.map((curr) => (
+                          <tr key={curr.id} className="hover:bg-[#181B1E]/60 transition-colors">
+                            <td className="p-3 text-center">
+                              <input
+                                type="checkbox"
+                                className="checkbox checkbox-xs rounded border-neutral-600 checked:border-[#F4511E] checked:bg-[#F4511E] cursor-pointer"
+                                checked={selectedIds.includes(curr.id)}
+                                onChange={() => handleToggleSelectItem(curr.id)}
+                              />
+                            </td>
+                            <td className="p-3">
+                              <div className="flex items-center gap-2">
+                                <button
+                                  type="button"
+                                  disabled={curr.isBase}
+                                  onClick={() => {
+                                    if (curr.isBase) {
+                                      addToast('Mata uang basis (IDR) merupakan acuan pembukuan dan tidak dapat dinonaktifkan.', 'warning');
+                                      return;
+                                    }
+                                    toggleCurrencyStatus(curr.id);
+                                  }}
+                                  className={`w-8 h-4.5 flex items-center rounded-full p-0.5 transition-colors ${curr.isBase
+                                    ? 'opacity-60 cursor-not-allowed bg-[#F4511E]'
+                                    : curr.aktif
+                                      ? 'bg-[#F4511E] cursor-pointer'
+                                      : 'bg-[#2A2E33] cursor-pointer'
+                                    }`}
+                                  title={
+                                    curr.isBase
+                                      ? 'Mata uang basis (IDR) tidak dapat dinonaktifkan'
+                                      : curr.aktif
+                                        ? 'Klik untuk non-aktifkan'
+                                        : 'Klik untuk aktifkan'
+                                  }
+                                >
+                                  <div
+                                    className={`bg-white w-3.5 h-3.5 rounded-full shadow-md transform transition-transform ${curr.aktif ? 'translate-x-3.5' : 'translate-x-0'
+                                      }`}
+                                  />
+                                </button>
+                                <span className="text-[11px] font-mono text-neutral-400">
+                                  {curr.aktif ? 'Aktif' : 'Non-aktif'}
+                                </span>
+                              </div>
+                            </td>
+                            <td className="p-3">
+                              <div className="flex items-center gap-2.5">
+                                <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-mono font-bold text-sm ${curr.isBase
+                                  ? 'bg-[#F4511E]/15 border border-[#F4511E]/30 text-[#F4511E]'
+                                  : curr.code === 'USD'
+                                    ? 'bg-emerald-500/15 border border-emerald-500/30 text-emerald-400'
+                                    : 'bg-sky-500/15 border border-sky-500/30 text-sky-400'
+                                  }`}>
+                                  {curr.symbol}
+                                </div>
+                                <div>
+                                  <div className="font-mono font-bold text-white text-sm">{curr.code} ({curr.symbol})</div>
+                                  <div className="text-[10px] text-neutral-400 font-mono">{curr.englishName}</div>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="p-3">
+                              <div className="font-semibold text-white">{curr.name}</div>
+                              <div className="text-[11px] text-neutral-400">{curr.country}</div>
+                            </td>
+                            <td className="p-3 font-mono text-neutral-300">
+                              <span className="px-2 py-0.5 rounded bg-black/40 border border-white/5 font-semibold text-white">
+                                {curr.code} ({curr.isoCode})
+                              </span>
+                            </td>
+                            <td className="p-3 font-mono">
+                              <span className="text-amber-400 font-medium">{curr.pemisahRibuan}</span>
+                              <div className="text-[10px] text-neutral-400">Format: {curr.formatSample}</div>
+                            </td>
+                            <td className="p-3 font-mono">
+                              <span className="text-emerald-400 font-medium">{curr.presisi}</span>
+                              <div className="text-[10px] text-neutral-400">Format: {curr.formatPresisi}</div>
+                            </td>
+                            <td className="p-3 font-mono text-xs">
+                              <span className="px-2 py-0.5 rounded bg-amber-500/10 text-amber-300 border border-amber-500/20 text-[11px]">
+                                {curr.pajak}
+                              </span>
+                            </td>
+                            <td className="p-3">
+                              <div className="flex flex-wrap gap-1">
+                                {curr.lingkupModul?.slice(0, 3).map((mod, mi) => (
+                                  <span key={mi} className="px-1.5 py-0.5 rounded bg-[#1C2430] text-neutral-300 text-[10px] font-mono border border-white/5">
+                                    {mod}
+                                  </span>
+                                ))}
+                                {(curr.lingkupModul?.length || 0) > 3 && (
+                                  <span className="text-[10px] text-neutral-500 font-mono self-center">
+                                    +{(curr.lingkupModul?.length || 0) - 3}
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+                            <td className="p-3 text-center">
+                              {curr.isBase ? (
+                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-mono font-semibold bg-emerald-950/40 text-emerald-400 border border-emerald-800/40">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                                  Basis Utama
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono text-neutral-400 bg-neutral-800/50 border border-neutral-700">
+                                  Valas Pendukung
+                                </span>
+                              )}
+                            </td>
+                            <td className="p-3 text-center">
+                              <Button
+                                size="xs"
+                                variant="ghost"
+                                icon={Trash2}
+                                disabled={curr.isBase}
+                                onClick={() => {
+                                  if (curr.isBase) {
+                                    addToast('Mata uang basis (IDR) tidak dapat dihapus karena merupakan acuan buku besar.', 'warning');
+                                    return;
+                                  }
+                                  handleAskDelete('mata-uang', curr.id, `${curr.code} - ${curr.name}`);
+                                }}
+                                className={curr.isBase
+                                  ? 'opacity-30 cursor-not-allowed text-neutral-500'
+                                  : 'text-[#F4511E] hover:bg-[#F4511E]/10 border border-[#F4511E]/30 cursor-pointer'}
+                                title={curr.isBase ? 'Mata uang basis IDR tidak dapat dihapus' : `Hapus mata uang ${curr.code}`}
+                              />
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </motion.div>
+              ) : (
+                /* ======================================================== */
+                /* TAMPILAN GRID: KARTU MULTI-KOLOM & WIDGET FITUR LENGKAP */
+                /* ======================================================== */
+                <div className="space-y-5">
+                  {/* Grid 3 Kartu Mata Uang */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {filteredCurrencies.map((curr) => (
-                      <tr key={curr.id} className="hover:bg-[#181B1E]/60 transition-colors">
-                        <td className="p-3 text-center">
-                          <input
-                            type="checkbox"
-                            className="checkbox checkbox-xs rounded border-neutral-600 checked:border-[#F4511E] checked:bg-[#F4511E] cursor-pointer"
-                            checked={selectedIds.includes(curr.id)}
-                            onChange={() => handleToggleSelectItem(curr.id)}
-                          />
-                        </td>
-                        <td className="p-3">
-                          <div className="flex items-center gap-2">
-                            <button
-                              type="button"
-                              disabled={curr.isBase}
-                              onClick={() => {
-                                if (curr.isBase) {
-                                  addToast('Mata uang basis (IDR) merupakan acuan pembukuan dan tidak dapat dinonaktifkan.', 'warning');
-                                  return;
-                                }
-                                toggleCurrencyStatus(curr.id);
-                              }}
-                              className={`w-8 h-4.5 flex items-center rounded-full p-0.5 transition-colors ${
-                                curr.isBase
+                      <motion.div
+                        key={curr.id}
+                        variants={cardItemVariants}
+                        className={`master-data-card p-5 rounded-2xl border flex flex-col justify-between transition-all duration-200 ${curr.isBase
+                          ? 'bg-gradient-to-br from-[#141B26]/95 via-[#121822]/90 to-[#16181F]/90 border-[#F4511E]/40 shadow-lg shadow-[#F4511E]/5 ring-1 ring-[#F4511E]/20'
+                          : selectedIds.includes(curr.id)
+                            ? 'bg-[#121822]/95 border-[#F4511E] ring-1 ring-[#F4511E]/50 shadow-md shadow-[#F4511E]/10'
+                            : 'bg-[#121822]/90 border-[#1E2938] hover:border-[#2C3B4E]'
+                          }`}
+                      >
+                        <div>
+                          {/* Top Bar: Checkbox, Icon, Badges, & Switch */}
+                          <div className="flex items-start justify-between gap-3 mb-4">
+                            <div className="flex items-center gap-3">
+                              <input
+                                type="checkbox"
+                                className="checkbox checkbox-xs rounded border-neutral-600 checked:border-[#F4511E] checked:bg-[#F4511E] cursor-pointer shrink-0"
+                                checked={selectedIds.includes(curr.id)}
+                                onChange={() => handleToggleSelectItem(curr.id)}
+                                title={`Pilih mata uang ${curr.code}`}
+                              />
+                              <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-mono font-bold text-lg shadow-inner ${curr.isBase
+                                ? 'bg-gradient-to-br from-[#F4511E]/25 to-amber-500/10 border border-[#F4511E]/40 text-[#F4511E]'
+                                : curr.code === 'USD'
+                                  ? 'bg-gradient-to-br from-emerald-500/25 to-teal-500/10 border border-emerald-500/40 text-emerald-400'
+                                  : 'bg-gradient-to-br from-sky-500/25 to-indigo-500/10 border border-sky-500/40 text-sky-400'
+                                }`}>
+                                {curr.symbol}
+                              </div>
+                              <div>
+                                <div className="flex items-center gap-2">
+                                  <span className="font-mono text-base font-bold text-white tracking-wide">
+                                    {curr.code}
+                                  </span>
+                                  <span className="text-[11px] font-mono px-1.5 py-0.5 rounded bg-black/40 text-neutral-400 border border-white/5">
+                                    ISO {curr.isoCode}
+                                  </span>
+                                </div>
+                                <div className="text-xs font-semibold text-neutral-200 mt-0.5">
+                                  {curr.name}
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Status Toggle Button */}
+                            <div className="flex flex-col items-end gap-1">
+                              <button
+                                type="button"
+                                disabled={curr.isBase}
+                                onClick={() => {
+                                  if (curr.isBase) {
+                                    addToast('Mata uang basis (IDR) merupakan acuan pembukuan dan tidak dapat dinonaktifkan.', 'warning');
+                                    return;
+                                  }
+                                  toggleCurrencyStatus(curr.id);
+                                }}
+                                className={`w-9 h-5 flex items-center rounded-full p-0.5 transition-colors ${curr.isBase
                                   ? 'opacity-60 cursor-not-allowed bg-[#F4511E]'
                                   : curr.aktif
-                                  ? 'bg-[#F4511E] cursor-pointer'
-                                  : 'bg-[#2A2E33] cursor-pointer'
-                              }`}
-                              title={
-                                curr.isBase
-                                  ? 'Mata uang basis (IDR) tidak dapat dinonaktifkan'
-                                  : curr.aktif
-                                  ? 'Klik untuk non-aktifkan'
-                                  : 'Klik untuk aktifkan'
-                              }
-                            >
-                              <div
-                                className={`bg-white w-3.5 h-3.5 rounded-full shadow-md transform transition-transform ${
-                                  curr.aktif ? 'translate-x-3.5' : 'translate-x-0'
-                                }`}
-                              />
-                            </button>
-                            <span className="text-[11px] font-mono text-neutral-400">
-                              {curr.aktif ? 'Aktif' : 'Non-aktif'}
-                            </span>
-                          </div>
-                        </td>
-                        <td className="p-3">
-                          <div className="flex items-center gap-2.5">
-                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-mono font-bold text-sm ${
-                              curr.isBase
-                                ? 'bg-[#F4511E]/15 border border-[#F4511E]/30 text-[#F4511E]'
-                                : curr.code === 'USD'
-                                ? 'bg-emerald-500/15 border border-emerald-500/30 text-emerald-400'
-                                : 'bg-sky-500/15 border border-sky-500/30 text-sky-400'
-                            }`}>
-                              {curr.symbol}
-                            </div>
-                            <div>
-                              <div className="font-mono font-bold text-white text-sm">{curr.code} ({curr.symbol})</div>
-                              <div className="text-[10px] text-neutral-400 font-mono">{curr.englishName}</div>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="p-3">
-                          <div className="font-semibold text-white">{curr.name}</div>
-                          <div className="text-[11px] text-neutral-400">{curr.country}</div>
-                        </td>
-                        <td className="p-3 font-mono text-neutral-300">
-                          <span className="px-2 py-0.5 rounded bg-black/40 border border-white/5 font-semibold text-white">
-                            {curr.code} ({curr.isoCode})
-                          </span>
-                        </td>
-                        <td className="p-3 font-mono">
-                          <span className="text-amber-400 font-medium">{curr.pemisahRibuan}</span>
-                          <div className="text-[10px] text-neutral-400">Format: {curr.formatSample}</div>
-                        </td>
-                        <td className="p-3 font-mono">
-                          <span className="text-emerald-400 font-medium">{curr.presisi}</span>
-                          <div className="text-[10px] text-neutral-400">Format: {curr.formatPresisi}</div>
-                        </td>
-                        <td className="p-3 font-mono text-xs">
-                          <span className="px-2 py-0.5 rounded bg-amber-500/10 text-amber-300 border border-amber-500/20 text-[11px]">
-                            {curr.pajak}
-                          </span>
-                        </td>
-                        <td className="p-3">
-                          <div className="flex flex-wrap gap-1">
-                            {curr.lingkupModul?.slice(0, 3).map((mod, mi) => (
-                              <span key={mi} className="px-1.5 py-0.5 rounded bg-[#1C2430] text-neutral-300 text-[10px] font-mono border border-white/5">
-                                {mod}
+                                    ? 'bg-[#F4511E] cursor-pointer'
+                                    : 'bg-[#2A2E33] cursor-pointer'
+                                  }`}
+                                title={
+                                  curr.isBase
+                                    ? 'Mata uang basis (IDR) tidak dapat dinonaktifkan'
+                                    : curr.aktif
+                                      ? 'Klik untuk non-aktifkan'
+                                      : 'Klik untuk aktifkan'
+                                }
+                              >
+                                <div
+                                  className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${curr.aktif ? 'translate-x-4' : 'translate-x-0'
+                                    }`}
+                                />
+                              </button>
+                              <span className={`text-[10px] font-mono ${curr.aktif ? 'text-emerald-400' : 'text-neutral-500'}`}>
+                                {curr.aktif ? 'Aktif' : 'Non-aktif'}
                               </span>
-                            ))}
-                            {(curr.lingkupModul?.length || 0) > 3 && (
-                              <span className="text-[10px] text-neutral-500 font-mono self-center">
-                                +{(curr.lingkupModul?.length || 0) - 3}
+                            </div>
+                          </div>
+
+                          {/* Currency Tag */}
+                          <div className="mb-3">
+                            {curr.isBase ? (
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-mono font-bold bg-[#F4511E]/15 text-[#FF7043] border border-[#F4511E]/30">
+                                <span className="w-1.5 h-1.5 rounded-full bg-[#F4511E] animate-pulse" />
+                                MATA UANG BASIS BUKU BESAR
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-mono text-neutral-400 bg-[#171E28] border border-[#232F3E]">
+                                <Globe className="w-3 h-3 text-neutral-400" />
+                                VALUTA ASING PENDUKUNG (VALAS)
                               </span>
                             )}
                           </div>
-                        </td>
-                        <td className="p-3 text-center">
-                          {curr.isBase ? (
-                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-mono font-semibold bg-emerald-950/40 text-emerald-400 border border-emerald-800/40">
-                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                              Basis Utama
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono text-neutral-400 bg-neutral-800/50 border border-neutral-700">
-                              Valas Pendukung
-                            </span>
-                          )}
-                        </td>
-                        <td className="p-3 text-center">
-                          <Button
-                            size="xs"
-                            variant="ghost"
-                            icon={Trash2}
-                            disabled={curr.isBase}
-                            onClick={() => {
-                              if (curr.isBase) {
-                                addToast('Mata uang basis (IDR) tidak dapat dihapus karena merupakan acuan buku besar.', 'warning');
-                                return;
-                              }
-                              handleAskDelete('mata-uang', curr.id, `${curr.code} - ${curr.name}`);
-                            }}
-                            className={curr.isBase
-                              ? 'opacity-30 cursor-not-allowed text-neutral-500'
-                              : 'text-[#F4511E] hover:bg-[#F4511E]/10 border border-[#F4511E]/30 cursor-pointer'}
-                            title={curr.isBase ? 'Mata uang basis IDR tidak dapat dihapus' : `Hapus mata uang ${curr.code}`}
-                          />
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </motion.div>
-          ) : (
-            /* ======================================================== */
-            /* TAMPILAN GRID: KARTU MULTI-KOLOM & WIDGET FITUR LENGKAP */
-            /* ======================================================== */
-            <div className="space-y-5">
-              {/* Grid 3 Kartu Mata Uang */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {filteredCurrencies.map((curr) => (
-                  <motion.div
-                    key={curr.id}
-                    variants={cardItemVariants}
-                    className={`master-data-card p-5 rounded-2xl border flex flex-col justify-between transition-all duration-200 ${
-                      curr.isBase
-                        ? 'bg-gradient-to-br from-[#141B26]/95 via-[#121822]/90 to-[#16181F]/90 border-[#F4511E]/40 shadow-lg shadow-[#F4511E]/5 ring-1 ring-[#F4511E]/20'
-                        : selectedIds.includes(curr.id)
-                        ? 'bg-[#121822]/95 border-[#F4511E] ring-1 ring-[#F4511E]/50 shadow-md shadow-[#F4511E]/10'
-                        : 'bg-[#121822]/90 border-[#1E2938] hover:border-[#2C3B4E]'
-                    }`}
-                  >
-                    <div>
-                      {/* Top Bar: Checkbox, Icon, Badges, & Switch */}
-                      <div className="flex items-start justify-between gap-3 mb-4">
-                        <div className="flex items-center gap-3">
-                          <input
-                            type="checkbox"
-                            className="checkbox checkbox-xs rounded border-neutral-600 checked:border-[#F4511E] checked:bg-[#F4511E] cursor-pointer shrink-0"
-                            checked={selectedIds.includes(curr.id)}
-                            onChange={() => handleToggleSelectItem(curr.id)}
-                            title={`Pilih mata uang ${curr.code}`}
-                          />
-                          <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-mono font-bold text-lg shadow-inner ${
-                            curr.isBase
-                              ? 'bg-gradient-to-br from-[#F4511E]/25 to-amber-500/10 border border-[#F4511E]/40 text-[#F4511E]'
-                              : curr.code === 'USD'
-                              ? 'bg-gradient-to-br from-emerald-500/25 to-teal-500/10 border border-emerald-500/40 text-emerald-400'
-                              : 'bg-gradient-to-br from-sky-500/25 to-indigo-500/10 border border-sky-500/40 text-sky-400'
-                          }`}>
-                            {curr.symbol}
-                          </div>
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <span className="font-mono text-base font-bold text-white tracking-wide">
-                                {curr.code}
-                              </span>
-                              <span className="text-[11px] font-mono px-1.5 py-0.5 rounded bg-black/40 text-neutral-400 border border-white/5">
-                                ISO {curr.isoCode}
-                              </span>
+
+                          {/* Deskripsi */}
+                          <p className="text-xs text-neutral-400 leading-relaxed mb-4">
+                            {curr.deskripsi}
+                          </p>
+
+                          {/* Detail Format Box */}
+                          <div className="p-3 bg-black/35 rounded-xl border border-white/5 space-y-2 text-xs font-mono mb-4">
+                            <div className="flex items-center justify-between text-neutral-400">
+                              <span>Pemisah Ribuan:</span>
+                              <span className="text-amber-400 font-semibold">{curr.pemisahRibuan}</span>
                             </div>
-                            <div className="text-xs font-semibold text-neutral-200 mt-0.5">
-                              {curr.name}
+                            <div className="flex items-center justify-between text-neutral-400 pt-1.5 border-t border-white/5">
+                              <span>Pemisah Desimal:</span>
+                              <span className="text-neutral-200 font-semibold">{curr.pemisahDesimal}</span>
+                            </div>
+                            <div className="flex items-center justify-between text-neutral-400 pt-1.5 border-t border-white/5">
+                              <span>Contoh Tampilan:</span>
+                              <span className="text-white font-bold">{curr.formatSample}</span>
+                            </div>
+                            <div className="flex items-center justify-between text-neutral-400 pt-1.5 border-t border-white/5">
+                              <span>Ketentuan Pajak:</span>
+                              <span className="text-sky-300 font-medium">{curr.pajak}</span>
                             </div>
                           </div>
                         </div>
 
-                        {/* Status Toggle Button */}
-                        <div className="flex flex-col items-end gap-1">
-                          <button
-                            type="button"
-                            disabled={curr.isBase}
-                            onClick={() => {
-                              if (curr.isBase) {
-                                addToast('Mata uang basis (IDR) merupakan acuan pembukuan dan tidak dapat dinonaktifkan.', 'warning');
-                                return;
-                              }
-                              toggleCurrencyStatus(curr.id);
-                            }}
-                            className={`w-9 h-5 flex items-center rounded-full p-0.5 transition-colors ${
-                              curr.isBase
-                                ? 'opacity-60 cursor-not-allowed bg-[#F4511E]'
-                                : curr.aktif
-                                ? 'bg-[#F4511E] cursor-pointer'
-                                : 'bg-[#2A2E33] cursor-pointer'
-                            }`}
-                            title={
-                              curr.isBase
-                                ? 'Mata uang basis (IDR) tidak dapat dinonaktifkan'
-                                : curr.aktif
-                                ? 'Klik untuk non-aktifkan'
-                                : 'Klik untuk aktifkan'
-                            }
-                          >
-                            <div
-                              className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${
-                                curr.aktif ? 'translate-x-4' : 'translate-x-0'
-                              }`}
+                        {/* Integrated Modules Footer & Actions */}
+                        <div className="pt-3 border-t border-white/5 flex items-end justify-between gap-3">
+                          <div className="flex-1 min-w-0">
+                            <div className="text-[10px] font-mono text-neutral-500 uppercase tracking-wider mb-1.5">
+                              Modul Terintegrasi:
+                            </div>
+                            <div className="flex flex-wrap gap-1">
+                              {curr.lingkupModul?.map((mod, mi) => (
+                                <span key={mi} className="px-2 py-0.5 rounded-md bg-[#161D27] text-neutral-300 text-[10px] font-mono border border-white/5">
+                                  {mod}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* Tombol Hapus per Item */}
+                          <div className="shrink-0 flex items-center">
+                            <Button
+                              size="xs"
+                              variant="ghost"
+                              icon={Trash2}
+                              disabled={curr.isBase}
+                              onClick={() => {
+                                if (curr.isBase) {
+                                  addToast('Mata uang basis (IDR) tidak dapat dihapus karena acuan buku besar!', 'warning');
+                                  return;
+                                }
+                                handleAskDelete('mata-uang', curr.id, `${curr.code} - ${curr.name}`);
+                              }}
+                              className={curr.isBase
+                                ? 'opacity-30 cursor-not-allowed text-neutral-500'
+                                : 'text-[#F4511E] hover:bg-[#F4511E]/10 border border-[#F4511E]/30 cursor-pointer'}
+                              title={curr.isBase ? 'Mata uang basis IDR tidak dapat dihapus' : `Hapus mata uang ${curr.code}`}
                             />
-                          </button>
-                          <span className={`text-[10px] font-mono ${curr.aktif ? 'text-emerald-400' : 'text-neutral-500'}`}>
-                            {curr.aktif ? 'Aktif' : 'Non-aktif'}
-                          </span>
+                          </div>
                         </div>
-                      </div>
-
-                      {/* Currency Tag */}
-                      <div className="mb-3">
-                        {curr.isBase ? (
-                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-mono font-bold bg-[#F4511E]/15 text-[#FF7043] border border-[#F4511E]/30">
-                            <span className="w-1.5 h-1.5 rounded-full bg-[#F4511E] animate-pulse" />
-                            MATA UANG BASIS BUKU BESAR
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-mono text-neutral-400 bg-[#171E28] border border-[#232F3E]">
-                            <Globe className="w-3 h-3 text-neutral-400" />
-                            VALUTA ASING PENDUKUNG (VALAS)
-                          </span>
-                        )}
-                      </div>
-
-                      {/* Deskripsi */}
-                      <p className="text-xs text-neutral-400 leading-relaxed mb-4">
-                        {curr.deskripsi}
-                      </p>
-
-                      {/* Detail Format Box */}
-                      <div className="p-3 bg-black/35 rounded-xl border border-white/5 space-y-2 text-xs font-mono mb-4">
-                        <div className="flex items-center justify-between text-neutral-400">
-                          <span>Pemisah Ribuan:</span>
-                          <span className="text-amber-400 font-semibold">{curr.pemisahRibuan}</span>
-                        </div>
-                        <div className="flex items-center justify-between text-neutral-400 pt-1.5 border-t border-white/5">
-                          <span>Pemisah Desimal:</span>
-                          <span className="text-neutral-200 font-semibold">{curr.pemisahDesimal}</span>
-                        </div>
-                        <div className="flex items-center justify-between text-neutral-400 pt-1.5 border-t border-white/5">
-                          <span>Contoh Tampilan:</span>
-                          <span className="text-white font-bold">{curr.formatSample}</span>
-                        </div>
-                        <div className="flex items-center justify-between text-neutral-400 pt-1.5 border-t border-white/5">
-                          <span>Ketentuan Pajak:</span>
-                          <span className="text-sky-300 font-medium">{curr.pajak}</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Integrated Modules Footer & Actions */}
-                    <div className="pt-3 border-t border-white/5 flex items-end justify-between gap-3">
-                      <div className="flex-1 min-w-0">
-                        <div className="text-[10px] font-mono text-neutral-500 uppercase tracking-wider mb-1.5">
-                          Modul Terintegrasi:
-                        </div>
-                        <div className="flex flex-wrap gap-1">
-                          {curr.lingkupModul?.map((mod, mi) => (
-                            <span key={mi} className="px-2 py-0.5 rounded-md bg-[#161D27] text-neutral-300 text-[10px] font-mono border border-white/5">
-                              {mod}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* Tombol Hapus per Item */}
-                      <div className="shrink-0 flex items-center">
-                        <Button
-                          size="xs"
-                          variant="ghost"
-                          icon={Trash2}
-                          disabled={curr.isBase}
-                          onClick={() => {
-                            if (curr.isBase) {
-                              addToast('Mata uang basis (IDR) tidak dapat dihapus karena acuan buku besar!', 'warning');
-                              return;
-                            }
-                            handleAskDelete('mata-uang', curr.id, `${curr.code} - ${curr.name}`);
-                          }}
-                          className={curr.isBase
-                            ? 'opacity-30 cursor-not-allowed text-neutral-500'
-                            : 'text-[#F4511E] hover:bg-[#F4511E]/10 border border-[#F4511E]/30 cursor-pointer'}
-                          title={curr.isBase ? 'Mata uang basis IDR tidak dapat dihapus' : `Hapus mata uang ${curr.code}`}
-                        />
-                      </div>
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
-            </div>
+                      </motion.div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </motion.div>
           )}
-        </motion.div>
-      )}
         </motion.div>
       </AnimatePresence>
 
@@ -4649,14 +4613,12 @@ export default function MasterDataPage() {
               <button
                 type="button"
                 onClick={() => setSupplierForm({ ...supplierForm, pkp: !supplierForm.pkp })}
-                className={`w-9 h-5 flex items-center rounded-full p-0.5 transition-colors cursor-pointer ${
-                  supplierForm.pkp ? 'bg-[#F4511E]' : 'bg-[#2A2E33]'
-                }`}
+                className={`w-9 h-5 flex items-center rounded-full p-0.5 transition-colors cursor-pointer ${supplierForm.pkp ? 'bg-[#F4511E]' : 'bg-[#2A2E33]'
+                  }`}
               >
                 <div
-                  className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${
-                    supplierForm.pkp ? 'translate-x-4' : 'translate-x-0'
-                  }`}
+                  className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${supplierForm.pkp ? 'translate-x-4' : 'translate-x-0'
+                    }`}
                 />
               </button>
             </div>
@@ -4857,14 +4819,12 @@ export default function MasterDataPage() {
                 onClick={() =>
                   setEditSupplierForm({ ...editSupplierForm, pkp: !editSupplierForm.pkp })
                 }
-                className={`w-9 h-5 flex items-center rounded-full p-0.5 transition-colors cursor-pointer ${
-                  editSupplierForm.pkp ? 'bg-[#F4511E]' : 'bg-[#2A2E33]'
-                }`}
+                className={`w-9 h-5 flex items-center rounded-full p-0.5 transition-colors cursor-pointer ${editSupplierForm.pkp ? 'bg-[#F4511E]' : 'bg-[#2A2E33]'
+                  }`}
               >
                 <div
-                  className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${
-                    editSupplierForm.pkp ? 'translate-x-4' : 'translate-x-0'
-                  }`}
+                  className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${editSupplierForm.pkp ? 'translate-x-4' : 'translate-x-0'
+                    }`}
                 />
               </button>
             </div>
@@ -6415,23 +6375,6 @@ export default function MasterDataPage() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input
-              label="Nama Mata Uang (Indonesia)"
-              required
-              value={currencyForm.name}
-              onChange={(e) => setCurrencyForm({ ...currencyForm, name: e.target.value })}
-              placeholder="Contoh: Dolar Singapura"
-            />
-
-            <Input
-              label="Nama Mata Uang (Inggris)"
-              value={currencyForm.englishName}
-              onChange={(e) => setCurrencyForm({ ...currencyForm, englishName: e.target.value })}
-              placeholder="Contoh: Singapore Dollar"
-            />
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <Input
               label="Simbol Mata Uang"
               value={currencyForm.symbol}
               onChange={(e) => {
@@ -6772,18 +6715,16 @@ export default function MasterDataPage() {
                     type="button"
                     disabled={selectedUserToEdit.id === 'usr-1' || selectedUserToEdit.email === 'superadmin@ptbas.co.id'}
                     onClick={() => setUserEditForm((prev) => ({ ...prev, aktif: prev.aktif ? 0 : 1 }))}
-                    className={`w-9 h-5 flex items-center rounded-full p-0.5 transition-colors ${
-                      selectedUserToEdit.id === 'usr-1' || selectedUserToEdit.email === 'superadmin@ptbas.co.id'
-                        ? 'opacity-60 cursor-not-allowed bg-[#F4511E]'
-                        : userEditForm.aktif
+                    className={`w-9 h-5 flex items-center rounded-full p-0.5 transition-colors ${selectedUserToEdit.id === 'usr-1' || selectedUserToEdit.email === 'superadmin@ptbas.co.id'
+                      ? 'opacity-60 cursor-not-allowed bg-[#F4511E]'
+                      : userEditForm.aktif
                         ? 'bg-[#F4511E] cursor-pointer'
                         : 'bg-[#2A2E33] cursor-pointer'
-                    }`}
+                      }`}
                   >
                     <div
-                      className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${
-                        userEditForm.aktif ? 'translate-x-4' : 'translate-x-0'
-                      }`}
+                      className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${userEditForm.aktif ? 'translate-x-4' : 'translate-x-0'
+                        }`}
                     />
                   </button>
                   <span className="text-xs font-mono text-neutral-200">

@@ -36,10 +36,14 @@ export default function BuatLaporanPajakPage() {
   const taxType = (params.type || searchParams.get('type') || 'pph23').toLowerCase();
   const isPph23 = taxType === 'pph23';
 
-  // Redirect if all-in-one requested via this route
+  // Redirect to official submenus
   useEffect(() => {
     if (taxType === 'all-in-one' || taxType === 'all') {
       navigate('/laporan/all-in-one', { replace: true });
+    } else if (taxType === 'ppn') {
+      navigate('/laporan/ppn', { replace: true });
+    } else if (taxType === 'pph23' || taxType === 'pph-23') {
+      navigate('/laporan/pph-23', { replace: true });
     }
   }, [taxType, navigate]);
 
@@ -520,69 +524,6 @@ export default function BuatLaporanPajakPage() {
                 >
                   Cetak Laporan
                 </Button>
-              </div>
-            </div>
-
-            {/* KPI Summary Cards */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <div className={`p-3.5 rounded-xl border ${
-                isDark ? 'bg-[#16181B] border-[#24282C]' : 'bg-white border-slate-200 shadow-xs'
-              }`}>
-                <div className="text-[10px] font-mono text-neutral-400 uppercase tracking-wider">
-                  {isPph23 ? 'Total Bruto BKK' : 'Total DPP Penjualan'}
-                </div>
-                <div className={`text-base sm:text-lg font-bold font-mono mt-1 ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                  {formatCurrency(totalDpp)}
-                </div>
-                <div className="text-[10px] text-neutral-500 mt-0.5">
-                  Nilai dasar pengenaan pajak
-                </div>
-              </div>
-
-              <div className={`p-3.5 rounded-xl border ${
-                isDark ? 'bg-[#16181B] border-[#24282C]' : 'bg-white border-slate-200 shadow-xs'
-              }`}>
-                <div className={`text-[10px] font-mono uppercase tracking-wider ${
-                  isPph23 ? 'text-emerald-400' : 'text-[#FF7043]'
-                }`}>
-                  {isPph23 ? 'Total Potongan PPh 23' : 'Total PPN Dipungut'}
-                </div>
-                <div className={`text-base sm:text-lg font-bold font-mono mt-1 ${
-                  isPph23 ? 'text-emerald-400' : 'text-[#F4511E]'
-                }`}>
-                  {formatCurrency(totalPajak)}
-                </div>
-                <div className="text-[10px] text-neutral-500 mt-0.5">
-                  {isPph23 ? 'Kewajiban e-Bupot' : 'Tarif UU HPP 11%'}
-                </div>
-              </div>
-
-              <div className={`p-3.5 rounded-xl border ${
-                isDark ? 'bg-[#16181B] border-[#24282C]' : 'bg-white border-slate-200 shadow-xs'
-              }`}>
-                <div className="text-[10px] font-mono text-neutral-400 uppercase tracking-wider">
-                  {isPph23 ? 'Tarif Pajak Berlaku' : 'Status e-Faktur'}
-                </div>
-                <div className={`text-base sm:text-lg font-bold font-mono mt-1 ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                  {isPph23 ? '2.0% & 2.65%' : '100% DJP'}
-                </div>
-                <div className="text-[10px] text-neutral-500 mt-0.5">
-                  {isPph23 ? 'Jasa & Galian Non-Logam' : 'Tervalidasi DJP Online'}
-                </div>
-              </div>
-
-              <div className={`p-3.5 rounded-xl border ${
-                isDark ? 'bg-[#16181B] border-[#24282C]' : 'bg-white border-slate-200 shadow-xs'
-              }`}>
-                <div className="text-[10px] font-mono text-neutral-400 uppercase tracking-wider">
-                  Total Transaksi
-                </div>
-                <div className={`text-base sm:text-lg font-bold font-mono mt-1 ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                  {filteredData.length} Berkas
-                </div>
-                <div className="text-[10px] text-neutral-500 mt-0.5">
-                  Lolos filter tanggal
-                </div>
               </div>
             </div>
 

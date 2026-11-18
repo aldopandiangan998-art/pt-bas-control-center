@@ -208,24 +208,35 @@ export function initDb() {
     CREATE TABLE IF NOT EXISTS invoices (
       id TEXT PRIMARY KEY,
       kodeTransaksi TEXT NOT NULL,
+      nomorInvoice TEXT,
+      nomorFakturPajak TEXT,
       nomorRO TEXT,
       preOrderId TEXT,
       jurnalId TEXT,
       poNumber TEXT,
       customerId TEXT,
       supplierId TEXT,
-      perusahaan TEXT NOT NULL,
+      perusahaan TEXT,
+      customer TEXT,
       customerAddress TEXT,
+      npwp TEXT,
       material TEXT,
+      materialType TEXT,
       jenis TEXT,
       volume REAL DEFAULT 0,
       satuan TEXT DEFAULT 'm3',
       hargaSatuan REAL DEFAULT 0,
       subtotalJasa REAL DEFAULT 0,
+      dpp REAL DEFAULT 0,
+      tarifPpn REAL DEFAULT 11,
       ppnNominal REAL DEFAULT 0,
+      ppn REAL DEFAULT 0,
+      tarifPph REAL DEFAULT 0,
       pphNominal REAL DEFAULT 0,
+      pph REAL DEFAULT 0,
       amount REAL DEFAULT 0,
       statusBayar TEXT DEFAULT 'Belum Dibayar',
+      statusFaktur TEXT DEFAULT 'APPROVED DJP',
       tanggal TEXT,
       waktu TEXT,
       timestamp TEXT,
@@ -275,6 +286,25 @@ export function initDb() {
       deskripsi TEXT,
       lingkupModul TEXT,
       aktif INTEGER DEFAULT 1
+    );
+
+    CREATE TABLE IF NOT EXISTS pph23_records (
+      id TEXT PRIMARY KEY,
+      tanggal TEXT NOT NULL,
+      noBuktiPotong TEXT NOT NULL,
+      noBkk TEXT,
+      bkkId TEXT,
+      vendor TEXT NOT NULL,
+      vendorId TEXT,
+      npwpNik TEXT,
+      objekPajak TEXT,
+      kategori TEXT,
+      tarif REAL DEFAULT 2.0,
+      dpp REAL DEFAULT 0,
+      potonganPph REAL DEFAULT 0,
+      nettoBkk REAL DEFAULT 0,
+      statusBupot TEXT DEFAULT 'TERBIT',
+      created_at TEXT
     );
   `);
 
@@ -400,6 +430,18 @@ export function initDb() {
   try {
     const invCols = db.prepare('PRAGMA table_info(invoices)').all().map((c) => c.name);
     const newInvCols = [
+      ['customer', 'TEXT'],
+      ['perusahaan', 'TEXT'],
+      ['nomorInvoice', 'TEXT'],
+      ['nomorFakturPajak', 'TEXT'],
+      ['npwp', 'TEXT'],
+      ['materialType', 'TEXT'],
+      ['dpp', 'REAL DEFAULT 0'],
+      ['tarifPpn', 'REAL DEFAULT 11'],
+      ['ppn', 'REAL DEFAULT 0'],
+      ['tarifPph', 'REAL DEFAULT 0'],
+      ['pph', 'REAL DEFAULT 0'],
+      ['statusFaktur', "TEXT DEFAULT 'APPROVED DJP'"],
       ['customerId', 'TEXT'],
       ['supplierId', 'TEXT'],
       ['customerAddress', 'TEXT'],
@@ -418,8 +460,33 @@ export function initDb() {
         db.exec(`ALTER TABLE invoices ADD COLUMN ${col} ${colType};`);
       }
     }
+    // Synchronize customer and perusahaan if one is empty
+    db.exec(`
+      UPDATE invoices SET customer = perusahaan WHERE (customer IS NULL OR customer = '') AND perusahaan IS NOT NULL;
+      UPDATE invoices SET perusahaan = customer WHERE (perusahaan IS NULL OR perusahaan = '') AND customer IS NOT NULL;
+      UPDATE invoices SET dpp = subtotalJasa WHERE (dpp IS NULL OR dpp = 0) AND subtotalJasa > 0;
+      UPDATE invoices SET ppn = ppnNominal WHERE (ppn IS NULL OR ppn = 0) AND ppnNominal > 0;
+      UPDATE invoices SET pph = pphNominal WHERE (pph IS NULL OR pph = 0) AND pphNominal > 0;
+    `);
   } catch (err) {
     console.warn('Migration invoices table error:', err);
+  }
+
+  // Create table indexes safely after schema migrations
+  try {
+    db.exec(`
+      CREATE INDEX IF NOT EXISTS idx_invoices_tanggal ON invoices(tanggal);
+      CREATE INDEX IF NOT EXISTS idx_invoices_customer ON invoices(customer);
+      CREATE INDEX IF NOT EXISTS idx_pph23_tanggal ON pph23_records(tanggal);
+      CREATE INDEX IF NOT EXISTS idx_bkk_tanggal ON bkk(tanggal);
+      CREATE INDEX IF NOT EXISTS idx_bkk_perusahaan ON bkk(perusahaan);
+      CREATE INDEX IF NOT EXISTS idx_preorders_customer ON pre_orders(customer);
+      CREATE INDEX IF NOT EXISTS idx_preorders_ro ON pre_orders(nomorRO);
+      CREATE INDEX IF NOT EXISTS idx_suratjalan_customer ON surat_jalan(customer);
+      CREATE INDEX IF NOT EXISTS idx_suratjalan_ro ON surat_jalan(nomorRO);
+    `);
+  } catch (err) {
+    console.warn('Index creation error:', err);
   }
 
   // Auto-link relations between transactions and master tables
@@ -442,8 +509,8 @@ export function initDb() {
       WHERE customerId IS NULL;
 
       UPDATE invoices
-      SET customerId = (SELECT id FROM customers WHERE customers.name = invoices.perusahaan LIMIT 1)
-      WHERE customerId IS NULL AND perusahaan IS NOT NULL;
+      SET customerId = (SELECT id FROM customers WHERE customers.name = invoices.perusahaan OR customers.name = invoices.customer LIMIT 1)
+      WHERE customerId IS NULL AND (perusahaan IS NOT NULL OR customer IS NOT NULL);
     `);
   } catch (err) {
     console.warn('Auto-linking master relations error:', err);
@@ -1238,6 +1305,442 @@ function seedInitialData() {
         r.nomorPoCustomer,
         r.hubungkanNomorPoMaterial
       );
+    }
+  }
+
+  // Seed invoices if empty
+  const invCount = db.prepare('SELECT COUNT(*) as count FROM invoices').get().count;
+  if (invCount === 0) {
+    const insertInv = db.prepare(`
+      INSERT INTO invoices (
+        id, kodeTransaksi, nomorInvoice, nomorFakturPajak, tanggal,
+        customer, customerId, npwp, material, materialType,
+        volume, satuan, hargaSatuan, dpp, tarifPpn, ppn,
+        tarifPph, pph, amount, statusBayar, statusFaktur,
+        poNumber, nomorRO, periode, created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    const initialInvoices = [
+      {
+        id: 'PPN-202611-001',
+        kodeTransaksi: 'INV/BAS/2026/11/001',
+        nomorInvoice: 'INV/BAS/2026/11/001',
+        nomorFakturPajak: '010.002-26.00000089',
+        tanggal: '2026-11-12',
+        customer: 'PT CHIYODA INTERNATIONAL INDONESIA',
+        customerId: 'cust-chiyoda',
+        npwp: '01.345.678.9-054.000',
+        material: 'Batu Split 1-2 (Proyek Smelter Freeport)',
+        materialType: 'Padat',
+        volume: 250,
+        satuan: 'm3',
+        hargaSatuan: 170000,
+        dpp: 42500000,
+        tarifPpn: 11,
+        ppn: 4675000,
+        tarifPph: 2.65,
+        pph: 1126250,
+        amount: 47175000,
+        statusBayar: 'Lunas',
+        statusFaktur: 'APPROVED DJP',
+        poNumber: 'PO-CHIYODA-2026',
+        nomorRO: 'RO-2026-CH-01',
+        periode: 'November 2026',
+        created_at: '2026-11-12 10:00:00'
+      },
+      {
+        id: 'PPN-202611-002',
+        kodeTransaksi: 'INV/BAS/2026/11/002',
+        nomorInvoice: 'INV/BAS/2026/11/002',
+        nomorFakturPajak: '010.002-26.00000090',
+        tanggal: '2026-11-10',
+        customer: 'PT WASKITA BETON PRECAST TBK',
+        customerId: 'cust-waskita',
+        npwp: '01.889.123.4-051.000',
+        material: 'Sirtu Urug Pilihan (Tol KLBM Ruas Bunder)',
+        materialType: 'Curah',
+        volume: 380,
+        satuan: 'm3',
+        hargaSatuan: 100000,
+        dpp: 38000000,
+        tarifPpn: 11,
+        ppn: 4180000,
+        tarifPph: 2.0,
+        pph: 760000,
+        amount: 42180000,
+        statusBayar: 'Belum Dibayar',
+        statusFaktur: 'APPROVED DJP',
+        poNumber: 'PO-WASKITA-2026',
+        nomorRO: 'RO-2026-WB-02',
+        periode: 'November 2026',
+        created_at: '2026-11-10 14:30:00'
+      },
+      {
+        id: 'PPN-202611-003',
+        kodeTransaksi: 'INV/BAS/2026/11/003',
+        nomorInvoice: 'INV/BAS/2026/11/003',
+        nomorFakturPajak: '010.002-26.00000091',
+        tanggal: '2026-11-08',
+        customer: 'PT SEMEN INDONESIA (PERSERO) TBK',
+        customerId: 'cust-si',
+        npwp: '01.001.654.2-052.000',
+        material: 'Limestone Super Cor (Tuban Hub)',
+        materialType: 'Padat',
+        volume: 245,
+        satuan: 'm3',
+        hargaSatuan: 100000,
+        dpp: 24500000,
+        tarifPpn: 11,
+        ppn: 2695000,
+        tarifPph: 2.65,
+        pph: 649250,
+        amount: 27195000,
+        statusBayar: 'Lunas',
+        statusFaktur: 'APPROVED DJP',
+        poNumber: 'PO-SI-2026',
+        nomorRO: 'RO-2026-SI-03',
+        periode: 'November 2026',
+        created_at: '2026-11-08 09:15:00'
+      },
+      {
+        id: 'PPN-202611-004',
+        kodeTransaksi: 'INV/BAS/2026/11/004',
+        nomorInvoice: 'INV/BAS/2026/11/004',
+        nomorFakturPajak: '010.002-26.00000092',
+        tanggal: '2026-11-05',
+        customer: 'LION WINGS, PT',
+        customerId: 'cust-1',
+        npwp: '01.222.333.4-053.000',
+        material: 'Sirtu Curah Cuci (Pondasi KIG)',
+        materialType: 'Curah',
+        volume: 220,
+        satuan: 'm3',
+        hargaSatuan: 88053,
+        dpp: 19371600,
+        tarifPpn: 11,
+        ppn: 2130876,
+        tarifPph: 2.0,
+        pph: 387432,
+        amount: 21502476,
+        statusBayar: 'Belum Dibayar',
+        statusFaktur: 'APPROVED DJP',
+        poNumber: '4590011130',
+        nomorRO: 'LW 655 - CUR - 4590011130',
+        periode: 'November 2026',
+        created_at: '2026-11-05 11:20:00'
+      },
+      {
+        id: 'PPN-202611-005',
+        kodeTransaksi: 'INV/BAS/2026/11/005',
+        nomorInvoice: 'INV/BAS/2026/11/005',
+        nomorFakturPajak: '010.002-26.00000093',
+        tanggal: '2026-11-03',
+        customer: 'WINGS SURYA, PT',
+        customerId: 'cust-2',
+        npwp: '01.777.888.9-055.000',
+        material: 'Base Course A (Dermaga Pelabuhan Manyar)',
+        materialType: 'Padat',
+        volume: 100,
+        satuan: 'm3',
+        hargaSatuan: 82000,
+        dpp: 8200000,
+        tarifPpn: 11,
+        ppn: 902000,
+        tarifPph: 2.65,
+        pph: 217300,
+        amount: 9102000,
+        statusBayar: 'Lunas',
+        statusFaktur: 'APPROVED DJP',
+        poNumber: '4510010537',
+        nomorRO: 'WS 576 - CUR - 4510010537',
+        periode: 'November 2026',
+        created_at: '2026-11-03 15:45:00'
+      },
+      {
+        id: 'PPN-202610-006',
+        kodeTransaksi: '4590011130 - INV - C3DBN',
+        nomorInvoice: 'INV/BAS/2026/10/012',
+        nomorFakturPajak: '010.002-26.00000078',
+        tanggal: '2026-10-29',
+        customer: 'LION WINGS, PT',
+        customerId: 'cust-1',
+        npwp: '01.222.333.4-053.000',
+        material: 'SIRTU',
+        materialType: 'Curah',
+        volume: 550.54,
+        satuan: 'm3',
+        hargaSatuan: 121588,
+        dpp: 66939176,
+        tarifPpn: 11,
+        ppn: 7363310,
+        tarifPph: 2.0,
+        pph: 1338784,
+        amount: 74302486,
+        statusBayar: 'Belum Dibayar',
+        statusFaktur: 'APPROVED DJP',
+        poNumber: '4590011130',
+        nomorRO: 'LW 655 - CUR - 4590011130',
+        periode: 'Oktober 2026',
+        created_at: '2026-10-29 11:44:00'
+      },
+      {
+        id: 'PPN-202610-007',
+        kodeTransaksi: '4510010537 - INV - L5CGP',
+        nomorInvoice: 'INV/BAS/2026/10/010',
+        nomorFakturPajak: '010.002-26.00000075',
+        tanggal: '2026-10-22',
+        customer: 'WINGS SURYA, PT',
+        customerId: 'cust-2',
+        npwp: '01.777.888.9-055.000',
+        material: 'SIRTU',
+        materialType: 'Curah',
+        volume: 376.43,
+        satuan: 'm3',
+        hargaSatuan: 104052,
+        dpp: 39168658,
+        tarifPpn: 11,
+        ppn: 4308552,
+        tarifPph: 2.0,
+        pph: 783373,
+        amount: 43477210,
+        statusBayar: 'Belum Dibayar',
+        statusFaktur: 'APPROVED DJP',
+        poNumber: '4510010537',
+        nomorRO: 'WS 576 - CUR - 4510010537',
+        periode: 'Oktober 2026',
+        created_at: '2026-10-22 12:21:00'
+      }
+    ];
+
+    for (const inv of initialInvoices) {
+      insertInv.run(
+        inv.id, inv.kodeTransaksi, inv.nomorInvoice, inv.nomorFakturPajak, inv.tanggal,
+        inv.customer, inv.customerId, inv.npwp, inv.material, inv.materialType,
+        inv.volume, inv.satuan, inv.hargaSatuan, inv.dpp, inv.tarifPpn, inv.ppn,
+        inv.tarifPph, inv.pph, inv.amount, inv.statusBayar, inv.statusFaktur,
+        inv.poNumber, inv.nomorRO, inv.periode, inv.created_at
+      );
+    }
+  }
+
+  // Seed pph23_records if empty
+  const pphCount = db.prepare('SELECT COUNT(*) as count FROM pph23_records').get().count;
+  if (pphCount === 0) {
+    const insertPph = db.prepare(`
+      INSERT INTO pph23_records (
+        id, tanggal, noBuktiPotong, noBkk, bkkId, vendor, vendorId,
+        npwpNik, objekPajak, kategori, tarif, dpp, potonganPph, nettoBkk, statusBupot, created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    const initialPph = [
+      {
+        id: 'PPH-202611-001',
+        tanggal: '2026-11-11',
+        noBuktiPotong: 'BUPOT-23/BAS/2026/11/001',
+        noBkk: 'BKK/2026/11/0042',
+        bkkId: 'bkk-1',
+        vendor: 'UKHY DIAN',
+        vendorId: 'sup-1',
+        npwpNik: '3525011204850003',
+        objekPajak: 'Jasa Angkut Material Tambang',
+        kategori: 'Jasa Angkut (2.0%)',
+        tarif: 2.0,
+        dpp: 15407100,
+        potonganPph: 308142,
+        nettoBkk: 15098958,
+        statusBupot: 'TERBIT',
+        created_at: '2026-11-11 10:00:00'
+      },
+      {
+        id: 'PPH-202611-002',
+        tanggal: '2026-11-09',
+        noBuktiPotong: 'BUPOT-23/BAS/2026/11/002',
+        noBkk: 'BKK/2026/11/0043',
+        bkkId: 'bkk-2',
+        vendor: 'PT. TENANG JAYA SEJAHTERA',
+        vendorId: 'sup-2',
+        npwpNik: '02.451.980.1-604.000',
+        objekPajak: 'Bahan Galian Non-Logam (Limestone Padat)',
+        kategori: 'Galian Tambang Padat (2.65%)',
+        tarif: 2.65,
+        dpp: 22800000,
+        potonganPph: 604200,
+        nettoBkk: 22195800,
+        statusBupot: 'TERBIT',
+        created_at: '2026-11-09 11:30:00'
+      },
+      {
+        id: 'PPH-202611-003',
+        tanggal: '2026-11-07',
+        noBuktiPotong: 'BUPOT-23/BAS/2026/11/003',
+        noBkk: 'BKK/2026/11/0044',
+        bkkId: 'bkk-3',
+        vendor: 'PT SOYO APIK',
+        vendorId: 'sup-3',
+        npwpNik: '03.112.445.6-601.000',
+        objekPajak: 'Jasa Angkut Sirtu Gresik-Manyar',
+        kategori: 'Jasa Angkut (2.0%)',
+        tarif: 2.0,
+        dpp: 18416450,
+        potonganPph: 368329,
+        nettoBkk: 18048121,
+        statusBupot: 'TERBIT',
+        created_at: '2026-11-07 14:15:00'
+      },
+      {
+        id: 'PPH-202611-004',
+        tanggal: '2026-11-05',
+        noBuktiPotong: 'BUPOT-23/BAS/2026/11/004',
+        noBkk: 'BKK/2026/11/0045',
+        bkkId: 'bkk-4',
+        vendor: 'PAK TEGUH (BARU)',
+        vendorId: 'sup-4',
+        npwpNik: '01.992.331.0-602.000',
+        objekPajak: 'Batu Boulder Pondasi (Tambang Padat)',
+        kategori: 'Galian Tambang Padat (2.65%)',
+        tarif: 2.65,
+        dpp: 12500000,
+        potonganPph: 331250,
+        nettoBkk: 12168750,
+        statusBupot: 'TERBIT',
+        created_at: '2026-11-05 16:00:00'
+      },
+      {
+        id: 'PPH-202611-005',
+        tanggal: '2026-11-02',
+        noBuktiPotong: 'BUPOT-23/BAS/2026/11/005',
+        noBkk: 'BKK/2026/11/0046',
+        bkkId: 'bkk-5',
+        vendor: 'UKHY DIAN',
+        vendorId: 'sup-1',
+        npwpNik: '3525041008800002',
+        objekPajak: 'Jasa Angkut Abu Batu Tuban-Gresik',
+        kategori: 'Jasa Angkut (2.0%)',
+        tarif: 2.0,
+        dpp: 7800000,
+        potonganPph: 156000,
+        nettoBkk: 7644000,
+        statusBupot: 'TERBIT',
+        created_at: '2026-11-02 09:40:00'
+      },
+      {
+        id: 'PPH-202610-006',
+        tanggal: '2026-10-25',
+        noBuktiPotong: 'BUPOT-23/BAS/2026/10/012',
+        noBkk: 'BKK/2026/10/0038',
+        bkkId: 'bkk-6',
+        vendor: 'PAK TEGUH',
+        vendorId: 'sup-5',
+        npwpNik: '01.992.331.0-602.000',
+        objekPajak: 'Sirtu Urug (Galian Curah)',
+        kategori: 'Galian Tambang Curah (2.0%)',
+        tarif: 2.0,
+        dpp: 16200000,
+        potonganPph: 324000,
+        nettoBkk: 15876000,
+        statusBupot: 'TERBIT',
+        created_at: '2026-10-25 13:10:00'
+      }
+    ];
+
+    for (const p of initialPph) {
+      insertPph.run(
+        p.id, p.tanggal, p.noBuktiPotong, p.noBkk, p.bkkId, p.vendor, p.vendorId,
+        p.npwpNik, p.objekPajak, p.kategori, p.tarif, p.dpp, p.potonganPph, p.nettoBkk, p.statusBupot, p.created_at
+      );
+    }
+  }
+
+  // Ensure BKK has additional supplier records for supplier reporting
+  const moreBkk = [
+    {
+      id: 'bkk-4',
+      kodeTransaksi: 'TRX-202611-004',
+      tanggal: '2026-11-05',
+      perusahaan: 'UKHY DIAN',
+      material: 'SIRTU (Curah)',
+      ritaseCount: 2,
+      kubikasi: 58.4,
+      hargaSatuan: 50765,
+      amount: 2964676,
+      statusBayar: 'Lunas',
+      tanggalBayar: '2026-11-06',
+      rekeningTujuan: 'BCA 6150832452',
+      penerima: 'UKHY DIAN'
+    },
+    {
+      id: 'bkk-5',
+      kodeTransaksi: 'TRX-202611-005',
+      tanggal: '2026-11-09',
+      perusahaan: 'PT. TENANG JAYA SEJAHTERA',
+      material: 'LIMESTONE (Padat)',
+      ritaseCount: 3,
+      kubikasi: 85.0,
+      hargaSatuan: 38991,
+      amount: 3314235,
+      statusBayar: 'Lunas',
+      tanggalBayar: '2026-11-10',
+      rekeningTujuan: 'BCA 0503800800',
+      penerima: 'ARIF NURCAHYADI'
+    },
+    {
+      id: 'bkk-6',
+      kodeTransaksi: 'TRX-202611-006',
+      tanggal: '2026-11-11',
+      perusahaan: 'PT SOYO APIK',
+      material: 'SIRTU (Curah)',
+      ritaseCount: 2,
+      kubikasi: 60.12,
+      hargaSatuan: 50765,
+      amount: 3051992,
+      statusBayar: 'Belum Dibayar',
+      tanggalBayar: null,
+      rekeningTujuan: 'BCA 829-189-1888',
+      penerima: 'PT SOYO APIK'
+    },
+    {
+      id: 'bkk-7',
+      kodeTransaksi: 'TRX-202610-007',
+      tanggal: '2026-10-25',
+      perusahaan: 'PAK TEGUH',
+      material: 'BASE COURSE (Padat)',
+      ritaseCount: 4,
+      kubikasi: 110.5,
+      hargaSatuan: 40000,
+      amount: 4420000,
+      statusBayar: 'Lunas',
+      tanggalBayar: '2026-10-26',
+      rekeningTujuan: 'BCA 7415094256',
+      penerima: 'EKO WAHYUDI PRAYOGO'
+    },
+    {
+      id: 'bkk-8',
+      kodeTransaksi: 'TRX-202611-008',
+      tanggal: '2026-11-14',
+      perusahaan: 'PAK TEGUH (BARU)',
+      material: 'BATU BOULDER (Padat)',
+      ritaseCount: 2,
+      kubikasi: 64.2,
+      hargaSatuan: 32580,
+      amount: 2091636,
+      statusBayar: 'Belum Dibayar',
+      tanggalBayar: null,
+      rekeningTujuan: 'BCA 7415250533',
+      penerima: 'EKO WAHYUDI PRAYOGO'
+    }
+  ];
+
+  const insertBkkStmt = db.prepare(`
+    INSERT INTO bkk (id, kodeTransaksi, tanggal, perusahaan, material, ritaseCount, kubikasi, hargaSatuan, amount, statusBayar, tanggalBayar, rekeningTujuan, penerima)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `);
+
+  for (const b of moreBkk) {
+    const exists = db.prepare('SELECT id FROM bkk WHERE id = ?').get(b.id);
+    if (!exists) {
+      insertBkkStmt.run(b.id, b.kodeTransaksi, b.tanggal, b.perusahaan, b.material, b.ritaseCount, b.kubikasi, b.hargaSatuan, b.amount, b.statusBayar, b.tanggalBayar, b.rekeningTujuan, b.penerima);
     }
   }
 }

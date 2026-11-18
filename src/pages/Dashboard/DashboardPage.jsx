@@ -862,7 +862,11 @@ export default function DashboardPage() {
         onClose={() => setTaxModalOpen(false)}
         onSelect={(type) => {
           setTaxModalOpen(false);
-          navigate(`/laporan-pajak/${type}`);
+          if (type === 'ppn') navigate('/laporan/ppn');
+          else if (type === 'pph23' || type === 'pph-23') navigate('/laporan/pph-23');
+          else if (type === 'all-in-one') navigate('/laporan/all-in-one');
+          else if (type === 'supplier') navigate('/laporan/supplier');
+          else navigate(`/laporan/${type}`);
         }}
       />
     </div>

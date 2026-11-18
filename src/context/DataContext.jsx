@@ -436,9 +436,12 @@ export function DataProvider({ children }) {
       coaPiutang: '112-03',
       coaPendapatan: '410-03',
       category: 'Jasa',
+      itemType: 'JASA_ANGKUT',
+      materialId: 'mat-8',
       pphRate: 2.0,
-      satuan: 'rit',
-      aktif: false,
+      satuan: '',
+      defaultUnit: '',
+      aktif: true,
     },
     {
       id: 'mat-4',
@@ -1265,6 +1268,31 @@ export function DataProvider({ children }) {
     addToast('Pre Order ditolak dan dikembalikan untuk revisi.', 'error');
   };
 
+  const deletePreOrder = async (id) => {
+    // Optimistic update
+    setPreOrders((prev) => {
+      const updated = prev.filter((p) => p.id !== id);
+      try {
+        localStorage.setItem(STORAGE_KEYS.preOrders, JSON.stringify(updated));
+      } catch (e) {}
+      return updated;
+    });
+
+    try {
+      const ch = new BroadcastChannel('ptbas_sync_channel');
+      ch.postMessage({ type: 'SYNC_PREORDERS', action: 'delete', id });
+      ch.close();
+    } catch (e) {}
+
+    try {
+      await fetch(`/api/pre-orders/${encodeURIComponent(id)}`, { method: 'DELETE' });
+    } catch (err) {
+      console.warn('Backend delete pre-order failed, updated in localStorage:', err);
+    }
+
+    addToast('Data Received Order berhasil dihapus.', 'info');
+  };
+
   // Surat Jalan Actions
   const createSuratJalan = async (sjData) => {
     // Strict enforcement: Validate PO approval status
@@ -1857,6 +1885,7 @@ export function DataProvider({ children }) {
         createPreOrder,
         approvePreOrder,
         rejectPreOrder,
+        deletePreOrder,
         createSuratJalan,
         markBkkPaid,
         createInvoice,

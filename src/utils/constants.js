@@ -87,17 +87,24 @@ export const TAX_RATES = {
   PPH_PADAT: 2.65, // Limestone Padat, Sirtu Padat Vibro, Sirtu Padat Doser, Cut & Fill
 };
 
-// Master material presets with their respective PPH rates
+// Master material presets with their respective PPH rates, itemType, and auto-mapping
 export const DEFAULT_MATERIALS = [
-  { id: 'mat-1', name: 'BASE COURSE', category: 'Padat', pphRate: 2.65, defaultUnit: 'm3', beli: 40000, jual: 50000 },
-  { id: 'mat-2', name: 'BATU BOULDER', category: 'Padat', pphRate: 2.65, defaultUnit: 'm3', beli: 32580, jual: 45800 },
-  { id: 'mat-3', name: 'JASA ANGKUT', category: 'Jasa', pphRate: 2.0, defaultUnit: 'rit', beli: 20408, jual: 20408 },
-  { id: 'mat-4', name: 'LIMESTONE', category: 'Padat', pphRate: 2.65, defaultUnit: 'm3', beli: 38991, jual: 42857 },
-  { id: 'mat-5', name: 'PARAS', category: 'Curah', pphRate: 2.0, defaultUnit: 'm3', beli: 41000, jual: 45000 },
-  { id: 'mat-6', name: 'PASIR', category: 'Curah', pphRate: 2.0, defaultUnit: 'm3', beli: 40000, jual: 50000 },
-  { id: 'mat-7', name: 'PAVING STONE', category: 'Padat', pphRate: 2.65, defaultUnit: 'm2', beli: 71000, jual: 76000 },
-  { id: 'mat-8', name: 'SIRTU', category: 'Curah', pphRate: 2.0, defaultUnit: 'm3', beli: 50765, jual: 67233 },
-  { id: 'mat-9', name: 'SIRTU AYAK', category: 'Curah', pphRate: 2.0, defaultUnit: 'm3', beli: 25000, jual: 37000 },
+  { id: 'mat-1', name: 'BASE COURSE', itemType: 'MATERIAL', category: 'Padat', pphRate: 2.65, defaultUnit: 'm3', satuan: 'm3', beli: 40000, jual: 50000 },
+  { id: 'mat-2', name: 'BATU BOULDER', itemType: 'MATERIAL', category: 'Padat', pphRate: 2.65, defaultUnit: 'm3', satuan: 'm3', beli: 32580, jual: 45800 },
+  { id: 'mat-3', name: 'JASA ANGKUT (SIRTU)', itemType: 'JASA_ANGKUT', category: 'Jasa', materialId: 'mat-8', pphRate: 2.0, defaultUnit: '', satuan: '', beli: 20408, jual: 20408 },
+  { id: 'mat-3-bc', name: 'JASA ANGKUT (BASE COURSE)', itemType: 'JASA_ANGKUT', category: 'Jasa', materialId: 'mat-1', pphRate: 2.0, defaultUnit: '', satuan: '', beli: 22000, jual: 28000 },
+  { id: 'mat-3-limestone', name: 'JASA ANGKUT (LIMESTONE)', itemType: 'JASA_ANGKUT', category: 'Jasa', materialId: 'mat-4', pphRate: 2.0, defaultUnit: '', satuan: '', beli: 21000, jual: 26000 },
+  { id: 'mat-3-pasir', name: 'JASA ANGKUT (PASIR)', itemType: 'JASA_ANGKUT', category: 'Jasa', materialId: 'mat-6', pphRate: 2.0, defaultUnit: '', satuan: '', beli: 20000, jual: 25000 },
+  { id: 'mat-3-paras', name: 'JASA ANGKUT (PARAS)', itemType: 'JASA_ANGKUT', category: 'Jasa', materialId: 'mat-5', pphRate: 2.0, defaultUnit: '', satuan: '', beli: 20000, jual: 25000 },
+  { id: 'mat-3-boulder', name: 'JASA ANGKUT (BATU BOULDER)', itemType: 'JASA_ANGKUT', category: 'Jasa', materialId: 'mat-2', pphRate: 2.0, defaultUnit: '', satuan: '', beli: 23000, jual: 29000 },
+  { id: 'mat-3-sirtuayak', name: 'JASA ANGKUT (SIRTU AYAK)', itemType: 'JASA_ANGKUT', category: 'Jasa', materialId: 'mat-9', pphRate: 2.0, defaultUnit: '', satuan: '', beli: 20000, jual: 25000 },
+  { id: 'mat-3-generic', name: 'JASA ANGKUT', itemType: 'JASA_ANGKUT', category: 'Jasa', materialId: 'mat-8', pphRate: 2.0, defaultUnit: '', satuan: '', beli: 20408, jual: 20408 },
+  { id: 'mat-4', name: 'LIMESTONE', itemType: 'MATERIAL', category: 'Padat', pphRate: 2.65, defaultUnit: 'm3', satuan: 'm3', beli: 38991, jual: 42857 },
+  { id: 'mat-5', name: 'PARAS', itemType: 'MATERIAL', category: 'Curah', pphRate: 2.0, defaultUnit: 'm3', satuan: 'm3', beli: 41000, jual: 45000 },
+  { id: 'mat-6', name: 'PASIR', itemType: 'MATERIAL', category: 'Curah', pphRate: 2.0, defaultUnit: 'm3', satuan: 'm3', beli: 40000, jual: 50000 },
+  { id: 'mat-7', name: 'PAVING STONE', itemType: 'MATERIAL', category: 'Padat', pphRate: 2.65, defaultUnit: 'm2', satuan: 'm2', beli: 71000, jual: 76000 },
+  { id: 'mat-8', name: 'SIRTU', itemType: 'MATERIAL', category: 'Curah', pphRate: 2.0, defaultUnit: 'm3', satuan: 'm3', beli: 50765, jual: 67233 },
+  { id: 'mat-9', name: 'SIRTU AYAK', itemType: 'MATERIAL', category: 'Curah', pphRate: 2.0, defaultUnit: 'm3', satuan: 'm3', beli: 25000, jual: 37000 },
 ];
 
 // Categorized navigation menu links for structured enterprise sidebar
@@ -118,9 +125,9 @@ export const NAV_CATEGORIES = [
     items: [
       {
         path: '/pre-orders',
-        label: 'Pre Order (RO)',
+        label: 'Data Received Order',
         icon: 'ClipboardList',
-        description: 'Pemesanan awal material dari customer',
+        description: 'Pemesanan awal material dari customer (RO)',
       },
       {
         path: '/approval-ro',

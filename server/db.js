@@ -120,7 +120,8 @@ export function initDb() {
       mataUang TEXT,
       jenisWajibPajak TEXT,
       nomorPoCustomer TEXT,
-      hubungkanNomorPoMaterial TEXT
+      hubungkanNomorPoMaterial TEXT,
+      satuanJasaAngkut TEXT
     );
 
     CREATE TABLE IF NOT EXISTS surat_jalan (
@@ -257,6 +258,7 @@ export function initDb() {
       ['jenisWajibPajak', 'TEXT'],
       ['nomorPoCustomer', 'TEXT'],
       ['hubungkanNomorPoMaterial', 'TEXT'],
+      ['satuanJasaAngkut', 'TEXT'],
     ];
     for (const [col, colType] of newPoCols) {
       if (!poCols.includes(col)) {
@@ -265,6 +267,33 @@ export function initDb() {
     }
   } catch (err) {
     console.warn('Migration pre_orders table error:', err);
+  }
+
+  // Safe migration for materials table (itemType and materialId mapping)
+  try {
+    const matCols = db.prepare('PRAGMA table_info(materials)').all().map((c) => c.name);
+    if (!matCols.includes('itemType')) {
+      db.exec("ALTER TABLE materials ADD COLUMN itemType TEXT DEFAULT 'MATERIAL';");
+    }
+    if (!matCols.includes('materialId')) {
+      db.exec('ALTER TABLE materials ADD COLUMN materialId TEXT;');
+    }
+
+    // Set itemType = 'JASA_ANGKUT' for service items and link default materialId
+    db.prepare(`
+      UPDATE materials
+      SET itemType = 'JASA_ANGKUT', materialId = COALESCE(materialId, 'mat-8'), defaultUnit = ''
+      WHERE category = 'Jasa' OR UPPER(name) LIKE '%JASA ANGKUT%'
+    `).run();
+
+    // Ensure all other items have itemType = 'MATERIAL'
+    db.prepare(`
+      UPDATE materials
+      SET itemType = 'MATERIAL'
+      WHERE category != 'Jasa' AND UPPER(name) NOT LIKE '%JASA ANGKUT%' AND (itemType IS NULL OR itemType = '')
+    `).run();
+  } catch (err) {
+    console.warn('Migration materials table error:', err);
   }
 
   seedInitialData();
@@ -653,6 +682,171 @@ function seedInitialData() {
       JSON.stringify(['Pengadaan Suku Cadang Alat']),
       0
     );
+  }
+
+  // Seed pre_orders if empty
+  const poCount = db.prepare('SELECT COUNT(*) as count FROM pre_orders').get().count;
+  if (poCount === 0) {
+    const insertPo = db.prepare(`
+      INSERT INTO pre_orders (
+        id, nomorPo, customer, customerAddress, materialId, materialName, materialCategory,
+        pphRate, satuan, totalOrder, terkirim, hargaJual, hargaBeli, tanggal, top,
+        status, createdBy, approvedBy, approvedAt, rejectionReason, items,
+        nomorRO, jenisRO, jenis, mataUang, jenisWajibPajak, nomorPoCustomer, hubungkanNomorPoMaterial
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    const initialROs = [
+      {
+        id: 'RO-LW-655-4590011130',
+        nomorRO: 'LW 655 - CUR - 4590011130',
+        nomorPo: '4590011130',
+        customer: 'LION WINGS, PT',
+        customerAddress: 'Kawasan Industri Gresik Blok C-12',
+        materialId: 'mat-8',
+        materialName: 'SIRTU',
+        materialCategory: 'Curah',
+        pphRate: 2.0,
+        satuan: 'm³',
+        totalOrder: 2278.00,
+        terkirim: 0,
+        hargaJual: 78000,
+        hargaBeli: 120000,
+        tanggal: '2026-10-12',
+        top: '14 hari',
+        status: 'APPROVED',
+        createdBy: 'Admin Hub Gresik',
+        approvedBy: 'David Rusiah (Super Admin)',
+        approvedAt: '2026-10-12 10:00:00',
+        items: JSON.stringify([{ id: 'it-1', nama: 'SIRTU', kuantitas: 2278, satuan: 'm³', hargaBeli: 120000, hargaJual: 78000 }]),
+        jenisRO: 'JASA ANGKUT + MATERIAL',
+        jenis: 'CURAH',
+        mataUang: 'IDR',
+        jenisWajibPajak: 'PKP',
+        nomorPoCustomer: '4590011130',
+        hubungkanNomorPoMaterial: '4590011130'
+      },
+      {
+        id: 'RO-WS-576-4510010537',
+        nomorRO: 'WS 576 - CUR - 4510010537',
+        nomorPo: '4510010537',
+        customer: 'WINGS SURYA, PT',
+        customerAddress: 'Jl. Rungkut Industri III, Surabaya',
+        materialId: 'mat-8',
+        materialName: 'SIRTU',
+        materialCategory: 'Curah',
+        pphRate: 2.0,
+        satuan: 'm³',
+        totalOrder: 450.00,
+        terkirim: 0,
+        hargaJual: 78000,
+        hargaBeli: 101000,
+        tanggal: '2026-10-09',
+        top: '14 hari',
+        status: 'APPROVED',
+        createdBy: 'Admin Hub Gresik',
+        approvedBy: 'David Rusiah (Super Admin)',
+        approvedAt: '2026-10-09 11:30:00',
+        items: JSON.stringify([{ id: 'it-2', nama: 'SIRTU', kuantitas: 450, satuan: 'm³', hargaBeli: 101000, hargaJual: 78000 }]),
+        jenisRO: 'JASA ANGKUT + MATERIAL',
+        jenis: 'CURAH',
+        mataUang: 'IDR',
+        jenisWajibPajak: 'PKP',
+        nomorPoCustomer: '4510010537',
+        hubungkanNomorPoMaterial: '4510010537'
+      },
+      {
+        id: 'RO-KIAS-004-POS-2608-000224',
+        nomorRO: 'KIAS 004 - CUR - POS-2608-000224',
+        nomorPo: 'POS-2608-000224',
+        customer: 'KARYA INDAH ALAM SEJAHTERA, PT',
+        customerAddress: 'Jl. Raya Manyar Km. 11, Gresik',
+        materialId: 'mat-8',
+        materialName: 'SIRTU',
+        materialCategory: 'Curah',
+        pphRate: 2.0,
+        satuan: 'm³',
+        totalOrder: 11045.00,
+        terkirim: 0,
+        hargaJual: 78000,
+        hargaBeli: 120000,
+        tanggal: '2026-08-19',
+        top: '14 hari',
+        status: 'APPROVED',
+        createdBy: 'Admin Hub Gresik',
+        approvedBy: 'David Rusiah (Super Admin)',
+        approvedAt: '2026-08-19 09:15:00',
+        items: JSON.stringify([{ id: 'it-3', nama: 'SIRTU', kuantitas: 11045, satuan: 'm³', hargaBeli: 120000, hargaJual: 78000 }]),
+        jenisRO: 'JASA ANGKUT + MATERIAL',
+        jenis: 'CURAH',
+        mataUang: 'IDR',
+        jenisWajibPajak: 'PKP',
+        nomorPoCustomer: 'POS-2608-000224',
+        hubungkanNomorPoMaterial: 'POS-2608-000224'
+      },
+      {
+        id: 'RO-SAS-965-4500005548',
+        nomorRO: 'SAS 965 - CUR - 4500005548',
+        nomorPo: '4500005548',
+        customer: 'SEHAT ALAM SEGAR, PT',
+        customerAddress: 'Kawasan Industri Gresik Kav. 8-10',
+        materialId: 'mat-8',
+        materialName: 'SIRTU',
+        materialCategory: 'Curah',
+        pphRate: 2.0,
+        satuan: 'm³',
+        totalOrder: 1137.00,
+        terkirim: 0,
+        hargaJual: 78000,
+        hargaBeli: 120000,
+        tanggal: '2026-08-04',
+        top: '14 hari',
+        status: 'APPROVED',
+        createdBy: 'Admin Hub Gresik',
+        approvedBy: 'David Rusiah (Super Admin)',
+        approvedAt: '2026-08-04 14:20:00',
+        items: JSON.stringify([{ id: 'it-4', nama: 'SIRTU', kuantitas: 1137, satuan: 'm³', hargaBeli: 120000, hargaJual: 78000 }]),
+        jenisRO: 'JASA ANGKUT + MATERIAL',
+        jenis: 'CURAH',
+        mataUang: 'IDR',
+        jenisWajibPajak: 'PKP',
+        nomorPoCustomer: '4500005548',
+        hubungkanNomorPoMaterial: '4500005548'
+      }
+    ];
+
+    for (const r of initialROs) {
+      insertPo.run(
+        r.id,
+        r.nomorPo,
+        r.customer,
+        r.customerAddress,
+        r.materialId,
+        r.materialName,
+        r.materialCategory,
+        r.pphRate,
+        r.satuan,
+        r.totalOrder,
+        r.terkirim,
+        r.hargaJual,
+        r.hargaBeli,
+        r.tanggal,
+        r.top,
+        r.status,
+        r.createdBy,
+        r.approvedBy,
+        r.approvedAt,
+        null,
+        r.items,
+        r.nomorRO,
+        r.jenisRO,
+        r.jenis,
+        r.mataUang,
+        r.jenisWajibPajak,
+        r.nomorPoCustomer,
+        r.hubungkanNomorPoMaterial
+      );
+    }
   }
 }
 

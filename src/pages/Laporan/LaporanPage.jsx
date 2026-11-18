@@ -19,7 +19,7 @@ import {
   Receipt,
   CheckCircle2,
   TrendingUp,
-  Banknote,
+  RotateCcw,
 } from 'lucide-react';
 import { formatCurrency, formatVolume } from '../../utils/formatters';
 import { Badge, Button, Modal } from '../../components/ui';
@@ -33,12 +33,18 @@ export default function LaporanPage() {
   const { isDark } = useApp();
   const { customers, suratJalanList, bkkList, invoiceList, preOrders } = useData();
 
-  // ── States matching Screenshot media_1794906403160_ba48f9d2.jpg ──
+  // ── States strictly matching Screenshot media_1794964617296_7cac7e57.jpg ──
   const [filterHidden, setFilterHidden] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState(null);
+  const [selectedRo, setSelectedRo] = useState(null);
+  const [selectedPoNumber, setSelectedPoNumber] = useState('');
   const [hasApplied, setHasApplied] = useState(false);
+
+  // Modals
   const [customerModalOpen, setCustomerModalOpen] = useState(false);
   const [customerSearch, setCustomerSearch] = useState('');
+  const [roModalOpen, setRoModalOpen] = useState(false);
+  const [roSearch, setRoSearch] = useState('');
   const [exportModalOpen, setExportModalOpen] = useState(false);
 
   // Filtered customer list for modal selection
@@ -55,28 +61,109 @@ export default function LaporanPage() {
     });
   }, [customers, customerSearch]);
 
-  // Aggregate Data for Selected Customer
+  // Available Received Orders (RO) for the selected customer
+  const availableRos = useMemo(() => {
+    if (!selectedCustomer) return [];
+    const custName = selectedCustomer.name.toLowerCase();
+
+    const list = [];
+    const seen = new Set();
+
+    // 1. From preOrders
+    (preOrders || []).forEach((po) => {
+      if (po.customer && po.customer.toLowerCase().includes(custName)) {
+        const roLabel = po.nomorRO || po.nomorRo || `RO-${po.id}`;
+        const poNum = po.nomorPo || po.id;
+        if (!seen.has(roLabel)) {
+          seen.add(roLabel);
+          list.push({
+            id: po.id,
+            nomorRoLabel: roLabel,
+            nomorPo: poNum,
+            material: po.materialName || po.material || 'Material Curah',
+            tanggal: po.tanggal || '-',
+            volume: po.totalOrder || 0,
+            satuan: po.satuan || 'm3',
+          });
+        }
+      }
+    });
+
+    // 2. From suratJalanList
+    (suratJalanList || []).forEach((sj) => {
+      if (sj.customer && sj.customer.toLowerCase().includes(custName) && sj.poNumber) {
+        const roLabel = sj.nomorRo || `RO-${sj.poNumber}`;
+        if (!seen.has(roLabel)) {
+          seen.add(roLabel);
+          list.push({
+            id: sj.poNumber,
+            nomorRoLabel: roLabel,
+            nomorPo: sj.poNumber,
+            material: sj.material || 'Material Tambang',
+            tanggal: sj.tanggal || '-',
+            volume: sj.volumeAkhir || 0,
+            satuan: 'm3',
+          });
+        }
+      }
+    });
+
+    // If empty in mock data, provide default reference for testing
+    if (list.length === 0) {
+      list.push({
+        id: `RO-${selectedCustomer.id || '01'}`,
+        nomorRoLabel: `RO-2026-${(selectedCustomer.kodePrefix || 'BAS').replace(/\s+/g, '')}-01`,
+        nomorPo: `PO-CUST-${(selectedCustomer.kodePrefix || 'BAS').replace(/\s+/g, '')}-2026`,
+        material: 'BASE COURSE / LIMESTONE',
+        tanggal: new Date().toISOString().slice(0, 10),
+        volume: 250,
+        satuan: 'm3',
+      });
+    }
+
+    return list;
+  }, [selectedCustomer, preOrders, suratJalanList]);
+
+  // Filtered RO options for modal
+  const roOptions = useMemo(() => {
+    return availableRos.filter((ro) => {
+      const q = roSearch.toLowerCase().trim();
+      if (!q) return true;
+      return (
+        ro.nomorRoLabel.toLowerCase().includes(q) ||
+        ro.nomorPo.toLowerCase().includes(q) ||
+        ro.material.toLowerCase().includes(q)
+      );
+    });
+  }, [availableRos, roSearch]);
+
+  // Aggregate Data for Selected Customer & RO
   const customerReports = useMemo(() => {
     if (!selectedCustomer) return null;
 
     const custName = selectedCustomer.name;
 
-    // 1. Pre Orders
-    const relatedPos = (preOrders || []).filter(
-      (po) => po.customer && po.customer.toLowerCase().includes(custName.toLowerCase())
-    );
+    // 1. Surat Jalan (filtered by customer, and optionally by selected RO/PO)
+    const relatedSj = (suratJalanList || []).filter((sj) => {
+      const matchCust = sj.customer && sj.customer.toLowerCase().includes(custName.toLowerCase());
+      if (!matchCust) return false;
+      if (selectedPoNumber && sj.poNumber) {
+        return sj.poNumber.toLowerCase().includes(selectedPoNumber.toLowerCase());
+      }
+      return true;
+    });
 
-    // 2. Surat Jalan
-    const relatedSj = (suratJalanList || []).filter(
-      (sj) => sj.customer && sj.customer.toLowerCase().includes(custName.toLowerCase())
-    );
+    // 2. Invoices (filtered by customer, and optionally by selected PO)
+    const relatedInvoices = (invoiceList || []).filter((inv) => {
+      const matchCust = inv.perusahaan && inv.perusahaan.toLowerCase().includes(custName.toLowerCase());
+      if (!matchCust) return false;
+      if (selectedPoNumber && inv.poNumber) {
+        return inv.poNumber.toLowerCase().includes(selectedPoNumber.toLowerCase());
+      }
+      return true;
+    });
 
-    // 3. Invoices
-    const relatedInvoices = (invoiceList || []).filter(
-      (inv) => inv.perusahaan && inv.perusahaan.toLowerCase().includes(custName.toLowerCase())
-    );
-
-    // 4. BKK
+    // 3. BKK
     const relatedBkk = (bkkList || []).filter(
       (bkk) => bkk.perusahaan && bkk.perusahaan.toLowerCase().includes(custName.toLowerCase())
     );
@@ -90,7 +177,6 @@ export default function LaporanPage() {
     const sisaPiutang = totalTagihan - totalTerbayar;
 
     return {
-      relatedPos,
       relatedSj,
       relatedInvoices,
       relatedBkk,
@@ -99,7 +185,16 @@ export default function LaporanPage() {
       totalTerbayar,
       sisaPiutang,
     };
-  }, [selectedCustomer, preOrders, suratJalanList, invoiceList, bkkList]);
+  }, [selectedCustomer, selectedPoNumber, suratJalanList, invoiceList, bkkList]);
+
+  // Reset all filter states to initial pristine state
+  const handleResetFilter = () => {
+    setSelectedCustomer(null);
+    setSelectedRo(null);
+    setSelectedPoNumber('');
+    setHasApplied(false);
+    addToast('Filter berhasil direset.', 'info');
+  };
 
   const handleApplyFilter = () => {
     if (!selectedCustomer) {
@@ -107,14 +202,24 @@ export default function LaporanPage() {
       setCustomerModalOpen(true);
       return;
     }
+    if (!selectedRo) {
+      addToast('ID Received Order wajib dipilih terlebih dahulu sebelum menerapkan filter.', 'warning');
+      setRoModalOpen(true);
+      return;
+    }
     setHasApplied(true);
-    addToast(`Filter diterapkan untuk ${selectedCustomer.name}`, 'success');
+    addToast(`Filter diterapkan untuk ${selectedCustomer.name} (${selectedRo.nomorRoLabel})`, 'success');
   };
 
   const handleBuatLaporan = () => {
     if (!selectedCustomer) {
       addToast('Silakan pilih pelanggan terlebih dahulu untuk membuat laporan All-In-One.', 'info');
       setCustomerModalOpen(true);
+      return;
+    }
+    if (!selectedRo) {
+      addToast('ID Received Order wajib dipilih terlebih dahulu.', 'warning');
+      setRoModalOpen(true);
       return;
     }
     setExportModalOpen(true);
@@ -187,7 +292,7 @@ export default function LaporanPage() {
 
       {/* ── MAIN CONTAINER ── */}
       <main className="w-full max-w-4xl mx-auto px-4 pt-3 space-y-4">
-        {/* ── FILTER CARD CONTAINER (Faithful to Screenshot) ── */}
+        {/* ── FILTER CARD CONTAINER (Faithful to Screenshot media_1794964617296_7cac7e57.jpg) ── */}
         <div className="bg-[#121417] border border-[#20242A] rounded-2xl p-4 sm:p-5 space-y-3.5 shadow-md">
           {/* Animated Collapsible Filter Inputs */}
           <AnimatePresence initial={false}>
@@ -197,32 +302,119 @@ export default function LaporanPage() {
                 animate={{ opacity: 1, height: 'auto' }}
                 exit={{ opacity: 0, height: 0 }}
                 transition={{ duration: 0.2 }}
-                className="space-y-3.5 overflow-hidden"
+                className="space-y-3 overflow-hidden"
               >
-                {/* 1. Input: Pilih Pelanggan with User icon & Orange Underline */}
-                <div
-                  onClick={() => setCustomerModalOpen(true)}
-                  className="bg-[#1E2228] hover:bg-[#252A32] border-b-2 border-[#F4511E] rounded-t-xl px-4 py-3.5 flex items-center justify-between cursor-pointer transition-colors group"
-                  role="button"
-                  tabIndex={0}
-                  onKeyDown={(e) => e.key === 'Enter' && setCustomerModalOpen(true)}
-                  title="Klik untuk memilih pelanggan"
-                >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <User className="w-5 h-5 text-neutral-400 group-hover:text-[#F4511E] transition-colors shrink-0" />
-                    <span
-                      className={`text-sm font-medium truncate ${
-                        selectedCustomer ? 'text-white font-semibold' : 'text-[#F4511E]'
-                      }`}
-                    >
-                      {selectedCustomer ? selectedCustomer.name : 'Pilih Pelanggan'}
+                {/* ── ROW 1: Customer Selector + Reset Button ── */}
+                <div className="flex items-stretch gap-2.5">
+                  {/* Customer Input Box */}
+                  <div
+                    onClick={() => setCustomerModalOpen(true)}
+                    className="flex-1 bg-[#1E2228] hover:bg-[#252A32] border-b-2 border-[#F4511E] rounded-t-xl px-4 py-2.5 cursor-pointer transition-colors group flex flex-col justify-center min-w-0"
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => e.key === 'Enter' && setCustomerModalOpen(true)}
+                    title="Klik untuk memilih pelanggan"
+                  >
+                    <span className="text-[10px] text-[#F4511E] font-medium tracking-wide">
+                      Pilih Pelanggan
                     </span>
+                    <div className="flex items-center justify-between gap-2 mt-0.5 min-w-0">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <User className="w-4 h-4 text-neutral-400 group-hover:text-[#F4511E] transition-colors shrink-0" />
+                        <span
+                          className={`text-xs sm:text-sm font-medium truncate ${
+                            selectedCustomer ? 'text-white font-semibold' : 'text-[#F4511E]'
+                          }`}
+                        >
+                          {selectedCustomer
+                            ? `${selectedCustomer.kodePrefix ? `${selectedCustomer.kodePrefix} - ` : ''}${selectedCustomer.name}`
+                            : 'Pilih Pelanggan'}
+                        </span>
+                      </div>
+                      <ChevronDown className="w-3.5 h-3.5 text-[#F4511E] shrink-0" />
+                    </div>
                   </div>
 
-                  <ChevronDown className="w-4 h-4 text-[#F4511E] shrink-0 ml-2" />
+                  {/* Orange Reset Button with RotateCcw (matches screenshot) */}
+                  <button
+                    type="button"
+                    onClick={handleResetFilter}
+                    className="w-13 h-13 sm:w-14 sm:h-14 bg-[#F4511E] hover:bg-[#E04418] active:scale-95 text-white rounded-xl flex items-center justify-center shrink-0 transition-all shadow-md shadow-[#F4511E]/25 cursor-pointer"
+                    title="Reset Filter"
+                    aria-label="Reset Filter"
+                  >
+                    <RotateCcw className="w-5 h-5 text-white stroke-[2.5]" />
+                  </button>
                 </div>
 
-                {/* 2. Full-Width Orange Button: TERAPKAN */}
+                {/* ── ROW 2: ID Received Order ── */}
+                <div
+                  onClick={() => {
+                    if (!selectedCustomer) {
+                      addToast('Pilih pelanggan terlebih dahulu.', 'warning');
+                      setCustomerModalOpen(true);
+                      return;
+                    }
+                    setRoModalOpen(true);
+                  }}
+                  className="bg-[#1E2228] hover:bg-[#252A32] rounded-xl px-4 py-3.5 flex items-center justify-between cursor-pointer transition-colors border border-transparent hover:border-[#333842] group"
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      if (!selectedCustomer) {
+                        setCustomerModalOpen(true);
+                      } else {
+                        setRoModalOpen(true);
+                      }
+                    }
+                  }}
+                  title="Pilih ID Received Order (Wajib)"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <Receipt className="w-4 h-4 text-neutral-400 group-hover:text-white transition-colors shrink-0" />
+                    <span
+                      className={`text-xs sm:text-sm font-medium truncate ${
+                        selectedRo ? 'text-white font-semibold' : 'text-neutral-400'
+                      }`}
+                    >
+                      {selectedRo ? selectedRo.nomorRoLabel : 'ID Received Order'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* ── ROW 3: ID Nomor PO Customer (auto) ── */}
+                <div
+                  onClick={() => {
+                    if (!selectedCustomer) {
+                      addToast('Pilih pelanggan terlebih dahulu.', 'warning');
+                      setCustomerModalOpen(true);
+                      return;
+                    }
+                    if (!selectedRo) {
+                      addToast('Pilih ID Received Order terlebih dahulu agar Nomor PO Customer terisi otomatis.', 'info');
+                      setRoModalOpen(true);
+                      return;
+                    }
+                  }}
+                  className="bg-[#1E2228] rounded-xl px-4 py-3.5 flex items-center justify-between transition-colors border border-transparent group cursor-pointer"
+                  role="button"
+                  tabIndex={0}
+                  title="ID Nomor PO Customer terisi otomatis saat Received Order dipilih"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <Receipt className="w-4 h-4 text-neutral-400 shrink-0" />
+                    <span
+                      className={`text-xs sm:text-sm font-medium truncate ${
+                        selectedPoNumber ? 'text-white font-semibold' : 'text-neutral-400'
+                      }`}
+                    >
+                      {selectedPoNumber ? selectedPoNumber : 'ID Nomor PO Customer (auto)'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* ── ROW 4: Button TERAPKAN ── */}
                 <button
                   type="button"
                   onClick={handleApplyFilter}
@@ -234,7 +426,7 @@ export default function LaporanPage() {
             )}
           </AnimatePresence>
 
-          {/* 3. Toggle Button: Sembunyikan Filter ^ / Tampilkan Filter v */}
+          {/* ── ROW 5: Toggle Sembunyikan Filter ^ / Tampilkan Filter v ── */}
           <div className="flex justify-center pt-0.5">
             <button
               type="button"
@@ -264,9 +456,19 @@ export default function LaporanPage() {
                   <h2 className="text-base sm:text-lg font-bold text-white mt-0.5">
                     {selectedCustomer.name}
                   </h2>
-                  <p className="text-xs text-neutral-400 mt-0.5">
-                    {selectedCustomer.alamat || 'Gresik, Jawa Timur'} • NPWP: {selectedCustomer.npwp || '-'}
-                  </p>
+                  <div className="flex flex-wrap items-center gap-2 mt-1 text-xs text-neutral-400 font-mono">
+                    <span>{selectedCustomer.alamat || 'Gresik, Jawa Timur'}</span>
+                    {selectedRo && (
+                      <span className="px-2 py-0.5 rounded bg-[#1F2228] text-white border border-[#2C313A]">
+                        RO: {selectedRo.nomorRoLabel}
+                      </span>
+                    )}
+                    {selectedPoNumber && (
+                      <span className="px-2 py-0.5 rounded bg-[#1F2228] text-[#F4511E] border border-[#2C313A]">
+                        PO: {selectedPoNumber}
+                      </span>
+                    )}
+                  </div>
                 </div>
 
                 <div className="flex items-center gap-2">
@@ -340,7 +542,7 @@ export default function LaporanPage() {
 
               {customerReports.relatedSj.length === 0 ? (
                 <p className="text-xs text-neutral-500 py-3 text-center">
-                  Belum ada transaksi Surat Jalan untuk pelanggan ini.
+                  Belum ada transaksi Surat Jalan untuk filter ini.
                 </p>
               ) : (
                 <div className="overflow-x-auto">
@@ -349,6 +551,7 @@ export default function LaporanPage() {
                       <tr>
                         <th className="py-2.5 px-3">No. SJ</th>
                         <th className="py-2.5 px-3">Tanggal</th>
+                        <th className="py-2.5 px-3">No. PO Customer</th>
                         <th className="py-2.5 px-3">Material</th>
                         <th className="py-2.5 px-3">Armada / Driver</th>
                         <th className="py-2.5 px-3 text-right">Volume</th>
@@ -360,6 +563,7 @@ export default function LaporanPage() {
                         <tr key={sj.id} className="hover:bg-white/5 transition-colors">
                           <td className="py-2.5 px-3 font-bold text-white">{sj.nomorSj}</td>
                           <td className="py-2.5 px-3 text-neutral-400">{sj.tanggal}</td>
+                          <td className="py-2.5 px-3 text-[#F4511E] font-medium">{sj.poNumber || '-'}</td>
                           <td className="py-2.5 px-3 text-neutral-200">{sj.material}</td>
                           <td className="py-2.5 px-3 text-neutral-300">{sj.nopol} • {sj.driver}</td>
                           <td className="py-2.5 px-3 text-right text-white font-bold">{sj.volumeAkhir} m³</td>
@@ -385,7 +589,7 @@ export default function LaporanPage() {
 
               {customerReports.relatedInvoices.length === 0 ? (
                 <p className="text-xs text-neutral-500 py-3 text-center">
-                  Belum ada faktur invoice untuk pelanggan ini.
+                  Belum ada faktur invoice untuk filter ini.
                 </p>
               ) : (
                 <div className="overflow-x-auto">
@@ -394,6 +598,7 @@ export default function LaporanPage() {
                       <tr>
                         <th className="py-2.5 px-3">Kode Invoice</th>
                         <th className="py-2.5 px-3">Tanggal</th>
+                        <th className="py-2.5 px-3">No. PO Customer</th>
                         <th className="py-2.5 px-3">Deskripsi / Material</th>
                         <th className="py-2.5 px-3 text-right">Nominal</th>
                         <th className="py-2.5 px-3 text-center">Status</th>
@@ -404,6 +609,7 @@ export default function LaporanPage() {
                         <tr key={inv.id} className="hover:bg-white/5 transition-colors">
                           <td className="py-2.5 px-3 font-bold text-white">{inv.kodeTransaksi}</td>
                           <td className="py-2.5 px-3 text-neutral-400">{inv.timestamp?.slice(0, 10)}</td>
+                          <td className="py-2.5 px-3 text-[#F4511E] font-medium">{inv.poNumber || '-'}</td>
                           <td className="py-2.5 px-3 text-neutral-200">{inv.material || 'Material Tambang'}</td>
                           <td className="py-2.5 px-3 text-right font-bold text-white">
                             {formatCurrency(inv.amount)}
@@ -485,8 +691,10 @@ export default function LaporanPage() {
                     key={c.id}
                     onClick={() => {
                       setSelectedCustomer(c);
+                      setSelectedRo(null);
+                      setSelectedPoNumber('');
                       setCustomerModalOpen(false);
-                      setHasApplied(false); // Reset to require clicking TERAPKAN
+                      setHasApplied(false);
                       addToast(`Pelanggan "${c.name}" dipilih`, 'info');
                     }}
                     className={`p-3 rounded-xl border transition-all cursor-pointer flex items-center justify-between ${
@@ -500,9 +708,11 @@ export default function LaporanPage() {
                         {c.name.slice(0, 2).toUpperCase()}
                       </div>
                       <div className="min-w-0">
-                        <div className="text-xs font-bold truncate">{c.name}</div>
+                        <div className="text-xs font-bold truncate">
+                          {c.kodePrefix ? `${c.kodePrefix} - ` : ''}{c.name}
+                        </div>
                         <div className="text-[10px] text-neutral-500 truncate">
-                          {c.kodePrefix ? `[${c.kodePrefix}] ` : ''}{c.kota || 'Gresik'}
+                          {c.alamat || 'Gresik, Jawa Timur'}
                         </div>
                       </div>
                     </div>
@@ -516,6 +726,102 @@ export default function LaporanPage() {
 
           <div className="pt-2 flex justify-end">
             <Button size="sm" variant="outline" onClick={() => setCustomerModalOpen(false)}>
+              Batal
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* ── MODAL PILIH ID RECEIVED ORDER ── */}
+      <Modal
+        isOpen={roModalOpen}
+        onClose={() => setRoModalOpen(false)}
+        title="Pilih ID Received Order (RO)"
+        subtitle={selectedCustomer ? `Pelanggan: ${selectedCustomer.name}` : ''}
+      >
+        <div className="p-4 space-y-3 font-sans">
+          {/* Search Box */}
+          <div className="relative">
+            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" />
+            <input
+              type="text"
+              value={roSearch}
+              onChange={(e) => setRoSearch(e.target.value)}
+              placeholder="Cari ID RO atau Nomor PO Customer..."
+              className="w-full bg-[#14171A] border border-[#24282E] rounded-xl pl-9 pr-3 py-2 text-xs text-white placeholder-neutral-500 focus:outline-none focus:border-[#F4511E]"
+              autoFocus
+            />
+            {roSearch && (
+              <button
+                type="button"
+                onClick={() => setRoSearch('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-white"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+
+          {/* RO List */}
+          <div className="max-h-72 overflow-y-auto space-y-2 pr-1">
+            {roOptions.length === 0 ? (
+              <div className="py-8 text-center text-xs text-neutral-500">
+                Tidak ada Received Order ditemukan untuk pelanggan ini.
+              </div>
+            ) : (
+              roOptions.map((ro) => {
+                const isSelected = selectedRo?.id === ro.id;
+                return (
+                  <div
+                    key={ro.id}
+                    onClick={() => {
+                      setSelectedRo(ro);
+                      setSelectedPoNumber(ro.nomorPo);
+                      setRoModalOpen(false);
+                      setHasApplied(false);
+                      addToast(`RO "${ro.nomorRoLabel}" dipilih (Nomor PO terisi otomatis)`, 'success');
+                    }}
+                    className={`p-3 rounded-xl border transition-all cursor-pointer flex items-center justify-between ${
+                      isSelected
+                        ? 'bg-[#F4511E]/15 border-[#F4511E] text-white'
+                        : 'bg-[#16191D] border-[#24282F] hover:border-[#383E46] text-neutral-300 hover:text-white'
+                    }`}
+                  >
+                    <div className="min-w-0 space-y-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold font-mono text-white">
+                          {ro.nomorRoLabel}
+                        </span>
+                        <span className="text-[10px] px-2 py-0.5 rounded bg-[#F4511E]/15 text-[#F4511E] font-mono border border-[#F4511E]/30">
+                          PO: {ro.nomorPo}
+                        </span>
+                      </div>
+                      <div className="text-[11px] text-neutral-400 font-mono">
+                        {ro.material} • {ro.volume} {ro.satuan} • {ro.tanggal}
+                      </div>
+                    </div>
+
+                    {isSelected && <CheckCircle2 className="w-4 h-4 text-[#F4511E] shrink-0 ml-2" />}
+                  </div>
+                );
+              })
+            )}
+          </div>
+
+          <div className="pt-2 flex justify-between items-center">
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedRo(null);
+                setSelectedPoNumber('');
+                setRoModalOpen(false);
+                addToast('RO diatur ke Semua', 'info');
+              }}
+              className="text-xs text-neutral-400 hover:text-white font-mono underline"
+            >
+              Reset ke Semua RO
+            </button>
+            <Button size="sm" variant="outline" onClick={() => setRoModalOpen(false)}>
               Batal
             </Button>
           </div>

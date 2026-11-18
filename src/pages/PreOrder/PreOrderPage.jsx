@@ -1,5 +1,6 @@
 import { useState, useRef, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'motion/react';
 import {
   ArrowLeft,
   CheckCircle2,
@@ -26,7 +27,12 @@ import {
   RotateCcw,
   SlidersHorizontal,
   ChevronDown,
+  ChevronUp,
   Filter,
+  Eye,
+  MapPin,
+  CreditCard,
+  Coins,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useData } from '../../context/DataContext';
@@ -537,19 +543,53 @@ export default function PreOrderPage() {
     setActiveTab('list');
   };
 
+  /* ── State untuk toggle Detail Order di setiap kartu ── */
+  const [expandedOrderIds, setExpandedOrderIds] = useState(new Set());
+
+  const toggleOrderExpand = (id) => {
+    setExpandedOrderIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
   const handleBuatSuratJalan = (po) => {
+    let parsedItems = [];
+    try {
+      parsedItems = typeof po.items === 'string' ? JSON.parse(po.items) : (po.items || []);
+    } catch (e) {
+      parsedItems = [];
+    }
+    const firstItem = parsedItems[0] || {};
+    const finalMaterialId = po.materialId || firstItem.materialId;
+    const finalMaterialName = po.materialName || firstItem.nama || 'SIRTU';
+    const finalNomorRo = po.nomorRO || po.nomorRo || `RO-${po.id}`;
+    const finalPoNum = po.nomorPo || po.id;
+    const isPpn = po.jenisWajibPajak === 'PKP';
+
     navigate('/surat-jalan', {
       state: {
+        fromCreateGi: true,
         fromPreOrder: true,
         preOrderId: po.id,
         customer: po.customer,
-        nomorPo: po.nomorPo || po.id,
-        materialId: po.materialId,
-        materialName: po.materialName,
-        jenis: po.jenis || 'Jasa Angkut + Material',
-        nomorRo: po.nomorRO || po.nomorRo || `RO-${po.id}`,
+        customerAddress: po.customerAddress || '',
+        nomorPo: finalPoNum,
+        nomorRo: finalNomorRo,
+        nomorRO: finalNomorRo,
+        materialId: finalMaterialId,
+        materialName: finalMaterialName,
+        jenis: po.jenisRO || po.jenis || 'Jasa Angkut + Material',
+        satuan: po.satuan || firstItem.satuan || 'm3',
+        isPpn,
+        targetVolume: Number(po.totalOrder || firstItem.kuantitas || 0),
+        hargaBeli: Number(po.hargaBeli || firstItem.hargaBeli || 0),
+        hargaJual: Number(po.hargaJual || firstItem.hargaJual || 0),
       },
     });
+    addToast(`Mengalihkan ke form Surat Jalan GI untuk ${po.customer} (${finalNomorRo}). Seluruh data telah terisi otomatis.`, 'info');
   };
 
   /* ══════════════════════════════════════════════════════════════════
@@ -772,6 +812,34 @@ export default function PreOrderPage() {
               {filteredPreOrders.map((po) => {
                 const fulfillmentPct = Math.min(120, Math.round(((Number(po.terkirim) || 0) / (Number(po.totalOrder) || 1)) * 100));
                 const isOverDelivered = fulfillmentPct > 100;
+                const isExpanded = expandedOrderIds.has(po.id);
+
+                let orderItems = [];
+                try {
+                  orderItems = typeof po.items === 'string' ? JSON.parse(po.items) : (po.items || []);
+                } catch (e) {
+                  orderItems = [];
+                }
+                if (!orderItems.length) {
+                  orderItems = [
+                    {
+                      id: `item-${po.id}`,
+                      nama: po.materialName || 'SIRTU',
+                      category: po.materialCategory || 'Curah',
+                      kuantitas: po.totalOrder || 0,
+                      satuan: po.satuan || 'm3',
+                      hargaBeli: po.hargaBeli || 0,
+                      hargaJual: po.hargaJual || 0,
+                      pphRate: po.pphRate || 2.0,
+                    }
+                  ];
+                }
+
+                const totalOrderBeli = orderItems.reduce((sum, it) => sum + (Number(it.kuantitas) || 0) * (Number(it.hargaBeli) || 0), 0);
+                const totalOrderJual = orderItems.reduce((sum, it) => sum + (Number(it.kuantitas) || 0) * (Number(it.hargaJual) || 0), 0);
+                const totalOrderMargin = totalOrderJual - totalOrderBeli;
+                const targetRitaseCount = po.satuan === 'rit' ? Number(po.totalOrder || 1) : Math.max(1, Math.ceil((Number(po.totalOrder) || 30) / 30));
+
                 return (
                   <Card key={po.id} hover className="p-4.5 sm:p-5 space-y-3.5 bg-[#14171A] border border-[#22262A]">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
@@ -868,6 +936,17 @@ export default function PreOrderPage() {
                           Dibuat: <strong className="text-neutral-200">{po.createdBy || 'Admin'}</strong>
                         </span>
 
+                        {/* Tombol Lihat Detail Order */}
+                        <Button
+                          size="xs"
+                          variant="ghost"
+                          icon={isExpanded ? ChevronUp : Eye}
+                          onClick={() => toggleOrderExpand(po.id)}
+                          className="text-neutral-300 hover:text-white border border-[#2D3339] hover:border-[#F4511E] cursor-pointer"
+                        >
+                          {isExpanded ? 'Tutup Detail' : 'Lihat Detail Order'}
+                        </Button>
+
                         {/* Super Admin Direct Approval Actions */}
                         {isSuperAdmin && (po.status === 'MENUNGGU_APPROVAL' || po.status === 'PENDING' || po.status === 'Menunggu Approval') && (
                           <>
@@ -905,6 +984,7 @@ export default function PreOrderPage() {
                             icon={FileText}
                             onClick={() => handleBuatSuratJalan(po)}
                             title={`Buat Surat Jalan GI untuk ${po.customer}`}
+                            className="bg-[#F4511E] hover:bg-[#ff6b3d] text-white font-semibold cursor-pointer"
                           >
                             Buat Surat Jalan GI &rarr;
                           </Button>
@@ -922,6 +1002,150 @@ export default function PreOrderPage() {
                         )}
                       </div>
                     </div>
+
+                    {/* ── EXPANDABLE ORDER DETAILS SECTION ── */}
+                    <AnimatePresence>
+                      {isExpanded && (
+                        <motion.div
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: 'auto' }}
+                          exit={{ opacity: 0, height: 0 }}
+                          transition={{ duration: 0.18 }}
+                          className="pt-3.5 border-t border-[#22262A] space-y-3.5 overflow-hidden font-sans"
+                        >
+                          <div className="flex items-center justify-between pb-1 text-xs font-mono text-neutral-400">
+                            <span className="font-bold text-white flex items-center gap-1.5">
+                              <FileText className="w-3.5 h-3.5 text-[#F4511E]" />
+                              Rincian Spesifikasi &amp; Kontrak Order ({po.nomorRO || po.id})
+                            </span>
+                            <span className="text-[11px] text-neutral-400">
+                              Target Ritase: <strong className="text-white">{targetRitaseCount} Rit</strong> (estimasi dump truck 30m³)
+                            </span>
+                          </div>
+
+                          {/* Grid Information */}
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 bg-[#0E1012] p-3 rounded-lg border border-[#202428] font-mono text-xs">
+                            <div>
+                              <span className="text-[10px] text-neutral-400 uppercase tracking-wider block">Pelanggan &amp; Site Proyek</span>
+                              <strong className="text-white block mt-0.5">{po.customer}</strong>
+                              <span className="text-[11px] text-neutral-400 block line-clamp-2 mt-0.5">
+                                {po.customerAddress || 'Kawasan Industri / Hub Site Proyek Gresik'}
+                              </span>
+                            </div>
+
+                            <div>
+                              <span className="text-[10px] text-neutral-400 uppercase tracking-wider block">Kategori &amp; Layanan</span>
+                              <span className="text-amber-400 font-semibold block mt-0.5">
+                                {po.materialName || 'Material Curah'}
+                              </span>
+                              <span className="text-neutral-400 text-[11px] block mt-0.5">
+                                {po.jenisRO || po.jenis || 'Jasa Angkut + Material'}
+                              </span>
+                            </div>
+
+                            <div>
+                              <span className="text-[10px] text-neutral-400 uppercase tracking-wider block">Term of Payment (TOP)</span>
+                              <strong className="text-white block mt-0.5">{po.top || '30 Hari'}</strong>
+                              <span className="text-[11px] text-neutral-400 block mt-0.5">
+                                Perpajakan: {po.jenisWajibPajak === 'PKP' ? 'PKP (PPN 11%)' : 'Non-PKP'}
+                              </span>
+                            </div>
+
+                            <div>
+                              <span className="text-[10px] text-neutral-400 uppercase tracking-wider block">Mata Uang &amp; Ref PO</span>
+                              <strong className="text-white block mt-0.5">{po.mataUang || 'IDR'} (Rupiah)</strong>
+                              <span className="text-[11px] text-neutral-400 block mt-0.5">
+                                PO Cust: {po.nomorPoCustomer || '-'}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Items Breakdown Table */}
+                          <div className="space-y-1.5">
+                            <div className="text-[11px] font-mono font-semibold text-neutral-300">
+                              Daftar Rincian Item Material Pemesanan:
+                            </div>
+                            <div className="overflow-x-auto rounded-lg border border-[#202428] bg-[#0E1012]">
+                              <table className="w-full text-left border-collapse text-xs font-mono">
+                                <thead>
+                                  <tr className="bg-[#181B1E] text-[11px] text-neutral-400 uppercase tracking-wider border-b border-[#202428]">
+                                    <th className="py-2 px-3 text-center w-8">#</th>
+                                    <th className="py-2 px-3">Nama Material</th>
+                                    <th className="py-2 px-3">Kategori</th>
+                                    <th className="py-2 px-3 text-right">Kuantitas</th>
+                                    <th className="py-2 px-3">Satuan</th>
+                                    <th className="py-2 px-3 text-right">Harga Beli</th>
+                                    <th className="py-2 px-3 text-right">Subtotal Beli</th>
+                                    <th className="py-2 px-3 text-right">Harga Jual</th>
+                                    <th className="py-2 px-3 text-right">Subtotal Jual</th>
+                                    <th className="py-2 px-3 text-right">Margin Laba</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="divide-y divide-[#202428]">
+                                  {orderItems.map((item, idx) => {
+                                    const qty = Number(item.kuantitas) || 0;
+                                    const hBeli = Number(item.hargaBeli) || 0;
+                                    const hJual = Number(item.hargaJual) || 0;
+                                    const subBeli = qty * hBeli;
+                                    const subJual = qty * hJual;
+                                    const margin = subJual - subBeli;
+                                    return (
+                                      <tr key={item.id || idx} className="hover:bg-[#14171A]">
+                                        <td className="py-2 px-3 text-center text-neutral-500">{idx + 1}</td>
+                                        <td className="py-2 px-3 font-bold text-white">{item.nama || po.materialName}</td>
+                                        <td className="py-2 px-3 text-neutral-400">{item.category || po.materialCategory || 'Curah'}</td>
+                                        <td className="py-2 px-3 text-right font-bold text-amber-400">{formatVolume(qty, '')}</td>
+                                        <td className="py-2 px-3 text-neutral-400">{item.satuan || po.satuan || 'm3'}</td>
+                                        <td className="py-2 px-3 text-right text-neutral-300">{formatCurrency(hBeli)}</td>
+                                        <td className="py-2 px-3 text-right text-neutral-300">{formatCurrency(subBeli)}</td>
+                                        <td className="py-2 px-3 text-right text-white font-semibold">{formatCurrency(hJual)}</td>
+                                        <td className="py-2 px-3 text-right text-white font-bold">{formatCurrency(subJual)}</td>
+                                        <td className="py-2 px-3 text-right font-bold text-emerald-400">{formatCurrency(margin)}</td>
+                                      </tr>
+                                    );
+                                  })}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+
+                          {/* Financial & Delivery Reconciliation Strip */}
+                          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-3 rounded-lg bg-[#181B1E] border border-[#262A2E] text-xs font-mono">
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 w-full sm:w-auto">
+                              <div>
+                                <span className="text-[10px] text-neutral-400 uppercase">Target Order:</span>
+                                <strong className="block text-white mt-0.5">{formatVolume(po.totalOrder, po.satuan)}</strong>
+                              </div>
+                              <div>
+                                <span className="text-[10px] text-neutral-400 uppercase">Modal Beli (HPP):</span>
+                                <strong className="block text-neutral-200 mt-0.5">{formatCurrency(totalOrderBeli)}</strong>
+                              </div>
+                              <div>
+                                <span className="text-[10px] text-neutral-400 uppercase">Nilai Penjualan:</span>
+                                <strong className="block text-white mt-0.5">{formatCurrency(totalOrderJual)}</strong>
+                              </div>
+                              <div>
+                                <span className="text-[10px] text-neutral-400 uppercase">Estimasi Laba:</span>
+                                <strong className="block text-emerald-400 mt-0.5">{formatCurrency(totalOrderMargin)}</strong>
+                              </div>
+                            </div>
+
+                            {/* Action Button inside detail */}
+                            {(po.status === 'APPROVED' || po.status === 'Disetujui') && (
+                              <Button
+                                size="sm"
+                                variant="primary"
+                                icon={FileText}
+                                onClick={() => handleBuatSuratJalan(po)}
+                                className="bg-[#F4511E] hover:bg-[#ff6b3d] text-white font-bold shrink-0 cursor-pointer shadow-sm"
+                              >
+                                Buat Surat Jalan GI &rarr;
+                              </Button>
+                            )}
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   </Card>
                 );
               })}

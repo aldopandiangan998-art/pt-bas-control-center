@@ -2173,10 +2173,10 @@ export default function PreOrderPage() {
                             <tr className="bg-[#181B1E] text-[11px] font-semibold text-neutral-400 uppercase tracking-wider border-b border-[#22262A]">
                               <th className="py-2.5 px-3 text-center w-12 font-mono">#</th>
                               <th className="py-2.5 px-4 min-w-[220px]">Material / Layanan (Database)</th>
-                              <th className="py-2.5 px-3 w-20 text-center font-mono">Satuan</th>
                               <th className="py-2.5 px-3 w-36 font-mono text-amber-400">
                                 Kuantitas *
                               </th>
+                              <th className="py-2.5 px-3 w-20 text-center font-mono">Satuan</th>
                               <th className="py-2.5 px-3 w-36 font-mono">Harga Beli (HPP)</th>
                               <th className="py-2.5 px-3 w-36 font-mono">Harga Jual</th>
                               <th className="py-2.5 px-3 w-36 font-mono text-right">Subtotal Beli</th>
@@ -2236,17 +2236,6 @@ export default function PreOrderPage() {
                                     </div>
                                   </td>
 
-                                  {/* Satuan (Jasa Angkut tanpa satuan, Material dengan satuan) */}
-                                  <td className="py-2 px-3 text-center">
-                                    <input
-                                      type="text"
-                                      disabled
-                                      value={item.itemType === ITEM_TYPES.JASA_ANGKUT ? '-' : (item.satuan || formData.satuanJasaAngkut || 'm³')}
-                                      className="w-16 mx-auto text-center bg-[#181B1E]/60 border border-[#2B3037] text-amber-400 rounded-md px-2 py-1 text-xs font-mono font-bold cursor-not-allowed opacity-90 shadow-inner"
-                                      title={item.itemType === ITEM_TYPES.JASA_ANGKUT ? 'Jasa angkut tanpa satuan' : 'Satuan material'}
-                                    />
-                                  </td>
-
                                   {/* Kuantitas */}
                                   <td className="py-2 px-3">
                                     <input
@@ -2259,6 +2248,17 @@ export default function PreOrderPage() {
                                       disabled={itemsLocked}
                                       className="w-full rounded-md px-2.5 py-1.5 text-xs font-mono font-bold focus:outline-none disabled:opacity-60 bg-[#181B1E] border-2 border-amber-500/60 focus:border-[#F4511E] text-white focus:ring-1 focus:ring-[#F4511E]"
                                       title="Masukkan kuantitas"
+                                    />
+                                  </td>
+
+                                  {/* Satuan (Jasa Angkut tanpa satuan, Material dengan satuan) */}
+                                  <td className="py-2 px-3 text-center">
+                                    <input
+                                      type="text"
+                                      disabled
+                                      value={item.itemType === ITEM_TYPES.JASA_ANGKUT ? '-' : (item.satuan || formData.satuanJasaAngkut || 'm³')}
+                                      className="w-16 mx-auto text-center bg-[#181B1E]/60 border border-[#2B3037] text-amber-400 rounded-md px-2 py-1 text-xs font-mono font-bold cursor-not-allowed opacity-90 shadow-inner"
+                                      title={item.itemType === ITEM_TYPES.JASA_ANGKUT ? 'Jasa angkut tanpa satuan' : 'Satuan material'}
                                     />
                                   </td>
 

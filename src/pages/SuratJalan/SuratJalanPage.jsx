@@ -16,12 +16,13 @@ import {
   Camera,
   CheckCircle2,
   AlertCircle,
+  RotateCcw,
 } from 'lucide-react';
 import { useData } from '../../context/DataContext';
 import { useToast } from '../../context/ToastContext';
 import { calculateKubikasi, formatVolume } from '../../utils/formatters';
 import TruckVisualizer from '../../components/common/TruckVisualizer';
-import { Button, Badge, Card, CardHeader, CardTitle, Input, Select } from '../../components/ui';
+import { Button, Badge, Card, Input, Select } from '../../components/ui';
 
 export default function SuratJalanPage() {
   const navigate = useNavigate();
@@ -30,6 +31,14 @@ export default function SuratJalanPage() {
   const { addToast } = useToast();
 
   const preOrderState = location.state || {};
+
+  // Check if navigation came specifically from an order action ("Create GI Waybill" / "Buat Surat Jalan GI")
+  const isFromCreateGi = Boolean(
+    preOrderState.fromCreateGi ||
+    preOrderState.fromPreOrder ||
+    preOrderState.preOrderId ||
+    (preOrderState.customer && preOrderState.nomorRo)
+  );
 
   // List of only APPROVED POs
   const approvedPos = useMemo(() => {
@@ -46,57 +55,104 @@ export default function SuratJalanPage() {
 
   const isNavPoUnapproved = Boolean(navPo && navPo.status !== 'APPROVED');
 
-  // Resolve initial data from preOrderState if navigated from PreOrder
-  const targetCustomer = preOrderState.customer || (approvedPos[0]?.customer || customers[0]?.name || 'PT LION WINGS');
-  
-  const targetPoNumber = useMemo(() => {
-    if (navPo && navPo.status === 'APPROVED') return navPo.nomorPo || navPo.id;
-    const custPos = approvedPos.filter((po) => po.customer === targetCustomer);
-    if (custPos.length > 0) return custPos[0].nomorPo || custPos[0].id;
-    return approvedPos[0]?.nomorPo || approvedPos[0]?.id || '';
-  }, [navPo, approvedPos, targetCustomer]);
-
-  let targetMaterialId = preOrderState.materialId;
-  if (!targetMaterialId && preOrderState.materialName) {
-    const match = materials.find(
-      (m) => m.name.toLowerCase() === preOrderState.materialName.toLowerCase()
+  // Resolved values when coming from "Create GI Waybill"
+  const matchedPo = useMemo(() => {
+    if (!isFromCreateGi) return null;
+    return (
+      approvedPos.find(
+        (po) =>
+          po.id === preOrderState.preOrderId ||
+          po.nomorRO === preOrderState.nomorRO ||
+          po.nomorPo === preOrderState.nomorPo
+      ) || null
     );
-    if (match) targetMaterialId = match.id;
-  }
-  if (!targetMaterialId) targetMaterialId = materials[0]?.id || 'mat-8';
+  }, [approvedPos, preOrderState, isFromCreateGi]);
 
-  // Form state faithfully matching Screenshot 1 ("Buat Good Issue")
-  const [formData, setFormData] = useState({
-    nomorSj: `296${Math.floor(70 + Math.random() * 29)}`,
-    customer: targetCustomer,
-    poNumber: targetPoNumber,
-    nomorRo: preOrderState.nomorRo || 'RO-202611-00042',
-    materialId: targetMaterialId,
-    jenis: preOrderState.jenis || 'Jasa Angkut + Material',
-    tanggal: new Date().toISOString().split('T')[0],
-    waktu: '09:43',
-    nomorNota: 'NT-88921',
-    nomorPolisi: 'W 9821 UB',
-    isPpn: false,
-    fotoSuratJalan: null,
-    fotoPreview: null,
-    // Truck dimensions in cm (from screenshot 1)
-    panjangCm: 650,
-    lebarCm: 250,
-    tinggiCm: 200,
-    koreksiTinggiCm: 0,
+  const targetCustomer = isFromCreateGi ? (preOrderState.customer || matchedPo?.customer || '') : '';
+  const targetPoNumber = isFromCreateGi ? (preOrderState.nomorPo || matchedPo?.nomorPo || matchedPo?.id || '') : '';
+  const targetRoNumber = isFromCreateGi
+    ? (preOrderState.nomorRO || preOrderState.nomorRo || matchedPo?.nomorRO || (matchedPo ? `RO-${matchedPo.id}` : ''))
+    : '';
+  const targetPreOrderId = isFromCreateGi ? (preOrderState.preOrderId || matchedPo?.id || '') : '';
+
+  let targetMaterialId = '';
+  if (isFromCreateGi) {
+    targetMaterialId = preOrderState.materialId || matchedPo?.materialId || '';
+    if (!targetMaterialId && (preOrderState.materialName || matchedPo?.materialName)) {
+      const matName = preOrderState.materialName || matchedPo?.materialName;
+      const match = materials.find((m) => m.name.toLowerCase() === matName.toLowerCase());
+      if (match) targetMaterialId = match.id;
+    }
+    if (!targetMaterialId && materials.length > 0) {
+      targetMaterialId = materials[0].id;
+    }
+  }
+
+  // Form state: ALL FIELDS ARE BLANK BY DEFAULT unless user navigated via "Create GI Waybill"
+  const [formData, setFormData] = useState(() => {
+    if (isFromCreateGi) {
+      const defaultArmada = armadaList[0] || {};
+      const now = new Date();
+      const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+      const sjNum = `296${Math.floor(70 + Math.random() * 29)}`;
+      const notaNum = `NT-${Math.floor(88900 + Math.random() * 99)}`;
+
+      return {
+        nomorSj: sjNum,
+        customer: targetCustomer,
+        poNumber: targetPoNumber,
+        nomorRo: targetRoNumber,
+        preOrderId: targetPreOrderId,
+        materialId: targetMaterialId,
+        jenis: preOrderState.jenis || matchedPo?.jenisRO || matchedPo?.jenis || 'Jasa Angkut + Material',
+        tanggal: now.toISOString().split('T')[0],
+        waktu: timeStr,
+        nomorNota: notaNum,
+        nomorPolisi: defaultArmada.nopol || 'W 9821 UB',
+        isPpn: preOrderState.isPpn ?? (matchedPo?.jenisWajibPajak === 'PKP'),
+        fotoSuratJalan: null,
+        fotoPreview: null,
+        panjangCm: defaultArmada.panjangCm || 650,
+        lebarCm: defaultArmada.lebarCm || 250,
+        tinggiCm: defaultArmada.tinggiCm || 200,
+        koreksiTinggiCm: 0,
+      };
+    }
+
+    // DIRECT NAVIGATION: ALL FIELDS ARE SET TO BLANK BY DEFAULT
+    return {
+      nomorSj: '',
+      customer: '',
+      poNumber: '',
+      nomorRo: '',
+      preOrderId: '',
+      materialId: '',
+      jenis: '',
+      tanggal: '',
+      waktu: '',
+      nomorNota: '',
+      nomorPolisi: '',
+      isPpn: false,
+      fotoSuratJalan: null,
+      fotoPreview: null,
+      panjangCm: '',
+      lebarCm: '',
+      tinggiCm: '',
+      koreksiTinggiCm: 0,
+    };
   });
 
   // Approved POs for the currently selected customer
   const customerApprovedPos = useMemo(() => {
+    if (!formData.customer) return [];
     return approvedPos.filter((po) => po.customer === formData.customer);
   }, [approvedPos, formData.customer]);
 
   // Sync state if location.state changes
   useEffect(() => {
-    if (location.state?.customer) {
-      const selectedCust = location.state.customer;
-      const targetPo = location.state.nomorPo || location.state.preOrderId;
+    if (location.state?.fromCreateGi || location.state?.fromPreOrder || location.state?.customer) {
+      const selectedCust = location.state.customer || '';
+      const targetPo = location.state.nomorPo || location.state.preOrderId || '';
       let targetMat = location.state.materialId;
       if (!targetMat && location.state.materialName) {
         const match = materials.find(
@@ -105,18 +161,48 @@ export default function SuratJalanPage() {
         if (match) targetMat = match.id;
       }
 
+      const defaultArmada = armadaList[0] || {};
+      const now = new Date();
+      const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+      const sjNum = `296${Math.floor(70 + Math.random() * 29)}`;
+      const notaNum = `NT-${Math.floor(88900 + Math.random() * 99)}`;
+
       setFormData((prev) => ({
         ...prev,
+        nomorSj: prev.nomorSj || sjNum,
         customer: selectedCust,
         poNumber: targetPo || prev.poNumber,
+        nomorRo: location.state.nomorRo || location.state.nomorRO || prev.nomorRo,
+        preOrderId: location.state.preOrderId || prev.preOrderId,
         materialId: targetMat || prev.materialId,
-        jenis: location.state.jenis || prev.jenis,
-        nomorRo: location.state.nomorRo || prev.nomorRo,
+        jenis: location.state.jenis || prev.jenis || 'Jasa Angkut + Material',
+        tanggal: prev.tanggal || now.toISOString().split('T')[0],
+        waktu: prev.waktu || timeStr,
+        nomorNota: prev.nomorNota || notaNum,
+        nomorPolisi: prev.nomorPolisi || defaultArmada.nopol || 'W 9821 UB',
+        panjangCm: prev.panjangCm || defaultArmada.panjangCm || 650,
+        lebarCm: prev.lebarCm || defaultArmada.lebarCm || 250,
+        tinggiCm: prev.tinggiCm || defaultArmada.tinggiCm || 200,
+        isPpn: location.state.isPpn ?? prev.isPpn,
       }));
     }
-  }, [location.state, materials]);
+  }, [location.state, materials, armadaList]);
 
+  // Customer dropdown change handler
   const handleCustomerChange = (newCustomer) => {
+    if (!newCustomer) {
+      setFormData((prev) => ({
+        ...prev,
+        customer: '',
+        poNumber: '',
+        nomorRo: '',
+        preOrderId: '',
+        materialId: '',
+        isPpn: false,
+      }));
+      return;
+    }
+
     const custPos = approvedPos.filter((po) => po.customer === newCustomer);
     const firstPo = custPos[0];
     let newMatId = formData.materialId;
@@ -139,7 +225,76 @@ export default function SuratJalanPage() {
       preOrderId: firstPo?.id || '',
       materialId: newMatId || prev.materialId,
       isPpn: firstPo?.jenisWajibPajak === 'PKP' ? true : prev.isPpn,
+      tanggal: prev.tanggal || new Date().toISOString().split('T')[0],
+      waktu: prev.waktu || `${String(new Date().getHours()).padStart(2, '0')}:${String(new Date().getMinutes()).padStart(2, '0')}`,
+      nomorSj: prev.nomorSj || `296${Math.floor(70 + Math.random() * 29)}`,
+      nomorNota: prev.nomorNota || `NT-${Math.floor(88900 + Math.random() * 99)}`,
+      jenis: prev.jenis || firstPo?.jenisRO || firstPo?.jenis || 'Jasa Angkut + Material',
     }));
+  };
+
+  // PO selection handler
+  const handlePoChange = (selVal) => {
+    if (!selVal) {
+      setFormData((prev) => ({
+        ...prev,
+        poNumber: '',
+        nomorRo: '',
+        preOrderId: '',
+      }));
+      return;
+    }
+
+    const selectedPo = approvedPos.find((po) => (po.nomorPo && po.nomorPo === selVal) || po.id === selVal);
+    let newMatId = formData.materialId;
+    if (selectedPo?.materialId) {
+      newMatId = selectedPo.materialId;
+    } else if (selectedPo?.materialName) {
+      const match = materials.find(
+        (m) => m.name.toLowerCase() === selectedPo.materialName.toLowerCase()
+      );
+      if (match) newMatId = match.id;
+    }
+    const resolvedRo = selectedPo?.nomorRO || selectedPo?.nomorRo || (selectedPo ? `RO-${selectedPo.id}` : formData.nomorRo);
+
+    setFormData((prev) => ({
+      ...prev,
+      poNumber: selVal,
+      nomorRo: resolvedRo,
+      preOrderId: selectedPo?.id || '',
+      materialId: newMatId || prev.materialId,
+      isPpn: selectedPo?.jenisWajibPajak === 'PKP' ? true : prev.isPpn,
+      jenis: prev.jenis || selectedPo?.jenisRO || selectedPo?.jenis || 'Jasa Angkut + Material',
+    }));
+  };
+
+  // Armada dropdown change handler
+  const handleArmadaChange = (val) => {
+    if (!val) {
+      setFormData((prev) => ({
+        ...prev,
+        nomorPolisi: '',
+        panjangCm: '',
+        lebarCm: '',
+        tinggiCm: '',
+        koreksiTinggiCm: 0,
+      }));
+      return;
+    }
+
+    const arm = armadaList.find((a) => a.nopol === val);
+    if (arm) {
+      setFormData((prev) => ({
+        ...prev,
+        nomorPolisi: val,
+        panjangCm: arm.panjangCm,
+        lebarCm: arm.lebarCm,
+        tinggiCm: arm.tinggiCm,
+        koreksiTinggiCm: 0,
+      }));
+    } else {
+      setFormData((prev) => ({ ...prev, nomorPolisi: val }));
+    }
   };
 
   const kubikasi = useMemo(() => {
@@ -179,8 +334,37 @@ export default function SuratJalanPage() {
     }
   };
 
+  const handleResetFormToBlank = () => {
+    setFormData({
+      nomorSj: '',
+      customer: '',
+      poNumber: '',
+      nomorRo: '',
+      preOrderId: '',
+      materialId: '',
+      jenis: '',
+      tanggal: '',
+      waktu: '',
+      nomorNota: '',
+      nomorPolisi: '',
+      isPpn: false,
+      fotoSuratJalan: null,
+      fotoPreview: null,
+      panjangCm: '',
+      lebarCm: '',
+      tinggiCm: '',
+      koreksiTinggiCm: 0,
+    });
+    addToast('Formulir dikosongkan.', 'info');
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
+
+    if (!formData.customer) {
+      addToast('Harap pilih Customer terlebih dahulu.', 'warning');
+      return;
+    }
 
     if (!formData.poNumber) {
       addToast('Harap pilih Nomor PO yang valid dan telah disetujui (APPROVED).', 'error');
@@ -196,12 +380,40 @@ export default function SuratJalanPage() {
       return;
     }
 
+    if (!formData.nomorSj) {
+      addToast('Nomor Surat Jalan wajib diisi.', 'warning');
+      return;
+    }
+
+    if (!formData.materialId) {
+      addToast('Harap pilih Jenis Material.', 'warning');
+      return;
+    }
+
+    if (!formData.tanggal) {
+      addToast('Harap isi Tanggal Good Issue.', 'warning');
+      return;
+    }
+
+    if (!formData.nomorPolisi) {
+      addToast('Harap pilih Nomor Polisi Armada.', 'warning');
+      return;
+    }
+
+    const p = Number(formData.panjangCm) || 0;
+    const l = Number(formData.lebarCm) || 0;
+    const t = Number(formData.tinggiCm) || 0;
+    if (p <= 0 || l <= 0 || t <= 0) {
+      addToast('Dimensi bak truk (Panjang, Lebar, Tinggi) wajib diisi dengan benar.', 'warning');
+      return;
+    }
+
     const selectedMat = materials.find((m) => m.id === formData.materialId);
     const finalRoNumber = currentPo?.nomorRO || currentPo?.nomorRo || formData.nomorRo || `RO-${currentPo?.id}`;
 
     createSuratJalan({
       ...formData,
-      nopol: formData.nomorPolisi || 'W 9821 UB',
+      nopol: formData.nomorPolisi,
       nomorRo: finalRoNumber,
       nomorRO: finalRoNumber,
       preOrderId: currentPo?.id,
@@ -210,20 +422,14 @@ export default function SuratJalanPage() {
       driver: 'Supir Armada Terjadwal',
     });
 
-    // Reset form with new SJ number
-    setFormData((prev) => ({
-      ...prev,
-      nomorSj: `296${Math.floor(70 + Math.random() * 29)}`,
-      fotoSuratJalan: null,
-      fotoPreview: null,
-      koreksiTinggiCm: 0,
-    }));
+    addToast(`Surat Jalan ${formData.nomorSj} berhasil diterbitkan dan masuk ke Jurnal!`, 'success');
+    navigate('/rekapan');
   };
 
   return (
-    <div className="w-full space-y-6 pb-20">
+    <div className="w-full space-y-6 pb-20 select-none">
       {/* Top Header */}
-      <div className="flex items-center justify-between pb-3 border-b border-[#24282C]">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#24282C]">
         <div className="flex items-center gap-2.5">
           <Button
             size="sm"
@@ -243,26 +449,39 @@ export default function SuratJalanPage() {
           </div>
         </div>
 
-        {/* PPN Toggle Switch matching screenshot */}
-        <div className="flex items-center gap-2 bg-[#131517] border border-[#24282C] px-3 py-1.5 rounded-md">
-          <span className="text-[11px] text-neutral-300 font-mono font-medium">Format PPN:</span>
-          <button
-            type="button"
-            onClick={() => setFormData({ ...formData, isPpn: !formData.isPpn })}
-            className={`w-9 h-5 flex items-center rounded-full p-0.5 transition-colors cursor-pointer ${
-              formData.isPpn ? 'bg-[#F4511E]' : 'bg-[#2A2E33]'
-            }`}
+        <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
+          {/* Reset to Blank Form Button */}
+          <Button
+            size="xs"
+            variant="outline"
+            icon={RotateCcw}
+            onClick={handleResetFormToBlank}
+            title="Kosongkan Semua Field"
           >
-            <div
-              className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${
-                formData.isPpn ? 'translate-x-4' : 'translate-x-0'
+            Kosongkan Form
+          </Button>
+
+          {/* PPN Toggle Switch matching screenshot */}
+          <div className="flex items-center gap-2 bg-[#131517] border border-[#24282C] px-3 py-1.5 rounded-md">
+            <span className="text-[11px] text-neutral-300 font-mono font-medium">Format PPN:</span>
+            <button
+              type="button"
+              onClick={() => setFormData({ ...formData, isPpn: !formData.isPpn })}
+              className={`w-9 h-5 flex items-center rounded-full p-0.5 transition-colors cursor-pointer ${
+                formData.isPpn ? 'bg-[#F4511E]' : 'bg-[#2A2E33]'
               }`}
-            />
-          </button>
+            >
+              <div
+                className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${
+                  formData.isPpn ? 'translate-x-4' : 'translate-x-0'
+                }`}
+              />
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* Banner Informasi Asal Pre Order / Validasi Status Approval */}
+      {/* Banner Informasi Asal Pre Order / Auto-Populated vs Blank Notification */}
       {isNavPoUnapproved && (
         <div className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/40 text-rose-300 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2 font-mono shadow-sm">
           <div className="flex items-center gap-2">
@@ -282,35 +501,35 @@ export default function SuratJalanPage() {
         </div>
       )}
 
-      {location.state?.fromPreOrder && !isNavPoUnapproved && (
-        <div className="p-3 rounded-xl bg-orange-500/10 border border-[#F4511E]/40 text-[#F4511E] text-xs flex items-center justify-between font-mono shadow-sm">
+      {isFromCreateGi && !isNavPoUnapproved && (
+        <div className="p-3 rounded-xl bg-orange-500/10 border border-[#F4511E]/40 text-[#F4511E] text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2 font-mono shadow-sm">
           <div className="flex items-center gap-2">
             <CheckCircle2 className="w-4 h-4 text-[#F4511E] shrink-0" />
             <span>
-              Penerbitan Surat Jalan GI dari Pre Order APPROVED: <strong>{formData.customer}</strong> {formData.poNumber ? `(${formData.poNumber})` : ''}
+              Data terisi otomatis dari Pre Order: <strong>{formData.customer}</strong> &bull; [{formData.nomorRo || 'RO'}] &bull; No. PO: <strong>{formData.poNumber || 'DRAFT'}</strong>
             </span>
           </div>
           <span className="text-[11px] text-neutral-400 font-sans hidden sm:inline">
-            Status: Disetujui Super Admin
+            Semua field terisi otomatis &bull; Siap diterbitkan
           </span>
         </div>
       )}
 
-      {approvedPos.length === 0 && (
-        <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/40 text-amber-300 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2 font-mono shadow-sm">
+      {!isFromCreateGi && (
+        <div className="p-3 rounded-xl bg-[#14171A] border border-[#262A2E] text-neutral-400 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2 font-mono shadow-sm">
           <div className="flex items-center gap-2">
-            <Clock className="w-4 h-4 text-amber-400 shrink-0" />
+            <FileText className="w-4 h-4 text-[#F4511E] shrink-0" />
             <span>
-              Belum ada Pre Order yang berstatus APPROVED oleh Super Admin. Surat Jalan baru dapat dibuat setelah Super Admin menyetujui Pre Order.
+              Formulir Surat Jalan Default Kosong. Silakan pilih Customer &amp; PO yang telah disetujui, atau buat langsung melalui tombol <strong>"Buat Surat Jalan GI"</strong> di halaman Pre Order.
             </span>
           </div>
           <Button
             size="xs"
             variant="ghost"
             onClick={() => navigate('/pre-orders')}
-            className="text-amber-200 hover:text-white border border-amber-500/40 shrink-0"
+            className="text-[#F4511E] hover:text-white border border-[#F4511E]/30 shrink-0 cursor-pointer"
           >
-            Buka Pre Order
+            Buka Pre Order &rarr;
           </Button>
         </div>
       )}
@@ -328,6 +547,7 @@ export default function SuratJalanPage() {
               value={formData.customer}
               onChange={(e) => handleCustomerChange(e.target.value)}
             >
+              <option value="">-- Pilih Customer --</option>
               {customers.map((c) => (
                 <option key={c.id || c.name} value={c.name}>
                   {c.kodePrefix ? `${c.kodePrefix} - ` : ''}{c.name}
@@ -345,42 +565,26 @@ export default function SuratJalanPage() {
                 icon={Ticket}
                 required
                 value={formData.poNumber}
-                onChange={(e) => {
-                  const selVal = e.target.value;
-                  const selectedPo = approvedPos.find((po) => (po.nomorPo && po.nomorPo === selVal) || po.id === selVal);
-                  let newMatId = formData.materialId;
-                  if (selectedPo?.materialId) {
-                    newMatId = selectedPo.materialId;
-                  } else if (selectedPo?.materialName) {
-                    const match = materials.find(
-                      (m) => m.name.toLowerCase() === selectedPo.materialName.toLowerCase()
-                    );
-                    if (match) newMatId = match.id;
-                  }
-                  const resolvedRo = selectedPo?.nomorRO || selectedPo?.nomorRo || (selectedPo ? `RO-${selectedPo.id}` : formData.nomorRo);
-                  setFormData({
-                    ...formData,
-                    poNumber: selVal,
-                    nomorRo: resolvedRo,
-                    preOrderId: selectedPo?.id || '',
-                    materialId: newMatId || formData.materialId,
-                    isPpn: selectedPo?.jenisWajibPajak === 'PKP' ? true : formData.isPpn,
-                  });
-                }}
+                onChange={(e) => handlePoChange(e.target.value)}
               >
-                {customerApprovedPos.length === 0 ? (
+                {!formData.customer ? (
+                  <option value="">-- Pilih Customer Terlebih Dahulu --</option>
+                ) : customerApprovedPos.length === 0 ? (
                   <option value="" disabled>
                     -- Belum ada Pre Order disetujui (APPROVED) untuk customer ini --
                   </option>
                 ) : (
-                  customerApprovedPos.map((po) => (
-                    <option key={po.id} value={po.nomorPo || po.id}>
-                      [{po.nomorRO || `RO-${po.id}`}] {po.nomorPo ? `(PO: ${po.nomorPo})` : '(Draft Terverifikasi)'} - {po.customer} ({po.materialName})
-                    </option>
-                  ))
+                  <>
+                    <option value="">-- Pilih Nomor PO --</option>
+                    {customerApprovedPos.map((po) => (
+                      <option key={po.id} value={po.nomorPo || po.id}>
+                        [{po.nomorRO || `RO-${po.id}`}] {po.nomorPo ? `(PO: ${po.nomorPo})` : '(Draft Terverifikasi)'} - {po.customer} ({po.materialName})
+                      </option>
+                    ))}
+                  </>
                 )}
               </Select>
-              {customerApprovedPos.length === 0 && (
+              {formData.customer && customerApprovedPos.length === 0 && (
                 <p className="text-[11px] text-amber-400 font-mono flex items-center gap-1.5 pt-0.5">
                   <AlertCircle className="w-3.5 h-3.5 shrink-0" />
                   <span>Customer ini belum memiliki Pre Order yang disetujui Super Admin.</span>
@@ -394,7 +598,8 @@ export default function SuratJalanPage() {
                 label="Nomor Surat Jalan"
                 icon={Ticket}
                 required
-                value={formData.isPpn ? `PPN${formData.nomorSj}` : formData.nomorSj}
+                placeholder="Contoh: 29699"
+                value={formData.isPpn && formData.nomorSj ? `PPN${formData.nomorSj}` : formData.nomorSj}
                 onChange={(e) =>
                   setFormData({ ...formData, nomorSj: e.target.value.replace('PPN', '') })
                 }
@@ -405,6 +610,7 @@ export default function SuratJalanPage() {
                 label="Nomor RO"
                 icon={Ticket}
                 required
+                placeholder="Contoh: RO-2026-2745"
                 value={formData.nomorRo}
                 onChange={(e) => setFormData({ ...formData, nomorRo: e.target.value })}
                 className="font-mono"
@@ -420,6 +626,7 @@ export default function SuratJalanPage() {
                 value={formData.materialId}
                 onChange={(e) => setFormData({ ...formData, materialId: e.target.value })}
               >
+                <option value="">-- Pilih Material --</option>
                 {materials.map((m) => (
                   <option key={m.id} value={m.id}>
                     {m.name} ({m.satuan}) - PPH {m.pphRate}%
@@ -434,6 +641,7 @@ export default function SuratJalanPage() {
                 value={formData.jenis}
                 onChange={(e) => setFormData({ ...formData, jenis: e.target.value })}
               >
+                <option value="">-- Pilih Jenis Layanan --</option>
                 <option value="Jasa Angkut + Material">Jasa Angkut + Material</option>
                 <option value="Material Curah Saja">Material Curah Saja</option>
                 <option value="Jasa Angkut Saja">Jasa Angkut Saja</option>
@@ -475,24 +683,10 @@ export default function SuratJalanPage() {
                 label="Nomor Polisi Armada"
                 icon={Truck}
                 value={formData.nomorPolisi}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  const arm = armadaList.find((a) => a.nopol === val);
-                  if (arm) {
-                    setFormData({
-                      ...formData,
-                      nomorPolisi: val,
-                      panjangCm: arm.panjangCm,
-                      lebarCm: arm.lebarCm,
-                      tinggiCm: arm.tinggiCm,
-                      koreksiTinggiCm: 0,
-                    });
-                  } else {
-                    setFormData({ ...formData, nomorPolisi: val });
-                  }
-                }}
+                onChange={(e) => handleArmadaChange(e.target.value)}
                 className="font-mono font-bold"
               >
+                <option value="">-- Pilih Armada / Nopol --</option>
                 {armadaList.map((a) => (
                   <option key={a.id} value={a.nopol}>
                     {a.nopol} ({a.merk} - {a.kapasitas} m³)
@@ -559,7 +753,7 @@ export default function SuratJalanPage() {
                     <input
                       type="number"
                       placeholder="0"
-                      value={formData.panjangCm === 0 ? '' : formData.panjangCm}
+                      value={formData.panjangCm === '' ? '' : formData.panjangCm}
                       onFocus={(e) => {
                         if (e.target.value === '0') e.target.select();
                       }}
@@ -580,7 +774,7 @@ export default function SuratJalanPage() {
                     <input
                       type="number"
                       placeholder="0"
-                      value={formData.lebarCm === 0 ? '' : formData.lebarCm}
+                      value={formData.lebarCm === '' ? '' : formData.lebarCm}
                       onFocus={(e) => {
                         if (e.target.value === '0') e.target.select();
                       }}
@@ -601,7 +795,7 @@ export default function SuratJalanPage() {
                     <input
                       type="number"
                       placeholder="0"
-                      value={formData.tinggiCm === 0 ? '' : formData.tinggiCm}
+                      value={formData.tinggiCm === '' ? '' : formData.tinggiCm}
                       onFocus={(e) => {
                         if (e.target.value === '0') e.target.select();
                       }}
@@ -677,7 +871,7 @@ export default function SuratJalanPage() {
               size="md"
               icon={Save}
               disabled={!formData.poNumber || customerApprovedPos.length === 0 || isNavPoUnapproved}
-              className={`w-full mt-2 ${
+              className={`w-full mt-2 cursor-pointer ${
                 !formData.poNumber || customerApprovedPos.length === 0 || isNavPoUnapproved
                   ? 'opacity-50 cursor-not-allowed border border-[#2B3037]'
                   : ''
@@ -696,9 +890,9 @@ export default function SuratJalanPage() {
         {/* Right Column (5 cols) - Technical Blueprint & Dispatch Summary */}
         <div className="lg:col-span-5 space-y-3">
           <TruckVisualizer
-            panjangCm={formData.panjangCm}
-            lebarCm={formData.lebarCm}
-            tinggiCm={formData.tinggiCm}
+            panjangCm={Number(formData.panjangCm) || 0}
+            lebarCm={Number(formData.lebarCm) || 0}
+            tinggiCm={Number(formData.tinggiCm) || 0}
             koreksiCm={formData.koreksiTinggiCm}
             onApplyPreset={handleApplyPreset}
           />
@@ -708,18 +902,24 @@ export default function SuratJalanPage() {
               Verifikasi Kiriman Harian
             </h2>
 
-            <div className="space-y-1.5 text-xs">
+            <div className="space-y-1.5 text-xs font-mono">
               <div className="flex justify-between py-1 border-b border-[#202326]">
                 <span className="text-neutral-500">Nopol Armada:</span>
-                <span className="font-mono font-bold text-neutral-200">{formData.nomorPolisi}</span>
+                <span className="font-bold text-neutral-200">{formData.nomorPolisi || '-'}</span>
               </div>
               <div className="flex justify-between py-1 border-b border-[#202326]">
                 <span className="text-neutral-500">Customer:</span>
-                <span className="text-neutral-200">{formData.customer}</span>
+                <span className="text-neutral-200">{formData.customer || '-'}</span>
               </div>
               <div className="flex justify-between py-1 border-b border-[#202326]">
                 <span className="text-neutral-500">No. PO:</span>
-                <span className="font-mono text-neutral-300">{formData.poNumber}</span>
+                <span className="text-neutral-300">{formData.poNumber || '-'}</span>
+              </div>
+              <div className="flex justify-between py-1 border-b border-[#202326]">
+                <span className="text-neutral-500">Material:</span>
+                <span className="text-amber-400 font-semibold">
+                  {materials.find((m) => m.id === formData.materialId)?.name || '-'}
+                </span>
               </div>
               <div className="flex justify-between py-2 border-t border-[#262A2F] items-baseline font-mono">
                 <span className="font-semibold text-neutral-300">Volume Riil Diterima:</span>
@@ -735,7 +935,12 @@ export default function SuratJalanPage() {
               size="md"
               icon={Save}
               onClick={handleSubmit}
-              className="w-full"
+              disabled={!formData.poNumber || customerApprovedPos.length === 0 || isNavPoUnapproved}
+              className={`w-full cursor-pointer ${
+                !formData.poNumber || customerApprovedPos.length === 0 || isNavPoUnapproved
+                  ? 'opacity-50 cursor-not-allowed border border-[#2B3037]'
+                  : ''
+              }`}
             >
               Simpan Good Issue
             </Button>

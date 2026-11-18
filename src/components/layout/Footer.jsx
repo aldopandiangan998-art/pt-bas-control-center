@@ -1,9 +1,15 @@
 import { APP_CONFIG } from '../../utils/constants';
 import { useApp } from '../../context/AppContext';
+import { useAuth } from '../../context/AuthContext';
 
 export default function Footer() {
   const currentYear = new Date().getFullYear();
   const { isDark } = useApp();
+  const { currentUser } = useAuth();
+
+  // Sembunyikan footer untuk role admin dan superadmin
+  const role = currentUser?.role?.toLowerCase();
+  if (role === 'admin' || role === 'superadmin') return null;
 
   return (
     <footer className={`mt-8 pt-3 border-t text-[11px] font-mono flex flex-col sm:flex-row items-center justify-between gap-1 select-none transition-colors ${

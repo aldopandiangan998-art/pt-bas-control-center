@@ -81,10 +81,10 @@ export default function DashboardPage() {
     { title: 'Invoice', path: '/invoices', icon: InvoiceIcon },
     ...(isSuperAdmin
       ? [
-          { title: 'Laporan Pajak', path: '/laporan', icon: LaporanPajakIcon },
-          { title: 'Laporan All-in-One', path: '/laporan', icon: LaporanAllInOneIcon },
-          { title: 'Laporan Supplier', path: '/laporan', icon: LaporanSupplierIcon },
-        ]
+        { title: 'Laporan Pajak', path: '/laporan', icon: LaporanPajakIcon },
+        { title: 'Laporan All-in-One', path: '/laporan', icon: LaporanAllInOneIcon },
+        { title: 'Laporan Supplier', path: '/laporan', icon: LaporanSupplierIcon },
+      ]
       : []),
   ];
 
@@ -104,42 +104,42 @@ export default function DashboardPage() {
   const chartDays = ['05 Nov', '06 Nov', '07 Nov', '08 Nov', '09 Nov', '10 Nov', '11 Nov', '12 Nov'];
   const activityData = isExecView
     ? [
-        { day: '05 Nov', created: 18.5, approved: 12.0 }, // Juta IDR
-        { day: '06 Nov', created: 48.0, approved: 42.5 }, // Peak matching screenshot
-        { day: '07 Nov', created: 8.5, approved: 15.0 },
-        { day: '08 Nov', created: 0.0, approved: 0.0 },
-        { day: '09 Nov', created: 0.0, approved: 0.0 },
-        { day: '10 Nov', created: 0.0, approved: 0.0 },
-        { day: '11 Nov', created: 0.0, approved: 0.0 },
-        { day: '12 Nov', created: 0.0, approved: 0.0 },
-      ]
+      { day: '05 Nov', created: 18.5, approved: 12.0 }, // Juta IDR
+      { day: '06 Nov', created: 48.0, approved: 42.5 }, // Peak matching screenshot
+      { day: '07 Nov', created: 8.5, approved: 15.0 },
+      { day: '08 Nov', created: 0.0, approved: 0.0 },
+      { day: '09 Nov', created: 0.0, approved: 0.0 },
+      { day: '10 Nov', created: 0.0, approved: 0.0 },
+      { day: '11 Nov', created: 0.0, approved: 0.0 },
+      { day: '12 Nov', created: 0.0, approved: 0.0 },
+    ]
     : [
-        { day: '05 Nov', created: 1.0, approved: 1.0 }, // Ritase armada
-        { day: '06 Nov', created: 5.0, approved: 4.0 }, // Peak matching screenshot
-        { day: '07 Nov', created: 0.3, approved: 1.0 },
-        { day: '08 Nov', created: 0.0, approved: 0.0 },
-        { day: '09 Nov', created: 0.0, approved: 0.0 },
-        { day: '10 Nov', created: 0.0, approved: 0.0 },
-        { day: '11 Nov', created: 0.0, approved: 0.0 },
-        { day: '12 Nov', created: 0.0, approved: 0.0 },
-      ];
+      { day: '05 Nov', created: 1.0, approved: 1.0 }, // Ritase armada
+      { day: '06 Nov', created: 5.0, approved: 4.0 }, // Peak matching screenshot
+      { day: '07 Nov', created: 0.3, approved: 1.0 },
+      { day: '08 Nov', created: 0.0, approved: 0.0 },
+      { day: '09 Nov', created: 0.0, approved: 0.0 },
+      { day: '10 Nov', created: 0.0, approved: 0.0 },
+      { day: '11 Nov', created: 0.0, approved: 0.0 },
+      { day: '12 Nov', created: 0.0, approved: 0.0 },
+    ];
 
   // 2. Donut Breakdown Categories matching PT BAS Logistics & Mining Domain
   const materialAndCustomerTypes = isExecView
     ? [
-        { label: 'PT Chiyoda International (Smelter Freeport)', percent: '26.7%', count: '8 faktur', color: '#F4511E' },
-        { label: 'PT Waskita Beton Precast (Tol KLBM)', percent: '16.7%', count: '5 faktur', color: '#FB8C00' },
-        { label: 'PT Semen Indonesia Logistik (Tuban Hub)', percent: '16.7%', count: '5 faktur', color: '#F59E0B' },
-        { label: 'PT Varia Usaha Fabrikasi Gresik', percent: '10%', count: '3 faktur', color: '#FCD34D' },
-        { label: 'Rekanan Kontraktor Tambang Lainnya', percent: '30%', count: '9 faktur', color: '#374151' },
-      ]
+      { label: 'PT Chiyoda International (Smelter Freeport)', percent: '26.7%', count: '8 faktur', color: '#F4511E' },
+      { label: 'PT Waskita Beton Precast (Tol KLBM)', percent: '16.7%', count: '5 faktur', color: '#FB8C00' },
+      { label: 'PT Semen Indonesia Logistik (Tuban Hub)', percent: '16.7%', count: '5 faktur', color: '#F59E0B' },
+      { label: 'PT Varia Usaha Fabrikasi Gresik', percent: '10%', count: '3 faktur', color: '#FCD34D' },
+      { label: 'Rekanan Kontraktor Tambang Lainnya', percent: '30%', count: '9 faktur', color: '#374151' },
+    ]
     : [
-        { label: 'Batu Split 1-2 (Cor & Konstruksi Beton)', percent: '26.7%', count: '8 rit', color: '#F4511E' },
-        { label: 'Abu Batu Super (Batching Plant & Aspal)', percent: '16.7%', count: '5 rit', color: '#FB8C00' },
-        { label: 'Sirtu Urugan Pilihan (Proyek Smelter)', percent: '16.7%', count: '5 rit', color: '#F59E0B' },
-        { label: 'Base Course A / Makadam Lapis Pondasi', percent: '10%', count: '3 rit', color: '#FCD34D' },
-        { label: 'Batu Belah Pondasi & Urugan Biasa', percent: '30%', count: '9 rit', color: '#374151' },
-      ];
+      { label: 'Batu Split 1-2 (Cor & Konstruksi Beton)', percent: '26.7%', count: '8 rit', color: '#F4511E' },
+      { label: 'Abu Batu Super (Batching Plant & Aspal)', percent: '16.7%', count: '5 rit', color: '#FB8C00' },
+      { label: 'Sirtu Urugan Pilihan (Proyek Smelter)', percent: '16.7%', count: '5 rit', color: '#F59E0B' },
+      { label: 'Base Course A / Makadam Lapis Pondasi', percent: '10%', count: '3 rit', color: '#FCD34D' },
+      { label: 'Batu Belah Pondasi & Urugan Biasa', percent: '30%', count: '9 rit', color: '#374151' },
+    ];
 
   // 3. Compliance and Efficiency stats
   const complianceScore = isExecView ? '86.4%' : '46.7%';
@@ -153,17 +153,17 @@ export default function DashboardPage() {
   // 4. Most active units (Top 4) with PT BAS Projects & Contractors
   const activeUnits = isExecView
     ? [
-        { name: 'PT Chiyoda International (Smelter Freeport)', count: 'Rp 42.5 Jt', percent: '16.7%', barWidth: '16.7%', color: 'bg-[#F4511E]' },
-        { name: 'PT Waskita Beton Precast (Tol KLBM)', count: 'Rp 38.0 Jt', percent: '16.7%', barWidth: '16.7%', color: 'bg-[#F4511E]' },
-        { name: 'PT Semen Indonesia (Tuban Hub)', count: 'Rp 24.5 Jt', percent: '10%', barWidth: '10%', color: 'bg-[#FB8C00]' },
-        { name: 'PT Maspion Industrial Estate Manyar', count: 'Rp 8.2 Jt', percent: '3.3%', barWidth: '3.3%', color: 'bg-[#F59E0B]' },
-      ]
+      { name: 'PT Chiyoda International (Smelter Freeport)', count: 'Rp 42.5 Jt', percent: '16.7%', barWidth: '16.7%', color: 'bg-[#F4511E]' },
+      { name: 'PT Waskita Beton Precast (Tol KLBM)', count: 'Rp 38.0 Jt', percent: '16.7%', barWidth: '16.7%', color: 'bg-[#F4511E]' },
+      { name: 'PT Semen Indonesia (Tuban Hub)', count: 'Rp 24.5 Jt', percent: '10%', barWidth: '10%', color: 'bg-[#FB8C00]' },
+      { name: 'PT Maspion Industrial Estate Manyar', count: 'Rp 8.2 Jt', percent: '3.3%', barWidth: '3.3%', color: 'bg-[#F59E0B]' },
+    ]
     : [
-        { name: 'Proyek Smelter Freeport Manyar (Split 1-2)', count: '5 rit', percent: '16.7%', barWidth: '16.7%', color: 'bg-[#F4511E]' },
-        { name: 'Proyek Tol KLBM Ruas Bunder (Sirtu Urug)', count: '5 rit', percent: '16.7%', barWidth: '16.7%', color: 'bg-[#F4511E]' },
-        { name: 'Batching Plant Semen Indonesia Tuban (Abu Batu)', count: '3 rit', percent: '10%', barWidth: '10%', color: 'bg-[#FB8C00]' },
-        { name: 'Dermaga Pelabuhan Maspion Manyar (Base Course)', count: '1 rit', percent: '3.3%', barWidth: '3.3%', color: 'bg-[#F59E0B]' },
-      ];
+      { name: 'Proyek Smelter Freeport Manyar (Split 1-2)', count: '5 rit', percent: '16.7%', barWidth: '16.7%', color: 'bg-[#F4511E]' },
+      { name: 'Proyek Tol KLBM Ruas Bunder (Sirtu Urug)', count: '5 rit', percent: '16.7%', barWidth: '16.7%', color: 'bg-[#F4511E]' },
+      { name: 'Batching Plant Semen Indonesia Tuban (Abu Batu)', count: '3 rit', percent: '10%', barWidth: '10%', color: 'bg-[#FB8C00]' },
+      { name: 'Dermaga Pelabuhan Maspion Manyar (Base Course)', count: '1 rit', percent: '3.3%', barWidth: '3.3%', color: 'bg-[#F59E0B]' },
+    ];
 
   return (
     <div className="space-y-4 sm:space-y-5">
@@ -796,19 +796,17 @@ export default function DashboardPage() {
                     navigate(item.path);
                   }
                 }}
-                className={`border rounded-xl p-2.5 aspect-square flex flex-col items-center justify-center text-center group cursor-pointer transition-all duration-150 shadow-xs ${
-                  isDark
-                    ? 'bg-[#16181B] hover:bg-[#1D2125] border-[#22262A] hover:border-[#F4511E]/60'
-                    : 'bg-white hover:bg-orange-50/50 border-slate-200 hover:border-[#F4511E]/60 shadow-2xs'
-                }`}
+                className={`border rounded-xl p-2.5 aspect-square flex flex-col items-center justify-center text-center group cursor-pointer transition-all duration-150 shadow-xs ${isDark
+                  ? 'bg-[#16181B] hover:bg-[#1D2125] border-[#22262A] hover:border-[#F4511E]/60'
+                  : 'bg-white hover:bg-orange-50/50 border-slate-200 hover:border-[#F4511E]/60 shadow-2xs'
+                  }`}
                 title={item.title}
               >
                 <div className="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center mb-1 group-hover:scale-110 transition-transform shrink-0">
                   <Icon className="w-full h-full" />
                 </div>
-                <span className={`text-[10px] font-medium leading-tight line-clamp-2 transition-colors ${
-                  isDark ? 'text-neutral-300 group-hover:text-white' : 'text-slate-700 group-hover:text-[#F4511E]'
-                }`}>
+                <span className={`text-[10px] font-medium leading-tight line-clamp-2 transition-colors ${isDark ? 'text-neutral-300 group-hover:text-white' : 'text-slate-700 group-hover:text-[#F4511E]'
+                  }`}>
                   {item.title}
                 </span>
               </button>
@@ -821,9 +819,8 @@ export default function DashboardPage() {
       {isSuperAdmin && (
         <div className="pt-1">
           <div className="flex items-center justify-between mb-2.5">
-            <h3 className={`text-xs font-mono font-bold uppercase tracking-wider ${
-              isDark ? 'text-neutral-300' : 'text-slate-600'
-            }`}>
+            <h3 className={`text-xs font-mono font-bold uppercase tracking-wider ${isDark ? 'text-neutral-300' : 'text-slate-600'
+              }`}>
               Pusat Repositori Data Master
             </h3>
             <span className={`text-[11px] font-mono ${isDark ? 'text-neutral-500' : 'text-slate-500'}`}>
@@ -839,19 +836,17 @@ export default function DashboardPage() {
                   key={item.title}
                   type="button"
                   onClick={() => navigate(`/master-data?tab=${item.tab}`)}
-                  className={`border rounded-xl p-2.5 aspect-square flex flex-col items-center justify-center text-center group cursor-pointer transition-all duration-150 shadow-xs ${
-                    isDark
-                      ? 'bg-[#16181B] hover:bg-[#1D2125] border-[#22262A] hover:border-[#F4511E]/60'
-                      : 'bg-white hover:bg-orange-50/50 border-slate-200 hover:border-[#F4511E]/60 shadow-2xs'
-                  }`}
+                  className={`border rounded-xl p-2.5 aspect-square flex flex-col items-center justify-center text-center group cursor-pointer transition-all duration-150 shadow-xs ${isDark
+                    ? 'bg-[#16181B] hover:bg-[#1D2125] border-[#22262A] hover:border-[#F4511E]/60'
+                    : 'bg-white hover:bg-orange-50/50 border-slate-200 hover:border-[#F4511E]/60 shadow-2xs'
+                    }`}
                   title={item.title}
                 >
                   <div className="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center mb-1 group-hover:scale-110 transition-transform shrink-0">
                     <Icon className="w-full h-full" />
                   </div>
-                  <span className={`text-[10px] font-medium leading-tight line-clamp-2 transition-colors ${
-                    isDark ? 'text-neutral-300 group-hover:text-white' : 'text-slate-700 group-hover:text-[#F4511E]'
-                  }`}>
+                  <span className={`text-[10px] font-medium leading-tight line-clamp-2 transition-colors ${isDark ? 'text-neutral-300 group-hover:text-white' : 'text-slate-700 group-hover:text-[#F4511E]'
+                    }`}>
                     {item.title}
                   </span>
                 </button>

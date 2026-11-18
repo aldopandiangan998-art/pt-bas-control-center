@@ -13,6 +13,11 @@ import {
   ChevronRight,
   Search,
   User,
+  UserPlus,
+  Key,
+  Lock,
+  Eye,
+  EyeOff,
   Hash,
   Phone,
   Landmark,
@@ -166,7 +171,16 @@ export default function MasterDataPage() {
     }
   };
 
-  const { users, approveUser, toggleUserStatus, deleteUser, isSuperAdmin } = useAuth();
+  const {
+    users,
+    approveUser,
+    toggleUserStatus,
+    deleteUser,
+    isSuperAdmin,
+    adminResetPassword,
+    adminUpdateUser,
+    adminCreateUser,
+  } = useAuth();
   const { addToast } = useToast();
 
   // Guard: Data Master hanya dapat diakses oleh Super Admin
@@ -397,6 +411,199 @@ export default function MasterDataPage() {
     lingkupModul: ['Pre Order Customer', 'Kontrak Vendor Valas'],
   });
 
+  // ==========================================
+  // SUPER ADMIN USER MANAGEMENT MODALS STATE
+  // ==========================================
+  const [userPasswordModal, setUserPasswordModal] = useState({
+    open: false,
+    user: null,
+    newPassword: '',
+    confirmPassword: '',
+    showPassword: false,
+    submitting: false,
+  });
+
+  const [editUserModal, setEditUserModal] = useState(false);
+  const [selectedUserToEdit, setSelectedUserToEdit] = useState(null);
+  const [userEditForm, setUserEditForm] = useState({
+    name: '',
+    email: '',
+    role: 'admin',
+    branch: 'Hub Gresik',
+    phone: '',
+    birth_date: '',
+    gender: 'Laki-laki',
+    aktif: 1,
+  });
+
+  const [addUserModal, setAddUserModal] = useState(false);
+  const [userAddForm, setUserAddForm] = useState({
+    name: '',
+    email: '',
+    password: '',
+    role: 'admin',
+    branch: 'Hub Gresik',
+    phone: '',
+    birth_date: '',
+    gender: 'Laki-laki',
+  });
+
+  // Open Password Modal
+  const handleOpenPasswordModal = (targetUser) => {
+    setUserPasswordModal({
+      open: true,
+      user: targetUser,
+      newPassword: '',
+      confirmPassword: '',
+      showPassword: false,
+      submitting: false,
+    });
+  };
+
+  const handleSaveUserPassword = async (e) => {
+    e.preventDefault();
+    if (!userPasswordModal.user) return;
+
+    if (!userPasswordModal.newPassword || userPasswordModal.newPassword.length < 6) {
+      addToast('Kata sandi baru minimal 6 karakter.', 'warning');
+      return;
+    }
+
+    if (userPasswordModal.newPassword !== userPasswordModal.confirmPassword) {
+      addToast('Konfirmasi kata sandi tidak cocok. Pastikan kedua input sama.', 'warning');
+      return;
+    }
+
+    setUserPasswordModal((prev) => ({ ...prev, submitting: true }));
+    try {
+      const res = await adminResetPassword(userPasswordModal.user.id, userPasswordModal.newPassword);
+      if (res.success) {
+        addToast(`Kata sandi akun ${userPasswordModal.user.name} berhasil diperbarui!`, 'success');
+        setUserPasswordModal({
+          open: false,
+          user: null,
+          newPassword: '',
+          confirmPassword: '',
+          showPassword: false,
+          submitting: false,
+        });
+      } else {
+        addToast(res.message || 'Gagal mengubah kata sandi.', 'error');
+        setUserPasswordModal((prev) => ({ ...prev, submitting: false }));
+      }
+    } catch (err) {
+      addToast('Terjadi kesalahan saat mengubah kata sandi.', 'error');
+      setUserPasswordModal((prev) => ({ ...prev, submitting: false }));
+    }
+  };
+
+  // Open Edit User Modal
+  const handleOpenEditUserModal = (targetUser) => {
+    setSelectedUserToEdit(targetUser);
+    const cleanBranch = targetUser.branch && !targetUser.branch.includes('Site [') ? targetUser.branch : 'Hub Gresik';
+    setUserEditForm({
+      name: targetUser.name || '',
+      email: targetUser.email || '',
+      role: targetUser.role === 'superadmin' ? 'superadmin' : 'admin',
+      branch: cleanBranch,
+      phone: targetUser.phone && targetUser.phone !== '-' ? targetUser.phone : '',
+      birth_date: targetUser.birth_date || '',
+      gender: targetUser.gender || 'Laki-laki',
+      aktif: targetUser.aktif === 1 || targetUser.aktif === true ? 1 : 0,
+    });
+    setEditUserModal(true);
+  };
+
+  const handleSaveEditUser = async (e) => {
+    e.preventDefault();
+    if (!selectedUserToEdit) return;
+
+    if (!userEditForm.name.trim()) {
+      addToast('Nama lengkap wajib diisi.', 'warning');
+      return;
+    }
+    if (!userEditForm.email.trim()) {
+      addToast('Email wajib diisi.', 'warning');
+      return;
+    }
+
+    try {
+      const roleLabel = userEditForm.role === 'superadmin' ? 'Super Admin' : 'Admin';
+      const res = await adminUpdateUser(selectedUserToEdit.id, {
+        name: userEditForm.name.trim(),
+        email: userEditForm.email.trim().toLowerCase(),
+        role: userEditForm.role,
+        roleLabel,
+        branch: userEditForm.branch || 'Hub Gresik',
+        phone: userEditForm.phone || '-',
+        birth_date: userEditForm.birth_date || null,
+        gender: userEditForm.gender || 'Laki-laki',
+        aktif: userEditForm.aktif,
+      });
+
+      if (res?.success) {
+        addToast(`Data pengguna ${userEditForm.name} berhasil diperbarui!`, 'success');
+        setEditUserModal(false);
+        setSelectedUserToEdit(null);
+      } else {
+        addToast(res?.message || 'Gagal memperbarui data pengguna.', 'error');
+      }
+    } catch (err) {
+      addToast('Terjadi kesalahan saat memperbarui pengguna.', 'error');
+    }
+  };
+
+  // Add User handler
+  const handleSaveAddUser = async (e) => {
+    e.preventDefault();
+    if (!userAddForm.name.trim()) {
+      addToast('Nama lengkap wajib diisi.', 'warning');
+      return;
+    }
+    if (!userAddForm.email.trim()) {
+      addToast('Email wajib diisi.', 'warning');
+      return;
+    }
+    if (!userAddForm.password || userAddForm.password.length < 6) {
+      addToast('Kata sandi awal minimal 6 karakter.', 'warning');
+      return;
+    }
+
+    try {
+      const roleLabel = userAddForm.role === 'superadmin' ? 'Super Admin' : 'Admin';
+      const res = await adminCreateUser({
+        name: userAddForm.name.trim(),
+        email: userAddForm.email.trim().toLowerCase(),
+        password: userAddForm.password,
+        role: userAddForm.role,
+        roleLabel,
+        branch: userAddForm.branch || 'Hub Gresik',
+        phone: userAddForm.phone || '-',
+        birth_date: userAddForm.birth_date || null,
+        gender: userAddForm.gender || 'Laki-laki',
+      });
+
+      if (res?.success) {
+        addToast(`Pengguna baru ${userAddForm.name} berhasil ditambahkan!`, 'success');
+        setAddUserModal(false);
+        setUserAddForm({
+          name: '',
+          email: '',
+          password: '',
+          role: 'admin',
+          branch: 'Hub Gresik',
+          phone: '',
+          birth_date: '',
+          gender: 'Laki-laki',
+        });
+      } else {
+        addToast(res?.message || 'Gagal menambahkan pengguna.', 'error');
+      }
+    } catch (err) {
+      addToast('Terjadi kesalahan saat menambahkan pengguna.', 'error');
+    }
+  };
+
   // Delete confirmation modal state
   const [deleteConfirm, setDeleteConfirm] = useState({
     open: false,
@@ -415,6 +622,13 @@ export default function MasterDataPage() {
         return;
       }
     }
+    if (type === 'pengguna') {
+      const targetUser = (activeUsers || []).find((u) => u.id === id);
+      if (targetUser?.id === 'usr-1' || targetUser?.email === 'superadmin@ptbas.co.id') {
+        addToast('Akun Super Admin utama tidak dapat dihapus.', 'warning');
+        return;
+      }
+    }
     setDeleteConfirm({ open: true, type, id, label, isBulk: false, ids: [] });
   };
 
@@ -426,6 +640,16 @@ export default function MasterDataPage() {
       const onlyBase = selectedCurrs.length === 1 && (selectedCurrs[0]?.isBase || selectedCurrs[0]?.code === 'IDR');
       if (onlyBase) {
         addToast('Mata uang basis (IDR) tidak dapat dihapus karena merupakan acuan buku besar.', 'warning');
+        return;
+      }
+    }
+
+    if (currentTab === 'pengguna') {
+      const hasMainAdmin = (activeUsers || []).some(
+        (u) => selectedIds.includes(u.id) && (u.id === 'usr-1' || u.email === 'superadmin@ptbas.co.id')
+      );
+      if (hasMainAdmin) {
+        addToast('Akun Super Admin utama diproteksi dan tidak dapat dihapus.', 'warning');
         return;
       }
     }
@@ -1405,7 +1629,17 @@ export default function MasterDataPage() {
             Ekspor CSV
           </Button>
 
-          {['supplier', 'material', 'armada', 'customer', 'bank', 'rekening', 'mata-uang'].includes(currentTab) && (
+          {currentTab === 'pengguna' ? (
+            <Button
+              size="sm"
+              variant="primary"
+              icon={Plus}
+              onClick={() => setAddUserModal(true)}
+              className="whitespace-nowrap font-medium bg-[#F4511E] hover:bg-[#D84315] text-xs shadow-md shadow-orange-500/20 cursor-pointer"
+            >
+              Tambah Pengguna
+            </Button>
+          ) : ['supplier', 'material', 'armada', 'customer', 'bank', 'rekening', 'mata-uang'].includes(currentTab) ? (
             <Button
               size="sm"
               variant="primary"
@@ -1415,7 +1649,7 @@ export default function MasterDataPage() {
             >
               Tambah {activeItem.shortLabel}
             </Button>
-          )}
+          ) : null}
         </div>
       </div>
 
@@ -3654,44 +3888,58 @@ export default function MasterDataPage() {
                             </td>
                             {isSuperAdmin && (
                               <td className="p-3 text-center">
-                                {!isSuper && (
-                                  <div className="flex items-center justify-center gap-1.5">
-                                    {isPending && (
-                                      <Button
-                                        size="xs"
-                                        variant="primary"
-                                        icon={CheckCircle2}
-                                        onClick={async () => {
-                                          const res = await approveUser(user.id);
-                                          if (res.success) {
-                                            addToast(`Akun Admin ${user.name} berhasil disetujui!`, 'success');
-                                          } else {
-                                            addToast(res.message, 'error');
-                                          }
-                                        }}
-                                        className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold"
-                                      >
-                                        Setujui
-                                      </Button>
-                                    )}
-
-                                    <button
-                                      type="button"
+                                <div className="flex items-center justify-center gap-1.5">
+                                  {isPending && (
+                                    <Button
+                                      size="xs"
+                                      variant="primary"
+                                      icon={CheckCircle2}
                                       onClick={async () => {
-                                        if (window.confirm(`Hapus akun ${user.name}?`)) {
-                                          const res = await deleteUser(user.id);
-                                          if (res.success) {
-                                            addToast(`Akun ${user.name} telah dihapus.`, 'info');
-                                          }
+                                        const res = await approveUser(user.id);
+                                        if (res?.success) {
+                                          addToast(`Akun Admin ${user.name} berhasil disetujui!`, 'success');
+                                        } else {
+                                          addToast(res?.message || 'Gagal menyetujui akun.', 'error');
                                         }
                                       }}
-                                      className="p-1.5 rounded hover:bg-rose-500/20 text-neutral-500 hover:text-rose-400 transition-colors cursor-pointer"
+                                      className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[10px] px-2 py-1"
+                                    >
+                                      Setujui
+                                    </Button>
+                                  )}
+
+                                  {/* Ubah Kata Sandi */}
+                                  <button
+                                    type="button"
+                                    onClick={() => handleOpenPasswordModal(user)}
+                                    className="p-1.5 rounded-lg bg-[#1E242C] hover:bg-amber-500/20 text-neutral-400 hover:text-amber-400 border border-[#2B3542] hover:border-amber-500/40 transition-all cursor-pointer shadow-2xs"
+                                    title="Ubah Kata Sandi Akun"
+                                  >
+                                    <Key className="w-3.5 h-3.5" />
+                                  </button>
+
+                                  {/* Edit Profil & Peran */}
+                                  <button
+                                    type="button"
+                                    onClick={() => handleOpenEditUserModal(user)}
+                                    className="p-1.5 rounded-lg bg-[#1E242C] hover:bg-[#F4511E]/20 text-neutral-400 hover:text-[#F4511E] border border-[#2B3542] hover:border-[#F4511E]/40 transition-all cursor-pointer shadow-2xs"
+                                    title="Edit Profil & Peran"
+                                  >
+                                    <Edit2 className="w-3.5 h-3.5" />
+                                  </button>
+
+                                  {/* Hapus Akun (Kecuali Super Admin Utama) */}
+                                  {user.id !== 'usr-1' && user.email !== 'superadmin@ptbas.co.id' && (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleAskDelete('pengguna', user.id, user.name)}
+                                      className="p-1.5 rounded-lg bg-[#1E242C] hover:bg-rose-500/20 text-neutral-400 hover:text-rose-400 border border-[#2B3542] hover:border-rose-500/40 transition-all cursor-pointer shadow-2xs"
                                       title="Hapus Akun"
                                     >
                                       <Trash2 className="w-3.5 h-3.5" />
                                     </button>
-                                  </div>
-                                )}
+                                  )}
+                                </div>
                               </td>
                             )}
                           </tr>
@@ -3791,6 +4039,11 @@ export default function MasterDataPage() {
                           <h3 className="text-sm font-bold text-white line-clamp-1">{user.name}</h3>
                           <p className="text-xs text-neutral-400 font-mono mt-0.5 truncate">{user.email}</p>
                           <p className="text-xs text-neutral-400 font-mono mt-0.5">{user.phone || '-'}</p>
+                          {(user.gender || user.birth_date) && (
+                            <p className="text-[10px] text-neutral-400 font-mono mt-1">
+                              {[user.gender, user.birth_date ? `Lahir: ${user.birth_date}` : null].filter(Boolean).join(' • ')}
+                            </p>
+                          )}
                           {user.branch && (
                             <p className="text-[11px] text-neutral-400 mt-1.5 flex items-center gap-1.5 font-mono px-2 py-0.5 rounded bg-black/25 border border-white/5">
                               <MapPin className="w-3 h-3 text-neutral-500" />
@@ -3816,7 +4069,7 @@ export default function MasterDataPage() {
                           </div>
 
                           {/* Super Admin Action Controls */}
-                          {isSuperAdmin && !isSuper && (
+                          {isSuperAdmin && (
                             <div className="pt-2 flex items-center justify-between gap-1.5 border-t border-[#1C2024]">
                               {isPending ? (
                                 <Button
@@ -3825,15 +4078,15 @@ export default function MasterDataPage() {
                                   icon={CheckCircle2}
                                   onClick={async () => {
                                     const res = await approveUser(user.id);
-                                    if (res.success) {
+                                    if (res?.success) {
                                       addToast(`Akun Admin ${user.name} berhasil disetujui!`, 'success');
                                     } else {
-                                      addToast(res.message, 'error');
+                                      addToast(res?.message || 'Gagal menyetujui akun.', 'error');
                                     }
                                   }}
-                                  className="w-full justify-center bg-emerald-600 hover:bg-emerald-500 text-white font-bold"
+                                  className="justify-center bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[10px] px-2 py-1"
                                 >
-                                  Setujui Akun
+                                  Setujui
                                 </Button>
                               ) : (
                                 <span className="text-[10px] font-mono text-neutral-500">
@@ -3841,21 +4094,37 @@ export default function MasterDataPage() {
                                 </span>
                               )}
 
-                              <button
-                                type="button"
-                                onClick={async () => {
-                                  if (window.confirm(`Hapus akun ${user.name}?`)) {
-                                    const res = await deleteUser(user.id);
-                                    if (res.success) {
-                                      addToast(`Akun ${user.name} telah dihapus.`, 'info');
-                                    }
-                                  }
-                                }}
-                                className="p-1.5 rounded hover:bg-rose-500/20 text-neutral-500 hover:text-rose-400 transition-colors cursor-pointer"
-                                title="Hapus Akun"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
+                              <div className="flex items-center gap-1.5">
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenPasswordModal(user)}
+                                  className="px-2 py-1 rounded-lg bg-[#1E242C] hover:bg-amber-500/20 text-neutral-300 hover:text-amber-400 border border-[#2B3542] hover:border-amber-500/40 transition-all cursor-pointer text-[10px] font-mono flex items-center gap-1 shadow-2xs"
+                                  title="Ubah Kata Sandi Akun"
+                                >
+                                  <Key className="w-3 h-3 text-amber-400" />
+                                  <span>Password</span>
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenEditUserModal(user)}
+                                  className="p-1.5 rounded-lg bg-[#1E242C] hover:bg-[#F4511E]/20 text-neutral-400 hover:text-[#F4511E] border border-[#2B3542] hover:border-[#F4511E]/40 transition-all cursor-pointer shadow-2xs"
+                                  title="Edit Profil & Peran"
+                                >
+                                  <Edit2 className="w-3.5 h-3.5" />
+                                </button>
+
+                                {user.id !== 'usr-1' && user.email !== 'superadmin@ptbas.co.id' && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleAskDelete('pengguna', user.id, user.name)}
+                                    className="p-1.5 rounded-lg bg-[#1E242C] hover:bg-rose-500/20 text-neutral-400 hover:text-rose-400 border border-[#2B3542] hover:border-rose-500/40 transition-all cursor-pointer shadow-2xs"
+                                    title="Hapus Akun"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                )}
+                              </div>
                             </div>
                           )}
                         </div>
@@ -6255,6 +6524,403 @@ export default function MasterDataPage() {
             </Button>
             <Button type="submit" variant="primary" icon={Save}>
               Simpan Mata Uang
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* ======================================================== */}
+      {/* MODAL: UBAH KATA SANDI PENGGUNA (SUPER ADMIN) */}
+      {/* ======================================================== */}
+      <Modal
+        isOpen={userPasswordModal.open}
+        onClose={() =>
+          setUserPasswordModal({
+            open: false,
+            user: null,
+            newPassword: '',
+            confirmPassword: '',
+            showPassword: false,
+            submitting: false,
+          })
+        }
+        title="Ubah Kata Sandi Pengguna"
+        subtitle="Otoritas Super Admin: Perbarui kata sandi akun secara langsung tanpa kata sandi lama"
+      >
+        {userPasswordModal.user && (
+          <form onSubmit={handleSaveUserPassword} className="p-4 space-y-4">
+            {/* Target User Info Card */}
+            <div className="p-3.5 rounded-xl bg-[#121822] border border-[#1E2938] flex items-center justify-between gap-3 shadow-xs">
+              <div className="flex items-center gap-3">
+                <span className="w-10 h-10 rounded-xl bg-[#F4511E]/20 border border-[#F4511E]/30 text-[#F4511E] font-bold text-sm flex items-center justify-center font-mono shrink-0 shadow-2xs">
+                  {userPasswordModal.user.name.split(' ').map((n) => n[0]).join('')}
+                </span>
+                <div>
+                  <div className="font-bold text-white text-sm">{userPasswordModal.user.name}</div>
+                  <div className="text-xs text-neutral-400 font-mono">{userPasswordModal.user.email}</div>
+                </div>
+              </div>
+              <Badge size="xs" variant={userPasswordModal.user.role === 'superadmin' ? 'primary' : 'neutral'}>
+                {userPasswordModal.user.roleLabel || userPasswordModal.user.role}
+              </Badge>
+            </div>
+
+            <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-start gap-2.5 text-xs text-amber-300">
+              <ShieldCheck className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+              <div>
+                <strong className="text-white">Otoritas Direksi:</strong> Anda dapat langsung menetapkan kata sandi baru untuk akun ini. Pengguna dapat langsung login dengan kata sandi baru ini.
+              </div>
+            </div>
+
+            {/* Input New Password */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-neutral-300 flex items-center justify-between">
+                <span>Kata Sandi Baru *</span>
+                <span className="text-[11px] font-mono text-neutral-500">Min. 6 Karakter</span>
+              </label>
+              <div className="relative">
+                <input
+                  type={userPasswordModal.showPassword ? 'text' : 'password'}
+                  required
+                  minLength={6}
+                  value={userPasswordModal.newPassword}
+                  onChange={(e) =>
+                    setUserPasswordModal((prev) => ({ ...prev, newPassword: e.target.value }))
+                  }
+                  placeholder="Masukkan kata sandi baru..."
+                  className="w-full text-xs font-mono px-3.5 py-2.5 pr-10 rounded-xl bg-[#14171A] border border-[#2B3542] text-white placeholder-neutral-500 focus:border-[#F4511E] focus:outline-none focus:ring-1 focus:ring-[#F4511E] transition-all"
+                />
+                <button
+                  type="button"
+                  onClick={() =>
+                    setUserPasswordModal((prev) => ({ ...prev, showPassword: !prev.showPassword }))
+                  }
+                  className="absolute right-3 top-2.5 text-neutral-400 hover:text-white transition-colors cursor-pointer"
+                  title={userPasswordModal.showPassword ? 'Sembunyikan sandi' : 'Tampilkan sandi'}
+                >
+                  {userPasswordModal.showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+
+            {/* Input Confirm Password */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-neutral-300">
+                Ulangi Kata Sandi Baru *
+              </label>
+              <input
+                type={userPasswordModal.showPassword ? 'text' : 'password'}
+                required
+                minLength={6}
+                value={userPasswordModal.confirmPassword}
+                onChange={(e) =>
+                  setUserPasswordModal((prev) => ({ ...prev, confirmPassword: e.target.value }))
+                }
+                placeholder="Ketik ulang kata sandi baru..."
+                className="w-full text-xs font-mono px-3.5 py-2.5 rounded-xl bg-[#14171A] border border-[#2B3542] text-white placeholder-neutral-500 focus:border-[#F4511E] focus:outline-none focus:ring-1 focus:ring-[#F4511E] transition-all"
+              />
+              {userPasswordModal.newPassword && userPasswordModal.confirmPassword && (
+                <div className="text-[11px] font-mono pt-1">
+                  {userPasswordModal.newPassword === userPasswordModal.confirmPassword ? (
+                    <span className="text-emerald-400 flex items-center gap-1">
+                      <Check className="w-3.5 h-3.5" /> Kata sandi cocok
+                    </span>
+                  ) : (
+                    <span className="text-rose-400">Kata sandi belum cocok</span>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Modal Actions */}
+            <div className="pt-3 border-t border-[#24282C] flex items-center justify-end gap-2">
+              <Button
+                variant="ghost"
+                onClick={() =>
+                  setUserPasswordModal({
+                    open: false,
+                    user: null,
+                    newPassword: '',
+                    confirmPassword: '',
+                    showPassword: false,
+                    submitting: false,
+                  })
+                }
+              >
+                Batal
+              </Button>
+              <Button
+                type="submit"
+                variant="primary"
+                icon={Key}
+                disabled={userPasswordModal.submitting}
+                className="bg-[#F4511E] hover:bg-[#D84315] text-white font-bold"
+              >
+                {userPasswordModal.submitting ? 'Menyimpan...' : 'Simpan Kata Sandi'}
+              </Button>
+            </div>
+          </form>
+        )}
+      </Modal>
+
+      {/* ======================================================== */}
+      {/* MODAL: EDIT DATA PENGGUNA (SUPER ADMIN) */}
+      {/* ======================================================== */}
+      <Modal
+        isOpen={editUserModal}
+        onClose={() => {
+          setEditUserModal(false);
+          setSelectedUserToEdit(null);
+        }}
+        title="Edit Data Pengguna"
+        subtitle="Perbarui profil karyawan, peran otorisasi, dan status aktif akun"
+      >
+        {selectedUserToEdit && (
+          <form onSubmit={handleSaveEditUser} className="p-4 space-y-3.5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {/* Nama Lengkap */}
+              <div className="space-y-1 sm:col-span-2">
+                <label className="text-xs font-semibold text-neutral-300">Nama Lengkap *</label>
+                <input
+                  type="text"
+                  required
+                  value={userEditForm.name}
+                  onChange={(e) => setUserEditForm((prev) => ({ ...prev, name: e.target.value }))}
+                  className="w-full text-xs px-3 py-2 rounded-xl bg-[#14171A] border border-[#2B3542] text-white focus:border-[#F4511E] focus:outline-none"
+                />
+              </div>
+
+              {/* Email */}
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-neutral-300">Email Akun *</label>
+                <input
+                  type="email"
+                  required
+                  value={userEditForm.email}
+                  onChange={(e) => setUserEditForm((prev) => ({ ...prev, email: e.target.value }))}
+                  className="w-full text-xs font-mono px-3 py-2 rounded-xl bg-[#14171A] border border-[#2B3542] text-white focus:border-[#F4511E] focus:outline-none"
+                />
+              </div>
+
+              {/* Role */}
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-neutral-300">Peran / Otoritas *</label>
+                <select
+                  value={userEditForm.role}
+                  disabled={selectedUserToEdit.id === 'usr-1' || selectedUserToEdit.email === 'superadmin@ptbas.co.id'}
+                  onChange={(e) => setUserEditForm((prev) => ({ ...prev, role: e.target.value }))}
+                  className="w-full text-xs px-3 py-2 rounded-xl bg-[#14171A] border border-[#2B3542] text-white focus:border-[#F4511E] focus:outline-none disabled:opacity-50 cursor-pointer"
+                >
+                  <option value="admin">Admin (Operasional & Surat Jalan)</option>
+                  <option value="superadmin">Super Admin (Direksi / Otoritas Penuh)</option>
+                </select>
+              </div>
+
+              {/* Cabang / Unit */}
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-neutral-300">Cabang / Unit</label>
+                <input
+                  type="text"
+                  value={userEditForm.branch}
+                  onChange={(e) => setUserEditForm((prev) => ({ ...prev, branch: e.target.value }))}
+                  placeholder="Hub Gresik"
+                  className="w-full text-xs px-3 py-2 rounded-xl bg-[#14171A] border border-[#2B3542] text-white focus:border-[#F4511E] focus:outline-none"
+                />
+              </div>
+
+              {/* Nomor Telepon */}
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-neutral-300">No. Telepon / WhatsApp</label>
+                <input
+                  type="text"
+                  value={userEditForm.phone}
+                  onChange={(e) => setUserEditForm((prev) => ({ ...prev, phone: e.target.value }))}
+                  placeholder="0812-xxxx-xxxx"
+                  className="w-full text-xs font-mono px-3 py-2 rounded-xl bg-[#14171A] border border-[#2B3542] text-white focus:border-[#F4511E] focus:outline-none"
+                />
+              </div>
+
+              {/* Jenis Kelamin */}
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-neutral-300">Jenis Kelamin</label>
+                <select
+                  value={userEditForm.gender}
+                  onChange={(e) => setUserEditForm((prev) => ({ ...prev, gender: e.target.value }))}
+                  className="w-full text-xs px-3 py-2 rounded-xl bg-[#14171A] border border-[#2B3542] text-white focus:border-[#F4511E] focus:outline-none cursor-pointer"
+                >
+                  <option value="Laki-laki">Laki-laki</option>
+                  <option value="Perempuan">Perempuan</option>
+                </select>
+              </div>
+
+              {/* Tanggal Lahir */}
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-neutral-300">Tanggal Lahir</label>
+                <input
+                  type="date"
+                  value={userEditForm.birth_date}
+                  onChange={(e) => setUserEditForm((prev) => ({ ...prev, birth_date: e.target.value }))}
+                  className="w-full text-xs px-3 py-2 rounded-xl bg-[#14171A] border border-[#2B3542] text-white focus:border-[#F4511E] focus:outline-none font-mono"
+                />
+              </div>
+
+              {/* Status Akun */}
+              <div className="space-y-1 sm:col-span-2 pt-1">
+                <label className="text-xs font-semibold text-neutral-300">Status Akun</label>
+                <div className="flex items-center gap-3 p-2.5 rounded-xl bg-[#181B1E] border border-[#24282C]">
+                  <button
+                    type="button"
+                    disabled={selectedUserToEdit.id === 'usr-1' || selectedUserToEdit.email === 'superadmin@ptbas.co.id'}
+                    onClick={() => setUserEditForm((prev) => ({ ...prev, aktif: prev.aktif ? 0 : 1 }))}
+                    className={`w-9 h-5 flex items-center rounded-full p-0.5 transition-colors ${
+                      selectedUserToEdit.id === 'usr-1' || selectedUserToEdit.email === 'superadmin@ptbas.co.id'
+                        ? 'opacity-60 cursor-not-allowed bg-[#F4511E]'
+                        : userEditForm.aktif
+                        ? 'bg-[#F4511E] cursor-pointer'
+                        : 'bg-[#2A2E33] cursor-pointer'
+                    }`}
+                  >
+                    <div
+                      className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${
+                        userEditForm.aktif ? 'translate-x-4' : 'translate-x-0'
+                      }`}
+                    />
+                  </button>
+                  <span className="text-xs font-mono text-neutral-200">
+                    {userEditForm.aktif ? 'Akun Aktif (Dapat Login & Bertransaksi)' : 'Akun Nonaktif (Akses Dibekukan)'}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Actions */}
+            <div className="pt-3 border-t border-[#24282C] flex items-center justify-end gap-2">
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  setEditUserModal(false);
+                  setSelectedUserToEdit(null);
+                }}
+              >
+                Batal
+              </Button>
+              <Button type="submit" variant="primary" icon={Save} className="bg-[#F4511E] hover:bg-[#D84315] text-white font-bold">
+                Simpan Perubahan
+              </Button>
+            </div>
+          </form>
+        )}
+      </Modal>
+
+      {/* ======================================================== */}
+      {/* MODAL: TAMBAH PENGGUNA BARU (SUPER ADMIN) */}
+      {/* ======================================================== */}
+      <Modal
+        isOpen={addUserModal}
+        onClose={() => setAddUserModal(false)}
+        title="Tambah Pengguna Baru"
+        subtitle="Daftarkan akun karyawan / admin baru dengan otoritas operasional sistem"
+      >
+        <form onSubmit={handleSaveAddUser} className="p-4 space-y-3.5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {/* Nama Lengkap */}
+            <div className="space-y-1 sm:col-span-2">
+              <label className="text-xs font-semibold text-neutral-300">Nama Lengkap *</label>
+              <input
+                type="text"
+                required
+                placeholder="Contoh: Budi Santoso"
+                value={userAddForm.name}
+                onChange={(e) => setUserAddForm((prev) => ({ ...prev, name: e.target.value }))}
+                className="w-full text-xs px-3 py-2 rounded-xl bg-[#14171A] border border-[#2B3542] text-white focus:border-[#F4511E] focus:outline-none"
+              />
+            </div>
+
+            {/* Email */}
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-neutral-300">Email Akun *</label>
+              <input
+                type="email"
+                required
+                placeholder="budi@ptbas.co.id"
+                value={userAddForm.email}
+                onChange={(e) => setUserAddForm((prev) => ({ ...prev, email: e.target.value }))}
+                className="w-full text-xs font-mono px-3 py-2 rounded-xl bg-[#14171A] border border-[#2B3542] text-white focus:border-[#F4511E] focus:outline-none"
+              />
+            </div>
+
+            {/* Kata Sandi */}
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-neutral-300">Kata Sandi Awal * (Min 6 Karakter)</label>
+              <input
+                type="password"
+                required
+                minLength={6}
+                placeholder="Minimal 6 karakter..."
+                value={userAddForm.password}
+                onChange={(e) => setUserAddForm((prev) => ({ ...prev, password: e.target.value }))}
+                className="w-full text-xs font-mono px-3 py-2 rounded-xl bg-[#14171A] border border-[#2B3542] text-white focus:border-[#F4511E] focus:outline-none"
+              />
+            </div>
+
+            {/* Role */}
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-neutral-300">Peran / Otoritas *</label>
+              <select
+                value={userAddForm.role}
+                onChange={(e) => setUserAddForm((prev) => ({ ...prev, role: e.target.value }))}
+                className="w-full text-xs px-3 py-2 rounded-xl bg-[#14171A] border border-[#2B3542] text-white focus:border-[#F4511E] focus:outline-none cursor-pointer"
+              >
+                <option value="admin">Admin (Operasional & Surat Jalan)</option>
+                <option value="superadmin">Super Admin (Direksi / Otoritas Penuh)</option>
+              </select>
+            </div>
+
+            {/* Cabang / Unit */}
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-neutral-300">Cabang / Unit Operasional</label>
+              <input
+                type="text"
+                value={userAddForm.branch}
+                onChange={(e) => setUserAddForm((prev) => ({ ...prev, branch: e.target.value }))}
+                placeholder="Hub Gresik"
+                className="w-full text-xs px-3 py-2 rounded-xl bg-[#14171A] border border-[#2B3542] text-white focus:border-[#F4511E] focus:outline-none"
+              />
+            </div>
+
+            {/* Nomor Telepon */}
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-neutral-300">No. Telepon / WhatsApp</label>
+              <input
+                type="text"
+                value={userAddForm.phone}
+                onChange={(e) => setUserAddForm((prev) => ({ ...prev, phone: e.target.value }))}
+                placeholder="0812-xxxx-xxxx"
+                className="w-full text-xs font-mono px-3 py-2 rounded-xl bg-[#14171A] border border-[#2B3542] text-white focus:border-[#F4511E] focus:outline-none"
+              />
+            </div>
+
+            {/* Jenis Kelamin */}
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-neutral-300">Jenis Kelamin</label>
+              <select
+                value={userAddForm.gender}
+                onChange={(e) => setUserAddForm((prev) => ({ ...prev, gender: e.target.value }))}
+                className="w-full text-xs px-3 py-2 rounded-xl bg-[#14171A] border border-[#2B3542] text-white focus:border-[#F4511E] focus:outline-none cursor-pointer"
+              >
+                <option value="Laki-laki">Laki-laki</option>
+                <option value="Perempuan">Perempuan</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Modal Actions */}
+          <div className="pt-3 border-t border-[#24282C] flex items-center justify-end gap-2">
+            <Button variant="ghost" onClick={() => setAddUserModal(false)}>
+              Batal
+            </Button>
+            <Button type="submit" variant="primary" icon={UserPlus} className="bg-[#F4511E] hover:bg-[#D84315] text-white font-bold">
+              Buat Pengguna
             </Button>
           </div>
         </form>

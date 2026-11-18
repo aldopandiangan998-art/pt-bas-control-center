@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo, useEffect } from 'react';
+import { useState, useRef, useMemo, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -25,13 +25,17 @@ import {
   Search,
   X,
   RotateCcw,
+  RotateCw,
   SlidersHorizontal,
   ChevronDown,
+  ChevronRight,
+  ArrowUpDown,
   Filter,
   Info,
   Check,
   Sparkles,
 } from 'lucide-react';
+import { groupCheckState } from '../../utils/cashOutGrouping';
 import { useAuth } from '../../context/AuthContext';
 import { useData } from '../../context/DataContext';
 import { useToast } from '../../context/ToastContext';
@@ -268,6 +272,501 @@ function formatPoNumber(poNum) {
   return `PO: ${clean}`;
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// IndeterminateCheckbox (Matching InvoicePage)
+// ─────────────────────────────────────────────────────────────────────────────
+function IndeterminateCheckbox({ checked, indeterminate, onChange, className = '' }) {
+  const ref = useRef(null);
+  useEffect(() => {
+    if (ref.current) ref.current.indeterminate = indeterminate;
+  }, [indeterminate]);
+  return (
+    <input
+      ref={ref}
+      type="checkbox"
+      checked={checked}
+      onChange={onChange}
+      className={`w-4 h-4 rounded accent-[#F4511E] cursor-pointer ${className}`}
+    />
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ROStatusBadge (Matching StatusBadge in InvoicePage)
+// ─────────────────────────────────────────────────────────────────────────────
+function ROStatusBadge({ status, small = false }) {
+  const size = small ? 'px-1.5 py-px text-[9px]' : 'px-2 py-0.5 text-[10px]';
+  const st = String(status || 'MENUNGGU_APPROVAL').toUpperCase();
+
+  if (st === 'APPROVED' || st === 'AKTIF') {
+    return (
+      <span className={`inline-block rounded-full font-bold font-mono tracking-wide bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 ${size}`}>
+        APPROVED
+      </span>
+    );
+  }
+  if (st === 'SELESAI') {
+    return (
+      <span className={`inline-block rounded-full font-bold font-mono tracking-wide bg-blue-500/20 text-blue-400 border border-blue-500/30 ${size}`}>
+        SELESAI
+      </span>
+    );
+  }
+  if (st === 'OVER') {
+    return (
+      <span className={`inline-block rounded-full font-bold font-mono tracking-wide bg-amber-500/20 text-amber-400 border border-amber-500/30 ${size}`}>
+        OVER
+      </span>
+    );
+  }
+  if (st === 'REJECTED' || st === 'DITOLAK') {
+    return (
+      <span className={`inline-block rounded-full font-bold font-mono tracking-wide bg-rose-500/20 text-rose-400 border border-rose-500/30 ${size}`}>
+        REJECTED
+      </span>
+    );
+  }
+  return (
+    <span className={`inline-block rounded-full font-bold font-mono tracking-wide bg-[#F4511E]/20 text-[#F4511E] border border-[#F4511E]/30 ${size}`}>
+      {st === 'MENUNGGU_APPROVAL' ? 'MENUNGGU' : st}
+    </span>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ROGroupHeader (Matching InvoiceGroupHeader)
+// ─────────────────────────────────────────────────────────────────────────────
+function ROGroupHeader({ group, expanded, onToggle, checkState, onGroupCheckChange }) {
+  const { label, summary } = group;
+  const isAll = checkState === 'all';
+  const isSome = checkState === 'some';
+
+  return (
+    <div
+      className="flex items-center gap-2 px-3 py-2 bg-[#1A1D22] border border-[#2A2E33] rounded-xl cursor-pointer select-none hover:bg-[#1E2228] transition-colors"
+      onClick={onToggle}
+    >
+      {/* Checkbox pilih semua grup */}
+      <div onClick={(e) => e.stopPropagation()}>
+        <IndeterminateCheckbox
+          checked={isAll}
+          indeterminate={isSome}
+          onChange={onGroupCheckChange}
+        />
+      </div>
+
+      {/* Chevron */}
+      <div className="shrink-0 text-neutral-500">
+        {expanded ? (
+          <ChevronDown className="w-4 h-4" />
+        ) : (
+          <ChevronRight className="w-4 h-4" />
+        )}
+      </div>
+
+      {/* Group label */}
+      <span className="text-xs font-bold text-neutral-100 uppercase tracking-wide flex-1 truncate">
+        {label}
+      </span>
+
+      {/* Summary badges */}
+      <div className="flex items-center gap-1.5 shrink-0 flex-wrap justify-end font-mono">
+        <span className="text-[10px] text-neutral-500 bg-[#131517] border border-[#2A2E33] rounded px-1.5 py-0.5">
+          {summary.count} order
+        </span>
+        {summary.pendingCount > 0 && (
+          <span className="text-[10px] text-[#F4511E] bg-[#F4511E]/10 border border-[#F4511E]/30 rounded px-1.5 py-0.5">
+            {summary.pendingCount} pending
+          </span>
+        )}
+        {summary.approvedCount > 0 && (
+          <span className="text-[10px] text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 rounded px-1.5 py-0.5">
+            {summary.approvedCount} approved
+          </span>
+        )}
+        <span className="text-[10px] text-neutral-300 font-bold">
+          {formatCurrency(summary.totalAmount)}
+        </span>
+        {summary.totalVolume > 0 && (
+          <span className="text-[10px] text-neutral-500">
+            {summary.totalVolume.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {summary.unit || 'm³'}
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// RORow (Tabular row for List view, matching InvoiceRow)
+// ─────────────────────────────────────────────────────────────────────────────
+function RORow({ item, isSelected, onSelect, onInfo, onDelete, isEven }) {
+  const roNumber = item.nomorRO || item.nomorRo || `RO-${item.id}`;
+  const poNumber = item.nomorPo ? String(item.nomorPo).replace(/^PO:\s*/i, '').trim() : '-';
+  const material = item.materialName || item.items?.[0]?.nama || 'SIRTU';
+  const jenis = item.jenisRO || item.jenis || 'JASA ANGKUT + MATERIAL';
+  const volume = Number(item.totalOrder || item.kuantitas || 0);
+  const unit = item.satuan || 'm³';
+  const hj = Number(item.hargaJual || item.items?.[0]?.hargaJual || 0);
+  const totalNilai = volume * hj;
+
+  return (
+    <tr
+      className={`border-b border-[#24282C] transition-colors ${isEven ? 'bg-[#131517]' : 'bg-[#15181C]'
+        } hover:bg-[#1C1F24] ${isSelected ? 'ring-1 ring-inset ring-[#F4511E]/40' : ''}`}
+    >
+      {/* Checkbox */}
+      <td className="pl-3 pr-1 py-2.5 w-8">
+        <input
+          type="checkbox"
+          checked={isSelected}
+          onChange={onSelect}
+          className="w-4 h-4 rounded accent-[#F4511E] cursor-pointer"
+        />
+      </td>
+
+      {/* Tanggal */}
+      <td className="px-3 py-2.5 text-[11px] font-mono text-neutral-400 whitespace-nowrap">
+        {item.tanggal || '-'}
+      </td>
+
+      {/* No. Dokumen (RO & PO) */}
+      <td className="px-3 py-2.5 text-[11px] font-mono whitespace-nowrap">
+        <div className="font-bold text-neutral-200">{roNumber}</div>
+        <div className="text-[10px] text-neutral-500">PO: {poNumber}</div>
+      </td>
+
+      {/* Material & Jenis */}
+      <td className="px-3 py-2.5 text-[11px]">
+        <div className="font-bold text-white">{material}</div>
+        <div className="text-[9px] text-neutral-500 uppercase leading-tight truncate max-w-[170px]">{jenis}</div>
+      </td>
+
+      {/* Volume */}
+      <td className="px-3 py-2.5 text-[11px] font-mono text-white text-right whitespace-nowrap">
+        <span className="font-bold">{volume.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>{' '}
+        <span className="text-neutral-400 text-[10px]">{unit}</span>
+      </td>
+
+      {/* Total Nilai / Harga */}
+      <td className="px-3 py-2.5 text-[11px] font-mono text-right whitespace-nowrap">
+        <div className="font-bold text-white">
+          {totalNilai > 0 ? formatCurrency(totalNilai) : '-'}
+        </div>
+        <div className="text-[10px] text-neutral-400">
+          HJ: {formatCurrency(hj)}/{unit}
+        </div>
+      </td>
+
+      {/* Status */}
+      <td className="px-3 py-2.5 whitespace-nowrap">
+        <ROStatusBadge status={item.status} small />
+      </td>
+
+      {/* Customer / PIC */}
+      <td className="px-3 py-2.5 text-[11px] font-mono text-neutral-300">
+        <div className="font-semibold text-neutral-200 truncate max-w-[150px] uppercase" title={item.customer}>
+          {item.customer || '-'}
+        </div>
+        <div className="text-[9px] text-neutral-500 truncate max-w-[150px]">
+          {item.jenisPajak || 'PKP'} • TOP: {item.top || '14 Hari'}
+        </div>
+      </td>
+
+      {/* Aksi (Trash & Info) */}
+      <td className="px-3 py-2.5 text-center whitespace-nowrap w-16">
+        <div className="inline-flex items-center gap-1.5">
+          <button
+            type="button"
+            onClick={onDelete}
+            className="text-rose-500/80 hover:text-rose-400 transition-colors cursor-pointer p-1"
+            title="Hapus Received Order"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
+          <button
+            type="button"
+            onClick={onInfo}
+            className="text-[#F4511E] hover:text-[#F4511E]/80 transition-colors cursor-pointer p-1"
+            title="Detail Informasi"
+          >
+            <Info className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      </td>
+    </tr>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ROGridCard (Compact card for Grid view, matching InvoiceGridCard)
+// ─────────────────────────────────────────────────────────────────────────────
+function ROGridCard({ item, isSelected, onSelect, onInfo, onDelete }) {
+  const roNumber = item.nomorRO || item.nomorRo || `RO-${item.id}`;
+  const material = item.materialName || item.items?.[0]?.nama || 'SIRTU';
+  const jenis = item.jenisRO || item.jenis || 'JASA ANGKUT + MATERIAL';
+  const volume = Number(item.totalOrder || item.kuantitas || 0);
+  const unit = item.satuan || 'm³';
+  const hj = Number(item.hargaJual || item.items?.[0]?.hargaJual || 0);
+  const totalNilai = volume * hj;
+
+  return (
+    <div
+      className={`bg-[#15181C] border rounded-xl p-3 flex flex-col justify-between gap-2.5 transition-all hover:border-[#383E47] ${isSelected
+        ? 'border-[#F4511E]/70 ring-1 ring-[#F4511E]/40 bg-[#1A1817]'
+        : 'border-[#24282C]'
+        }`}
+    >
+      {/* Top Header: Checkbox + Dokumen + Status + Aksi */}
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 min-w-0">
+          <input
+            type="checkbox"
+            checked={isSelected}
+            onChange={onSelect}
+            className="w-4 h-4 rounded accent-[#F4511E] cursor-pointer shrink-0"
+          />
+          <span className="text-[11px] font-mono font-bold text-neutral-200 truncate" title={roNumber}>
+            {roNumber}
+          </span>
+        </div>
+        <div className="flex items-center gap-1 shrink-0">
+          <ROStatusBadge status={item.status} small />
+          <button
+            type="button"
+            onClick={onDelete}
+            className="w-6 h-6 flex items-center justify-center rounded-lg text-neutral-400 hover:text-rose-400 hover:bg-[#1E2228] transition-colors cursor-pointer"
+            title="Hapus Received Order"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
+          <button
+            type="button"
+            onClick={onInfo}
+            className="w-6 h-6 flex items-center justify-center rounded-lg text-neutral-400 hover:text-[#F4511E] hover:bg-[#1E2228] transition-colors cursor-pointer"
+            title="Detail Informasi"
+          >
+            <Info className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      </div>
+
+      {/* Middle: Nominal & Volume */}
+      <div className="flex items-baseline justify-between gap-2 py-1 border-y border-[#24282C]/70 font-mono">
+        <div>
+          <span className="text-[10px] text-neutral-500 uppercase block">Estimasi Nilai</span>
+          <span className="text-sm font-bold text-white">
+            {totalNilai > 0 ? formatCurrency(totalNilai) : `HJ: ${formatCurrency(hj)}`}
+          </span>
+        </div>
+        <div className="text-right">
+          <span className="text-[10px] text-neutral-500 uppercase block">Volume Order</span>
+          <span className="text-xs font-bold text-white">
+            {volume.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {unit}
+          </span>
+        </div>
+      </div>
+
+      {/* Bottom: Material & Customer, Periode */}
+      <div className="space-y-1 text-[10px] font-mono">
+        <div className="flex items-center justify-between text-neutral-300">
+          <span className="font-bold text-neutral-200 truncate max-w-[130px]">{material}</span>
+          <span className="text-[9px] text-neutral-500 uppercase truncate max-w-[120px]">{jenis}</span>
+        </div>
+        <div className="flex items-center justify-between text-neutral-400">
+          <span className="truncate max-w-[150px] uppercase font-semibold text-neutral-300">{item.customer || '-'}</span>
+          <span className="text-neutral-500">{item.tanggal || '-'}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ROGroupedTable (Matching InvoiceGroupedTable: supports 'list' and 'grid')
+// ─────────────────────────────────────────────────────────────────────────────
+function ROGroupedTable({
+  groups,
+  expandedGroups,
+  onToggleGroup,
+  selectedItems,
+  onToggleSelect,
+  onToggleGroupSelect,
+  onInfo,
+  onDelete,
+  displayMode = 'list',
+}) {
+  if (groups.length === 0) {
+    return (
+      <div className="text-center py-16 text-neutral-500 text-xs font-mono">
+        Tidak ada data Received Order yang ditemukan.
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      {groups.map((group) => {
+        const isExpanded = expandedGroups.has(group.key);
+        const groupIds = group.items.map((i) => i.id);
+        const checkState = groupCheckState(groupIds, selectedItems);
+
+        return (
+          <div key={group.key}>
+            <ROGroupHeader
+              group={group}
+              expanded={isExpanded}
+              onToggle={() => onToggleGroup(group.key)}
+              checkState={checkState}
+              onGroupCheckChange={() => onToggleGroupSelect(group)}
+            />
+
+            {isExpanded && (
+              displayMode === 'list' ? (
+                <div className="mt-1 w-full overflow-hidden rounded-xl border border-[#24282C]">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="bg-[#1A1D22] border-b border-[#2A2E33]">
+                        <th className="pl-3 pr-1 py-2 w-8" />
+                        <th className="px-3 py-2 text-[10px] font-semibold text-neutral-400 uppercase tracking-wide whitespace-nowrap">Tanggal</th>
+                        <th className="px-3 py-2 text-[10px] font-semibold text-neutral-400 uppercase tracking-wide whitespace-nowrap">No. Dokumen</th>
+                        <th className="px-3 py-2 text-[10px] font-semibold text-neutral-400 uppercase tracking-wide">Material</th>
+                        <th className="px-3 py-2 text-[10px] font-semibold text-neutral-400 uppercase tracking-wide text-right whitespace-nowrap">Volume</th>
+                        <th className="px-3 py-2 text-[10px] font-semibold text-neutral-400 uppercase tracking-wide text-right whitespace-nowrap">Harga / Nilai (IDR)</th>
+                        <th className="px-3 py-2 text-[10px] font-semibold text-neutral-400 uppercase tracking-wide whitespace-nowrap">Status</th>
+                        <th className="px-3 py-2 text-[10px] font-semibold text-neutral-400 uppercase tracking-wide">Customer</th>
+                        <th className="px-3 py-2 text-[10px] font-semibold text-neutral-400 uppercase tracking-wide text-center w-16">Aksi</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {group.items.map((item, idx) => (
+                        <RORow
+                          key={item.id}
+                          item={item}
+                          isSelected={selectedItems.includes(item.id)}
+                          isEven={idx % 2 === 0}
+                          onSelect={() => onToggleSelect(item.id)}
+                          onInfo={() => onInfo(item)}
+                          onDelete={() => onDelete(item)}
+                        />
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="mt-2 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2.5">
+                  {group.items.map((item) => (
+                    <ROGridCard
+                      key={item.id}
+                      item={item}
+                      isSelected={selectedItems.includes(item.id)}
+                      onSelect={() => onToggleSelect(item.id)}
+                      onInfo={() => onInfo(item)}
+                      onDelete={() => onDelete(item)}
+                    />
+                  ))}
+                </div>
+              )
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Grouping logic for Received Order
+// ─────────────────────────────────────────────────────────────────────────────
+function groupPreOrders(items, groupBy = 'company', sortOrder = 'default') {
+  const map = new Map();
+  for (const item of items) {
+    let key = '';
+    if (groupBy === 'status') {
+      const st = String(item.status || 'MENUNGGU_APPROVAL').toUpperCase();
+      key = st === 'APPROVED' ? 'Approved' : st === 'SELESAI' ? 'Selesai' : st === 'OVER' ? 'Over-Delivery' : 'Menunggu Approval';
+    } else if (groupBy === 'material') {
+      key = item.materialName || item.items?.[0]?.nama || 'SIRTU';
+    } else if (groupBy === 'month') {
+      const src = item.tanggal || '';
+      const match = src.match(/^(\d{4})-(\d{2})/);
+      if (match) {
+        const [, year, month] = match;
+        const months = [
+          'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+          'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember',
+        ];
+        key = `${months[parseInt(month, 10) - 1]} ${year}`;
+      } else {
+        key = '(Bulan Tidak Diketahui)';
+      }
+    } else {
+      // company
+      key = item.customer || '(Tanpa Customer)';
+    }
+
+    const normKey = String(key).trim().toUpperCase();
+    if (!map.has(normKey)) {
+      map.set(normKey, { label: key, items: [] });
+    }
+    map.get(normKey).items.push(item);
+  }
+
+  // Sort each group's items: newest date first
+  for (const [, grp] of map) {
+    grp.items.sort((a, b) => (b.tanggal || '').localeCompare(a.tanggal || ''));
+  }
+
+  const groups = [];
+  for (const [key, grp] of map) {
+    let pendingCount = 0;
+    let approvedCount = 0;
+    let totalVolume = 0;
+    let totalAmount = 0;
+    const unit = grp.items[0]?.satuan || 'm³';
+
+    for (const it of grp.items) {
+      const vol = Number(it.totalOrder || it.kuantitas || 0);
+      const hj = Number(it.hargaJual || it.items?.[0]?.hargaJual || 0);
+      totalVolume += vol;
+      totalAmount += vol * hj;
+      const st = String(it.status || '').toUpperCase();
+      if (st === 'APPROVED' || st === 'AKTIF') {
+        approvedCount++;
+      } else {
+        pendingCount++;
+      }
+    }
+
+    groups.push({
+      key,
+      label: grp.label,
+      items: grp.items,
+      summary: {
+        count: grp.items.length,
+        pendingCount,
+        approvedCount,
+        totalVolume,
+        totalAmount,
+        unit,
+      },
+    });
+  }
+
+  if (sortOrder === 'name') {
+    groups.sort((a, b) => a.label.localeCompare(b.label, 'id'));
+  } else {
+    // default: most pending first, then highest volume
+    groups.sort((a, b) => {
+      const pDiff = b.summary.pendingCount - a.summary.pendingCount;
+      if (pDiff !== 0) return pDiff;
+      return b.summary.totalVolume - a.summary.totalVolume;
+    });
+  }
+
+  return groups;
+}
+
 /* ─────────────────────────── main component ─────────────────────────── */
 export default function PreOrderPage() {
   const navigate = useNavigate();
@@ -292,29 +791,55 @@ export default function PreOrderPage() {
   const firstErrorRef = useRef(null);
   const searchInputRef = useRef(null);
 
-  // ── View Mode: List vs Grid ──
-  const [viewMode, setViewMode] = useState(() => {
+  // ── View Preferences (matching InvoicePage: list | grid, groupBy, sortOrder) ──
+  const [displayMode, setDisplayMode] = useState(() => {
     try {
-      return localStorage.getItem('ptbas_ro_viewmode') || 'list';
+      return localStorage.getItem('ro_displayMode') || localStorage.getItem('ptbas_ro_viewmode') || 'list';
     } catch (e) {
       return 'list';
     }
   });
-
-  const handleSetViewMode = (mode) => {
-    setViewMode(mode);
+  const handleSetDisplayMode = (mode) => {
+    setDisplayMode(mode);
     try {
+      localStorage.setItem('ro_displayMode', mode);
       localStorage.setItem('ptbas_ro_viewmode', mode);
-    } catch (e) {}
+    } catch (e) { }
   };
+
+  const [groupBy, setGroupBy] = useState(() => {
+    try {
+      return localStorage.getItem('ro_groupBy') || 'company';
+    } catch (e) {
+      return 'company';
+    }
+  });
+  useEffect(() => {
+    try {
+      localStorage.setItem('ro_groupBy', groupBy);
+    } catch (e) { }
+  }, [groupBy]);
+
+  const [sortOrder, setSortOrder] = useState(() => {
+    try {
+      return localStorage.getItem('ro_sortOrder') || 'default';
+    } catch (e) {
+      return 'default';
+    }
+  });
+  useEffect(() => {
+    try {
+      localStorage.setItem('ro_sortOrder', sortOrder);
+    } catch (e) { }
+  }, [sortOrder]);
 
   // ── Header Action Controls ──
   const [searchOpen, setSearchOpen] = useState(false);
   const [filterOpen, setFilterOpen] = useState(false);
   const [calendarOpen, setCalendarOpen] = useState(false);
 
-  // ── Multi-select & Modals ──
-  const [selectedIds, setSelectedIds] = useState(new Set());
+  // ── Multi-select (matching InvoicePage selectedItems array) & Modals ──
+  const [selectedItems, setSelectedItems] = useState([]);
   const [selectedDetailPo, setSelectedDetailPo] = useState(null);
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [poToDelete, setPoToDelete] = useState(null);
@@ -353,34 +878,38 @@ export default function PreOrderPage() {
     setStartDate('');
     setEndDate('');
     setSortBy('NEWEST');
+    setSelectedItems([]);
     addToast('Filter pencarian berhasil di-reset', 'info');
   };
 
-  const toggleSelect = (id) => {
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  };
+  const toggleSelect = useCallback((id) => {
+    setSelectedItems((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
+  }, []);
 
-  const handleSelectAll = () => {
-    if (selectedIds.size === filteredPreOrders.length) {
-      setSelectedIds(new Set());
+  const handleToggleGroupSelect = useCallback((group) => {
+    const ids = group.items.map((i) => i.id);
+    const state = groupCheckState(ids, selectedItems);
+    if (state === 'all') {
+      setSelectedItems((prev) => prev.filter((id) => !ids.includes(id)));
     } else {
-      setSelectedIds(new Set(filteredPreOrders.map((p) => p.id)));
+      setSelectedItems((prev) => {
+        const set = new Set(prev);
+        ids.forEach((id) => set.add(id));
+        return [...set];
+      });
     }
-  };
+  }, [selectedItems]);
 
   const handleDeleteSelected = async () => {
-    if (selectedIds.size === 0) return;
-    if (!window.confirm(`Hapus ${selectedIds.size} Received Order yang dipilih?`)) return;
-    for (const id of selectedIds) {
+    if (selectedItems.length === 0) return;
+    if (!window.confirm(`Hapus ${selectedItems.length} Received Order yang dipilih?`)) return;
+    for (const id of selectedItems) {
       if (deletePreOrder) await deletePreOrder(id);
     }
-    setSelectedIds(new Set());
-    addToast('Data terpilih berhasil dihapus', 'info');
+    setSelectedItems([]);
+    addToast('Data Received Order terpilih berhasil dihapus', 'info');
   };
 
   const handleRefresh = () => {
@@ -388,7 +917,7 @@ export default function PreOrderPage() {
     setSearchOpen(false);
     setFilterOpen(false);
     setCalendarOpen(false);
-    setSelectedIds(new Set());
+    setSelectedItems([]);
     addToast('Data Received Order diperbarui', 'info');
   };
 
@@ -511,6 +1040,39 @@ export default function PreOrderPage() {
     });
   }, [safePreOrders, searchQuery, statusFilter, customerFilter, materialFilter, startDate, endDate, sortBy]);
 
+  // Grouped data (matching InvoicePage)
+  const groups = useMemo(
+    () => groupPreOrders(filteredPreOrders, groupBy, sortOrder),
+    [filteredPreOrders, groupBy, sortOrder]
+  );
+
+  const [expandedGroups, setExpandedGroups] = useState(new Set());
+
+  // Auto-expand groups when they change
+  useEffect(() => {
+    if (groups.length <= 10) {
+      setExpandedGroups(new Set(groups.map((g) => g.key)));
+    } else {
+      setExpandedGroups(new Set(groups.length > 0 ? [groups[0].key] : []));
+    }
+  }, [groupBy, sortOrder, groups.length]);
+
+  const handleToggleGroup = useCallback((key) => {
+    setExpandedGroups((prev) => {
+      const next = new Set(prev);
+      next.has(key) ? next.delete(key) : next.add(key);
+      return next;
+    });
+  }, []);
+
+  const handleExpandAll = () => {
+    setExpandedGroups(new Set(groups.map((g) => g.key)));
+  };
+
+  const handleCollapseAll = () => {
+    setExpandedGroups(new Set());
+  };
+
   // Dynamic currency options mapped from active currencies in DataContext
   const mataUangOptions = useMemo(() => {
     if (!currencies || !Array.isArray(currencies) || currencies.length === 0) {
@@ -539,6 +1101,17 @@ export default function PreOrderPage() {
     return materials && materials.length > 0 ? materials : DEFAULT_MATERIALS;
   }, [materials]);
 
+  // Specific lists for materials and transportation services
+  const materialList = useMemo(() => {
+    return allMaterials.filter(
+      (m) => getItemType(m) === ITEM_TYPES.MATERIAL && !(m.name || m.nama || '').toUpperCase().includes('JASA ANGKUT')
+    );
+  }, [allMaterials]);
+
+  const jasaAngkutList = useMemo(() => {
+    return allMaterials.filter((m) => getItemType(m) === ITEM_TYPES.JASA_ANGKUT);
+  }, [allMaterials]);
+
   // Filter materials based on selected jenisRO using centralized roRules (Section 5.2)
   const availableMaterials = useMemo(() => {
     if (!formData.jenisRO) return [];
@@ -551,22 +1124,36 @@ export default function PreOrderPage() {
 
   // Auto-initialize first item with database prices when items is empty
   useEffect(() => {
+<<<<<<< HEAD
     if (items.length === 0 && availableMaterials.length > 0 && formData.jenisRO) {
       const firstMat = availableMaterials[0];
       const firstItem = createItemFromMaterial(firstMat, null, formData.satuan || 'm³');
       if (shouldAutoCreateJasaAngkut(formData.jenisRO) && getItemType(firstItem) === ITEM_TYPES.MATERIAL) {
         const autoJa = createAutoJasaAngkutItem(firstItem, allMaterials);
         setItems([firstItem, autoJa]);
+=======
+    if (items.length === 0 && allMaterials.length > 0 && formData.jenisRO) {
+      if (shouldAutoCreateMaterial(formData.jenisRO)) {
+        const firstJa = jasaAngkutList[0] || allMaterials.find((m) => getItemType(m) === ITEM_TYPES.JASA_ANGKUT) || allMaterials[0];
+        const firstItem = createItemFromMaterial(firstJa, null, formData.satuanJasaAngkut || 'm³');
+        const autoMat = createAutoMaterialItem(firstItem, allMaterials);
+        setItems([firstItem, autoMat]);
+>>>>>>> 06b9f802adbcec69846edf4b9219010abbe746fd
       } else {
+        const pool = availableMaterials.length > 0 ? availableMaterials : allMaterials;
+        const firstItem = createItemFromMaterial(pool[0], null, formData.satuanJasaAngkut || 'm³');
         setItems([firstItem]);
       }
     }
-  }, [availableMaterials, formData.jenisRO, allMaterials]);
+  }, [availableMaterials, formData.jenisRO, allMaterials, jasaAngkutList]);
 
-  // Total Kuantitas counts only primary / non-auto items to avoid double-counting contract volume
+  // Total Kuantitas counts the order volume
   const totalKuantitas = useMemo(() => {
-    const primaryItems = items.filter((i) => !i.isAutoGenerated);
-    return primaryItems.reduce((s, i) => s + (Number(i.kuantitas) || 0), 0);
+    const jaItems = items.filter((i) => getItemType(i) === ITEM_TYPES.JASA_ANGKUT);
+    if (jaItems.length > 0) {
+      return jaItems.reduce((s, i) => s + (Number(i.kuantitas) || 0), 0);
+    }
+    return items.reduce((s, i) => s + (Number(i.kuantitas) || 0), 0);
   }, [items]);
 
   const totalHargaBeli = useMemo(() => {
@@ -643,6 +1230,7 @@ export default function PreOrderPage() {
     setField('satuan', defaultUnit);
 
     // Initialize item matching the new Jenis RO
+<<<<<<< HEAD
     const allowed = getAllowedItemTypes(newVal);
     const pool = allMaterials.filter((m) => allowed.includes(getItemType(m)));
     if (pool.length > 0) {
@@ -653,9 +1241,25 @@ export default function PreOrderPage() {
         setItems([firstItem, autoJa]);
       } else {
         setItems([firstItem]);
+=======
+    if (shouldAutoCreateMaterial(newVal)) {
+      const firstJa = jasaAngkutList[0] || allMaterials.find((m) => getItemType(m) === ITEM_TYPES.JASA_ANGKUT) || allMaterials[0];
+      if (firstJa) {
+        const firstItem = createItemFromMaterial(firstJa, null, defaultUnit);
+        const autoMat = createAutoMaterialItem(firstItem, allMaterials);
+        setItems([firstItem, autoMat]);
+>>>>>>> 06b9f802adbcec69846edf4b9219010abbe746fd
       }
     } else {
-      setItems([]);
+      const allowed = getAllowedItemTypes(newVal);
+      const pool = allMaterials.filter((m) => allowed.includes(getItemType(m)));
+      if (pool.length > 0) {
+        const firstMat = pool[0];
+        const firstItem = createItemFromMaterial(firstMat, null, defaultUnit);
+        setItems([firstItem]);
+      } else {
+        setItems([]);
+      }
     }
     setItemsLocked(false);
   };
@@ -664,33 +1268,55 @@ export default function PreOrderPage() {
   const handleMaterialChange = (idx, selectedName) => {
     if (itemsLocked) return;
     const targetItem = items[idx];
-    if (!targetItem || targetItem.isAutoGenerated) return;
+    if (!targetItem) return;
 
     const mat =
-      availableMaterials.find((m) => (m.name || m.nama) === selectedName) ||
-      allMaterials.find((m) => (m.name || m.nama) === selectedName);
+      allMaterials.find((m) => (m.name || m.nama) === selectedName) ||
+      availableMaterials.find((m) => (m.name || m.nama) === selectedName);
     if (!mat) return;
 
     const nextType = getItemType(mat);
+<<<<<<< HEAD
     const updatedMat = {
+=======
+    const updated = {
+>>>>>>> 06b9f802adbcec69846edf4b9219010abbe746fd
       ...targetItem,
       materialId: mat.id || '',
       nama: mat.name || mat.nama || '',
       itemType: nextType,
+<<<<<<< HEAD
       satuan: nextType === ITEM_TYPES.JASA_ANGKUT ? '' : (mat.satuan || mat.defaultUnit || formData.satuan || 'm³'),
       category: mat.category || 'Curah',
+=======
+      satuan: nextType === ITEM_TYPES.JASA_ANGKUT ? '' : (mat.satuan || mat.defaultUnit || formData.satuanJasaAngkut || 'm³'),
+      category: mat.category || (nextType === ITEM_TYPES.JASA_ANGKUT ? 'Jasa' : 'Curah'),
+>>>>>>> 06b9f802adbcec69846edf4b9219010abbe746fd
       pphRate: Number(mat.pphRate) || 2.0,
       hargaBeli: Number(mat.beli) || 0,
       hargaJual: Number(mat.jual) || 0,
     };
 
     setItems((prev) => {
+<<<<<<< HEAD
       let nextItems = prev.map((it, i) => (i === idx ? updatedMat : it));
 
       // If in JASA ANGKUT + MATERIAL mode, sync the paired auto-generated Jasa Angkut row
       if (shouldAutoCreateJasaAngkut(formData.jenisRO)) {
         const targetMatId = updatedMat.materialId || updatedMat.id || 'mat-8';
         const parentName = (updatedMat.nama || '').toUpperCase().trim();
+=======
+      let nextItems = prev.map((it, i) => (i === idx ? updated : it));
+
+      // If in JASA ANGKUT + MATERIAL mode and user changed the Jasa Angkut row,
+      // update the paired material row to default corresponding material
+      if (shouldAutoCreateMaterial(formData.jenisRO) && nextType === ITEM_TYPES.JASA_ANGKUT) {
+        const targetId = updated.linkedMaterialId || updated.materialId || 'mat-8';
+        const targetMat =
+          allMaterials.find((m) => m.id === targetId) ||
+          allMaterials.find((m) => getItemType(m) === ITEM_TYPES.MATERIAL && (m.name || m.nama || '').toUpperCase().includes('SIRTU')) ||
+          allMaterials.find((m) => getItemType(m) === ITEM_TYPES.MATERIAL);
+>>>>>>> 06b9f802adbcec69846edf4b9219010abbe746fd
 
         const targetJa =
           allMaterials.find((m) => getItemType(m) === ITEM_TYPES.JASA_ANGKUT && m.materialId === targetMatId) ||
@@ -704,7 +1330,11 @@ export default function PreOrderPage() {
 
         if (targetJa) {
           nextItems = nextItems.map((it) => {
+<<<<<<< HEAD
             if (it.isAutoGenerated && it.parentItemId === updatedMat.id) {
+=======
+            if (it.parentItemId === updated.id) {
+>>>>>>> 06b9f802adbcec69846edf4b9219010abbe746fd
               return {
                 ...it,
                 materialId: targetJa.id,
@@ -732,17 +1362,30 @@ export default function PreOrderPage() {
       addToast('Pilih Jenis RO terlebih dahulu sebelum menambah item', 'warning');
       return;
     }
+
+    if (shouldAutoCreateMaterial(formData.jenisRO)) {
+      const usedJaNames = new Set(items.filter((i) => getItemType(i) === ITEM_TYPES.JASA_ANGKUT).map((i) => i.nama));
+      const nextJa =
+        jasaAngkutList.find((m) => !usedJaNames.has(m.name || m.nama)) ||
+        jasaAngkutList[0] ||
+        allMaterials[0];
+      const newJaItem = createItemFromMaterial(nextJa, null, formData.satuanJasaAngkut || 'm³');
+      const newMatItem = createAutoMaterialItem(newJaItem, allMaterials);
+      setItems((prev) => [...prev, newJaItem, newMatItem]);
+      return;
+    }
+
     if (availableMaterials.length === 0) {
       addToast('Tidak ada item yang sesuai untuk jenis RO ini', 'warning');
       return;
     }
 
-    const manualItems = items.filter((it) => !it.isAutoGenerated);
-    const usedNames = new Set(manualItems.map((i) => i.nama));
+    const usedNames = new Set(items.map((i) => i.nama));
     const nextMat =
       availableMaterials.find((m) => !usedNames.has(m.name || m.nama)) ||
       availableMaterials[0];
 
+<<<<<<< HEAD
     const newItem = createItemFromMaterial(nextMat, null, formData.satuan || 'm³');
 
     if (shouldAutoCreateJasaAngkut(formData.jenisRO) && getItemType(newItem) === ITEM_TYPES.MATERIAL) {
@@ -751,6 +1394,10 @@ export default function PreOrderPage() {
     } else {
       setItems((prev) => [...prev, newItem]);
     }
+=======
+    const newItem = createItemFromMaterial(nextMat, null, formData.satuanJasaAngkut || 'm³');
+    setItems((prev) => [...prev, newItem]);
+>>>>>>> 06b9f802adbcec69846edf4b9219010abbe746fd
   };
 
   const removeItem = (idx) => {
@@ -758,6 +1405,7 @@ export default function PreOrderPage() {
     const targetItem = items[idx];
     if (!targetItem) return;
 
+<<<<<<< HEAD
     if (targetItem.isAutoGenerated) {
       addToast('Item Jasa Angkut otomatis tidak bisa dihapus mandiri, terhapus bersama baris Material induk', 'warning');
       return;
@@ -766,11 +1414,26 @@ export default function PreOrderPage() {
     const parentId = targetItem.id;
     const manualRemaining = items.filter((it) => !it.isAutoGenerated && it.id !== targetItem.id);
     if (manualRemaining.length === 0) {
+=======
+    if (items.length <= 1) {
+>>>>>>> 06b9f802adbcec69846edf4b9219010abbe746fd
       addToast('Minimal harus ada 1 item pada order', 'warning');
       return;
     }
 
-    setItems((prev) => prev.filter((it) => it.id !== targetItem.id && it.parentItemId !== parentId));
+    // In JASA ANGKUT + MATERIAL mode:
+    if (shouldAutoCreateMaterial(formData.jenisRO)) {
+      if (targetItem.parentItemId) {
+        // Removing child material row only
+        setItems((prev) => prev.filter((_, i) => i !== idx));
+        return;
+      }
+      // Removing parent Jasa Angkut: also remove paired child material
+      setItems((prev) => prev.filter((it) => it.id !== targetItem.id && it.parentItemId !== targetItem.id));
+      return;
+    }
+
+    setItems((prev) => prev.filter((_, i) => i !== idx));
   };
 
   const updateItem = (idx, field, val) => {
@@ -778,6 +1441,7 @@ export default function PreOrderPage() {
     const targetItem = items[idx];
     if (!targetItem) return;
 
+<<<<<<< HEAD
     // Block manual edits of name, unit, or quantity on auto-generated rows (Jasa Angkut)
     if (targetItem.isAutoGenerated && (field === 'nama' || field === 'kuantitas' || field === 'satuan')) {
       return;
@@ -788,8 +1452,15 @@ export default function PreOrderPage() {
 
       // If quantity on a Material item is updated, synchronize its child auto-generated Jasa Angkut row!
       if (field === 'kuantitas' && !targetItem.isAutoGenerated) {
+=======
+    setItems((prev) => {
+      const updated = prev.map((item, i) => (i === idx ? { ...item, [field]: val } : item));
+
+      // If quantity on a Jasa Angkut is updated, synchronize its child material row if present
+      if (field === 'kuantitas' && getItemType(targetItem) === ITEM_TYPES.JASA_ANGKUT) {
+>>>>>>> 06b9f802adbcec69846edf4b9219010abbe746fd
         return updated.map((it) => {
-          if (it.isAutoGenerated && it.parentItemId === targetItem.id) {
+          if (it.parentItemId === targetItem.id) {
             return { ...it, kuantitas: val };
           }
           return it;
@@ -916,104 +1587,191 @@ export default function PreOrderPage() {
      RENDER
   ══════════════════════════════════════════════════════════════════ */
   return (
-    <div className="w-full space-y-4 pb-28 min-h-screen bg-[#0A0C0E] text-white font-sans select-none relative">
-
-      {/* ── TOP APP BAR matching media_1794965493152_ca523882.jpg ── */}
-      {activeTab === 'list' && (
-        <header className="sticky top-0 z-30 bg-[#0A0C0E] border-b border-[#1A1D21] px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={() => {
-                if (window.history.length > 1) navigate(-1);
-                else navigate('/');
-              }}
-              className="p-1 rounded-lg text-neutral-300 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
-              title="Kembali"
-              aria-label="Kembali"
-            >
-              <ArrowLeft className="w-5 h-5 text-white" />
-            </button>
-            <h1 className="text-base sm:text-lg font-bold tracking-tight text-white font-sans">
-              Data Received Order
-            </h1>
+    <div className="space-y-4 max-w-6xl mx-auto px-4 pb-24 text-white font-sans">
+      {/* ── Top Header Bar (Matching InvoicePage) ── */}
+      <div className="flex items-center justify-between pb-2 border-b border-[#24282C]">
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => {
+              if (window.history.length > 1) navigate(-1);
+              else navigate('/');
+            }}
+            className="p-1 rounded-lg text-neutral-400 hover:text-white hover:bg-neutral-800 transition-colors cursor-pointer"
+            title="Kembali"
+          >
+            <ArrowLeft className="w-5 h-5 text-white" />
+          </button>
+          <div>
+            <h1 className="text-base font-bold text-white tracking-tight">Data Received Order</h1>
+            <p className="text-[11px] text-neutral-400">Pencatatan & administrasi pesanan masuk dari customer</p>
           </div>
+        </div>
 
-          {/* 4 Toolbar Action Icons */}
-          <div className="flex items-center gap-1">
-            <button
-              type="button"
-              onClick={() => {
-                if (searchInputRef.current) {
-                  searchInputRef.current.focus();
-                  searchInputRef.current.select();
-                }
-              }}
-              className={`p-2 rounded-lg transition-colors cursor-pointer ${
-                searchQuery ? 'text-[#F4511E] bg-[#F4511E]/15' : 'text-neutral-300 hover:text-white hover:bg-white/10'
+        {/* Tab Switcher: Daftar RO & Input Received Order */}
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setActiveTab('list')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${activeTab === 'list'
+              ? 'bg-[#F4511E] text-white shadow-md'
+              : 'bg-transparent text-neutral-400 hover:text-white'
               }`}
-              title="Cari Received Order"
-            >
-              <Search className="w-4.5 h-4.5" />
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setFilterOpen(!filterOpen)}
-              className={`p-2 rounded-lg transition-colors cursor-pointer ${
-                filterOpen || hasActiveFilters ? 'text-[#F4511E] bg-[#F4511E]/15' : 'text-neutral-300 hover:text-white hover:bg-white/10'
+          >
+            Daftar RO ({safePreOrders.length})
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              handleResetForm();
+              setActiveTab('create');
+            }}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${activeTab === 'create'
+              ? 'bg-[#F4511E] text-white shadow-md'
+              : 'bg-transparent text-neutral-400 hover:text-white'
               }`}
-              title="Filter Status & Customer"
-            >
-              <Filter className="w-4.5 h-4.5" />
-            </button>
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>Input Received Order</span>
+          </button>
+        </div>
+      </div>
 
-            <button
-              type="button"
-              onClick={() => setCalendarOpen(!calendarOpen)}
-              className={`p-2 rounded-lg transition-colors cursor-pointer ${
-                calendarOpen || startDate || endDate ? 'text-[#F4511E] bg-[#F4511E]/15' : 'text-neutral-300 hover:text-white hover:bg-white/10'
-              }`}
-              title="Filter Rentang Tanggal"
-            >
-              <Calendar className="w-4.5 h-4.5" />
-            </button>
-
-            <button
-              type="button"
-              onClick={handleRefresh}
-              className="p-2 rounded-lg text-neutral-300 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
-              title="Refresh & Reset Filter"
-            >
-              <RotateCcw className="w-4.5 h-4.5" />
-            </button>
-          </div>
-        </header>
-      )}
-
-      {/* ══════════ VIEW 1: DAFTAR RECEIVED ORDER (FAITHFUL TO SCREENSHOT) ══════════ */}
+      {/* ══════════ VIEW 1: DAFTAR RECEIVED ORDER (Invoice-Style) ══════════ */}
       {activeTab === 'list' && (
         <>
-          <main className={`px-4 space-y-3.5 mx-auto transition-all ${viewMode === 'grid' ? 'max-w-6xl' : 'max-w-4xl'}`}>
-            {/* ── TOP TOOLBAR: SEARCH BAR & GRID / LIST TOGGLE ── */}
-            <div className="pt-1 space-y-2">
-              <div className="flex items-center gap-2">
-                {/* Search Bar Input */}
-                <div className="relative flex-1">
-                  <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none" />
-                  <input
-                    ref={searchInputRef}
-                    type="text"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Cari nomor RO, PO, customer, material, tanggal..."
-                    className="w-full bg-[#14171A] border border-[#24282F] rounded-xl pl-10 pr-9 py-2.5 text-xs text-white placeholder-neutral-500 focus:outline-none focus:border-[#F4511E] font-mono transition-colors"
+          <div className="max-w-6xl mx-auto px-4 space-y-3">
+
+            {/* ── Toolbar Row 1: Count + Icon Buttons ── */}
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-mono text-neutral-400">
+                Total <span className="text-white font-bold">{filteredPreOrders.length}</span> Received Order
+                {filteredPreOrders.length !== safePreOrders.length && (
+                  <span className="text-neutral-500"> (dari {safePreOrders.length})</span>
+                )}
+              </span>
+              <div className="flex items-center gap-1">
+                {/* Filter */}
+                <button
+                  type="button"
+                  onClick={() => { setFilterOpen((p) => !p); setCalendarOpen(false); }}
+                  className={`w-8 h-8 flex items-center justify-center rounded-full transition-colors cursor-pointer ${filterOpen ? 'text-[#F4511E] bg-[#F4511E]/10' : 'text-neutral-300 hover:text-white hover:bg-neutral-800'}`}
+                  title="Filter"
+                >
+                  <Filter className="w-4 h-4" />
+                </button>
+                {/* Calendar */}
+                <button
+                  type="button"
+                  onClick={() => { setCalendarOpen((p) => !p); setFilterOpen(false); }}
+                  className={`w-8 h-8 flex items-center justify-center rounded-full transition-colors cursor-pointer ${calendarOpen ? 'text-[#F4511E] bg-[#F4511E]/10' : 'text-neutral-300 hover:text-white hover:bg-neutral-800'}`}
+                  title="Rentang Tanggal"
+                >
+                  <Calendar className="w-4 h-4" />
+                </button>
+                {/* Refresh */}
+                <button
+                  type="button"
+                  onClick={handleRefresh}
+                  className="w-8 h-8 flex items-center justify-center rounded-full text-neutral-300 hover:text-white hover:bg-neutral-800 transition-colors cursor-pointer"
+                  title="Refresh"
+                >
+                  <RotateCw className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* ── Toolbar Row 2: Grid/List toggle + Group By + Sort + Expand/Collapse ── */}
+            <div className="flex items-center gap-2 flex-wrap">
+              {/* Grid / List toggle */}
+              <div className="flex items-center bg-[#1C1F24] border border-[#2A2E33] rounded-lg p-0.5">
+                <button
+                  type="button"
+                  onClick={() => handleSetDisplayMode('list')}
+                  className={`p-1.5 rounded-md transition-colors cursor-pointer ${displayMode === 'list' ? 'bg-[#F4511E] text-white shadow-sm' : 'text-neutral-400 hover:text-white'}`}
+                  title="Tampilan Tabel (List)"
+                >
+                  <List className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleSetDisplayMode('grid')}
+                  className={`p-1.5 rounded-md transition-colors cursor-pointer ${displayMode === 'grid' ? 'bg-[#F4511E] text-white shadow-sm' : 'text-neutral-400 hover:text-white'}`}
+                  title="Tampilan Grid"
+                >
+                  <LayoutGrid className="w-3.5 h-3.5" />
+                </button>
+              </div>
+
+              {/* Group By */}
+              <div className="relative">
+                <select
+                  value={groupBy}
+                  onChange={(e) => setGroupBy(e.target.value)}
+                  className="bg-[#1C1F24] border border-[#2A2E33] rounded-lg pl-2.5 pr-7 py-1.5 text-[11px] text-neutral-300 focus:outline-none focus:border-[#F4511E] appearance-none cursor-pointer"
+                  title="Kelompokkan Berdasarkan"
+                >
+                  <option value="company">Perusahaan</option>
+                  <option value="status">Status</option>
+                  <option value="material">Material</option>
+                  <option value="month">Bulan</option>
+                </select>
+                <ChevronDown className="w-3 h-3 text-neutral-500 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
+              </div>
+
+              {/* Sort */}
+              <button
+                type="button"
+                onClick={() => setSortOrder((p) => (p === 'name' ? 'default' : 'name'))}
+                className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] border transition-colors cursor-pointer ${
+                  sortOrder === 'name'
+                    ? 'bg-[#F4511E]/10 text-[#F4511E] border-[#F4511E]/30'
+                    : 'bg-[#1C1F24] text-neutral-400 border-[#2A2E33] hover:text-white'
+                }`}
+                title={sortOrder === 'name' ? 'Urut: A–Z' : 'Urut: Prioritas'}
+              >
+                <ArrowUpDown className="w-3.5 h-3.5" />
+                <span>{sortOrder === 'name' ? 'A–Z' : 'Prioritas'}</span>
+              </button>
+
+              {/* Expand / Collapse all */}
+              <div className="flex items-center gap-1 ml-auto">
+                <button
+                  type="button"
+                  onClick={handleExpandAll}
+                  className="text-[11px] text-neutral-500 hover:text-neutral-200 transition-colors cursor-pointer px-1.5"
+                  title="Buka Semua"
+                >
+                  Buka semua
+                </button>
+                <span className="text-neutral-700 text-xs">|</span>
+                <button
+                  type="button"
+                  onClick={handleCollapseAll}
+                  className="text-[11px] text-neutral-500 hover:text-neutral-200 transition-colors cursor-pointer px-1.5"
+                  title="Tutup Semua"
+                >
+                  Tutup semua
+                </button>
+              </div>
+            </div>
+
+            {/* ── Search Bar (always visible) ── */}
+            <div className="relative">
+              <Search className="w-4 h-4 text-neutral-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <input
+                ref={searchInputRef}
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Ketik nomor RO, nomor PO, nama customer, material..."
+                    className="w-full bg-[#1C1F24] border border-[#2A2E33] focus:border-[#F4511E] rounded-xl pl-10 pr-9 py-2.5 text-xs text-white placeholder-neutral-500 focus:outline-none transition-colors"
                   />
                   {searchQuery && (
                     <button
                       type="button"
                       onClick={() => setSearchQuery('')}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-white p-0.5"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-white p-1"
                       title="Hapus pencarian"
                     >
                       <X className="w-3.5 h-3.5" />
@@ -1021,991 +1779,490 @@ export default function PreOrderPage() {
                   )}
                 </div>
 
-                {/* View Mode Switcher: List vs Grid */}
-                <div className="flex items-center bg-[#14171A] border border-[#24282F] rounded-xl p-1 shrink-0 gap-1">
-                  <button
-                    type="button"
-                    onClick={() => handleSetViewMode('list')}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono transition-all cursor-pointer ${
-                      viewMode === 'list'
-                        ? 'bg-[#F4511E] text-white font-bold shadow'
-                        : 'text-neutral-400 hover:text-white hover:bg-white/5'
-                    }`}
-                    title="Tampilan List (sesuai referensi)"
-                  >
-                    <List className="w-4 h-4" />
-                    <span className="hidden sm:inline text-[11px]">List</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleSetViewMode('grid')}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono transition-all cursor-pointer ${
-                      viewMode === 'grid'
-                        ? 'bg-[#F4511E] text-white font-bold shadow'
-                        : 'text-neutral-400 hover:text-white hover:bg-white/5'
-                    }`}
-                    title="Tampilan Grid (kartu komparasi)"
-                  >
-                    <LayoutGrid className="w-4 h-4" />
-                    <span className="hidden sm:inline text-[11px]">Grid</span>
-                  </button>
-                </div>
+                {/* ── ACTIVE FILTER CHIPS ── */}
+                {hasActiveFilters && (
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span className="text-[10px] font-mono text-neutral-500 uppercase tracking-wider mr-1">Filter Aktif:</span>
+                    {searchQuery && (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#181B20] border border-[#2B313C] text-neutral-200 text-[11px] font-mono">
+                        <Search className="w-3 h-3 text-neutral-400" />
+                        <span className="text-white font-semibold truncate max-w-[140px]">"{searchQuery}"</span>
+                        <button type="button" onClick={() => setSearchQuery('')} className="text-neutral-400 hover:text-white ml-0.5 p-0.5 cursor-pointer"><X className="w-3 h-3" /></button>
+                      </span>
+                    )}
+                    {statusFilter !== 'ALL' && (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#181B20] border border-[#2B313C] text-neutral-200 text-[11px] font-mono">
+                        <span className="text-neutral-400">Status:</span>
+                        <span className="text-[#F4511E] font-semibold">{statusFilter}</span>
+                        <button type="button" onClick={() => setStatusFilter('ALL')} className="text-neutral-400 hover:text-white ml-0.5 p-0.5 cursor-pointer"><X className="w-3 h-3" /></button>
+                      </span>
+                    )}
+                    {customerFilter !== 'ALL' && (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#181B20] border border-[#2B313C] text-neutral-200 text-[11px] font-mono">
+                        <span className="text-neutral-400">Customer:</span>
+                        <span className="text-white font-semibold truncate max-w-[150px]">{customerFilter}</span>
+                        <button type="button" onClick={() => setCustomerFilter('ALL')} className="text-neutral-400 hover:text-white ml-0.5 p-0.5 cursor-pointer"><X className="w-3 h-3" /></button>
+                      </span>
+                    )}
+                    {materialFilter !== 'ALL' && (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#181B20] border border-[#2B313C] text-neutral-200 text-[11px] font-mono">
+                        <span className="text-neutral-400">Material:</span>
+                        <span className="text-white font-semibold">{materialFilter}</span>
+                        <button type="button" onClick={() => setMaterialFilter('ALL')} className="text-neutral-400 hover:text-white ml-0.5 p-0.5 cursor-pointer"><X className="w-3 h-3" /></button>
+                      </span>
+                    )}
+                    {(startDate || endDate) && (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#181B20] border border-[#2B313C] text-neutral-200 text-[11px] font-mono">
+                        <Calendar className="w-3 h-3 text-[#F4511E]" />
+                        <span className="text-white font-semibold">{startDate || '...'} s/d {endDate || '...'}</span>
+                        <button type="button" onClick={() => { setStartDate(''); setEndDate(''); }} className="text-neutral-400 hover:text-white ml-0.5 p-0.5 cursor-pointer"><X className="w-3 h-3" /></button>
+                      </span>
+                    )}
+                    <button type="button" onClick={handleResetFilters} className="text-[11px] font-mono text-[#F4511E] hover:underline px-1 cursor-pointer flex items-center gap-1">
+                      <RotateCcw className="w-2.5 h-2.5" />
+                      Reset Semua
+                    </button>
+                  </div>
+                )}
+
+                {/* ── COLLAPSIBLE FILTER PANEL ── */}
+                {filterOpen && (
+                  <div className="bg-[#121417] border border-[#20242A] rounded-xl p-3.5 space-y-3 font-mono text-xs">
+                    <div className="flex flex-wrap items-center gap-1.5 pb-2 border-b border-[#20242A]">
+                      {[
+                        { id: 'ALL', label: 'Semua Status' },
+                        { id: 'AKTIF', label: 'Aktif' },
+                        { id: 'SELESAI', label: 'Selesai' },
+                        { id: 'OVER', label: 'Over-Delivery' },
+                      ].map((tab) => (
+                        <button key={tab.id} type="button" onClick={() => setStatusFilter(tab.id)}
+                          className={`px-3 py-1 rounded-lg text-xs transition-colors cursor-pointer ${statusFilter === tab.id ? 'bg-[#F4511E] text-white font-bold' : 'bg-[#1A1D22] text-neutral-400 hover:text-white'}`}
+                        >{tab.label}</button>
+                      ))}
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                      <select value={customerFilter} onChange={(e) => setCustomerFilter(e.target.value)} className="w-full bg-[#181B20] border border-[#262B33] rounded-lg px-3 py-2 text-xs text-neutral-200 focus:outline-none focus:border-[#F4511E]">
+                        <option value="ALL">Semua Customer</option>
+                        {availableCustomerOptions.map((c) => <option key={c} value={c}>{c}</option>)}
+                      </select>
+                      <select value={materialFilter} onChange={(e) => setMaterialFilter(e.target.value)} className="w-full bg-[#181B20] border border-[#262B33] rounded-lg px-3 py-2 text-xs text-neutral-200 focus:outline-none focus:border-[#F4511E]">
+                        <option value="ALL">Semua Material</option>
+                        {availableMaterialOptions.map((m) => <option key={m} value={m}>{m}</option>)}
+                      </select>
+                      <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className="w-full bg-[#181B20] border border-[#262B33] rounded-lg px-3 py-2 text-xs text-neutral-200 focus:outline-none focus:border-[#F4511E]">
+                        <option value="NEWEST">Terbaru</option>
+                        <option value="OLDEST">Terlama</option>
+                        <option value="VOLUME_DESC">Volume Terbesar</option>
+                      </select>
+                    </div>
+                  </div>
+                )}
+
+                {/* ── COLLAPSIBLE CALENDAR PANEL ── */}
+                {calendarOpen && (
+                  <div className="bg-[#121417] border border-[#20242A] rounded-xl p-3.5 space-y-2 font-mono text-xs">
+                    <span className="text-[11px] text-[#F4511E] font-bold uppercase tracking-wider block">Rentang Tanggal Kontrak</span>
+                    <div className="grid grid-cols-2 gap-2">
+                      <input type="date" value={startDate} onChange={(e) => handleStartDateChange(e.target.value)} className="w-full bg-[#181B20] border border-[#262B33] rounded-lg px-3 py-2 text-xs text-neutral-200 focus:outline-none focus:border-[#F4511E]" />
+                      <input type="date" value={endDate} min={startDate || undefined} onChange={(e) => handleEndDateChange(e.target.value)} className="w-full bg-[#181B20] border border-[#262B33] rounded-lg px-3 py-2 text-xs text-neutral-200 focus:outline-none focus:border-[#F4511E]" />
+                    </div>
+                  </div>
+                )}
+
+                {/* ── GROUPED TABLE (Invoice-style) ── */}
+                <ROGroupedTable
+                  groups={groups}
+                  expandedGroups={expandedGroups}
+                  onToggleGroup={handleToggleGroup}
+                  selectedItems={selectedItems}
+                  onToggleSelect={toggleSelect}
+                  onToggleGroupSelect={handleToggleGroupSelect}
+                  onInfo={(item) => { setSelectedDetailPo(item); setDetailModalOpen(true); }}
+                  onDelete={(item) => { setPoToDelete(item); setDeleteModalOpen(true); }}
+                  displayMode={displayMode}
+                />
               </div>
 
-              {/* ── ACTIVE FILTER PILLS / CHIPS ── */}
-              {hasActiveFilters && (
-                <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
-                  <span className="text-[10px] font-mono text-neutral-500 uppercase tracking-wider mr-1">Filter Aktif:</span>
-                  {searchQuery && (
-                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#181B20] border border-[#2B313C] text-neutral-200 text-[11px] font-mono">
-                      <Search className="w-3 h-3 text-neutral-400" />
-                      <span className="text-white font-semibold truncate max-w-[140px]">"{searchQuery}"</span>
-                      <button
-                        type="button"
-                        onClick={() => setSearchQuery('')}
-                        className="text-neutral-400 hover:text-white ml-0.5 p-0.5 cursor-pointer"
-                        title="Hapus filter pencarian"
-                      >
-                        <X className="w-3 h-3" />
-                      </button>
-                    </span>
-                  )}
-                  {statusFilter !== 'ALL' && (
-                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#181B20] border border-[#2B313C] text-neutral-200 text-[11px] font-mono">
-                      <span className="text-neutral-400">Status:</span>
-                      <span className="text-[#F4511E] font-semibold">{statusFilter}</span>
-                      <button
-                        type="button"
-                        onClick={() => setStatusFilter('ALL')}
-                        className="text-neutral-400 hover:text-white ml-0.5 p-0.5 cursor-pointer"
-                        title="Hapus filter status"
-                      >
-                        <X className="w-3 h-3" />
-                      </button>
-                    </span>
-                  )}
-                  {customerFilter !== 'ALL' && (
-                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#181B20] border border-[#2B313C] text-neutral-200 text-[11px] font-mono">
-                      <span className="text-neutral-400">Customer:</span>
-                      <span className="text-white font-semibold truncate max-w-[150px]">{customerFilter}</span>
-                      <button
-                        type="button"
-                        onClick={() => setCustomerFilter('ALL')}
-                        className="text-neutral-400 hover:text-white ml-0.5 p-0.5 cursor-pointer"
-                        title="Hapus filter customer"
-                      >
-                        <X className="w-3 h-3" />
-                      </button>
-                    </span>
-                  )}
-                  {materialFilter !== 'ALL' && (
-                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#181B20] border border-[#2B313C] text-neutral-200 text-[11px] font-mono">
-                      <span className="text-neutral-400">Material:</span>
-                      <span className="text-white font-semibold">{materialFilter}</span>
-                      <button
-                        type="button"
-                        onClick={() => setMaterialFilter('ALL')}
-                        className="text-neutral-400 hover:text-white ml-0.5 p-0.5 cursor-pointer"
-                        title="Hapus filter material"
-                      >
-                        <X className="w-3 h-3" />
-                      </button>
-                    </span>
-                  )}
-                  {(startDate || endDate) && (
-                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#181B20] border border-[#2B313C] text-neutral-200 text-[11px] font-mono">
-                      <Calendar className="w-3 h-3 text-[#F4511E]" />
-                      <span className="text-white font-semibold">
-                        {startDate || '...'} s/d {endDate || '...'}
+              {/* ── STICKY BATCH ACTIONS BAR (when items checked, matching InvoicePage) ── */}
+              {selectedItems.length > 0 && (
+                <div className="fixed bottom-0 left-0 right-0 z-40 bg-[#111315]/95 backdrop-blur-md border-t border-[#262A2F] p-3 shadow-2xl">
+                  <div className="w-full max-w-6xl mx-auto flex items-center justify-between gap-3 px-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="w-2 h-2 rounded-full bg-[#F4511E] animate-pulse shrink-0" />
+                      <span className="text-xs font-mono text-neutral-300">
+                        <strong className="text-white">{selectedItems.length}</strong> RO Terpilih
                       </span>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setStartDate('');
-                          setEndDate('');
-                        }}
-                        className="text-neutral-400 hover:text-white ml-0.5 p-0.5 cursor-pointer"
-                        title="Hapus rentang tanggal"
-                      >
-                        <X className="w-3 h-3" />
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button type="button" onClick={() => setSelectedItems([])} className="px-3 py-2 rounded-xl text-xs font-semibold text-neutral-400 hover:text-white bg-[#1C1F24] border border-[#2A2E33] transition-colors cursor-pointer">
+                        Batal
                       </button>
-                    </span>
-                  )}
-                  <button
-                    type="button"
-                    onClick={handleResetFilters}
-                    className="text-[11px] font-mono text-[#F4511E] hover:underline px-1 cursor-pointer flex items-center gap-1"
-                  >
-                    <RotateCcw className="w-2.5 h-2.5" />
-                    Reset Semua
-                  </button>
+                      <button type="button" onClick={handleDeleteSelected} className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-rose-600 hover:bg-rose-500 transition-colors shadow-md flex items-center gap-1.5 cursor-pointer">
+                        <Trash2 className="w-3.5 h-3.5" />
+                        <span>Hapus Terpilih</span>
+                      </button>
+                    </div>
+                  </div>
                 </div>
               )}
 
-              {/* Toolbar Sub-bar: Info Count, Filter Status, Select All */}
-              <div className="flex items-center justify-between text-[11px] font-mono text-neutral-400 px-1 pt-0.5">
-                <div className="flex items-center gap-2">
-                  <span>
-                    Menampilkan <span className="text-white font-bold">{filteredPreOrders.length}</span> order
-                    {filteredPreOrders.length !== safePreOrders.length && (
-                      <span className="text-neutral-500"> (dari total {safePreOrders.length})</span>
-                    )}
-                  </span>
-                </div>
-
-                {filteredPreOrders.length > 0 && (
-                  <button
-                    type="button"
-                    onClick={handleSelectAll}
-                    className="hover:text-white transition-colors cursor-pointer flex items-center gap-1.5"
-                  >
-                    <span
-                      className={`w-3.5 h-3.5 rounded border flex items-center justify-center transition-colors ${
-                        selectedIds.size === filteredPreOrders.length && filteredPreOrders.length > 0
-                          ? 'bg-[#F4511E] border-[#F4511E] text-white'
-                          : 'border-neutral-500'
-                      }`}
-                    >
-                      {selectedIds.size === filteredPreOrders.length && filteredPreOrders.length > 0 && (
-                        <Check className="w-2.5 h-2.5 stroke-[3]" />
-                      )}
-                    </span>
-                    <span>{selectedIds.size === filteredPreOrders.length ? 'Batal Pilih Semua' : 'Pilih Semua'}</span>
-                  </button>
-                )}
-              </div>
-            </div>
-
-            {/* ── COLLAPSIBLE FILTER PANEL ── */}
-            {filterOpen && (
-              <div className="bg-[#121417] border border-[#20242A] rounded-xl p-3.5 space-y-3 font-mono text-xs">
-                {/* Status tabs */}
-                <div className="flex flex-wrap items-center gap-1.5 pb-2 border-b border-[#20242A]">
-                  {[
-                    { id: 'ALL', label: 'Semua Status' },
-                    { id: 'AKTIF', label: 'Aktif' },
-                    { id: 'SELESAI', label: 'Selesai' },
-                    { id: 'OVER', label: 'Over-Delivery' },
-                  ].map((tab) => (
-                    <button
-                      key={tab.id}
-                      type="button"
-                      onClick={() => setStatusFilter(tab.id)}
-                      className={`px-3 py-1 rounded-lg text-xs transition-colors cursor-pointer ${
-                        statusFilter === tab.id
-                          ? 'bg-[#F4511E] text-white font-bold'
-                          : 'bg-[#1A1D22] text-neutral-400 hover:text-white'
-                      }`}
-                    >
-                      {tab.label}
-                    </button>
-                  ))}
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                  {/* Customer Filter */}
-                  <select
-                    value={customerFilter}
-                    onChange={(e) => setCustomerFilter(e.target.value)}
-                    className="w-full bg-[#181B20] border border-[#262B33] rounded-lg px-3 py-2 text-xs text-neutral-200 focus:outline-none focus:border-[#F4511E]"
-                  >
-                    <option value="ALL">Semua Customer</option>
-                    {availableCustomerOptions.map((c) => (
-                      <option key={c} value={c}>{c}</option>
-                    ))}
-                  </select>
-
-                  {/* Material Filter */}
-                  <select
-                    value={materialFilter}
-                    onChange={(e) => setMaterialFilter(e.target.value)}
-                    className="w-full bg-[#181B20] border border-[#262B33] rounded-lg px-3 py-2 text-xs text-neutral-200 focus:outline-none focus:border-[#F4511E]"
-                  >
-                    <option value="ALL">Semua Material</option>
-                    {availableMaterialOptions.map((m) => (
-                      <option key={m} value={m}>{m}</option>
-                    ))}
-                  </select>
-
-                  {/* Sort */}
-                  <select
-                    value={sortBy}
-                    onChange={(e) => setSortBy(e.target.value)}
-                    className="w-full bg-[#181B20] border border-[#262B33] rounded-lg px-3 py-2 text-xs text-neutral-200 focus:outline-none focus:border-[#F4511E]"
-                  >
-                    <option value="NEWEST">Terbaru</option>
-                    <option value="OLDEST">Terlama</option>
-                    <option value="VOLUME_DESC">Volume Terbesar</option>
-                  </select>
-                </div>
-              </div>
-            )}
-
-            {/* ── COLLAPSIBLE CALENDAR PANEL ── */}
-            {calendarOpen && (
-              <div className="bg-[#121417] border border-[#20242A] rounded-xl p-3.5 space-y-2 font-mono text-xs">
-                <span className="text-[11px] text-[#F4511E] font-bold uppercase tracking-wider block">
-                  Rentang Tanggal Kontrak
-                </span>
-                <div className="grid grid-cols-2 gap-2">
-                  <input
-                    type="date"
-                    value={startDate}
-                    onChange={(e) => handleStartDateChange(e.target.value)}
-                    className="w-full bg-[#181B20] border border-[#262B33] rounded-lg px-3 py-2 text-xs text-neutral-200 focus:outline-none focus:border-[#F4511E]"
-                  />
-                  <input
-                    type="date"
-                    value={endDate}
-                    min={startDate || undefined}
-                    onChange={(e) => handleEndDateChange(e.target.value)}
-                    className="w-full bg-[#181B20] border border-[#262B33] rounded-lg px-3 py-2 text-xs text-neutral-200 focus:outline-none focus:border-[#F4511E]"
-                  />
-                </div>
-              </div>
-            )}
-
-            {/* ── CARDS: LIST or GRID VIEW ── */}
-            {filteredPreOrders.length === 0 ? (
-              <div className="bg-[#121417] border border-[#20242A] rounded-2xl p-8 sm:p-12 text-center space-y-3 font-mono">
-                <div className="w-12 h-12 rounded-full bg-[#181B20] border border-[#2B313C] flex items-center justify-center mx-auto text-neutral-400">
-                  <Package className="w-6 h-6" />
-                </div>
-                <p className="text-sm font-semibold text-white">Tidak ada Data Received Order</p>
-                <p className="text-xs text-neutral-400 max-w-sm mx-auto">
-                  {hasActiveFilters
-                    ? 'Tidak ada pesanan yang sesuai dengan filter atau kata kunci pencarian Anda.'
-                    : 'Belum ada data Received Order yang tersimpan.'}
-                </p>
-                {hasActiveFilters && (
-                  <Button size="sm" variant="ghost" icon={RotateCcw} onClick={handleResetFilters} className="mx-auto">
-                    Reset Filter
-                  </Button>
-                )}
-              </div>
-            ) : viewMode === 'list' ? (
-              /* ── LIST VIEW: FAITHFUL TO SCREENSHOT media_1794965493152_ca523882.jpg ── */
-              <div className="space-y-3">
-                {filteredPreOrders.map((po) => {
-                  const isSelected = selectedIds.has(po.id);
-
-                  return (
-                    <div
-                      key={po.id}
-                      className={`bg-[#121417] border rounded-xl overflow-hidden shadow-md transition-all ${
-                        isSelected
-                          ? 'border-[#F4511E] ring-1 ring-[#F4511E]'
-                          : 'border-[#20242A] hover:border-[#2C323B]'
-                      }`}
-                    >
-                      {/* Card Main Body */}
-                      <div className="p-3.5 sm:p-4 flex items-start justify-between gap-3">
-                        {/* ── Left Column (Volume, Unit, Material, Service, Terms) ── */}
-                        <div className="w-[34%] sm:w-[30%] shrink-0 font-mono">
-                          <div className="text-lg sm:text-xl font-bold text-white leading-tight">
-                            {formatNumber(po.totalOrder || po.kuantitas || 0)}
-                          </div>
-                          <div className="text-xs sm:text-sm font-bold text-white mt-0.5">
-                            {po.satuan || 'm³'}
-                          </div>
-
-                          <div
-                            className="text-xs font-bold uppercase text-white mt-2 truncate"
-                            title={po.materialName || po.items?.[0]?.nama || 'SIRTU'}
-                          >
-                            {po.materialName || po.items?.[0]?.nama || 'SIRTU'}
-                          </div>
-                          <div className="text-[10px] sm:text-[11px] text-neutral-200 uppercase leading-snug mt-0.5">
-                            {po.jenisRO || po.jenis || 'JASA ANGKUT + MATERIAL'}
-                          </div>
-                          <div className="text-[10px] text-neutral-400 mt-1">
-                            {po.jenisPajak || po.jenisWajibPajak || 'PKP'} | TOP: {po.top || '14 hari'}
-                          </div>
-                        </div>
-
-                        {/* ── Middle Column (Checkmark + Date, RO, PO, Customer, HB, HJ) ── */}
-                        <div className="flex-1 min-w-0 space-y-1 font-mono text-xs">
-                          {/* Date with green checkmark */}
-                          <div className="flex items-center justify-between gap-1.5">
-                            <div className="flex items-center gap-1.5 min-w-0">
-                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                              <span className="text-neutral-300 font-medium text-[11px]">
-                                {po.tanggal || '-'}
-                              </span>
-                            </div>
-                            {po.status && po.status !== 'AKTIF' && (
-                              <span className="text-[9px] px-1.5 py-0.5 rounded font-bold uppercase bg-blue-500/15 text-blue-400 border border-blue-500/30">
-                                {po.status}
-                              </span>
-                            )}
-                          </div>
-
-                          {/* RO Number */}
-                          <div className="text-white font-semibold truncate text-[11px] sm:text-xs">
-                            RO: {po.nomorRO || po.nomorRo || `RO-${po.id}`}
-                          </div>
-
-                          {/* PO Number (Clean formatted, avoiding duplicate 'PO: PO:') */}
-                          <div className="text-neutral-300 truncate text-[11px] sm:text-xs">
-                            {formatPoNumber(po.nomorPo)}
-                          </div>
-
-                          {/* Customer Name */}
-                          <div
-                            className="text-white font-bold uppercase truncate text-xs sm:text-sm pt-0.5"
-                            title={po.customer}
-                          >
-                            {po.customer}
-                          </div>
-
-                          {/* Harga Beli */}
-                          <div className="text-neutral-200 text-[11px] font-medium pt-0.5">
-                            HB: <span className="font-bold text-white">IDR {formatNumber(po.hargaBeli || po.items?.[0]?.hargaBeli || 0)}/{po.satuan || 'm³'}</span>
-                          </div>
-
-                          {/* Harga Jual */}
-                          <div className="text-neutral-200 text-[11px] font-medium">
-                            HJ: <span className="font-bold text-white">IDR {formatNumber(po.hargaJual || po.items?.[0]?.hargaJual || 0)}/{po.satuan || 'm³'}</span>
-                          </div>
-                        </div>
-
-                        {/* ── Right Column (Selection Checkbox) ── */}
-                        <div className="shrink-0 pt-0.5">
-                          <button
-                            type="button"
-                            onClick={() => toggleSelect(po.id)}
-                            className={`w-5 h-5 rounded border flex items-center justify-center transition-colors cursor-pointer ${
-                              isSelected
-                                ? 'bg-[#F4511E] border-[#F4511E] text-white'
-                                : 'border-neutral-500 hover:border-neutral-300 bg-transparent'
-                            }`}
-                            title="Pilih item"
-                            aria-label="Pilih item"
-                          >
-                            {isSelected && <Check className="w-3.5 h-3.5 stroke-[3]" />}
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* ── Card Bottom Action Bar: [ Trash (Orange) | Info (Orange) ] ── */}
-                      <div className="border-t border-[#20242A] grid grid-cols-2 bg-[#0E1012]">
-                        {/* Delete Button */}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setPoToDelete(po);
-                            setDeleteModalOpen(true);
-                          }}
-                          className="py-2.5 flex items-center justify-center text-[#F4511E] hover:bg-[#F4511E]/10 active:bg-[#F4511E]/20 transition-colors cursor-pointer"
-                          title="Hapus Received Order"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-
-                        {/* Info Button */}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setSelectedDetailPo(po);
-                            setDetailModalOpen(true);
-                          }}
-                          className="py-2.5 flex items-center justify-center text-[#F4511E] hover:bg-[#F4511E]/10 active:bg-[#F4511E]/20 transition-colors cursor-pointer border-l border-[#20242A]"
-                          title="Detail Received Order"
-                        >
-                          <Info className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              /* ── GRID VIEW: MODERN RESPONSIVE CARDS (WITH OPERATIONAL COMPARISON TILE) ── */
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
-                {filteredPreOrders.map((po) => {
-                  const isSelected = selectedIds.has(po.id);
-
-                  return (
-                    <div
-                      key={po.id}
-                      className={`bg-[#121417] border rounded-xl overflow-hidden shadow-md transition-all flex flex-col justify-between ${
-                        isSelected
-                          ? 'border-[#F4511E] ring-1 ring-[#F4511E]'
-                          : 'border-[#20242A] hover:border-[#2C323B]'
-                      }`}
-                    >
-                      {/* Grid Card Body */}
-                      <div className="p-4 space-y-3 font-mono flex-1">
-                        {/* Top row: Checkmark + Date, Status & Checkbox */}
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-1.5">
-                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                            <span className="text-neutral-300 font-medium text-xs">
-                              {po.tanggal || '-'}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            {po.status && (
-                              <span className={`text-[10px] px-2 py-0.5 rounded font-bold uppercase tracking-wider ${
-                                po.status === 'SELESAI'
-                                  ? 'bg-blue-500/15 text-blue-400 border border-blue-500/30'
-                                  : po.status === 'OVER'
-                                  ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30'
-                                  : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                              }`}>
-                                {po.status}
-                              </span>
-                            )}
-                            <button
-                              type="button"
-                              onClick={() => toggleSelect(po.id)}
-                              className={`w-5 h-5 rounded border flex items-center justify-center transition-colors cursor-pointer ${
-                                isSelected
-                                  ? 'bg-[#F4511E] border-[#F4511E] text-white'
-                                  : 'border-neutral-500 hover:border-neutral-300 bg-transparent'
-                              }`}
-                              title="Pilih item"
-                              aria-label="Pilih item"
-                            >
-                              {isSelected && <Check className="w-3.5 h-3.5 stroke-[3]" />}
-                            </button>
-                          </div>
-                        </div>
-
-                        {/* Volume + Unit Hero Box */}
-                        <div className="bg-[#171A1E] border border-[#22262E] rounded-xl p-3 flex items-baseline justify-between">
-                          <div>
-                            <div className="text-xl sm:text-2xl font-bold text-white tracking-tight leading-tight">
-                              {formatNumber(po.totalOrder || po.kuantitas || 0)}
-                            </div>
-                            <div className="text-xs font-bold text-neutral-300 mt-0.5">
-                              {po.satuan || 'm³'}
-                            </div>
-                          </div>
-                          <div className="text-right">
-                            <span className="inline-block text-[10px] px-2 py-0.5 rounded bg-[#F4511E]/15 text-[#F4511E] font-bold uppercase tracking-wider">
-                              {po.jenisPajak || po.jenisWajibPajak || 'PKP'}
-                            </span>
-                            <div className="text-[10px] text-neutral-400 mt-1">
-                              TOP: {po.top || '14 hari'}
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Material & Service */}
+              {/* ── DETAIL MODAL ── */}
+              <Modal
+                isOpen={detailModalOpen}
+                onClose={() => setDetailModalOpen(false)}
+                title="Detail Received Order"
+                subtitle={selectedDetailPo ? `RO: ${selectedDetailPo.nomorRO || selectedDetailPo.nomorRo || selectedDetailPo.id}` : ''}
+              >
+                {selectedDetailPo && (
+                  <div className="p-4 space-y-4 font-mono text-xs">
+                    {/* Header Information */}
+                    <div className="bg-[#171A1E] p-3.5 rounded-xl border border-[#252A32] space-y-2">
+                      <div className="flex justify-between items-start">
                         <div>
-                          <div
-                            className="text-sm font-bold uppercase text-white truncate"
-                            title={po.materialName || po.items?.[0]?.nama || 'SIRTU'}
-                          >
-                            {po.materialName || po.items?.[0]?.nama || 'SIRTU'}
-                          </div>
-                          <div className="text-[11px] text-neutral-300 uppercase mt-0.5 font-medium">
-                            {po.jenisRO || po.jenis || 'JASA ANGKUT + MATERIAL'}
-                          </div>
+                          <span className="text-[10px] text-[#F4511E] uppercase font-bold block">Customer</span>
+                          <span className="text-sm font-bold text-white block mt-0.5">{selectedDetailPo.customer}</span>
+                          <span className="text-[11px] text-neutral-400 block">{selectedDetailPo.customerAddress || 'Gresik, Jawa Timur'}</span>
                         </div>
-
-                        {/* RO & PO Numbers & Customer */}
-                        <div className="space-y-1 text-xs pt-2 border-t border-[#1C2026]">
-                          <div className="text-white font-semibold truncate text-[11px]">
-                            RO: {po.nomorRO || po.nomorRo || `RO-${po.id}`}
-                          </div>
-                          <div className="text-neutral-300 truncate text-[11px]">
-                            {formatPoNumber(po.nomorPo)}
-                          </div>
-                          <div
-                            className="text-white font-bold uppercase truncate text-xs pt-0.5"
-                            title={po.customer}
-                          >
-                            {po.customer}
-                          </div>
-                        </div>
-
-                        {/* Prices HB & HJ: Clean Side-by-Side Comparison Box */}
-                        <div className="grid grid-cols-2 gap-2 pt-2 border-t border-[#1C2026]">
-                          <div className="bg-[#16191E] border border-[#22262E] rounded-lg p-2">
-                            <span className="text-[10px] text-neutral-400 block uppercase font-medium">HB</span>
-                            <span
-                              className="text-xs font-bold text-white block mt-0.5 truncate"
-                              title={`IDR ${formatNumber(po.hargaBeli || po.items?.[0]?.hargaBeli || 0)}/${po.satuan || 'm³'}`}
-                            >
-                              IDR {formatNumber(po.hargaBeli || po.items?.[0]?.hargaBeli || 0)}
-                            </span>
-                            <span className="text-[10px] text-neutral-500 block">/{po.satuan || 'm³'}</span>
-                          </div>
-
-                          <div className="bg-[#16191E] border border-[#22262E] rounded-lg p-2">
-                            <span className="text-[10px] text-neutral-400 block uppercase font-medium">HJ</span>
-                            <span
-                              className="text-xs font-bold text-white block mt-0.5 truncate"
-                              title={`IDR ${formatNumber(po.hargaJual || po.items?.[0]?.hargaJual || 0)}/${po.satuan || 'm³'}`}
-                            >
-                              IDR {formatNumber(po.hargaJual || po.items?.[0]?.hargaJual || 0)}
-                            </span>
-                            <span className="text-[10px] text-neutral-500 block">/{po.satuan || 'm³'}</span>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Grid Card Footer: [ Trash | Info ] */}
-                      <div className="border-t border-[#20242A] grid grid-cols-2 bg-[#0E1012]">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setPoToDelete(po);
-                            setDeleteModalOpen(true);
-                          }}
-                          className="py-2.5 flex items-center justify-center text-[#F4511E] hover:bg-[#F4511E]/10 active:bg-[#F4511E]/20 transition-colors cursor-pointer"
-                          title="Hapus Received Order"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setSelectedDetailPo(po);
-                            setDetailModalOpen(true);
-                          }}
-                          className="py-2.5 flex items-center justify-center text-[#F4511E] hover:bg-[#F4511E]/10 active:bg-[#F4511E]/20 transition-colors cursor-pointer border-l border-[#20242A]"
-                          title="Detail Received Order"
-                        >
-                          <Info className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </main>
-
-          {/* ── FLOATING MULTI-SELECT BAR (when items checked) ── */}
-          {selectedIds.size > 0 && (
-            <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-40 bg-[#16191D] border border-[#2B313C] rounded-full px-4 py-2.5 shadow-2xl flex items-center gap-3 font-mono text-xs">
-              <span className="text-white font-bold">{selectedIds.size} dipilih</span>
-              <button
-                type="button"
-                onClick={handleDeleteSelected}
-                className="px-3 py-1 rounded-full bg-rose-600 hover:bg-rose-500 text-white font-bold text-[11px] flex items-center gap-1.5 transition-colors cursor-pointer"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-                <span>Hapus Terpilih</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setSelectedIds(new Set())}
-                className="text-neutral-400 hover:text-white text-[11px] cursor-pointer"
-              >
-                Batal
-              </button>
-            </div>
-          )}
-
-          {/* ── FLOATING ACTION BUTTON (+) matching Screenshot ── */}
-          <button
-            type="button"
-            onClick={() => {
-              handleResetForm();
-              setActiveTab('create');
-            }}
-            className="fixed bottom-6 right-6 z-40 w-14 h-14 rounded-full bg-[#F4511E] hover:bg-[#E04418] active:scale-95 text-white flex items-center justify-center shadow-xl shadow-[#F4511E]/40 transition-all cursor-pointer"
-            title="Tambah Received Order Baru"
-            aria-label="Tambah Received Order"
-          >
-            <Plus className="w-6 h-6 stroke-[2.5]" />
-          </button>
-
-          {/* ── DETAIL MODAL ── */}
-          <Modal
-            isOpen={detailModalOpen}
-            onClose={() => setDetailModalOpen(false)}
-            title="Detail Received Order"
-            subtitle={selectedDetailPo ? `RO: ${selectedDetailPo.nomorRO || selectedDetailPo.nomorRo || selectedDetailPo.id}` : ''}
-          >
-            {selectedDetailPo && (
-              <div className="p-4 space-y-4 font-mono text-xs">
-                {/* Header Information */}
-                <div className="bg-[#171A1E] p-3.5 rounded-xl border border-[#252A32] space-y-2">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <span className="text-[10px] text-[#F4511E] uppercase font-bold block">Customer</span>
-                      <span className="text-sm font-bold text-white block mt-0.5">{selectedDetailPo.customer}</span>
-                      <span className="text-[11px] text-neutral-400 block">{selectedDetailPo.customerAddress || 'Gresik, Jawa Timur'}</span>
-                    </div>
-                    <span className="px-2 py-0.5 rounded text-[10px] bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
-                      {selectedDetailPo.status || 'APPROVED'}
-                    </span>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-2 pt-2 border-t border-[#252A32] text-[11px]">
-                    <div>
-                      <span className="text-neutral-400 block">Nomor PO Customer:</span>
-                      <span className="text-white font-bold">{selectedDetailPo.nomorPo || '-'}</span>
-                    </div>
-                    <div>
-                      <span className="text-neutral-400 block">Tanggal Kontrak:</span>
-                      <span className="text-white font-bold">{selectedDetailPo.tanggal || '-'}</span>
-                    </div>
-                    <div>
-                      <span className="text-neutral-400 block">Jenis Layanan:</span>
-                      <span className="text-white">{selectedDetailPo.jenisRO || selectedDetailPo.jenis || 'Jasa Angkut + Material'}</span>
-                    </div>
-                    <div>
-                      <span className="text-neutral-400 block">Termin Pembayaran:</span>
-                      <span className="text-white">{selectedDetailPo.top || '14 hari'} ({selectedDetailPo.jenisPajak || 'PKP'})</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Volumes & Delivery Progress */}
-                <div className="bg-[#171A1E] p-3.5 rounded-xl border border-[#252A32] space-y-2">
-                  <span className="text-[10px] text-neutral-400 uppercase font-bold block">Volume & Realisasi Kirim</span>
-                  <div className="flex justify-between items-center text-sm font-bold">
-                    <span className="text-white">
-                      Target: {formatNumber(selectedDetailPo.totalOrder)} {selectedDetailPo.satuan || 'm³'}
-                    </span>
-                    <span className="text-emerald-400">
-                      Terkirim: {formatNumber(selectedDetailPo.terkirim || 0)} {selectedDetailPo.satuan || 'm³'}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Pricing Breakdown */}
-                <div className="bg-[#171A1E] p-3.5 rounded-xl border border-[#252A32] space-y-1.5 text-[11px]">
-                  <span className="text-[10px] text-neutral-400 uppercase font-bold block">Harga Satuan & Margin</span>
-                  <div className="flex justify-between">
-                    <span className="text-neutral-400">Harga Beli Supplier:</span>
-                    <span className="text-white font-bold">{formatCurrency(selectedDetailPo.hargaBeli)}/{selectedDetailPo.satuan || 'm³'}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-neutral-400">Harga Jual Customer:</span>
-                    <span className="text-white font-bold">{formatCurrency(selectedDetailPo.hargaJual)}/{selectedDetailPo.satuan || 'm³'}</span>
-                  </div>
-                  <div className="flex justify-between pt-1 border-t border-[#252A32] text-emerald-400 font-bold">
-                    <span>Estimasi Gross Margin:</span>
-                    <span>
-                      {formatCurrency(((Number(selectedDetailPo.hargaJual) || 0) - (Number(selectedDetailPo.hargaBeli) || 0)) * (Number(selectedDetailPo.totalOrder) || 1))}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Action Buttons */}
-                <div className="pt-2 flex flex-col sm:flex-row items-center justify-end gap-2">
-                  <Button
-                    variant="primary"
-                    icon={FileText}
-                    onClick={() => {
-                      setDetailModalOpen(false);
-                      handleBuatSuratJalan(selectedDetailPo);
-                    }}
-                    className="w-full sm:w-auto"
-                  >
-                    Buat Surat Jalan GI &rarr;
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => setDetailModalOpen(false)}
-                    className="w-full sm:w-auto"
-                  >
-                    Tutup
-                  </Button>
-                </div>
-              </div>
-            )}
-          </Modal>
-
-          {/* ── DELETE CONFIRMATION MODAL ── */}
-          <Modal
-            isOpen={deleteModalOpen}
-            onClose={() => setDeleteModalOpen(false)}
-            title="Hapus Data Received Order"
-            subtitle={poToDelete ? `Nomor RO: ${poToDelete.nomorRO || poToDelete.nomorRo || poToDelete.id}` : ''}
-          >
-            {poToDelete && (
-              <div className="p-4 space-y-4 font-mono text-xs">
-                <p className="text-neutral-300 leading-relaxed">
-                  Apakah Anda yakin ingin menghapus data Received Order untuk pelanggan{' '}
-                  <strong className="text-white">{poToDelete.customer}</strong> sebesar{' '}
-                  <strong className="text-[#F4511E]">{formatNumber(poToDelete.totalOrder)} {poToDelete.satuan || 'm³'}</strong>?
-                </p>
-                <p className="text-[11px] text-neutral-500">
-                  Tindakan ini akan menghapus data kontrak pesanan secara permanen dari sistem.
-                </p>
-
-                <div className="pt-2 flex items-center justify-end gap-2">
-                  <Button variant="outline" onClick={() => setDeleteModalOpen(false)}>
-                    Batal
-                  </Button>
-                  <Button
-                    variant="danger"
-                    icon={Trash2}
-                    onClick={async () => {
-                      if (deletePreOrder) await deletePreOrder(poToDelete.id);
-                      setDeleteModalOpen(false);
-                      setPoToDelete(null);
-                    }}
-                  >
-                    Ya, Hapus RO
-                  </Button>
-                </div>
-              </div>
-            )}
-          </Modal>
-        </>
-      )}
-
-      {/* ══════════ VIEW 2: FORM BUAT RO (TERSTRUKTUR & RAPI) ══════════ */}
-      {activeTab === 'create' && (
-        <div className="space-y-6">
-          <FormAppBar title="Buat Received Order (RO) Baru" onBack={handleCancel} />
-
-          <form onSubmit={handleCreate} noValidate className="space-y-6 pb-6">
-
-            {/* ── CARD 1: INFORMASI PEMESANAN & CUSTOMER ── */}
-            <div className="bg-[#14171A] border border-[#22262A] rounded-xl p-5 space-y-4 shadow-sm">
-              <div className="flex items-center gap-2.5 pb-3 border-b border-[#22262A]">
-                <div className="w-8 h-8 rounded-lg bg-[#F4511E]/10 border border-[#F4511E]/30 flex items-center justify-center">
-                  <FileText className="w-4 h-4 text-[#F4511E]" />
-                </div>
-                <div>
-                  <h3 className="text-sm font-bold text-white tracking-tight">
-                    Informasi Pre Order &amp; Pelanggan
-                  </h3>
-                  <p className="text-[11px] text-neutral-400">
-                    Detail kontrak pemesanan, data pelanggan, dan termin pembayaran
-                  </p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {/* Tanggal */}
-                <div ref={errors.tanggal ? firstErrorRef : null}>
-                  <DateField
-                    label="Tanggal Kontrak"
-                    value={formData.tanggal}
-                    onChange={(v) => setField('tanggal', v)}
-                    required
-                    error={errors.tanggal}
-                  />
-                </div>
-
-                {/* T.O.P. */}
-                <SelectField
-                  icon={Calendar}
-                  label="T.O.P. (Term of Payment)"
-                  value={formData.top}
-                  onChange={(v) => setField('top', v)}
-                  options={TOP_OPTIONS}
-                />
-
-                {/* Jenis Pengiriman */}
-                <div ref={errors.jenis ? firstErrorRef : null}>
-                  <SelectField
-                    icon={Monitor}
-                    label="Jenis Pengiriman"
-                    value={formData.jenis}
-                    onChange={(v) => setField('jenis', v)}
-                    options={JENIS_OPTIONS}
-                    required
-                    error={errors.jenis}
-                  />
-                </div>
-
-                {/* Pilih Customer */}
-                <div className="md:col-span-2 lg:col-span-2" ref={errors.customer ? firstErrorRef : null}>
-                  <SelectField
-                    icon={User}
-                    label="Pilih Customer / Pelanggan"
-                    value={formData.customer}
-                    onChange={(v) => setField('customer', v)}
-                    options={customerOptions}
-                    searchable={customerOptions.length > 4}
-                    required
-                    error={errors.customer}
-                  />
-                </div>
-
-                {/* Jenis Wajib Pajak */}
-                <SelectField
-                  icon={Building2}
-                  label="Jenis Wajib Pajak"
-                  value={formData.jenisWajibPajak}
-                  onChange={(v) => setField('jenisWajibPajak', v)}
-                  options={JENIS_PAJAK_OPTIONS}
-                />
-
-                {/* Mata Uang */}
-                <div ref={errors.mataUang ? firstErrorRef : null}>
-                  <SelectField
-                    icon={DollarSign}
-                    label="Mata Uang"
-                    value={formData.mataUang}
-                    onChange={(v) => setField('mataUang', v)}
-                    options={mataUangOptions}
-                    required
-                    error={errors.mataUang}
-                  />
-                </div>
-
-                {/* Nomor PO Customer */}
-                <TextField
-                  icon={FileText}
-                  label="Nomor PO Customer"
-                  value={formData.nomorPoCustomer}
-                  onChange={(e) => setField('nomorPoCustomer', e.target.value)}
-                  helper="Opsional (biarkan kosong jika belum terbit)"
-                  autoComplete="off"
-                />
-
-                {/* Pilih Jenis RO (Trigger Pembuka Item Material) */}
-                <div ref={errors.jenisRO ? firstErrorRef : null}>
-                  <SelectField
-                    icon={List}
-                    label="Pilih Jenis RO"
-                    value={formData.jenisRO}
-                    onChange={handleJenisRoChange}
-                    options={JENIS_RO_OPTIONS}
-                    required
-                    error={errors.jenisRO}
-                    helper="Aturan: Jasa Angkut + Material (auto-material), Material Saja, atau Jasa Angkut Saja"
-                  />
-                </div>
-
-                
-
-                {/* Conditional: Hubungkan Nomor PO Material (jika JASA ANGKUT SAJA) */}
-                {showHubungkanPo && (
-                  <div className="col-span-full pt-1">
-                    <SelectField
-                      icon={Layers}
-                      label="Hubungkan Nomor PO Material"
-                      value={formData.hubungkanNomorPoMaterial}
-                      onChange={(v) => {
-                        setField('hubungkanNomorPoMaterial', v);
-                        const match = materialPoOptions.find((opt) => opt.value === v);
-                        if (match && match.satuan) {
-                          setField('satuanJasaAngkut', match.satuan);
-                          setField('satuan', match.satuan);
-                          setItems((prev) =>
-                            prev.map((it) => ({
-                              ...it,
-                              satuan: match.satuan,
-                            }))
-                          );
-                        }
-                      }}
-                      options={materialPoOptions}
-                      searchable={materialPoOptions.length > 5}
-                      helper="Kaitkan pengiriman jasa angkut ini dengan PO material yang bersangkutan (satuan otomatis mengikuti PO ini)"
-                    />
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* ── CARD 2: DAFTAR ITEM MATERIAL & KUANTITAS ── */}
-            {!showDaftarItem ? (
-              <div className="rounded-xl border border-dashed border-[#2B3037] bg-[#14171A]/60 p-8 text-center">
-                <div className="w-12 h-12 rounded-full bg-[#1C1F23] text-neutral-400 mx-auto flex items-center justify-center mb-3">
-                  <List className="w-6 h-6 text-[#F4511E]" />
-                </div>
-                <h4 className="text-sm font-semibold text-white">Pilih Jenis RO Terlebih Dahulu</h4>
-                <p className="text-xs text-neutral-400 mt-1 max-w-md mx-auto">
-                  Silakan pilih <strong className="text-amber-400">Jenis RO</strong> pada form di atas untuk memuat daftar item lengkap beserta harga beli dan harga jual dari database secara otomatis.
-                </p>
-              </div>
-            ) : (
-              <div className="bg-[#14171A] border border-[#22262A] rounded-xl p-5 space-y-4 shadow-sm" ref={errors.items ? firstErrorRef : null}>
-                {/* Header Section */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#22262A]">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-lg bg-[#F4511E]/10 border border-[#F4511E]/30 flex items-center justify-center">
-                      <Package className="w-4 h-4 text-[#F4511E]" />
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <h3 className="text-sm font-bold text-white tracking-tight">
-                          Daftar Item Material
-                        </h3>
-                        <span className="text-[10px] px-2 py-0.5 rounded font-mono font-bold bg-[#1C1F23] text-amber-400 border border-amber-500/20">
-                          {formData.jenisRO}
+                        <span className="px-2 py-0.5 rounded text-[10px] bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                          {selectedDetailPo.status || 'APPROVED'}
                         </span>
                       </div>
-                      <p className="text-[11px] text-neutral-400 mt-0.5">
-                        Harga beli &amp; harga jual otomatis terisi dari Database Master. Anda hanya perlu mengisi kuantitas.
-                      </p>
+
+                      <div className="grid grid-cols-2 gap-2 pt-2 border-t border-[#252A32] text-[11px]">
+                        <div>
+                          <span className="text-neutral-400 block">Nomor PO Customer:</span>
+                          <span className="text-white font-bold">{selectedDetailPo.nomorPo || '-'}</span>
+                        </div>
+                        <div>
+                          <span className="text-neutral-400 block">Tanggal Kontrak:</span>
+                          <span className="text-white font-bold">{selectedDetailPo.tanggal || '-'}</span>
+                        </div>
+                        <div>
+                          <span className="text-neutral-400 block">Jenis Layanan:</span>
+                          <span className="text-white">{selectedDetailPo.jenisRO || selectedDetailPo.jenis || 'Jasa Angkut + Material'}</span>
+                        </div>
+                        <div>
+                          <span className="text-neutral-400 block">Termin Pembayaran:</span>
+                          <span className="text-white">{selectedDetailPo.top || '14 hari'} ({selectedDetailPo.jenisPajak || 'PKP'})</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Volumes & Delivery Progress */}
+                    <div className="bg-[#171A1E] p-3.5 rounded-xl border border-[#252A32] space-y-2">
+                      <span className="text-[10px] text-neutral-400 uppercase font-bold block">Volume & Realisasi Kirim</span>
+                      <div className="flex justify-between items-center text-sm font-bold">
+                        <span className="text-white">
+                          Target: {formatNumber(selectedDetailPo.totalOrder)} {selectedDetailPo.satuan || 'm³'}
+                        </span>
+                        <span className="text-emerald-400">
+                          Terkirim: {formatNumber(selectedDetailPo.terkirim || 0)} {selectedDetailPo.satuan || 'm³'}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Pricing Breakdown */}
+                    <div className="bg-[#171A1E] p-3.5 rounded-xl border border-[#252A32] space-y-1.5 text-[11px]">
+                      <span className="text-[10px] text-neutral-400 uppercase font-bold block">Harga Satuan & Margin</span>
+                      <div className="flex justify-between">
+                        <span className="text-neutral-400">Harga Beli Supplier:</span>
+                        <span className="text-white font-bold">{formatCurrency(selectedDetailPo.hargaBeli)}/{selectedDetailPo.satuan || 'm³'}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-neutral-400">Harga Jual Customer:</span>
+                        <span className="text-white font-bold">{formatCurrency(selectedDetailPo.hargaJual)}/{selectedDetailPo.satuan || 'm³'}</span>
+                      </div>
+                      <div className="flex justify-between pt-1 border-t border-[#252A32] text-emerald-400 font-bold">
+                        <span>Estimasi Gross Margin:</span>
+                        <span>
+                          {formatCurrency(((Number(selectedDetailPo.hargaJual) || 0) - (Number(selectedDetailPo.hargaBeli) || 0)) * (Number(selectedDetailPo.totalOrder) || 1))}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="pt-2 flex flex-col sm:flex-row items-center justify-end gap-2">
+                      <Button
+                        variant="primary"
+                        icon={FileText}
+                        onClick={() => {
+                          setDetailModalOpen(false);
+                          handleBuatSuratJalan(selectedDetailPo);
+                        }}
+                        className="w-full sm:w-auto"
+                      >
+                        Buat Surat Jalan GI &rarr;
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={() => setDetailModalOpen(false)}
+                        className="w-full sm:w-auto"
+                      >
+                        Tutup
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </Modal>
+
+              {/* ── DELETE CONFIRMATION MODAL ── */}
+              <Modal
+                isOpen={deleteModalOpen}
+                onClose={() => setDeleteModalOpen(false)}
+                title="Hapus Data Received Order"
+                subtitle={poToDelete ? `Nomor RO: ${poToDelete.nomorRO || poToDelete.nomorRo || poToDelete.id}` : ''}
+              >
+                {poToDelete && (
+                  <div className="p-4 space-y-4 font-mono text-xs">
+                    <p className="text-neutral-300 leading-relaxed">
+                      Apakah Anda yakin ingin menghapus data Received Order untuk pelanggan{' '}
+                      <strong className="text-white">{poToDelete.customer}</strong> sebesar{' '}
+                      <strong className="text-[#F4511E]">{formatNumber(poToDelete.totalOrder)} {poToDelete.satuan || 'm³'}</strong>?
+                    </p>
+                    <p className="text-[11px] text-neutral-500">
+                      Tindakan ini akan menghapus data kontrak pesanan secara permanen dari sistem.
+                    </p>
+
+                    <div className="pt-2 flex items-center justify-end gap-2">
+                      <Button variant="outline" onClick={() => setDeleteModalOpen(false)}>
+                        Batal
+                      </Button>
+                      <Button
+                        variant="danger"
+                        icon={Trash2}
+                        onClick={async () => {
+                          if (deletePreOrder) await deletePreOrder(poToDelete.id);
+                          setDeleteModalOpen(false);
+                          setPoToDelete(null);
+                        }}
+                      >
+                        Ya, Hapus RO
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </Modal>
+            </>
+      )}
+
+            {/* ══════════ VIEW 2: FORM BUAT RO (TERSTRUKTUR & RAPI) ══════════ */}
+            {activeTab === 'create' && (
+              <div className="space-y-6">
+                <FormAppBar title="Buat Received Order (RO) Baru" onBack={handleCancel} />
+
+                <form onSubmit={handleCreate} noValidate className="space-y-6 pb-6">
+
+                  {/* ── CARD 1: INFORMASI PEMESANAN & CUSTOMER ── */}
+                  <div className="bg-[#14171A] border border-[#22262A] rounded-xl p-5 space-y-4 shadow-sm">
+                    <div className="flex items-center gap-2.5 pb-3 border-b border-[#22262A]">
+                      <div className="w-8 h-8 rounded-lg bg-[#F4511E]/10 border border-[#F4511E]/30 flex items-center justify-center">
+                        <FileText className="w-4 h-4 text-[#F4511E]" />
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-bold text-white tracking-tight">
+                          Informasi Pre Order &amp; Pelanggan
+                        </h3>
+                        <p className="text-[11px] text-neutral-400">
+                          Detail kontrak pemesanan, data pelanggan, dan termin pembayaran
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {/* Tanggal */}
+                      <div ref={errors.tanggal ? firstErrorRef : null}>
+                        <DateField
+                          label="Tanggal Kontrak"
+                          value={formData.tanggal}
+                          onChange={(v) => setField('tanggal', v)}
+                          required
+                          error={errors.tanggal}
+                        />
+                      </div>
+
+                      {/* T.O.P. */}
+                      <SelectField
+                        icon={Calendar}
+                        label="T.O.P. (Term of Payment)"
+                        value={formData.top}
+                        onChange={(v) => setField('top', v)}
+                        options={TOP_OPTIONS}
+                      />
+
+                      {/* Jenis Pengiriman */}
+                      <div ref={errors.jenis ? firstErrorRef : null}>
+                        <SelectField
+                          icon={Monitor}
+                          label="Jenis Pengiriman"
+                          value={formData.jenis}
+                          onChange={(v) => setField('jenis', v)}
+                          options={JENIS_OPTIONS}
+                          required
+                          error={errors.jenis}
+                        />
+                      </div>
+
+                      {/* Pilih Customer */}
+                      <div className="md:col-span-2 lg:col-span-2" ref={errors.customer ? firstErrorRef : null}>
+                        <SelectField
+                          icon={User}
+                          label="Pilih Customer / Pelanggan"
+                          value={formData.customer}
+                          onChange={(v) => setField('customer', v)}
+                          options={customerOptions}
+                          searchable={customerOptions.length > 4}
+                          required
+                          error={errors.customer}
+                        />
+                      </div>
+
+                      {/* Jenis Wajib Pajak */}
+                      <SelectField
+                        icon={Building2}
+                        label="Jenis Wajib Pajak"
+                        value={formData.jenisWajibPajak}
+                        onChange={(v) => setField('jenisWajibPajak', v)}
+                        options={JENIS_PAJAK_OPTIONS}
+                      />
+
+                      {/* Mata Uang */}
+                      <div ref={errors.mataUang ? firstErrorRef : null}>
+                        <SelectField
+                          icon={DollarSign}
+                          label="Mata Uang"
+                          value={formData.mataUang}
+                          onChange={(v) => setField('mataUang', v)}
+                          options={mataUangOptions}
+                          required
+                          error={errors.mataUang}
+                        />
+                      </div>
+
+                      {/* Nomor PO Customer */}
+                      <TextField
+                        icon={FileText}
+                        label="Nomor PO Customer"
+                        value={formData.nomorPoCustomer}
+                        onChange={(e) => setField('nomorPoCustomer', e.target.value)}
+                        helper="Opsional (biarkan kosong jika belum terbit)"
+                        autoComplete="off"
+                      />
+
+                      {/* Pilih Jenis RO (Trigger Pembuka Item Material) */}
+                      <div ref={errors.jenisRO ? firstErrorRef : null}>
+                        <SelectField
+                          icon={List}
+                          label="Pilih Jenis RO"
+                          value={formData.jenisRO}
+                          onChange={handleJenisRoChange}
+                          options={JENIS_RO_OPTIONS}
+                          required
+                          error={errors.jenisRO}
+                          helper="Aturan: Jasa Angkut + Material (auto-material), Material Saja, atau Jasa Angkut Saja"
+                        />
+                      </div>
+
+
+
+                      {/* Conditional: Hubungkan Nomor PO Material (jika JASA ANGKUT SAJA) */}
+                      {showHubungkanPo && (
+                        <div className="col-span-full pt-1">
+                          <SelectField
+                            icon={Layers}
+                            label="Hubungkan Nomor PO Material"
+                            value={formData.hubungkanNomorPoMaterial}
+                            onChange={(v) => {
+                              setField('hubungkanNomorPoMaterial', v);
+                              const match = materialPoOptions.find((opt) => opt.value === v);
+                              if (match && match.satuan) {
+                                setField('satuanJasaAngkut', match.satuan);
+                                setField('satuan', match.satuan);
+                                setItems((prev) =>
+                                  prev.map((it) => ({
+                                    ...it,
+                                    satuan: match.satuan,
+                                  }))
+                                );
+                              }
+                            }}
+                            options={materialPoOptions}
+                            searchable={materialPoOptions.length > 5}
+                            helper="Kaitkan pengiriman jasa angkut ini dengan PO material yang bersangkutan (satuan otomatis mengikuti PO ini)"
+                          />
+                        </div>
+                      )}
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2">
-                    {items.length > 0 && (
-                      <Button
-                        type="button"
-                        size="xs"
-                        variant={itemsLocked ? 'secondary' : 'ghost'}
-                        icon={itemsLocked ? Lock : Unlock}
-                        onClick={() => setItemsLocked((v) => !v)}
-                      >
-                        {itemsLocked ? 'Buka Kunci' : 'Kunci Item'}
-                      </Button>
-                    )}
-                    {!itemsLocked && (
-                      <Button
-                        type="button"
-                        size="xs"
-                        variant="primary"
-                        icon={Plus}
-                        onClick={addItem}
-                      >
-                        Tambah Item
-                      </Button>
-                    )}
-                  </div>
-                </div>
+                  {/* ── CARD 2: DAFTAR ITEM MATERIAL & KUANTITAS ── */}
+                  {!showDaftarItem ? (
+                    <div className="rounded-xl border border-dashed border-[#2B3037] bg-[#14171A]/60 p-8 text-center">
+                      <div className="w-12 h-12 rounded-full bg-[#1C1F23] text-neutral-400 mx-auto flex items-center justify-center mb-3">
+                        <List className="w-6 h-6 text-[#F4511E]" />
+                      </div>
+                      <h4 className="text-sm font-semibold text-white">Pilih Jenis RO Terlebih Dahulu</h4>
+                      <p className="text-xs text-neutral-400 mt-1 max-w-md mx-auto">
+                        Silakan pilih <strong className="text-amber-400">Jenis RO</strong> pada form di atas untuk memuat daftar item lengkap beserta harga beli dan harga jual dari database secara otomatis.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="bg-[#14171A] border border-[#22262A] rounded-xl p-5 space-y-4 shadow-sm" ref={errors.items ? firstErrorRef : null}>
+                      {/* Header Section */}
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#22262A]">
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-8 h-8 rounded-lg bg-[#F4511E]/10 border border-[#F4511E]/30 flex items-center justify-center">
+                            <Package className="w-4 h-4 text-[#F4511E]" />
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <h3 className="text-sm font-bold text-white tracking-tight">
+                                Daftar Item Material
+                              </h3>
+                              <span className="text-[10px] px-2 py-0.5 rounded font-mono font-bold bg-[#1C1F23] text-amber-400 border border-amber-500/20">
+                                {formData.jenisRO}
+                              </span>
+                            </div>
+                            <p className="text-[11px] text-neutral-400 mt-0.5">
+                              Harga beli &amp; harga jual otomatis terisi dari Database Master. Anda hanya perlu mengisi kuantitas.
+                            </p>
+                          </div>
+                        </div>
 
-                {/* Error Banner if items invalid */}
-                {errors.items && (
-                  <div className="p-3 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs flex items-center gap-2">
-                    <AlertCircle className="w-4 h-4 shrink-0" />
-                    <span>{errors.items}</span>
-                  </div>
-                )}
+                        <div className="flex items-center gap-2">
+                          {items.length > 0 && (
+                            <Button
+                              type="button"
+                              size="xs"
+                              variant={itemsLocked ? 'secondary' : 'ghost'}
+                              icon={itemsLocked ? Lock : Unlock}
+                              onClick={() => setItemsLocked((v) => !v)}
+                            >
+                              {itemsLocked ? 'Buka Kunci' : 'Kunci Item'}
+                            </Button>
+                          )}
+                          {!itemsLocked && (
+                            <Button
+                              type="button"
+                              size="xs"
+                              variant="primary"
+                              icon={Plus}
+                              onClick={addItem}
+                            >
+                              Tambah Item
+                            </Button>
+                          )}
+                        </div>
+                      </div>
 
-                {/* ── DESKTOP/TABLET TABLE ── */}
-                <div className="hidden md:block overflow-x-auto rounded-lg border border-[#22262A] bg-[#111315]">
-                  <table className="w-full text-left border-collapse">
-                    <thead>
-                      <tr className="bg-[#181B1E] text-[11px] font-semibold text-neutral-400 uppercase tracking-wider border-b border-[#22262A]">
-                        <th className="py-2.5 px-3 text-center w-12 font-mono">#</th>
-                        <th className="py-2.5 px-4 min-w-[220px]">Material / Layanan (Database)</th>
-                        <th className="py-2.5 px-3 w-20 text-center font-mono">Satuan</th>
-                        <th className="py-2.5 px-3 w-36 font-mono text-amber-400">
-                          Kuantitas *
-                        </th>
-                        <th className="py-2.5 px-3 w-36 font-mono">Harga Beli (HPP)</th>
-                        <th className="py-2.5 px-3 w-36 font-mono">Harga Jual</th>
-                        <th className="py-2.5 px-3 w-36 font-mono text-right">Subtotal Beli</th>
-                        <th className="py-2.5 px-3 w-36 font-mono text-right">Subtotal Jual</th>
-                        <th className="py-2.5 px-3 w-14 text-center">Aksi</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-[#22262A] text-xs">
-                      {items.map((item, idx) => {
-                        const isAuto = Boolean(item.isAutoGenerated);
-                        const rowTotalBeli = (Number(item.kuantitas) || 0) * (Number(item.hargaBeli) || 0);
-                        const rowTotalJual = (Number(item.kuantitas) || 0) * (Number(item.hargaJual) || 0);
-                        return (
-                          <tr
-                            key={item.id}
-                            // className={`transition-colors ${
-                            //   isAuto ? 'bg-emerald-950/15 border-l-2 border-emerald-500' : 'hover:bg-[#16181B]'
-                            // }`}
-                          >
-                            {/* Index */}
-                            <td className="py-2.5 px-3 text-center font-mono text-neutral-400 text-xs">
-                              {idx + 1}
-                            </td>
+                      {/* Error Banner if items invalid */}
+                      {errors.items && (
+                        <div className="p-3 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs flex items-center gap-2">
+                          <AlertCircle className="w-4 h-4 shrink-0" />
+                          <span>{errors.items}</span>
+                        </div>
+                      )}
 
+<<<<<<< HEAD
                             {/* Material Selector with full database items */}
                             <td className="py-2 px-3">
                               {isAuto ? (
@@ -2020,22 +2277,251 @@ export default function PreOrderPage() {
                                 </div>
                               ) : (
                                 <div className="space-y-1">
+=======
+                      {/* ── DESKTOP/TABLET TABLE ── */}
+                      <div className="hidden md:block overflow-x-auto rounded-lg border border-[#22262A] bg-[#111315]">
+                        <table className="w-full text-left border-collapse">
+                          <thead>
+                            <tr className="bg-[#181B1E] text-[11px] font-semibold text-neutral-400 uppercase tracking-wider border-b border-[#22262A]">
+                              <th className="py-2.5 px-3 text-center w-12 font-mono">#</th>
+                              <th className="py-2.5 px-4 min-w-[220px]">Material / Layanan (Database)</th>
+                              <th className="py-2.5 px-3 w-36 font-mono text-amber-400">
+                                Kuantitas *
+                              </th>
+                              <th className="py-2.5 px-3 w-20 text-center font-mono">Satuan</th>
+                              <th className="py-2.5 px-3 w-36 font-mono">Harga Beli (HPP)</th>
+                              <th className="py-2.5 px-3 w-36 font-mono">Harga Jual</th>
+                              <th className="py-2.5 px-3 w-36 font-mono text-right">Subtotal Beli</th>
+                              <th className="py-2.5 px-3 w-36 font-mono text-right">Subtotal Jual</th>
+                              <th className="py-2.5 px-3 w-14 text-center">Aksi</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-[#22262A] text-xs">
+                            {items.map((item, idx) => {
+                              const isAuto = Boolean(item.isAutoGenerated);
+                              const rowTotalBeli = (Number(item.kuantitas) || 0) * (Number(item.hargaBeli) || 0);
+                              const rowTotalJual = (Number(item.kuantitas) || 0) * (Number(item.hargaJual) || 0);
+                              return (
+                                <tr
+                                  key={item.id}
+                                // className={`transition-colors ${
+                                //   isAuto ? 'bg-emerald-950/15 border-l-2 border-emerald-500' : 'hover:bg-[#16181B]'
+                                // }`}
+                                >
+                                  {/* Index */}
+                                  <td className="py-2.5 px-3 text-center font-mono text-neutral-400 text-xs">
+                                    {idx + 1}
+                                  </td>
+
+                                  {/* Material Selector with full database items */}
+                                  <td className="py-2 px-3">
+                                    <div className="space-y-1">
+                                      <div className="flex items-center gap-1.5 mb-1">
+                                        {item.itemType === ITEM_TYPES.JASA_ANGKUT ? (
+                                          <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-[#F4511E]/15 text-[#F4511E] border border-[#F4511E]/30">
+                                            Jasa Angkut
+                                          </span>
+                                        ) : (
+                                          <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                                            Material
+                                          </span>
+                                        )}
+                                      </div>
+                                      {item.itemType === ITEM_TYPES.JASA_ANGKUT ? (
+                                        <div className="w-full bg-[#14171A] border border-[#2B3037] text-white rounded-md px-2.5 py-1.5 text-xs font-mono font-semibold">
+                                          {item.nama || 'JASA ANGKUT'}
+                                        </div>
+                                      ) : (
+                                        <select
+                                          value={item.nama}
+                                          onChange={(e) => handleMaterialChange(idx, e.target.value)}
+                                          disabled={itemsLocked}
+                                          className="w-full bg-[#181B1E] border border-[#2B3037] text-white rounded-md px-2.5 py-1.5 text-xs font-semibold focus:outline-none focus:border-[#F4511E] disabled:opacity-60 cursor-pointer"
+                                        >
+                                          {materialList.map((m) => (
+                                            <option key={m.id} value={m.name || m.nama} className="bg-[#181B1E] text-white">
+                                              {m.name || m.nama} {m.defaultUnit || m.satuan ? `(${m.defaultUnit || m.satuan})` : ''}
+                                            </option>
+                                          ))}
+                                        </select>
+                                      )}
+                                    </div>
+                                  </td>
+
+                                  {/* Kuantitas */}
+                                  <td className="py-2 px-3">
+                                    <input
+                                      type="number"
+                                      min="0"
+                                      step="any"
+                                      placeholder="Isi kuantitas"
+                                      value={item.kuantitas}
+                                      onChange={(e) => updateItem(idx, 'kuantitas', e.target.value)}
+                                      disabled={itemsLocked}
+                                      className="w-full rounded-md px-2.5 py-1.5 text-xs font-mono font-bold focus:outline-none disabled:opacity-60 bg-[#181B1E] border-2 border-amber-500/60 focus:border-[#F4511E] text-white focus:ring-1 focus:ring-[#F4511E]"
+                                      title="Masukkan kuantitas"
+                                    />
+                                  </td>
+
+                                  {/* Satuan (Jasa Angkut tanpa satuan, Material dengan satuan) */}
+                                  <td className="py-2 px-3 text-center">
+                                    <input
+                                      type="text"
+                                      disabled
+                                      value={item.itemType === ITEM_TYPES.JASA_ANGKUT ? '-' : (item.satuan || formData.satuanJasaAngkut || 'm³')}
+                                      className="w-16 mx-auto text-center bg-[#181B1E]/60 border border-[#2B3037] text-amber-400 rounded-md px-2 py-1 text-xs font-mono font-bold cursor-not-allowed opacity-90 shadow-inner"
+                                      title={item.itemType === ITEM_TYPES.JASA_ANGKUT ? 'Jasa angkut tanpa satuan' : 'Satuan material'}
+                                    />
+                                  </td>
+
+                                  {/* Harga Beli */}
+                                  <td className="py-2 px-3">
+                                    <input
+                                      type="number"
+                                      min="0"
+                                      value={item.hargaBeli}
+                                      onChange={(e) => updateItem(idx, 'hargaBeli', e.target.value)}
+                                      disabled={itemsLocked}
+                                      className="w-full bg-[#181B1E] border border-[#2B3037] text-neutral-300 rounded-md px-2.5 py-1.5 text-xs font-mono focus:outline-none focus:border-[#F4511E] disabled:opacity-60"
+                                      title="Harga beli otomatis terisi dari Database Master (dapat disesuaikan jika perlu)"
+                                    />
+                                  </td>
+
+                                  {/* Harga Jual */}
+                                  <td className="py-2 px-3">
+                                    <input
+                                      type="number"
+                                      min="0"
+                                      value={item.hargaJual}
+                                      onChange={(e) => updateItem(idx, 'hargaJual', e.target.value)}
+                                      disabled={itemsLocked}
+                                      className="w-full bg-[#181B1E] border border-[#2B3037] text-white rounded-md px-2.5 py-1.5 text-xs font-mono font-semibold focus:outline-none focus:border-[#F4511E] disabled:opacity-60"
+                                      title="Harga jual otomatis terisi dari Database Master (dapat disesuaikan jika perlu)"
+                                    />
+                                  </td>
+
+                                  {/* Subtotal Beli (Read-only) */}
+                                  <td className="py-2 px-3 text-right font-mono text-neutral-400 text-xs">
+                                    {formatCurrency(rowTotalBeli)}
+                                  </td>
+
+                                  {/* Subtotal Jual (Read-only) */}
+                                  <td className="py-2 px-3 text-right font-mono text-emerald-400 font-semibold text-xs">
+                                    {formatCurrency(rowTotalJual)}
+                                  </td>
+
+                                  {/* Action */}
+                                  <td className="py-2 px-3 text-center">
+                                    <button
+                                      type="button"
+                                      onClick={() => removeItem(idx)}
+                                      disabled={itemsLocked || items.length <= 1}
+                                      className="p-1.5 rounded text-neutral-500 hover:text-rose-400 hover:bg-rose-500/10 transition-colors disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+                                      title="Hapus baris item"
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                    </button>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+
+                      {/* ── MOBILE CARD VIEW (< md) ── */}
+                      <div className="md:hidden space-y-3">
+                        {items.map((item, idx) => {
+                          const isAuto = Boolean(item.isAutoGenerated);
+                          const rowTotalBeli = (Number(item.kuantitas) || 0) * (Number(item.hargaBeli) || 0);
+                          const rowTotalJual = (Number(item.kuantitas) || 0) * (Number(item.hargaJual) || 0);
+                          return (
+                            <div
+                              key={item.id}
+                              className={`border rounded-lg p-3.5 space-y-3 ${isAuto ? 'bg-emerald-950/10 border-emerald-500/40' : 'bg-[#181B1E] border-[#24282C]'
+                                }`}
+                            >
+                              <div className="flex items-center justify-between pb-2 border-b border-[#22262A]">
+                                <div className="flex items-center gap-2">
+                                  <span className="font-mono text-xs font-bold text-neutral-300">
+                                    Item #{idx + 1}
+                                  </span>
+                                  {item.itemType === ITEM_TYPES.JASA_ANGKUT ? (
+                                    <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-[#F4511E]/15 text-[#F4511E] border border-[#F4511E]/30">
+                                      Jasa Angkut
+                                    </span>
+                                  ) : (
+                                    <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                                      Material
+                                    </span>
+                                  )}
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => removeItem(idx)}
+                                  disabled={itemsLocked || items.length <= 1}
+                                  className="text-neutral-500 hover:text-rose-400 disabled:opacity-30 p-1 cursor-pointer"
+                                  title="Hapus baris item"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
+
+                              <div>
+                                <label className="text-[11px] text-neutral-400 font-medium block mb-1">
+                                  {item.itemType === ITEM_TYPES.JASA_ANGKUT ? 'Layanan Jasa Angkut' : 'Material'}
+                                </label>
+                                {item.itemType === ITEM_TYPES.JASA_ANGKUT ? (
+                                  <div className="w-full bg-[#111315] border border-[#2B3037] text-white rounded-md px-3 py-2 text-xs font-mono font-semibold">
+                                    {item.nama || 'JASA ANGKUT'}
+                                  </div>
+                                ) : (
+>>>>>>> 06b9f802adbcec69846edf4b9219010abbe746fd
                                   <select
                                     value={item.nama}
                                     onChange={(e) => handleMaterialChange(idx, e.target.value)}
                                     disabled={itemsLocked}
-                                    className="w-full bg-[#181B1E] border border-[#2B3037] text-white rounded-md px-2.5 py-1.5 text-xs font-semibold focus:outline-none focus:border-[#F4511E] disabled:opacity-60 cursor-pointer"
+                                    className="w-full bg-[#111315] border border-[#2B3037] text-white rounded-md px-3 py-2 text-xs font-semibold focus:outline-none focus:border-[#F4511E]"
                                   >
-                                    {availableMaterials.map((m) => (
-                                      <option key={m.id} value={m.name || m.nama} className="bg-[#181B1E] text-white">
+                                    {materialList.map((m) => (
+                                      <option key={m.id} value={m.name || m.nama}>
                                         {m.name || m.nama} {m.defaultUnit || m.satuan ? `(${m.defaultUnit || m.satuan})` : ''}
                                       </option>
                                     ))}
                                   </select>
-                                </div>
-                              )}
-                            </td>
+                                )}
+                              </div>
 
+                              <div className="grid grid-cols-2 gap-2">
+                                <div>
+                                  <label className="text-[11px] text-amber-400 font-bold block mb-1">
+                                    Kuantitas {item.satuan ? `(${item.satuan})` : ''} *
+                                  </label>
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    placeholder="0"
+                                    value={item.kuantitas}
+                                    onChange={(e) => updateItem(idx, 'kuantitas', e.target.value)}
+                                    disabled={itemsLocked}
+                                    className="w-full rounded-md px-3 py-2 text-xs font-mono font-bold focus:outline-none bg-[#111315] border-2 border-amber-500/60 focus:border-[#F4511E] text-white"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="text-[11px] text-neutral-400 font-medium block mb-1">
+                                    Satuan
+                                  </label>
+                                  <input
+                                    type="text"
+                                    disabled
+                                    value={item.itemType === ITEM_TYPES.JASA_ANGKUT ? '-' : (item.satuan || formData.satuanJasaAngkut || 'm³')}
+                                    className="w-full bg-[#111315]/80 border border-[#2B3037] text-amber-400 rounded-md px-3 py-2 text-xs font-mono font-bold cursor-not-allowed opacity-90 shadow-inner"
+                                    title={item.itemType === ITEM_TYPES.JASA_ANGKUT ? 'Jasa angkut tanpa satuan' : 'Satuan material'}
+                                  />
+                                </div>
+                              </div>
+
+<<<<<<< HEAD
                             {/* Satuan (Jasa Angkut tanpa satuan, Material dengan satuan) */}
                             <td className="py-2 px-3 text-center">
                               <input
@@ -2065,38 +2551,70 @@ export default function PreOrderPage() {
                                 title={isAuto ? 'Kuantitas jasa angkut disable dan mengikuti kuantitas material' : 'Masukkan kuantitas material'}
                               />
                             </td>
+=======
+                              <div className="grid grid-cols-2 gap-2">
+                                <div>
+                                  <label className="text-[11px] text-neutral-400 block mb-1">
+                                    Harga Beli (HPP)
+                                  </label>
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    value={item.hargaBeli}
+                                    onChange={(e) => updateItem(idx, 'hargaBeli', e.target.value)}
+                                    disabled={itemsLocked}
+                                    className="w-full bg-[#111315] border border-[#2B3037] text-neutral-300 rounded-md px-3 py-2 text-xs font-mono focus:outline-none focus:border-[#F4511E]"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="text-[11px] text-neutral-400 block mb-1">
+                                    Harga Jual
+                                  </label>
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    value={item.hargaJual}
+                                    onChange={(e) => updateItem(idx, 'hargaJual', e.target.value)}
+                                    disabled={itemsLocked}
+                                    className="w-full bg-[#111315] border border-[#2B3037] text-white rounded-md px-3 py-2 text-xs font-mono font-bold focus:outline-none focus:border-[#F4511E]"
+                                  />
+                                </div>
+                              </div>
 
-                            {/* Harga Beli */}
-                            <td className="py-2 px-3">
-                              <input
-                                type="number"
-                                min="0"
-                                value={item.hargaBeli}
-                                onChange={(e) => updateItem(idx, 'hargaBeli', e.target.value)}
-                                disabled={itemsLocked}
-                                className="w-full bg-[#181B1E] border border-[#2B3037] text-neutral-300 rounded-md px-2.5 py-1.5 text-xs font-mono focus:outline-none focus:border-[#F4511E] disabled:opacity-60"
-                                title="Harga beli otomatis terisi dari Database Master (dapat disesuaikan jika perlu)"
-                              />
-                            </td>
+                              <div className="flex items-center justify-between pt-2 border-t border-[#22262A] text-xs font-mono">
+                                <span className="text-neutral-400">Total Jual:</span>
+                                <span className="text-emerald-400 font-bold">{formatCurrency(rowTotalJual)}</span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+>>>>>>> 06b9f802adbcec69846edf4b9219010abbe746fd
 
-                            {/* Harga Jual */}
-                            <td className="py-2 px-3">
-                              <input
-                                type="number"
-                                min="0"
-                                value={item.hargaJual}
-                                onChange={(e) => updateItem(idx, 'hargaJual', e.target.value)}
-                                disabled={itemsLocked}
-                                className="w-full bg-[#181B1E] border border-[#2B3037] text-white rounded-md px-2.5 py-1.5 text-xs font-mono font-semibold focus:outline-none focus:border-[#F4511E] disabled:opacity-60"
-                                title="Harga jual otomatis terisi dari Database Master (dapat disesuaikan jika perlu)"
-                              />
-                            </td>
+                      {/* ── SUMMARY STATS BAR ── */}
+                      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 pt-2">
+                        <div className="bg-[#181B1E] border border-[#24282C] rounded-lg p-3">
+                          <div className="text-[11px] text-neutral-400 font-medium">Total Volume / Kuantitas</div>
+                          <div className="text-base font-bold font-mono text-white mt-1">
+                            {totalKuantitas.toLocaleString('id-ID')} <span className="text-xs font-normal text-neutral-400">{items[0]?.satuan || formData.satuanJasaAngkut || 'm³'}</span>
+                          </div>
+                        </div>
 
-                            {/* Subtotal Beli (Read-only) */}
-                            <td className="py-2 px-3 text-right font-mono text-neutral-400 text-xs">
-                              {formatCurrency(rowTotalBeli)}
-                            </td>
+                        <div className="bg-[#181B1E] border border-[#24282C] rounded-lg p-3">
+                          <div className="text-[11px] text-neutral-400 font-medium">Total Biaya Beli (HPP)</div>
+                          <div className="text-base font-bold font-mono text-neutral-300 mt-1">
+                            {formatCurrency(totalHargaBeli)}
+                          </div>
+                        </div>
 
+                        <div className="bg-[#181B1E] border border-[#24282C] rounded-lg p-3">
+                          <div className="text-[11px] text-neutral-400 font-medium">Total Nilai Penjualan</div>
+                          <div className="text-base font-bold font-mono text-white mt-1">
+                            {formatCurrency(totalHargaJual)}
+                          </div>
+                        </div>
+
+<<<<<<< HEAD
                             {/* Subtotal Jual (Read-only) */}
                             <td className="py-2 px-3 text-right font-mono text-emerald-400 font-semibold text-xs">
                               {formatCurrency(rowTotalJual)}
@@ -2221,121 +2739,47 @@ export default function PreOrderPage() {
                               }`}
                               title={isAuto ? 'Kuantitas jasa angkut disable dan mengikuti kuantitas material' : 'Masukkan kuantitas material'}
                             />
+=======
+                        <div className="bg-[#181B1E] border border-[#24282C] rounded-lg p-3">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[11px] text-neutral-400 font-medium">Estimasi Gross Margin</span>
+                            <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded ${marginPercentage >= 0 ? 'bg-emerald-950/40 text-emerald-400' : 'bg-rose-950/40 text-rose-400'}`}>
+                              {marginPercentage.toFixed(1)}%
+                            </span>
                           </div>
-                          <div>
-                            <label className="text-[11px] text-neutral-400 font-medium block mb-1">
-                              Satuan
-                            </label>
-                            <input
-                              type="text"
-                              disabled
-                              value={item.itemType === ITEM_TYPES.JASA_ANGKUT ? '-' : (item.satuan || formData.satuanJasaAngkut || 'm³')}
-                              className="w-full bg-[#111315]/80 border border-[#2B3037] text-amber-400 rounded-md px-3 py-2 text-xs font-mono font-bold cursor-not-allowed opacity-90 shadow-inner"
-                              title={item.itemType === ITEM_TYPES.JASA_ANGKUT ? 'Jasa angkut tanpa satuan' : 'Satuan material'}
-                            />
+                          <div className={`text-base font-bold font-mono mt-1 ${totalMargin >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                            {formatCurrency(totalMargin)}
+>>>>>>> 06b9f802adbcec69846edf4b9219010abbe746fd
                           </div>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-2">
-                          <div>
-                            <label className="text-[11px] text-neutral-400 block mb-1">
-                              Harga Beli (HPP)
-                            </label>
-                            <input
-                              type="number"
-                              min="0"
-                              value={item.hargaBeli}
-                              onChange={(e) => updateItem(idx, 'hargaBeli', e.target.value)}
-                              disabled={itemsLocked}
-                              className="w-full bg-[#111315] border border-[#2B3037] text-neutral-300 rounded-md px-3 py-2 text-xs font-mono focus:outline-none focus:border-[#F4511E]"
-                            />
-                          </div>
-                          <div>
-                            <label className="text-[11px] text-neutral-400 block mb-1">
-                              Harga Jual
-                            </label>
-                            <input
-                              type="number"
-                              min="0"
-                              value={item.hargaJual}
-                              onChange={(e) => updateItem(idx, 'hargaJual', e.target.value)}
-                              disabled={itemsLocked}
-                              className="w-full bg-[#111315] border border-[#2B3037] text-white rounded-md px-3 py-2 text-xs font-mono font-bold focus:outline-none focus:border-[#F4511E]"
-                            />
-                          </div>
-                        </div>
-
-                        <div className="flex items-center justify-between pt-2 border-t border-[#22262A] text-xs font-mono">
-                          <span className="text-neutral-400">Total Jual:</span>
-                          <span className="text-emerald-400 font-bold">{formatCurrency(rowTotalJual)}</span>
                         </div>
                       </div>
-                    );
-                  })}
-                </div>
-
-                {/* ── SUMMARY STATS BAR ── */}
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 pt-2">
-                  <div className="bg-[#181B1E] border border-[#24282C] rounded-lg p-3">
-                    <div className="text-[11px] text-neutral-400 font-medium">Total Volume / Kuantitas</div>
-                    <div className="text-base font-bold font-mono text-white mt-1">
-                      {totalKuantitas.toLocaleString('id-ID')} <span className="text-xs font-normal text-neutral-400">{items[0]?.satuan || formData.satuanJasaAngkut || 'm³'}</span>
                     </div>
+                  )}
+
+                  {/* ── ACTION BUTTONS (ALWAYS VISIBLE AT FORM BOTTOM) ── */}
+                  <div className="flex flex-col sm:flex-row items-center justify-end gap-3 pt-4 border-t border-[#22262A]">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      onClick={handleCancel}
+                      disabled={submitting}
+                      title="Batalkan dan bersihkan seluruh isian form"
+                    >
+                      Batal
+                    </Button>
+                    <Button
+                      type="submit"
+                      variant="primary"
+                      disabled={submitting}
+                      className="w-full sm:w-auto px-6 py-2.5 font-bold"
+                    >
+                      {submitting ? 'Menyimpan...' : 'Simpan & Ajukan Pre Order'}
+                    </Button>
                   </div>
 
-                  <div className="bg-[#181B1E] border border-[#24282C] rounded-lg p-3">
-                    <div className="text-[11px] text-neutral-400 font-medium">Total Biaya Beli (HPP)</div>
-                    <div className="text-base font-bold font-mono text-neutral-300 mt-1">
-                      {formatCurrency(totalHargaBeli)}
-                    </div>
-                  </div>
-
-                  <div className="bg-[#181B1E] border border-[#24282C] rounded-lg p-3">
-                    <div className="text-[11px] text-neutral-400 font-medium">Total Nilai Penjualan</div>
-                    <div className="text-base font-bold font-mono text-white mt-1">
-                      {formatCurrency(totalHargaJual)}
-                    </div>
-                  </div>
-
-                  <div className="bg-[#181B1E] border border-[#24282C] rounded-lg p-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[11px] text-neutral-400 font-medium">Estimasi Gross Margin</span>
-                      <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded ${marginPercentage >= 0 ? 'bg-emerald-950/40 text-emerald-400' : 'bg-rose-950/40 text-rose-400'}`}>
-                        {marginPercentage.toFixed(1)}%
-                      </span>
-                    </div>
-                    <div className={`text-base font-bold font-mono mt-1 ${totalMargin >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                      {formatCurrency(totalMargin)}
-                    </div>
-                  </div>
-                </div>
+                </form>
               </div>
             )}
-
-            {/* ── ACTION BUTTONS (ALWAYS VISIBLE AT FORM BOTTOM) ── */}
-            <div className="flex flex-col sm:flex-row items-center justify-end gap-3 pt-4 border-t border-[#22262A]">
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={handleCancel}
-                disabled={submitting}
-                title="Batalkan dan bersihkan seluruh isian form"
-              >
-                Batal
-              </Button>
-              <Button
-                type="submit"
-                variant="primary"
-                disabled={submitting}
-                className="w-full sm:w-auto px-6 py-2.5 font-bold"
-              >
-                {submitting ? 'Menyimpan...' : 'Simpan & Ajukan Pre Order'}
-              </Button>
-            </div>
-
-          </form>
-        </div>
-      )}
-    </div>
-  );
+          </div>
+          );
 }

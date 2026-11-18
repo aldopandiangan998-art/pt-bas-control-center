@@ -38,7 +38,7 @@ export default function LaporanPage() {
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [selectedRo, setSelectedRo] = useState(null);
   const [selectedPoNumber, setSelectedPoNumber] = useState('');
-  const [hasApplied, setHasApplied] = useState(false);
+  const [hasApplied, setHasApplied] = useState(true);
 
   // Modals
   const [customerModalOpen, setCustomerModalOpen] = useState(false);
@@ -202,13 +202,9 @@ export default function LaporanPage() {
       setCustomerModalOpen(true);
       return;
     }
-    if (!selectedRo) {
-      addToast('ID Received Order wajib dipilih terlebih dahulu sebelum menerapkan filter.', 'warning');
-      setRoModalOpen(true);
-      return;
-    }
     setHasApplied(true);
-    addToast(`Filter diterapkan untuk ${selectedCustomer.name} (${selectedRo.nomorRoLabel})`, 'success');
+    const roInfo = selectedRo ? ` (${selectedRo.nomorRoLabel})` : '';
+    addToast(`Filter diterapkan untuk ${selectedCustomer.name}${roInfo}`, 'success');
   };
 
   const handleBuatLaporan = () => {
@@ -440,7 +436,7 @@ export default function LaporanPage() {
         </div>
 
         {/* ── CONTENT AREA WHEN APPLIED (Report Data) ── */}
-        {hasApplied && selectedCustomer && customerReports && (
+        {selectedCustomer && customerReports && (
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}

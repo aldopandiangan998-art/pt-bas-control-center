@@ -426,6 +426,140 @@ app.get('/api/users', (req, res) => {
   res.json(users);
 });
 
+// Admin reset/change password for any user (Super Admin authority without needing old password)
+app.put('/api/users/:id/admin-password', (req, res) => {
+  const { id } = req.params;
+  const { newPassword } = req.body;
+
+  if (!newPassword || typeof newPassword !== 'string' || newPassword.trim().length < 6) {
+    return res.status(400).json({ success: false, message: 'Kata sandi baru minimal 6 karakter.' });
+  }
+
+  const user = db.prepare('SELECT id, name FROM users WHERE id = ?').get(id);
+  if (!user) {
+    return res.status(404).json({ success: false, message: 'Pengguna tidak ditemukan.' });
+  }
+
+  db.prepare('UPDATE users SET password = ? WHERE id = ?').run(newPassword.trim(), id);
+
+  res.json({
+    success: true,
+    message: `Kata sandi untuk pengguna ${user.name} berhasil diperbarui!`,
+  });
+});
+
+// Admin update user details (name, email, role, branch, phone, birth_date, gender, aktif)
+app.put('/api/users/:id', (req, res) => {
+  const { id } = req.params;
+  const { name, email, role, roleLabel, branch, phone, birth_date, gender, aktif } = req.body;
+
+  if (!name || !name.trim()) {
+    return res.status(400).json({ success: false, message: 'Nama lengkap wajib diisi.' });
+  }
+
+  const user = db.prepare('SELECT id, role, email FROM users WHERE id = ?').get(id);
+  if (!user) {
+    return res.status(404).json({ success: false, message: 'Pengguna tidak ditemukan.' });
+  }
+
+  // Prevent demoting main superadmin
+  let finalRole = role;
+  let finalRoleLabel = roleLabel;
+  if (user.id === 'usr-1' || user.email === 'superadmin@ptbas.co.id') {
+    finalRole = 'superadmin';
+    finalRoleLabel = 'Super Admin';
+  } else {
+    finalRole = role === 'superadmin' ? 'superadmin' : 'admin';
+    finalRoleLabel = finalRole === 'superadmin' ? 'Super Admin' : 'Admin';
+  }
+
+  // Check unique email
+  if (email && email.trim().toLowerCase() !== user.email?.toLowerCase()) {
+    const existingEmail = db.prepare('SELECT id FROM users WHERE LOWER(email) = ? AND id != ?').get(email.trim().toLowerCase(), id);
+    if (existingEmail) {
+      return res.status(400).json({ success: false, message: `Email ${email} sudah digunakan oleh pengguna lain.` });
+    }
+  }
+
+  const finalAktif = (user.id === 'usr-1' || user.email === 'superadmin@ptbas.co.id') ? 1 : (aktif !== undefined ? (aktif ? 1 : 0) : 1);
+
+  db.prepare(`
+    UPDATE users
+    SET name = ?, email = COALESCE(?, email), role = ?, roleLabel = ?, branch = ?, phone = ?, birth_date = ?, gender = ?, aktif = ?
+    WHERE id = ?
+  `).run(
+    name.trim(),
+    email ? email.trim().toLowerCase() : null,
+    finalRole,
+    finalRoleLabel,
+    branch || 'Hub Gresik',
+    phone || '-',
+    birth_date || null,
+    gender || 'Laki-laki',
+    finalAktif,
+    id
+  );
+
+  const updatedUser = db.prepare('SELECT id, name, email, role, roleLabel, branch, phone, birth_date, gender, aktif, created_at FROM users WHERE id = ?').get(id);
+
+  res.json({
+    success: true,
+    message: `Data pengguna ${updatedUser.name} berhasil diperbarui.`,
+    user: updatedUser,
+  });
+});
+
+// Admin create new user directly
+app.post('/api/users', (req, res) => {
+  const { name, email, password, role, branch, phone, birth_date, gender } = req.body;
+
+  if (!name || !name.trim()) {
+    return res.status(400).json({ success: false, message: 'Nama lengkap wajib diisi.' });
+  }
+  if (!email || !email.trim()) {
+    return res.status(400).json({ success: false, message: 'Email wajib diisi.' });
+  }
+  if (!password || password.length < 6) {
+    return res.status(400).json({ success: false, message: 'Kata sandi minimal 6 karakter.' });
+  }
+
+  const cleanEmail = email.trim().toLowerCase();
+  const existing = db.prepare('SELECT id FROM users WHERE LOWER(email) = ?').get(cleanEmail);
+  if (existing) {
+    return res.status(400).json({ success: false, message: `Email ${cleanEmail} sudah terdaftar.` });
+  }
+
+  const id = `usr-${Date.now()}`;
+  const cleanRole = role === 'superadmin' ? 'superadmin' : 'admin';
+  const roleLabel = cleanRole === 'superadmin' ? 'Super Admin' : 'Admin';
+  const createdAt = new Date().toISOString();
+
+  db.prepare(`
+    INSERT INTO users (id, name, email, password, role, roleLabel, branch, phone, birth_date, gender, aktif, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)
+  `).run(
+    id,
+    name.trim(),
+    cleanEmail,
+    password,
+    cleanRole,
+    roleLabel,
+    branch || 'Hub Gresik',
+    phone || '-',
+    birth_date || null,
+    gender || 'Laki-laki',
+    createdAt
+  );
+
+  const newUser = db.prepare('SELECT id, name, email, role, roleLabel, branch, phone, birth_date, gender, aktif, created_at FROM users WHERE id = ?').get(id);
+
+  res.json({
+    success: true,
+    message: `Pengguna ${newUser.name} berhasil dibuat!`,
+    user: newUser,
+  });
+});
+
 // Approve user (Super Admin approval)
 app.put('/api/users/:id/approve', (req, res) => {
   const { id } = req.params;
@@ -1208,14 +1342,6 @@ app.patch('/api/pre-orders/:id/reject', (req, res) => {
   res.json({ success: true, data: updated });
 });
 
-<<<<<<< HEAD
-app.delete('/api/pre-orders/:id', (req, res) => {
-  try {
-    db.prepare('DELETE FROM pre_orders WHERE id = ?').run(req.params.id);
-    res.json({ success: true, message: 'Pre Order deleted successfully' });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-=======
 // Delete Pre-Order and automatically cascade delete/clean any linked journals & waybills
 app.delete('/api/pre-orders/:id', (req, res) => {
   try {
@@ -1233,7 +1359,7 @@ app.delete('/api/pre-orders/:id', (req, res) => {
     });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
->>>>>>> 1d532521ae2118e5cadc2e79e7d4220f9f018517
+
   }
 });
 

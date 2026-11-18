@@ -285,13 +285,20 @@ export default function ProfilePage() {
             <div className={`text-xs font-mono mt-0.5 ${isDark ? 'text-neutral-400' : 'text-slate-500'}`}>
               {currentUser?.email || '-'}
             </div>
-            <div className="flex items-center gap-3 mt-1.5 flex-wrap text-xs">
-              <span className={`flex items-center gap-1 ${isDark ? 'text-neutral-300' : 'text-slate-600'}`}>
+            <div className="flex items-center gap-2 mt-2 flex-wrap text-xs">
+              <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg font-mono text-[11px] ${isDark ? 'bg-black/30 border border-white/5 text-neutral-300' : 'bg-slate-100 text-slate-700'}`}>
                 <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
-                <span>Penugasan: {currentUser?.branch || 'Pusat & Hub Gresik'}</span>
+                <span>Penugasan: {currentUser?.branch && !currentUser.branch.includes('Site [') ? currentUser.branch : 'Hub Gresik'}</span>
               </span>
-              <span className={isDark ? 'text-neutral-600' : 'text-slate-300'}>•</span>
-              <span className="text-emerald-500 font-semibold flex items-center gap-1">
+              <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg font-mono text-[11px] ${isDark ? 'bg-black/30 border border-white/5 text-neutral-300' : 'bg-slate-100 text-slate-700'}`}>
+                <User className="w-3.5 h-3.5 text-blue-400" />
+                <span>Gender: {currentUser?.gender || 'Laki-laki'}</span>
+              </span>
+              <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg font-mono text-[11px] ${isDark ? 'bg-black/30 border border-white/5 text-neutral-300' : 'bg-slate-100 text-slate-700'}`}>
+                <Calendar className="w-3.5 h-3.5 text-amber-400" />
+                <span>Tgl Lahir: {currentUser?.birth_date || '-'}</span>
+              </span>
+              <span className="text-emerald-500 font-semibold flex items-center gap-1 font-mono text-[11px] pl-1">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                 <span>Sesi Terautentikasi</span>
               </span>

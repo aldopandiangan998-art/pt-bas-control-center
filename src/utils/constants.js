@@ -50,32 +50,6 @@ export const INITIAL_USERS_DB = [
     gender: 'Laki-laki',
     aktif: true,
   },
-  {
-    id: 'usr-2',
-    name: 'Rudi Hartono',
-    email: 'admin@ptbas.co.id',
-    password: 'admin123',
-    role: 'admin',
-    roleLabel: 'Admin',
-    branch: 'Hub Gresik',
-    phone: '0813-8899-112',
-    birth_date: '1990-03-22',
-    gender: 'Laki-laki',
-    aktif: true,
-  },
-  {
-    id: 'usr-3',
-    name: 'Admin Dummy',
-    email: 'admin.dummy@ptbas.co.id',
-    password: 'admin123',
-    role: 'admin',
-    roleLabel: 'Admin',
-    branch: 'Hub Gresik',
-    phone: '0812-4567-8901',
-    birth_date: '1995-11-08',
-    gender: 'Perempuan',
-    aktif: true,
-  },
 ];
 
 export const INITIAL_USER = INITIAL_USERS_DB[0];

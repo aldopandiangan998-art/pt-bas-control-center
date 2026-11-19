@@ -58,6 +58,9 @@ export default function ApprovalRoPage() {
   // Modals state
   const [rejectModalData, setRejectModalData] = useState(null); // { id, nomorRO, customer }
   const [rejectionReason, setRejectionReason] = useState('');
+  const [rejectedSuccessModalData, setRejectedSuccessModalData] = useState(null); // Modal that appears when an RO request is rejected
+  const [batchRejectModalOpen, setBatchRejectModalOpen] = useState(false);
+  const [batchRejectionReason, setBatchRejectionReason] = useState('');
   const [approveConfirmData, setApproveConfirmData] = useState(null); // { id, ... }
   const [detailModalData, setDetailModalData] = useState(null); // PO object for full preview
 
@@ -284,13 +287,75 @@ export default function ApprovalRoPage() {
       addToast('Harap masukkan alasan penolakan agar tim operasional dapat menindaklanjuti.', 'warning');
       return;
     }
-    await rejectPreOrder(rejectModalData.id, rejectionReason.trim());
+    const currentRo = rejectModalData;
+    const finalReason = rejectionReason.trim();
+    const approverName = `${currentUser?.name || 'David Rusiah'} (Direktur)`;
+    const nowTime = new Date().toLocaleString('id-ID', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+
+    await rejectPreOrder(currentRo.id, finalReason);
     setRejectModalData(null);
     setRejectionReason('');
     setSelectedIds((prev) => {
       const next = new Set(prev);
-      next.delete(rejectModalData.id);
+      next.delete(currentRo.id);
       return next;
+    });
+
+    // Display modal that appears when an RO request is rejected
+    setRejectedSuccessModalData({
+      ...currentRo,
+      status: 'REJECTED',
+      rejectionReason: finalReason,
+      rejectedBy: approverName,
+      rejectedAt: nowTime,
+    });
+  };
+
+  const handleOpenBatchRejectModal = () => {
+    if (selectedIds.size === 0) return;
+    setBatchRejectModalOpen(true);
+    setBatchRejectionReason('');
+  };
+
+  const handleConfirmBatchReject = async () => {
+    if (selectedIds.size === 0) return;
+    if (!batchRejectionReason.trim()) {
+      addToast('Harap masukkan alasan penolakan massal agar tim operasional dapat menindaklanjuti.', 'warning');
+      return;
+    }
+    const finalReason = batchRejectionReason.trim();
+    const ids = Array.from(selectedIds);
+    const approverName = `${currentUser?.name || 'David Rusiah'} (Direktur)`;
+    const nowTime = new Date().toLocaleString('id-ID', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+
+    for (const id of ids) {
+      await rejectPreOrder(id, finalReason);
+    }
+    const count = ids.length;
+    setSelectedIds(new Set());
+    setBatchRejectModalOpen(false);
+    setBatchRejectionReason('');
+
+    // Display modal that appears when RO requests are rejected
+    setRejectedSuccessModalData({
+      isBatch: true,
+      count,
+      status: 'REJECTED',
+      rejectionReason: finalReason,
+      rejectedBy: approverName,
+      rejectedAt: nowTime,
     });
   };
 
@@ -665,6 +730,14 @@ export default function ApprovalRoPage() {
                 </button>
                 <Button
                   size="xs"
+                  variant="danger"
+                  icon={XCircle}
+                  onClick={handleOpenBatchRejectModal}
+                >
+                  Tolak {selectedIds.size} RO Terpilih
+                </Button>
+                <Button
+                  size="xs"
                   variant="primary"
                   icon={CheckCircle2}
                   onClick={handleBatchApprove}
@@ -999,10 +1072,23 @@ export default function ApprovalRoPage() {
                     )}
 
                     {isRejected && (
-                      <span className="flex items-center gap-1.5 text-rose-400">
-                        <XCircle className="w-3.5 h-3.5" />
-                        <span>Alasan penolakan: &quot;{po.rejectionReason || 'Tidak sesuai'}&quot;</span>
-                      </span>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="flex items-center gap-1.5 text-rose-400">
+                          <XCircle className="w-3.5 h-3.5" />
+                          <span>Alasan penolakan: &quot;{po.rejectionReason || 'Tidak sesuai'}&quot;</span>
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setRejectedSuccessModalData({
+                            ...po,
+                            rejectedBy: po.approvedBy || `${currentUser?.name || 'David Rusiah'} (Direktur)`,
+                            rejectedAt: po.approvedAt || 'Telah ditolak',
+                          })}
+                          className="text-[11px] font-mono text-rose-400 hover:text-rose-300 underline underline-offset-2 cursor-pointer transition-colors"
+                        >
+                          Lihat Detail Modal Penolakan
+                        </button>
+                      </div>
                     )}
 
                     {isPending && (
@@ -1025,6 +1111,24 @@ export default function ApprovalRoPage() {
                     >
                       Detail Kontrak
                     </Button>
+
+                    {/* Rejected Modal Button */}
+                    {isRejected && (
+                      <Button
+                        size="xs"
+                        variant="outline"
+                        icon={XCircle}
+                        onClick={() => setRejectedSuccessModalData({
+                          ...po,
+                          rejectedBy: po.approvedBy || `${currentUser?.name || 'David Rusiah'} (Direktur)`,
+                          rejectedAt: po.approvedAt || 'Telah ditolak',
+                        })}
+                        className="border-rose-500/40 text-rose-400 hover:bg-rose-500/10 hover:text-rose-300"
+                        title="Buka modal status penolakan RO"
+                      >
+                        Detail Penolakan
+                      </Button>
+                    )}
 
                     {/* Pending Actions */}
                     {isPending && (
@@ -1082,7 +1186,7 @@ export default function ApprovalRoPage() {
         </div>
       )}
 
-      {/* ══════════ MODAL 1: TOLAK RO ══════════ */}
+      {/* ══════════ MODAL 1: KONFIRMASI TOLAK RO ══════════ */}
       <Modal
         isOpen={Boolean(rejectModalData)}
         onClose={() => setRejectModalData(null)}
@@ -1090,7 +1194,7 @@ export default function ApprovalRoPage() {
         subtitle={`RO: ${rejectModalData?.nomorRO || rejectModalData?.id} • Customer: ${rejectModalData?.customer}`}
         maxWidth="max-w-lg"
       >
-        <div className="space-y-4">
+        <div className="space-y-4" data-testid="reject-modal">
           <div className="p-3 rounded-lg bg-rose-950/20 border border-rose-900/30 text-rose-300 text-xs flex items-start gap-2.5">
             <AlertCircle className="w-4 h-4 shrink-0 text-rose-400 mt-0.5" />
             <div>
@@ -1110,6 +1214,7 @@ export default function ApprovalRoPage() {
               value={rejectionReason}
               onChange={(e) => setRejectionReason(e.target.value)}
               placeholder="Contoh: Margin harga terlalu tipis, sesuaikan harga jual menjadi min Rp 45.000/m3..."
+              data-testid="rejection-reason-input"
               className="w-full bg-[#0E1012] border border-[#22262A] rounded-lg p-2.5 text-xs text-white placeholder-neutral-500 focus:outline-none focus:border-rose-500 font-mono"
             />
           </div>
@@ -1134,6 +1239,7 @@ export default function ApprovalRoPage() {
             <Button
               size="sm"
               variant="ghost"
+              data-testid="cancel-reject-btn"
               onClick={() => setRejectModalData(null)}
             >
               Batal
@@ -1142,9 +1248,190 @@ export default function ApprovalRoPage() {
               size="sm"
               variant="danger"
               icon={XCircle}
+              data-testid="confirm-reject-btn"
               onClick={handleConfirmReject}
             >
               Tolak RO Ini
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* ══════════ MODAL: PERMINTAAN RO DITOLAK (APPEARS WHEN AN RO REQUEST IS REJECTED) ══════════ */}
+      <Modal
+        isOpen={Boolean(rejectedSuccessModalData)}
+        onClose={() => setRejectedSuccessModalData(null)}
+        title="Permintaan Received Order Ditolak"
+        subtitle={
+          rejectedSuccessModalData?.isBatch
+            ? `${rejectedSuccessModalData.count} Received Order Berhasil Ditolak`
+            : `RO: ${rejectedSuccessModalData?.nomorRO || rejectedSuccessModalData?.id} • Customer: ${rejectedSuccessModalData?.customer}`
+        }
+        maxWidth="max-w-lg"
+      >
+        <div className="space-y-4" data-testid="ro-rejected-modal">
+          {/* Header Warning / Error Alert */}
+          <div className="p-4 rounded-xl bg-rose-950/30 border border-rose-500/40 text-rose-200 flex items-start gap-3">
+            <div className="w-9 h-9 rounded-lg bg-rose-500/20 text-rose-400 flex items-center justify-center shrink-0 mt-0.5">
+              <XCircle className="w-5 h-5" />
+            </div>
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <span className="font-bold text-sm text-white">Status Permintaan: DITOLAK</span>
+                <Badge variant="error" size="xs">REJECTED</Badge>
+              </div>
+              <p className="text-xs text-neutral-300 leading-relaxed">
+                Permintaan persetujuan Received Order telah resmi ditolak oleh Direksi. Pembuatan Surat Jalan untuk pesanan ini telah diblokir secara otomatis di seluruh sistem.
+              </p>
+            </div>
+          </div>
+
+          {/* Rejection Details Card */}
+          <div className="p-3.5 rounded-xl bg-[#0E1012] border border-[#22262A] space-y-2.5 font-mono text-xs">
+            {!rejectedSuccessModalData?.isBatch && (
+              <>
+                <div className="flex justify-between items-center pb-2 border-b border-[#1C1F23]">
+                  <span className="text-neutral-400">Nomor Dokumen RO:</span>
+                  <span className="text-white font-bold">{rejectedSuccessModalData?.nomorRO || rejectedSuccessModalData?.id}</span>
+                </div>
+                <div className="flex justify-between items-center pb-2 border-b border-[#1C1F23]">
+                  <span className="text-neutral-400">Customer / Pelanggan:</span>
+                  <span className="text-white font-semibold">{rejectedSuccessModalData?.customer}</span>
+                </div>
+                {rejectedSuccessModalData?.materialName && (
+                  <div className="flex justify-between items-center pb-2 border-b border-[#1C1F23]">
+                    <span className="text-neutral-400">Material Utama:</span>
+                    <span className="text-neutral-200">{rejectedSuccessModalData?.materialName}</span>
+                  </div>
+                )}
+              </>
+            )}
+
+            {rejectedSuccessModalData?.isBatch && (
+              <div className="flex justify-between items-center pb-2 border-b border-[#1C1F23]">
+                <span className="text-neutral-400">Total RO Ditolak:</span>
+                <span className="text-rose-400 font-bold">{rejectedSuccessModalData.count} Dokumen Pre-Order</span>
+              </div>
+            )}
+
+            <div className="flex justify-between items-center pb-2 border-b border-[#1C1F23]">
+              <span className="text-neutral-400">Ditolak Oleh:</span>
+              <span className="text-neutral-200">{rejectedSuccessModalData?.rejectedBy}</span>
+            </div>
+
+            <div className="flex justify-between items-center pb-2 border-b border-[#1C1F23]">
+              <span className="text-neutral-400">Waktu Penolakan:</span>
+              <span className="text-neutral-300">{rejectedSuccessModalData?.rejectedAt}</span>
+            </div>
+
+            <div className="pt-1">
+              <span className="text-neutral-400 block mb-1">Catatan / Alasan Penolakan:</span>
+              <div className="p-2.5 rounded-lg bg-rose-950/20 border border-rose-900/30 text-rose-300 font-medium text-xs break-words">
+                &ldquo;{rejectedSuccessModalData?.rejectionReason}&rdquo;
+              </div>
+            </div>
+          </div>
+
+          {/* Action Guidance */}
+          <div className="p-3 rounded-lg bg-[#14171A] border border-[#22262A] text-[11px] text-neutral-400 space-y-1">
+            <span className="font-semibold text-neutral-300 block">Langkah Selanjutnya bagi Tim Operasional:</span>
+            <ul className="list-disc list-inside space-y-0.5 text-neutral-400">
+              <li>Admin logistik akan menerima notifikasi alasan penolakan ini.</li>
+              <li>Admin dapat melakukan penyesuaian harga jual, kuota, atau jangka waktu pembayaran di menu Pre-Order.</li>
+              <li>Setelah direvisi, dokumen dapat diajukan kembali ke Direksi untuk disetujui.</li>
+            </ul>
+          </div>
+
+          {/* Footer Buttons */}
+          <div className="flex items-center justify-between pt-3 border-t border-[#22262A]">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                setRejectedSuccessModalData(null);
+                setActiveTab('rejected');
+              }}
+              className="text-xs"
+            >
+              Lihat di Tab Ditolak
+            </Button>
+            <Button
+              size="sm"
+              variant="primary"
+              onClick={() => setRejectedSuccessModalData(null)}
+              className="text-xs"
+            >
+              Tutup & Selesai
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* ══════════ MODAL: PENOLAKAN MASSAL RO ══════════ */}
+      <Modal
+        isOpen={batchRejectModalOpen}
+        onClose={() => setBatchRejectModalOpen(false)}
+        title="Konfirmasi Penolakan Massal RO"
+        subtitle={`Menolak ${selectedIds.size} Received Order sekaligus`}
+        maxWidth="max-w-lg"
+      >
+        <div className="space-y-4">
+          <div className="p-3 rounded-lg bg-rose-950/20 border border-rose-900/30 text-rose-300 text-xs flex items-start gap-2.5">
+            <AlertCircle className="w-4 h-4 shrink-0 text-rose-400 mt-0.5" />
+            <div>
+              <p className="font-semibold text-rose-200">
+                {selectedIds.size} dokumen Received Order akan ditolak sekaligus.
+              </p>
+              <p className="mt-0.5 text-neutral-300">
+                Surat Jalan tidak dapat dibuat untuk seluruh pesanan ini sampai admin operasional melakukan revisi dan mengajukan kembali.
+              </p>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-neutral-300 mb-1.5 font-mono">
+              Alasan Penolakan Direksi (Wajib Diisi):
+            </label>
+            <textarea
+              rows={3}
+              value={batchRejectionReason}
+              onChange={(e) => setBatchRejectionReason(e.target.value)}
+              placeholder="Masukkan alasan penolakan untuk seluruh RO yang dipilih..."
+              className="w-full bg-[#0E1012] border border-[#22262A] rounded-lg p-2.5 text-xs text-white placeholder-neutral-500 focus:outline-none focus:border-rose-500 font-mono"
+            />
+          </div>
+
+          <div>
+            <span className="text-[11px] text-neutral-400 block mb-1.5">Template Alasan Cepat:</span>
+            <div className="flex flex-wrap gap-1.5">
+              {quickReasons.map((reason) => (
+                <button
+                  key={reason}
+                  type="button"
+                  onClick={() => setBatchRejectionReason(reason)}
+                  className="text-[10px] bg-[#16181B] hover:bg-neutral-800 text-neutral-300 hover:text-white px-2 py-1 rounded border border-[#2B3037] text-left transition-colors cursor-pointer"
+                >
+                  + {reason}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex items-center justify-end gap-2 pt-3 border-t border-[#22262A]">
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => setBatchRejectModalOpen(false)}
+            >
+              Batal
+            </Button>
+            <Button
+              size="sm"
+              variant="danger"
+              icon={XCircle}
+              onClick={handleConfirmBatchReject}
+            >
+              Tolak {selectedIds.size} RO Ini
             </Button>
           </div>
         </div>
@@ -1329,10 +1616,69 @@ export default function ApprovalRoPage() {
               )}
             </div>
 
-            <div className="flex justify-end pt-2">
-              <Button size="sm" variant="secondary" onClick={() => setDetailModalData(null)}>
-                Tutup Ringkasan
-              </Button>
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-[#22262A]">
+              {isPendingStatus(detailModalData.status) ? (
+                <>
+                  <Button
+                    size="sm"
+                    variant="danger"
+                    icon={XCircle}
+                    onClick={() => {
+                      const target = detailModalData;
+                      setDetailModalData(null);
+                      handleOpenRejectModal(target);
+                    }}
+                  >
+                    Tolak RO Ini
+                  </Button>
+                  <div className="flex items-center gap-2">
+                    <Button size="sm" variant="secondary" onClick={() => setDetailModalData(null)}>
+                      Batal
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="primary"
+                      icon={CheckCircle2}
+                      onClick={() => {
+                        const target = detailModalData;
+                        setDetailModalData(null);
+                        setApproveConfirmData(target);
+                      }}
+                    >
+                      Setujui RO Ini
+                    </Button>
+                  </div>
+                </>
+              ) : isRejectedStatus(detailModalData.status) ? (
+                <>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    icon={XCircle}
+                    className="border-rose-500/40 text-rose-400 hover:bg-rose-500/10"
+                    onClick={() => {
+                      const target = detailModalData;
+                      setDetailModalData(null);
+                      setRejectedSuccessModalData({
+                        ...target,
+                        rejectedBy: target.approvedBy || `${currentUser?.name || 'David Rusiah'} (Direktur)`,
+                        rejectedAt: target.approvedAt || 'Telah ditolak',
+                      });
+                    }}
+                  >
+                    Buka Modal Penolakan
+                  </Button>
+                  <Button size="sm" variant="secondary" onClick={() => setDetailModalData(null)}>
+                    Tutup Ringkasan
+                  </Button>
+                </>
+              ) : (
+                <div className="flex justify-end w-full">
+                  <Button size="sm" variant="secondary" onClick={() => setDetailModalData(null)}>
+                    Tutup Ringkasan
+                  </Button>
+                </div>
+              )}
             </div>
           </div>
         )}

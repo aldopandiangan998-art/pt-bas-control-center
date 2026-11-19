@@ -482,7 +482,7 @@ export default function RekapanPage() {
                             {ro.poNumber || 'DRAFT (Menunggu SJ 1)'}
                           </strong>
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <Button
                             size="xs"
                             variant="primary"
@@ -502,6 +502,25 @@ export default function RekapanPage() {
                             className="bg-[#F4511E] hover:bg-[#ff6b3d] text-white font-semibold shadow-sm cursor-pointer"
                           >
                             Buat Surat Jalan
+                          </Button>
+                          <Button
+                            size="xs"
+                            variant="outline"
+                            icon={FileText}
+                            onClick={() => {
+                              navigate('/invoices', {
+                                state: {
+                                  order: ro,
+                                  fromRekapan: true,
+                                  activeTab: 'create',
+                                },
+                              });
+                              addToast(`Membuka form Input Invoice untuk ${ro.nomorRO}`, 'info');
+                            }}
+                            className="border-[#2D3339] hover:border-[#F4511E] text-white font-medium cursor-pointer"
+                            title="Buat Faktur Tagihan Invoice"
+                          >
+                            Input Invoice
                           </Button>
                           <Button
                             size="xs"
@@ -891,7 +910,7 @@ export default function RekapanPage() {
                               size="xs"
                               variant="outline"
                               onClick={() => {
-                                navigate('/bkk');
+                                navigate('/bkk', { state: { order: rek, fromRekapan: true } });
                                 addToast(`Beralih ke kas keluar BKK untuk ${rek.nomorRO || rek.id}`, 'info');
                               }}
                               title="Proses ke Bukti Kas Keluar"
@@ -901,13 +920,21 @@ export default function RekapanPage() {
                             <Button
                               size="xs"
                               variant="primary"
+                              icon={FileText}
                               onClick={() => {
-                                navigate('/invoices');
-                                addToast(`Beralih ke generator invoice untuk ${rek.nomorRO || rek.id}`, 'info');
+                                navigate('/invoices', {
+                                  state: {
+                                    order: rek,
+                                    fromRekapan: true,
+                                    activeTab: 'create',
+                                  },
+                                });
+                                addToast(`Membuka form Input Invoice untuk ${rek.nomorRO || rek.id}`, 'info');
                               }}
-                              title="Terbitkan Faktur Invoice Customer"
+                              title="Terbitkan Faktur Tagihan Invoice Customer"
+                              className="bg-[#F4511E] hover:bg-[#ff6b3d] text-white font-semibold cursor-pointer"
                             >
-                              Ke Invoice
+                              Input Invoice
                             </Button>
                           </div>
                         </div>
@@ -1063,13 +1090,33 @@ export default function RekapanPage() {
                 Total: <strong className="text-white">{selectedOrderForModal.suratJalanDetails.length} dokumen</strong> terbit untuk {selectedOrderForModal.nomorRO}
               </div>
 
-              <div className="flex items-center gap-2 self-end sm:self-auto">
+              <div className="flex items-center gap-2 self-end sm:self-auto flex-wrap">
                 <Button
                   size="sm"
                   variant="outline"
                   onClick={() => setSelectedOrderForModal(null)}
                 >
                   Tutup
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  icon={FileText}
+                  onClick={() => {
+                    const ro = selectedOrderForModal;
+                    setSelectedOrderForModal(null);
+                    navigate('/invoices', {
+                      state: {
+                        order: ro,
+                        fromRekapan: true,
+                        activeTab: 'create',
+                      },
+                    });
+                    addToast(`Membuka form Input Invoice untuk ${ro.nomorRO}`, 'info');
+                  }}
+                  className="border-[#2D3339] hover:border-[#F4511E] text-white cursor-pointer"
+                >
+                  Input Invoice
                 </Button>
                 <Button
                   size="sm"

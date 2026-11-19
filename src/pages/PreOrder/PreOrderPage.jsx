@@ -22,6 +22,7 @@ import {
   HelpCircle,
   AlertCircle,
   Clock,
+  Truck,
   Search,
   X,
   RotateCcw,
@@ -456,14 +457,17 @@ export default function PreOrderPage() {
     let aktif = 0;
     let selesai = 0;
     let over = 0;
+    let pending = 0;
     safePreOrders.forEach((po) => {
       const isCompleted = (Number(po.terkirim) || 0) >= (Number(po.totalOrder) || 1);
       const isOver = Math.round(((Number(po.terkirim) || 0) / (Number(po.totalOrder) || 1)) * 100) > 100;
-      if (isCompleted) selesai++;
+      const isPending = po.status === 'MENUNGGU_APPROVAL' || po.status === 'PENDING' || po.status === 'MENUNGGU APPROVAL';
+      if (isPending) pending++;
+      else if (isCompleted) selesai++;
       else aktif++;
       if (isOver) over++;
     });
-    return { all: safePreOrders.length, aktif, selesai, over };
+    return { all: safePreOrders.length, aktif, selesai, over, pending };
   }, [safePreOrders]);
 
   const filteredPreOrders = useMemo(() => {
@@ -492,10 +496,12 @@ export default function PreOrderPage() {
       const fulfillmentPct = Math.round(((Number(po.terkirim) || 0) / (Number(po.totalOrder) || 1)) * 100);
       const isCompleted = (Number(po.terkirim) || 0) >= (Number(po.totalOrder) || 1);
       const isOver = fulfillmentPct > 100;
+      const isPending = po.status === 'MENUNGGU_APPROVAL' || po.status === 'PENDING' || po.status === 'MENUNGGU APPROVAL';
 
-      if (statusFilter === 'AKTIF' && isCompleted) return false;
+      if (statusFilter === 'AKTIF' && (isCompleted || isPending)) return false;
       if (statusFilter === 'SELESAI' && !isCompleted) return false;
       if (statusFilter === 'OVER' && !isOver) return false;
+      if (statusFilter === 'PENDING' && !isPending) return false;
 
       // 3. Customer filter
       if (customerFilter !== 'ALL' && po.customer !== customerFilter) {
@@ -891,6 +897,8 @@ export default function PreOrderPage() {
 
       await createPreOrder({
         ...formData,
+        nomorPo: formData.nomorPoCustomer || formData.nomorPo || null,
+        createdBy: currentUser?.name || 'Admin Gresik',
         customerAddress,
         items,
         materialId: firstMaterial.materialId || 'mat-8',
@@ -906,10 +914,9 @@ export default function PreOrderPage() {
 
       handleResetForm();
       setActiveTab('list');
-      addToast('Received Order berhasil diajukan!', 'success');
     } catch (err) {
       console.error(err);
-      addToast('Terjadi kesalahan saat mengajukan Pre Order', 'error');
+      addToast(err?.message || 'Terjadi kesalahan saat mengajukan Pre Order', 'error');
     } finally {
       setSubmitting(false);
     }
@@ -949,11 +956,12 @@ export default function PreOrderPage() {
         fromPreOrder: true,
         preOrderId: po.id,
         customer: po.customer,
-        nomorPo: po.nomorPo || po.id,
+        nomorPo: po.nomorPo || po.nomorPoCustomer || po.id,
         materialId: po.materialId,
         materialName: po.materialName,
-        jenis: po.jenis || 'Jasa Angkut + Material',
+        jenis: po.jenisRO || po.jenis || 'Jasa Angkut + Material',
         nomorRo: po.nomorRO || po.nomorRo || `RO-${po.id}`,
+        isPpn: po.jenisWajibPajak === 'PKP',
       },
     });
   };
@@ -1143,6 +1151,7 @@ export default function PreOrderPage() {
                 <div className="flex flex-wrap items-center gap-1.5 pb-2 border-b border-[#20242A]">
                   {[
                     { id: 'ALL', label: 'Semua Status' },
+                    { id: 'PENDING', label: 'Menunggu Approval' },
                     { id: 'AKTIF', label: 'Aktif' },
                     { id: 'SELESAI', label: 'Selesai' },
                     { id: 'OVER', label: 'Over-Delivery' },
@@ -1328,14 +1337,17 @@ export default function PreOrderPage() {
                                 const hargaJual = po.hargaJual || po.items?.[0]?.hargaJual || 0;
                                 const hargaBeli = po.hargaBeli || po.items?.[0]?.hargaBeli || 0;
                                 const nilaiTotal = (Number(po.totalOrder) || 0) * Number(hargaJual);
-                                const statusLabel = po.status || 'AKTIF';
+                                const isApproved = po.status === 'APPROVED';
+                                const isPending = po.status === 'MENUNGGU_APPROVAL' || po.status === 'PENDING' || po.status === 'MENUNGGU APPROVAL';
+                                const isSelesai = po.status === 'SELESAI';
+                                const statusLabel = isPending ? 'MENUNGGU APPROVAL' : (po.status || 'AKTIF');
                                 const statusColor =
-                                  statusLabel === 'APPROVED' || statusLabel === 'AKTIF'
+                                  isApproved
                                     ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/25'
-                                    : statusLabel === 'SELESAI'
-                                    ? 'bg-blue-500/15 text-blue-400 border-blue-500/25'
-                                    : statusLabel === 'MENUNGGU APPROVAL'
+                                    : isPending
                                     ? 'bg-amber-500/15 text-amber-400 border-amber-500/25'
+                                    : isSelesai
+                                    ? 'bg-blue-500/15 text-blue-400 border-blue-500/25'
                                     : 'bg-neutral-700/40 text-neutral-400 border-neutral-600/30';
                                 return (
                                   <tr
@@ -1406,6 +1418,14 @@ export default function PreOrderPage() {
                                     {/* Aksi */}
                                     <td className="px-3 py-2.5 text-center">
                                       <div className="flex items-center justify-center gap-2">
+                                        {po.status === 'APPROVED' && (
+                                          <button
+                                            type="button"
+                                            onClick={() => handleBuatSuratJalan(po)}
+                                            className="text-emerald-400 hover:text-emerald-300 transition-colors cursor-pointer p-0.5"
+                                            title="Buat Surat Jalan (GI)"
+                                          ><Truck className="w-4 h-4" /></button>
+                                        )}
                                         <button
                                           type="button"
                                           onClick={() => { setPoToDelete(po); setDeleteModalOpen(true); }}
@@ -1461,11 +1481,13 @@ export default function PreOrderPage() {
                               <span className={`text-[10px] px-2 py-0.5 rounded font-bold uppercase tracking-wider ${
                                 po.status === 'SELESAI'
                                   ? 'bg-blue-500/15 text-blue-400 border border-blue-500/30'
-                                  : po.status === 'OVER'
+                                  : (po.status === 'MENUNGGU_APPROVAL' || po.status === 'PENDING' || po.status === 'MENUNGGU APPROVAL')
                                   ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30'
+                                  : po.status === 'OVER'
+                                  ? 'bg-purple-500/15 text-purple-400 border border-purple-500/30'
                                   : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
                               }`}>
-                                {po.status}
+                                {po.status === 'MENUNGGU_APPROVAL' ? 'MENUNGGU APPROVAL' : po.status}
                               </span>
                             )}
                             <button
@@ -1559,15 +1581,25 @@ export default function PreOrderPage() {
                         </div>
                       </div>
 
-                      {/* Grid Card Footer: [ Trash | Info ] */}
-                      <div className="border-t border-[#20242A] grid grid-cols-2 bg-[#0E1012]">
+                      {/* Grid Card Footer: [ SJ | Trash | Info ] */}
+                      <div className={`border-t border-[#20242A] grid ${po.status === 'APPROVED' ? 'grid-cols-3' : 'grid-cols-2'} bg-[#0E1012]`}>
+                        {po.status === 'APPROVED' && (
+                          <button
+                            type="button"
+                            onClick={() => handleBuatSuratJalan(po)}
+                            className="py-2.5 flex items-center justify-center text-emerald-400 hover:bg-emerald-500/10 active:bg-emerald-500/20 transition-colors cursor-pointer"
+                            title="Buat Surat Jalan (GI)"
+                          >
+                            <Truck className="w-4 h-4" />
+                          </button>
+                        )}
                         <button
                           type="button"
                           onClick={() => {
                             setPoToDelete(po);
                             setDeleteModalOpen(true);
                           }}
-                          className="py-2.5 flex items-center justify-center text-[#F4511E] hover:bg-[#F4511E]/10 active:bg-[#F4511E]/20 transition-colors cursor-pointer"
+                          className={`py-2.5 flex items-center justify-center text-[#F4511E] hover:bg-[#F4511E]/10 active:bg-[#F4511E]/20 transition-colors cursor-pointer ${po.status === 'APPROVED' ? 'border-l border-[#20242A]' : ''}`}
                           title="Hapus Received Order"
                         >
                           <Trash2 className="w-4 h-4" />
@@ -1703,17 +1735,24 @@ export default function PreOrderPage() {
 
                 {/* Action Buttons */}
                 <div className="pt-2 flex flex-col sm:flex-row items-center justify-end gap-2">
-                  <Button
-                    variant="primary"
-                    icon={FileText}
-                    onClick={() => {
-                      setDetailModalOpen(false);
-                      handleBuatSuratJalan(selectedDetailPo);
-                    }}
-                    className="w-full sm:w-auto"
-                  >
-                    Buat Surat Jalan GI &rarr;
-                  </Button>
+                  {selectedDetailPo.status === 'APPROVED' ? (
+                    <Button
+                      variant="primary"
+                      icon={FileText}
+                      onClick={() => {
+                        setDetailModalOpen(false);
+                        handleBuatSuratJalan(selectedDetailPo);
+                      }}
+                      className="w-full sm:w-auto"
+                    >
+                      Buat Surat Jalan GI &rarr;
+                    </Button>
+                  ) : (
+                    <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/25 text-amber-400 text-xs">
+                      <Clock className="w-4 h-4 shrink-0" />
+                      <span>Menunggu persetujuan Super Admin sebelum Surat Jalan dapat diterbitkan</span>
+                    </div>
+                  )}
                   <Button
                     variant="outline"
                     onClick={() => setDetailModalOpen(false)}

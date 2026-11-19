@@ -249,9 +249,9 @@ export default function ApprovalRoPage() {
   };
 
   // Actions
-  const handleApprove = (po) => {
+  const handleApprove = async (po) => {
     const approver = `${currentUser?.name || 'David Rusiah'} (Direktur)`;
-    approvePreOrder(po.id, approver);
+    await approvePreOrder(po.id, approver);
     setApproveConfirmData(null);
     setSelectedIds((prev) => {
       const next = new Set(prev);
@@ -260,14 +260,15 @@ export default function ApprovalRoPage() {
     });
   };
 
-  const handleBatchApprove = () => {
+  const handleBatchApprove = async () => {
     if (selectedIds.size === 0) return;
     const approver = `${currentUser?.name || 'David Rusiah'} (Direktur)`;
     let approvedCount = 0;
-    selectedIds.forEach((id) => {
-      approvePreOrder(id, approver);
+    const ids = Array.from(selectedIds);
+    for (const id of ids) {
+      await approvePreOrder(id, approver);
       approvedCount += 1;
-    });
+    }
     setSelectedIds(new Set());
     addToast(`${approvedCount} Received Order berhasil disetujui sekaligus.`, 'success');
   };
@@ -277,13 +278,13 @@ export default function ApprovalRoPage() {
     setRejectionReason('');
   };
 
-  const handleConfirmReject = () => {
+  const handleConfirmReject = async () => {
     if (!rejectModalData) return;
     if (!rejectionReason.trim()) {
       addToast('Harap masukkan alasan penolakan agar tim operasional dapat menindaklanjuti.', 'warning');
       return;
     }
-    rejectPreOrder(rejectModalData.id, rejectionReason.trim());
+    await rejectPreOrder(rejectModalData.id, rejectionReason.trim());
     setRejectModalData(null);
     setRejectionReason('');
     setSelectedIds((prev) => {
@@ -1060,11 +1061,12 @@ export default function ApprovalRoPage() {
                               fromPreOrder: true,
                               preOrderId: po.id,
                               customer: po.customer,
-                              nomorPo: po.nomorPo || po.id,
+                              nomorPo: po.nomorPo || po.nomorPoCustomer || po.id,
                               materialId: po.materialId,
                               materialName: po.materialName,
-                              jenis: po.jenis || 'Jasa Angkut + Material',
+                              jenis: po.jenisRO || po.jenis || 'Jasa Angkut + Material',
                               nomorRo: po.nomorRo || po.nomorRO || `RO-${po.id}`,
+                              isPpn: po.jenisWajibPajak === 'PKP',
                             },
                           })
                         }

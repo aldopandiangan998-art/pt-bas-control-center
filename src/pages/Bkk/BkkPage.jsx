@@ -1,5 +1,5 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
   ArrowLeft,
   User,
@@ -20,12 +20,15 @@ import {
   ArrowUpDown,
   List,
   LayoutGrid,
+  Building2,
+  Ticket,
+  FileText,
 } from 'lucide-react';
 import { useData } from '../../context/DataContext';
 import { useToast } from '../../context/ToastContext';
 import { formatCurrency } from '../../utils/formatters';
 import { groupCashOut, groupCheckState } from '../../utils/cashOutGrouping';
-import { Modal, Button } from '../../components/ui';
+import { Modal, Button, Card, Input, Select } from '../../components/ui';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // LocalStorage helpers
@@ -387,7 +390,19 @@ function CashOutGroupedTable({
 // ─────────────────────────────────────────────────────────────────────────────
 export default function BkkPage() {
   const navigate = useNavigate();
-  const { bkkList, markBkkPaid, suppliers, customers, bankAccounts } = useData();
+  const location = useLocation();
+  const {
+    bkkList,
+    markBkkPaid,
+    deleteBkk,
+    createBkk,
+    suppliers,
+    customers,
+    bankAccounts,
+    preOrders,
+    rekapanList,
+    fetchMasterData,
+  } = useData();
   const { addToast } = useToast();
 
   // ── Tab: 'list' | 'create'
@@ -407,10 +422,212 @@ export default function BkkPage() {
   const [searchFilter, setSearchFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
 
-  // ── Input Cash Out form state
-  const [filterData, setFilterData] = useState({ pelanggan: 'PT LION WINGS', supplier: '' });
-  const [keteranganList, setKeteranganList] = useState([{ id: 1, tipe: '', deskripsi: '' }]);
+  // ── Input Cash Out form state (Connected to database)
+  const [formSupplierId, setFormSupplierId] = useState('');
+  const [formCustomerId, setFormCustomerId] = useState('');
+  const [selectedOrderId, setSelectedOrderId] = useState('');
+  const [formVolume, setFormVolume] = useState('');
+  const [formHargaSatuan, setFormHargaSatuan] = useState('');
+  const [formMaterial, setFormMaterial] = useState('');
+  const [formTanggal, setFormTanggal] = useState(new Date().toISOString().split('T')[0]);
+  const [keteranganList, setKeteranganList] = useState([
+    { id: 1, tipe: 'Kasbon', deskripsi: '', nominal: 0 },
+  ]);
   const [filterHidden, setFilterHidden] = useState(false);
+
+  // Pre-filter / pre-populate from navigation state
+  useEffect(() => {
+    if (location.state?.order) {
+      const o = location.state.order;
+      if (o.nomorRO) {
+        setSearchFilter(o.nomorRO);
+      }
+      if (location.state.fromRekapan) {
+        setActiveTab('create');
+        if (o.customer) {
+          const cust = customers.find((c) => c.name === o.customer);
+          if (cust) setFormCustomerId(cust.id);
+        }
+        setSelectedOrderId(o.nomorRO || o.id);
+        setFormMaterial(o.material || '');
+        setFormVolume(Number(o.totalVolume || o.terkirim || o.totalOrder || 0));
+        setFormHargaSatuan(Number(o.hargaBeli || 40000));
+      }
+    }
+  }, [location.state, customers]);
+
+  // Ensure fresh master data and initial defaults on Create Tab
+  useEffect(() => {
+    if (activeTab === 'create') {
+      if (suppliers.length === 0 || customers.length === 0) {
+        fetchMasterData?.();
+      }
+      if (!formSupplierId && suppliers.length > 0) {
+        setFormSupplierId(suppliers[0].id);
+      }
+      if (!formCustomerId && customers.length > 0) {
+        setFormCustomerId(customers[0].id);
+      }
+    }
+  }, [activeTab, suppliers, customers]);
+
+  // Available orders for the selected customer / all approved orders
+  const availableOrders = useMemo(() => {
+    const list = [];
+    const seen = new Set();
+
+    (preOrders || [])
+      .filter((p) => p.status === 'APPROVED' || p.status === 'DISETUJUI' || p.status === 'AKTIF')
+      .forEach((p) => {
+        const ro = p.nomorRO || p.id;
+        if (!seen.has(ro)) {
+          seen.add(ro);
+          list.push({
+            id: p.id,
+            nomorRO: p.nomorRO,
+            poNumber: p.nomorPo || p.nomorPoCustomer || p.poNumber || 'PO Pending',
+            customer: p.customer,
+            customerId: p.customerId,
+            supplierId: p.supplierId,
+            material: p.materialName || p.material,
+            volume: Number(p.terkirim || p.totalOrder || 0),
+            hargaBeli: Number(p.hargaBeli || 40000),
+            satuan: p.satuan || 'm3',
+          });
+        }
+      });
+
+    (rekapanList || []).forEach((r) => {
+      const ro = r.nomorRO || r.id;
+      if (!seen.has(ro)) {
+        seen.add(ro);
+        list.push({
+          id: r.id,
+          nomorRO: r.nomorRO,
+          poNumber: r.poNumber,
+          customer: r.customer,
+          customerId: r.customerId,
+          supplierId: r.supplierId,
+          material: r.material,
+          volume: Number(r.totalVolume || 0),
+          hargaBeli: Number(r.hargaBeli || 40000),
+          satuan: r.satuan || 'm3',
+        });
+      }
+    });
+
+    if (formCustomerId) {
+      const targetCust = customers.find((c) => c.id === formCustomerId || c.name === formCustomerId);
+      if (targetCust) {
+        return list.filter(
+          (o) =>
+            o.customerId === targetCust.id ||
+            o.customer?.toLowerCase() === targetCust.name?.toLowerCase()
+        );
+      }
+    }
+
+    return list;
+  }, [preOrders, rekapanList, customers, formCustomerId]);
+
+  const handleSelectOrder = (orderId) => {
+    setSelectedOrderId(orderId);
+    if (!orderId) {
+      setFormMaterial('');
+      setFormVolume('');
+      setFormHargaSatuan('');
+      return;
+    }
+    const ord = availableOrders.find((o) => o.id === orderId || o.nomorRO === orderId);
+    if (ord) {
+      setFormMaterial(ord.material || 'SIRTU');
+      setFormVolume(ord.volume || 0);
+      setFormHargaSatuan(ord.hargaBeli || 40000);
+      if (ord.customerId && !formCustomerId) {
+        setFormCustomerId(ord.customerId);
+      }
+      if (ord.supplierId && !formSupplierId) {
+        setFormSupplierId(ord.supplierId);
+      }
+    }
+  };
+
+  const selectedSupplier = useMemo(
+    () => suppliers.find((s) => s.id === formSupplierId || s.name === formSupplierId),
+    [suppliers, formSupplierId]
+  );
+  const selectedCustomer = useMemo(
+    () => customers.find((c) => c.id === formCustomerId || c.name === formCustomerId),
+    [customers, formCustomerId]
+  );
+  const selectedOrder = useMemo(
+    () => availableOrders.find((o) => o.id === selectedOrderId || o.nomorRO === selectedOrderId),
+    [availableOrders, selectedOrderId]
+  );
+
+  const subtotalDasar = (Number(formVolume) || 0) * (Number(formHargaSatuan) || 0);
+  const totalPenyesuaian = keteranganList.reduce((sum, k) => {
+    const val = Number(k.nominal) || 0;
+    if (['Potongan', 'Kasbon'].includes(k.tipe)) {
+      return sum - Math.abs(val);
+    }
+    return sum + val;
+  }, 0);
+  const totalKasKeluar = Math.max(0, subtotalDasar + totalPenyesuaian);
+
+  const handleSaveCashOut = async (e) => {
+    e?.preventDefault();
+    if (!formSupplierId) {
+      addToast('Silakan pilih Supplier terlebih dahulu!', 'error');
+      return;
+    }
+    if (!formVolume || Number(formVolume) <= 0) {
+      addToast('Volume material wajib diisi lebih dari 0!', 'error');
+      return;
+    }
+    if (!formHargaSatuan || Number(formHargaSatuan) <= 0) {
+      addToast('Harga beli satuan supplier wajib diisi!', 'error');
+      return;
+    }
+
+    const sup = selectedSupplier || suppliers[0];
+    const cust = selectedCustomer;
+    const ord = selectedOrder;
+
+    const roCode = ord?.nomorRO ? ord.nomorRO.replace('RO-', '') : String(Date.now()).slice(-4);
+    const poNum = ord?.poNumber || 'PO-MANUAL';
+    const coCode = `${poNum} - CO - ${roCode}`;
+    const subDetailStr = `${cust?.name || 'UMUM'} (${ord?.nomorRO || 'MANUAL'})`;
+
+    await createBkk({
+      kodeTransaksi: coCode,
+      supplierId: sup.id,
+      customerId: cust?.id || null,
+      perusahaan: sup.name,
+      subDetail: subDetailStr,
+      penerima: sup.penerima || sup.name,
+      nomorRO: ord?.nomorRO || null,
+      preOrderId: ord?.preOrderId || ord?.id || null,
+      jurnalId: ord?.jurnalId || null,
+      poNumber: ord?.poNumber || null,
+      material: formMaterial ? `${formMaterial} (Curah)` : 'SIRTU (Curah)',
+      jenis: 'CURAH | JASA ANGKUT + MATERIAL',
+      ritaseCount: ord?.totalSj || 1,
+      volume: Number(formVolume),
+      kubikasi: Number(formVolume),
+      satuan: ord?.satuan || 'm3',
+      hargaSatuan: Number(formHargaSatuan),
+      amount: Number(totalKasKeluar),
+      statusBayar: 'Belum Dibayar',
+      tanggal: formTanggal,
+      timestamp: `${formTanggal} 09:00:00`,
+      periode: `Periode: ${formTanggal}`,
+      rekeningTujuan: `${sup.bank} - ${sup.noRekening} a/n ${sup.rekeningAtasNama || sup.name}`,
+    });
+
+    addToast(`BKK Kas Keluar ${coCode} berhasil disimpan ke database!`, 'success');
+    setActiveTab('list');
+  };
 
   // ── Selection
   const [selectedItems, setSelectedItems] = useState([]);
@@ -464,7 +681,7 @@ export default function BkkPage() {
 
   // ── Handlers
   const handleAddKeterangan = () => {
-    setKeteranganList((prev) => [...prev, { id: Date.now(), tipe: '', deskripsi: '' }]);
+    setKeteranganList((prev) => [...prev, { id: Date.now(), tipe: 'Kasbon', deskripsi: '', nominal: 0 }]);
   };
   const handleUpdateKeterangan = (id, field, value) => {
     setKeteranganList((prev) => prev.map((k) => (k.id === id ? { ...k, [field]: value } : k)));
@@ -476,10 +693,15 @@ export default function BkkPage() {
   const handleReset = () => {
     setSearchFilter('');
     setStatusFilter('ALL');
-    setFilterData({ pelanggan: '', supplier: '' });
-    setKeteranganList([{ id: 1, tipe: '', deskripsi: '' }]);
+    setFormSupplierId(suppliers[0]?.id || '');
+    setFormCustomerId(customers[0]?.id || '');
+    setSelectedOrderId('');
+    setFormVolume('');
+    setFormHargaSatuan('');
+    setFormMaterial('');
+    setKeteranganList([{ id: 1, tipe: 'Kasbon', deskripsi: '', nominal: 0 }]);
     setSelectedItems([]);
-    addToast('Data filter berhasil di-reset', 'info');
+    addToast('Data filter & form berhasil di-reset', 'info');
   };
 
   const toggleSelect = useCallback((id) => {
@@ -773,112 +995,212 @@ export default function BkkPage() {
       )}
 
       {/* ════════════════════════════════════════════════════════════════════════
-          VIEW 2 — INPUT CASH OUT
+          VIEW 2 — INPUT CASH OUT (Formulir Buat Cash Out Baru)
          ════════════════════════════════════════════════════════════════════════ */}
       {activeTab === 'create' && (
-        <div className="max-w-2xl mx-auto space-y-4">
-          {/* Header Action Bar */}
-          <div className="flex items-center justify-between pb-1">
-            <h2 className="text-sm font-bold text-white tracking-wide uppercase">
-              Formulir Cash Out Baru
-            </h2>
-            <div className="flex items-center gap-1.5">
-              <button
-                type="button"
-                onClick={() => setFilterHidden((p) => !p)}
-                className="w-8 h-8 flex items-center justify-center rounded-full text-neutral-300 hover:text-white hover:bg-neutral-800 transition-colors cursor-pointer"
-                title="Toggle Form Filter"
-              >
-                <SlidersHorizontal className="w-4 h-4" />
-              </button>
-              <button
-                type="button"
-                onClick={handleReset}
-                className="w-8 h-8 flex items-center justify-center rounded-full text-neutral-300 hover:text-white hover:bg-neutral-800 transition-colors cursor-pointer"
-                title="Reset Form"
-              >
-                <RotateCw className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-
-          {!filterHidden && (
-            <div className="space-y-3">
-              {/* Pilih Pelanggan */}
-              <div className="relative bg-[#1C1F24] border border-[#2A2E33] rounded-xl px-4 py-3 flex items-center gap-3 focus-within:border-[#F4511E]/70 transition-colors group cursor-pointer">
-                <User className="w-5 h-5 text-neutral-500 shrink-0 group-focus-within:text-[#F4511E] transition-colors pointer-events-none" />
-                <div className="flex-1 min-w-0 pointer-events-none">
-                  <div className={`text-xs truncate ${filterData.pelanggan ? 'text-neutral-200' : 'text-neutral-400'}`}>
-                    {filterData.pelanggan || 'Pilih Pelanggan'}
-                  </div>
+        <div className="max-w-3xl mx-auto space-y-4">
+          <Card className="p-4 sm:p-6 bg-[#16191D] border-[#262A2F]">
+            <form onSubmit={handleSaveCashOut} className="space-y-4">
+              {/* Header inside form */}
+              <div className="flex items-center justify-between pb-3 border-b border-[#24282C]">
+                <div>
+                  <h2 className="text-sm sm:text-base font-bold text-white tracking-wide uppercase flex items-center gap-2">
+                    <FileText className="w-4 h-4 text-[#F4511E]" />
+                    <span>Formulir Pengajuan Bukti Kas Keluar (BKK)</span>
+                  </h2>
+                  <p className="text-[11px] text-neutral-400">
+                    Pilih Supplier dan Pesanan Pelanggan untuk otomatis menarik volume, material, dan harga beli vendor.
+                  </p>
                 </div>
-                <ChevronDown className="w-4 h-4 text-neutral-500 shrink-0 pointer-events-none" />
-                <select
-                  value={filterData.pelanggan}
-                  onChange={(e) => setFilterData({ ...filterData, pelanggan: e.target.value })}
-                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                <Button
+                  type="button"
+                  size="xs"
+                  variant="ghost"
+                  icon={RotateCw}
+                  onClick={handleReset}
+                  title="Reset Formulir"
                 >
-                  <option value="" className="bg-[#1C1F24] text-neutral-400">Pilih Pelanggan</option>
-                  {customers.map((c) => (
-                    <option key={c.id} value={c.name} className="bg-[#1C1F24]">{c.name}</option>
-                  ))}
-                </select>
+                  Reset
+                </Button>
               </div>
 
-              {/* Pilih Supplier */}
-              <div className="relative bg-[#1C1F24] border-t border-l border-r border-[#2A2E33] border-b-2 border-b-[#F4511E] rounded-xl px-4 py-3 flex items-center gap-3 transition-colors group cursor-pointer">
-                <User className="w-5 h-5 text-neutral-500 shrink-0 pointer-events-none" />
-                <div className="flex-1 min-w-0 pointer-events-none">
-                  <div className="text-xs text-[#F4511E] font-medium truncate">
-                    {filterData.supplier || 'Pilih Supplier'}
-                  </div>
-                </div>
-                <ChevronDown className="w-4 h-4 text-[#F4511E] shrink-0 pointer-events-none" />
-                <select
-                  value={filterData.supplier}
-                  onChange={(e) => setFilterData({ ...filterData, supplier: e.target.value })}
-                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+              {/* Row 1: Pilih Supplier (Vendor Tambang) & Pelanggan */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                <Select
+                  label="Pilih Supplier / Vendor (Database Master)"
+                  icon={Building2}
+                  required
+                  value={formSupplierId}
+                  onChange={(e) => setFormSupplierId(e.target.value)}
                 >
-                  <option value="" className="bg-[#1C1F24] text-[#F4511E]">Pilih Supplier</option>
+                  <option value="">Pilih Supplier</option>
                   {suppliers.map((s) => (
-                    <option key={s.id} value={s.name} className="bg-[#1C1F24] text-white">
+                    <option key={s.id} value={s.id}>
                       {s.name} ({s.bank} - {s.noRekening})
                     </option>
                   ))}
-                </select>
+                </Select>
+
+                <Select
+                  label="Pilih Pelanggan (Customer)"
+                  icon={User}
+                  value={formCustomerId}
+                  onChange={(e) => {
+                    setFormCustomerId(e.target.value);
+                    setSelectedOrderId('');
+                  }}
+                >
+                  <option value="">Semua Pelanggan / Pilih Pelanggan</option>
+                  {customers.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name} {c.kodePrefix ? `(${c.kodePrefix})` : ''}
+                    </option>
+                  ))}
+                </Select>
               </div>
 
-              {/* Daftar Keterangan */}
-              <div className="space-y-2 pt-1">
-                <div className="text-xs text-neutral-400 font-medium">Daftar Keterangan</div>
+              {/* Supplier Info Badge Card */}
+              {selectedSupplier && (
+                <div className="p-3 rounded-xl bg-[#1A1E24] border border-[#2A2E33] flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs font-mono">
+                  <div>
+                    <span className="text-[10px] text-neutral-500 uppercase block font-sans">Rekening Bank Tujuan Supplier</span>
+                    <span className="text-emerald-400 font-bold text-sm">
+                      {selectedSupplier.bank} - {selectedSupplier.noRekening}
+                    </span>
+                    <span className="text-neutral-300 block text-[11px]">
+                      a/n {selectedSupplier.rekeningAtasNama || selectedSupplier.penerima || selectedSupplier.name}
+                    </span>
+                  </div>
+                  <div className="text-left sm:text-right text-[11px] text-neutral-400 border-t sm:border-t-0 pt-1 sm:pt-0 border-[#2A2E33]">
+                    <div>Telepon: <span className="text-white">{selectedSupplier.telepon || '-'}</span></div>
+                    <div>Status Pajak: <span className="text-neutral-300">{selectedSupplier.pkp ? 'PKP' : 'Non-PKP'}</span></div>
+                  </div>
+                </div>
+              )}
+
+              {/* Row 2: Pilih Pesanan / Ringkasan RO (Auto-fetch trigger) */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-neutral-300 flex items-center justify-between">
+                  <span className="flex items-center gap-1.5">
+                    <Ticket className="w-3.5 h-3.5 text-[#F4511E]" />
+                    <span>Tarik Data dari Pesanan / Nomor RO (Auto-Retrieve)</span>
+                  </span>
+                  {availableOrders.length > 0 && (
+                    <span className="text-[10px] font-mono text-emerald-400">
+                      {availableOrders.length} Pesanan Ditemukan
+                    </span>
+                  )}
+                </label>
+                <div className="relative">
+                  <select
+                    value={selectedOrderId}
+                    onChange={(e) => handleSelectOrder(e.target.value)}
+                    className="w-full bg-[#1C1F24] border border-[#2A2E33] focus:border-[#F4511E] rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none transition-colors cursor-pointer"
+                  >
+                    <option value="">Pilih Nomor RO / PO (Tarik Data Otomatis)</option>
+                    {availableOrders.map((ord) => (
+                      <option key={ord.id} value={ord.id}>
+                        {ord.nomorRO || ord.id} - {ord.poNumber || 'PO Pending'} | {ord.customer} | {ord.material} ({ord.volume} {ord.satuan})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Row 3: Detail Transaksi Material, Volume & Harga Satuan */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <Input
+                  label="Nama Material"
+                  required
+                  value={formMaterial}
+                  onChange={(e) => setFormMaterial(e.target.value)}
+                  placeholder="Contoh: SIRTU, BASE COURSE"
+                />
+
+                <Input
+                  label="Volume Akhir (m³)"
+                  type="number"
+                  step="0.01"
+                  required
+                  value={formVolume}
+                  onChange={(e) => setFormVolume(e.target.value)}
+                  placeholder="0.00"
+                  className="font-mono font-bold text-white"
+                />
+
+                <Input
+                  label="Harga Beli Supplier (IDR/m³)"
+                  type="number"
+                  step="100"
+                  required
+                  value={formHargaSatuan}
+                  onChange={(e) => setFormHargaSatuan(e.target.value)}
+                  placeholder="40000"
+                  className="font-mono font-bold text-white"
+                />
+              </div>
+
+              {/* Row 4: Tanggal Kas Keluar & Subtotal Dasar */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <Input
+                  label="Tanggal Transaksi Kas Keluar"
+                  type="date"
+                  required
+                  value={formTanggal}
+                  onChange={(e) => setFormTanggal(e.target.value)}
+                  icon={Calendar}
+                />
+
+                <div>
+                  <label className="text-xs font-medium text-neutral-400 block mb-1">Subtotal Dasar Kas Keluar</label>
+                  <div className="h-10 px-3 rounded-lg bg-[#141618] border border-[#262A2F] flex items-center justify-between text-xs font-mono font-bold text-neutral-200">
+                    <span>{formVolume ? `${formVolume} m³` : '0 m³'} &times; {formatCurrency(formHargaSatuan || 0)}</span>
+                    <span className="text-white">{formatCurrency(subtotalDasar)}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Row 5: Daftar Keterangan & Penyesuaian Biaya (Kasbon, Potongan, Solar) */}
+              <div className="space-y-2 pt-2 border-t border-[#24282C]">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-medium text-neutral-300">
+                    Daftar Penyesuaian / Keterangan (Kasbon, Potongan, Solar, dll.)
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleAddKeterangan}
+                    className="text-[11px] font-bold text-[#F4511E] hover:text-[#E04418] flex items-center gap-1 cursor-pointer"
+                  >
+                    <PlusCircle className="w-3.5 h-3.5" />
+                    <span>Tambah Baris</span>
+                  </button>
+                </div>
 
                 {keteranganList.map((ket) => (
                   <div key={ket.id} className="flex items-center gap-2">
                     <button
                       type="button"
                       onClick={() => handleRemoveKeterangan(ket.id)}
-                      className="w-11 h-11 shrink-0 flex items-center justify-center rounded-xl bg-[#1C1F24] border border-[#2A2E33] hover:border-rose-500/50 text-rose-500 hover:bg-rose-500/10 transition-colors cursor-pointer"
-                      title="Hapus Keterangan"
+                      className="w-10 h-10 shrink-0 flex items-center justify-center rounded-xl bg-[#1C1F24] border border-[#2A2E33] hover:border-rose-500/50 text-rose-500 hover:bg-rose-500/10 transition-colors cursor-pointer"
+                      title="Hapus Baris"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
 
-                    <div className="relative flex-1">
+                    <div className="w-1/3">
                       <select
                         value={ket.tipe}
                         onChange={(e) => handleUpdateKeterangan(ket.id, 'tipe', e.target.value)}
-                        className="w-full bg-[#1C1F24] border border-[#2A2E33] rounded-xl px-3 py-3 text-xs text-neutral-200 focus:outline-none focus:border-[#F4511E] appearance-none cursor-pointer"
+                        className="w-full bg-[#1C1F24] border border-[#2A2E33] rounded-xl px-3 py-2.5 text-xs text-neutral-200 focus:outline-none focus:border-[#F4511E] cursor-pointer"
                       >
-                        <option value="" className="bg-[#1C1F24] text-neutral-400">Tipe Keterang...</option>
-                        <option value="Kasbon" className="bg-[#1C1F24]">Kasbon</option>
-                        <option value="Potongan" className="bg-[#1C1F24]">Potongan</option>
-                        <option value="Penyesuaian" className="bg-[#1C1F24]">Penyesuaian</option>
-                        <option value="Solar" className="bg-[#1C1F24]">Solar</option>
-                        <option value="Biaya Tambahan" className="bg-[#1C1F24]">Biaya Tambahan</option>
-                        <option value="Retribusi" className="bg-[#1C1F24]">Retribusi</option>
-                        <option value="Lainnya" className="bg-[#1C1F24]">Lainnya</option>
+                        <option value="Kasbon">Kasbon (-)</option>
+                        <option value="Potongan">Potongan (-)</option>
+                        <option value="Solar">Solar (+)</option>
+                        <option value="Biaya Tambahan">Biaya Tambahan (+)</option>
+                        <option value="Retribusi">Retribusi (+)</option>
+                        <option value="Penyesuaian">Penyesuaian</option>
+                        <option value="Lainnya">Lainnya</option>
                       </select>
-                      <ChevronDown className="w-3.5 h-3.5 text-neutral-500 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                     </div>
 
                     <div className="flex-1">
@@ -886,48 +1208,64 @@ export default function BkkPage() {
                         type="text"
                         value={ket.deskripsi}
                         onChange={(e) => handleUpdateKeterangan(ket.id, 'deskripsi', e.target.value)}
-                        placeholder="Item/Deskripsi"
-                        className="w-full bg-[#1C1F24] border border-[#2A2E33] rounded-xl px-3 py-3 text-xs text-neutral-100 placeholder-neutral-500 focus:outline-none focus:border-[#F4511E] transition-colors"
+                        placeholder="Deskripsi keterangan / nota"
+                        className="w-full bg-[#1C1F24] border border-[#2A2E33] rounded-xl px-3 py-2.5 text-xs text-neutral-100 placeholder-neutral-500 focus:outline-none focus:border-[#F4511E] transition-colors"
+                      />
+                    </div>
+
+                    <div className="w-32">
+                      <input
+                        type="number"
+                        value={ket.nominal || ''}
+                        onChange={(e) => handleUpdateKeterangan(ket.id, 'nominal', Number(e.target.value))}
+                        placeholder="Nominal (IDR)"
+                        className="w-full bg-[#1C1F24] border border-[#2A2E33] rounded-xl px-3 py-2.5 text-xs text-neutral-100 placeholder-neutral-500 font-mono text-right focus:outline-none focus:border-[#F4511E] transition-colors"
                       />
                     </div>
                   </div>
                 ))}
-
-                <button
-                  type="button"
-                  onClick={handleAddKeterangan}
-                  className="w-full py-2.5 rounded-xl border border-[#F4511E]/40 hover:border-[#F4511E] bg-[#1C1F24]/50 text-[#F4511E] hover:bg-[#F4511E]/10 font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer"
-                >
-                  <PlusCircle className="w-4 h-4" />
-                  <span>TAMBAH KETERANGAN</span>
-                </button>
               </div>
 
-              {/* TERAPKAN */}
-              <button
-                type="button"
-                onClick={() => {
-                  addToast('Keterangan & filter kas keluar berhasil disimpan!', 'success');
-                  setActiveTab('list');
-                }}
-                className="w-full py-3 rounded-xl bg-[#F4511E] hover:bg-[#E04418] active:bg-[#C93C15] text-white font-bold text-xs uppercase tracking-wider transition-all shadow-md shadow-[#F4511E]/20 cursor-pointer"
-              >
-                TERAPKAN & LIHAT DATA
-              </button>
-            </div>
-          )}
+              {/* Row 6: Ringkasan Total Kas Keluar */}
+              <div className="p-4 rounded-xl bg-[#131517] border border-[#24282C] space-y-2">
+                <div className="flex justify-between items-center text-xs text-neutral-400 font-mono">
+                  <span>Subtotal Pembelian Material:</span>
+                  <span className="text-white">{formatCurrency(subtotalDasar)}</span>
+                </div>
+                {totalPenyesuaian !== 0 && (
+                  <div className="flex justify-between items-center text-xs font-mono">
+                    <span className="text-neutral-400">Total Penyesuaian / Potongan:</span>
+                    <span className={totalPenyesuaian < 0 ? 'text-rose-400' : 'text-emerald-400'}>
+                      {totalPenyesuaian < 0 ? `- ${formatCurrency(Math.abs(totalPenyesuaian))}` : `+ ${formatCurrency(totalPenyesuaian)}`}
+                    </span>
+                  </div>
+                )}
+                <div className="flex justify-between items-center pt-2 border-t border-[#24282C] text-sm font-mono">
+                  <span className="text-neutral-200 font-bold uppercase tracking-wider text-xs">Total Kas Keluar (BKK):</span>
+                  <span className="text-lg font-bold text-[#F4511E]">{formatCurrency(totalKasKeluar)}</span>
+                </div>
+              </div>
 
-          {/* Sembunyikan / Tampilkan Filter */}
-          <div className="flex justify-center pt-1">
-            <button
-              type="button"
-              onClick={() => setFilterHidden((p) => !p)}
-              className="px-4 py-1.5 rounded-lg bg-[#141619] border border-[#2A2E33] hover:border-neutral-600 text-xs text-neutral-300 hover:text-white flex items-center gap-1.5 font-medium transition-colors cursor-pointer"
-            >
-              <span>{filterHidden ? 'Tampilkan Filter' : 'Sembunyikan Filter'}</span>
-              {filterHidden ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronUp className="w-3.5 h-3.5" />}
-            </button>
-          </div>
+              {/* Row 7: Action Buttons */}
+              <div className="flex items-center justify-end gap-2.5 pt-2">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => setActiveTab('list')}
+                >
+                  Batal
+                </Button>
+                <Button
+                  type="submit"
+                  variant="primary"
+                  icon={CheckCircle2}
+                  className="px-6 py-2.5 font-bold uppercase tracking-wider"
+                >
+                  Simpan BKK Cash Out
+                </Button>
+              </div>
+            </form>
+          </Card>
         </div>
       )}
 
@@ -1013,7 +1351,21 @@ export default function BkkPage() {
               </div>
             </div>
 
-            <div className="flex justify-end pt-2">
+            <div className="flex justify-between items-center pt-2 border-t border-[#262A2F]">
+              <Button
+                variant="danger"
+                size="sm"
+                icon={Trash2}
+                onClick={() => {
+                  if (window.confirm(`Yakin ingin menghapus BKK ${infoModalItem.kodeTransaksi}?`)) {
+                    deleteBkk(infoModalItem.id);
+                    setSelectedItems((prev) => prev.filter((id) => id !== infoModalItem.id));
+                    setInfoModalItem(null);
+                  }
+                }}
+              >
+                Hapus BKK
+              </Button>
               <Button variant="primary" size="sm" onClick={() => setInfoModalItem(null)}>Tutup</Button>
             </div>
           </div>

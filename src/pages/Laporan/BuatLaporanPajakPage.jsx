@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import {
@@ -24,6 +24,17 @@ import { useToast } from '../../context/ToastContext';
 import { useAuth } from '../../context/AuthContext';
 import { useApp } from '../../context/AppContext';
 
+// Helper to calculate current month start & end dates in YYYY-MM-DD format
+const getDefaultDateRange = () => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const startDate = `${year}-${month}-01`;
+  const lastDay = new Date(year, now.getMonth() + 1, 0).getDate();
+  const endDate = `${year}-${month}-${String(lastDay).padStart(2, '0')}`;
+  return { startDate, endDate };
+};
+
 export default function BuatLaporanPajakPage() {
   const navigate = useNavigate();
   const params = useParams();
@@ -32,27 +43,39 @@ export default function BuatLaporanPajakPage() {
   const { isSuperAdmin } = useAuth();
   const { isDark } = useApp();
 
-  // Determine report type: 'pph23' or 'ppn'
+  // Determine report type: 'pph21', 'pph23' or 'ppn'
   const taxType = (params.type || searchParams.get('type') || 'pph23').toLowerCase();
-  const isPph23 = taxType === 'pph23';
+  const isPph21 = taxType === 'pph21' || taxType === 'pph-21' || taxType === 'pasal21' || taxType === 'pasal-21' || taxType === '21';
+  const isPph23 = !isPph21 && (taxType === 'pph23' || taxType === 'pph-23' || taxType.includes('pph'));
 
-  // Redirect to official submenus
+  // Redirect to official submenus with search params preserved
   useEffect(() => {
+    const search = searchParams.toString() ? `?${searchParams.toString()}` : '';
     if (taxType === 'all-in-one' || taxType === 'all') {
-      navigate('/laporan/all-in-one', { replace: true });
+      navigate(`/laporan/all-in-one${search}`, { replace: true });
     } else if (taxType === 'ppn') {
-      navigate('/laporan/ppn', { replace: true });
-    } else if (taxType === 'pph23' || taxType === 'pph-23') {
-      navigate('/laporan/pph-23', { replace: true });
+      navigate(`/laporan/ppn${search}`, { replace: true });
+    } else if (isPph21) {
+      navigate(`/laporan/pph-21${search}`, { replace: true });
+    } else if (isPph23) {
+      navigate(`/laporan/pph-23${search}`, { replace: true });
     }
-  }, [taxType, navigate]);
+  }, [taxType, isPph21, isPph23, navigate, searchParams]);
 
-  // Title matching screenshot: "Buat Laporan PPH 23" or "Buat Laporan PPN"
-  const pageTitle = isPph23 ? 'Buat Laporan PPH 23' : 'Buat Laporan PPN';
+  // Title matching screenshot: "Buat Laporan PPH 21", "Buat Laporan PPH 23", or "Buat Laporan PPN"
+  const pageTitle = isPph21 ? 'Buat Laporan PPH 21' : isPph23 ? 'Buat Laporan PPH 23' : 'Buat Laporan PPN';
 
-  // Filter State matching screenshot
-  const [startDate, setStartDate] = useState('2026-11-01');
-  const [endDate, setEndDate] = useState('2026-11-30');
+  // Filter State matching screenshot: auto-populates from URL searchParams or current month
+  const [startDate, setStartDate] = useState(() => {
+    const urlStart = searchParams.get('startDate') || searchParams.get('start_date');
+    if (urlStart) return urlStart;
+    return getDefaultDateRange().startDate;
+  });
+  const [endDate, setEndDate] = useState(() => {
+    const urlEnd = searchParams.get('endDate') || searchParams.get('end_date');
+    if (urlEnd) return urlEnd;
+    return getDefaultDateRange().endDate;
+  });
   const [filterHidden, setFilterHidden] = useState(false);
   const [hasApplied, setHasApplied] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -314,10 +337,11 @@ export default function BuatLaporanPajakPage() {
   };
 
   const handleResetFilter = () => {
-    setStartDate('');
-    setEndDate('');
+    const def = getDefaultDateRange();
+    setStartDate(def.startDate);
+    setEndDate(def.endDate);
     setSearchQuery('');
-    addToast('Filter tanggal dan pencarian berhasil direset.', 'info');
+    addToast('Filter tanggal dan pencarian berhasil direset ke bulan berjalan.', 'info');
   };
 
   const handleExportCsv = () => {
@@ -464,7 +488,18 @@ export default function BuatLaporanPajakPage() {
           <div className="flex justify-center pt-0.5">
             <button
               type="button"
-              onClick={() => setFilterHidden(!filterHidden)}
+              onClick={() => {
+                const nextHidden = !filterHidden;
+                setFilterHidden(nextHidden);
+                if (!nextHidden) {
+                  if (!startDate || !endDate) {
+                    const def = getDefaultDateRange();
+                    if (!startDate) setStartDate(def.startDate);
+                    if (!endDate) setEndDate(def.endDate);
+                  }
+                  setHasApplied(true);
+                }
+              }}
               className={`px-4 py-1.5 rounded-lg border text-xs font-medium flex items-center gap-1.5 transition-colors cursor-pointer ${
                 isDark
                   ? 'bg-[#181B1F] border-[#2C3138] hover:border-neutral-500 text-neutral-300 hover:text-white'

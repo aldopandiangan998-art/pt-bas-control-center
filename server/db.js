@@ -306,6 +306,24 @@ export function initDb() {
       statusBupot TEXT DEFAULT 'TERBIT',
       created_at TEXT
     );
+    CREATE TABLE IF NOT EXISTS pph21_records (
+      id TEXT PRIMARY KEY,
+      tanggal TEXT NOT NULL,
+      noBuktiPotong TEXT NOT NULL,
+      noBkk TEXT,
+      bkkId TEXT,
+      vendor TEXT NOT NULL,
+      vendorId TEXT,
+      npwpNik TEXT,
+      objekPajak TEXT,
+      kategori TEXT,
+      tarif REAL DEFAULT 2.5,
+      dpp REAL DEFAULT 0,
+      potonganPph REAL DEFAULT 0,
+      nettoBkk REAL DEFAULT 0,
+      statusBupot TEXT DEFAULT 'TERBIT',
+      created_at TEXT
+    );
   `);
 
   // Safe migration for user profile & password reset fields
@@ -482,6 +500,7 @@ export function initDb() {
     db.exec(`
       CREATE INDEX IF NOT EXISTS idx_invoices_tanggal ON invoices(tanggal);
       CREATE INDEX IF NOT EXISTS idx_invoices_customer ON invoices(customer);
+      CREATE INDEX IF NOT EXISTS idx_pph21_tanggal ON pph21_records(tanggal);
       CREATE INDEX IF NOT EXISTS idx_pph23_tanggal ON pph23_records(tanggal);
       CREATE INDEX IF NOT EXISTS idx_bkk_tanggal ON bkk(tanggal);
       CREATE INDEX IF NOT EXISTS idx_bkk_perusahaan ON bkk(perusahaan);
@@ -1656,6 +1675,117 @@ function seedInitialData() {
 
     for (const p of initialPph) {
       insertPph.run(
+        p.id, p.tanggal, p.noBuktiPotong, p.noBkk, p.bkkId, p.vendor, p.vendorId,
+        p.npwpNik, p.objekPajak, p.kategori, p.tarif, p.dpp, p.potonganPph, p.nettoBkk, p.statusBupot, p.created_at
+      );
+    }
+  }
+
+  // Seed pph21_records if empty
+  const pph21Count = db.prepare('SELECT COUNT(*) as count FROM pph21_records').get().count;
+  if (pph21Count === 0) {
+    const insertPph21 = db.prepare(`
+      INSERT INTO pph21_records (
+        id, tanggal, noBuktiPotong, noBkk, bkkId, vendor, vendorId,
+        npwpNik, objekPajak, kategori, tarif, dpp, potonganPph, nettoBkk, statusBupot, created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    const initialPph21 = [
+      {
+        id: 'PPH21-202611-001',
+        tanggal: '2026-11-12',
+        noBuktiPotong: 'BUPOT-21/BAS/2026/11/001',
+        noBkk: 'BKK/2026/11/0042',
+        bkkId: 'bkk-1',
+        vendor: 'SUMARNO (Driver Tronton Hino)',
+        vendorId: 'driver-1',
+        npwpNik: '3525041008800002',
+        objekPajak: 'Upah Driver Ritase Material Tambang',
+        kategori: 'Pegawai Tidak Tetap / Tenaga Lepas',
+        tarif: 2.5,
+        dpp: 8500000,
+        potonganPph: 212500,
+        nettoBkk: 8287500,
+        statusBupot: 'TERBIT',
+        created_at: '2026-11-12 10:00:00'
+      },
+      {
+        id: 'PPH21-202611-002',
+        tanggal: '2026-11-10',
+        noBuktiPotong: 'BUPOT-21/BAS/2026/11/002',
+        noBkk: 'BKK/2026/11/0043',
+        bkkId: 'bkk-2',
+        vendor: 'UKHY DIAN (Driver Armada Tambang)',
+        vendorId: 'driver-2',
+        npwpNik: '3525011204850003',
+        objekPajak: 'Upah Pengemudi Tambang Limestone',
+        kategori: 'Pegawai Tidak Tetap / Tenaga Lepas',
+        tarif: 2.5,
+        dpp: 12400000,
+        potonganPph: 310000,
+        nettoBkk: 12090000,
+        statusBupot: 'TERBIT',
+        created_at: '2026-11-10 11:30:00'
+      },
+      {
+        id: 'PPH21-202611-003',
+        tanggal: '2026-11-08',
+        noBuktiPotong: 'BUPOT-21/BAS/2026/11/003',
+        noBkk: 'BKK/2026/11/0044',
+        bkkId: 'bkk-3',
+        vendor: 'BAMBANG HERMANTO (Mekanik Alat Berat)',
+        vendorId: 'mech-1',
+        npwpNik: '3525081405820001',
+        objekPajak: 'Jasa Tenaga Lepas Perawatan Dump Truck',
+        kategori: 'Tenaga Ahli / Jasa Lepas',
+        tarif: 5.0,
+        dpp: 6500000,
+        potonganPph: 325000,
+        nettoBkk: 6175000,
+        statusBupot: 'TERBIT',
+        created_at: '2026-11-08 14:15:00'
+      },
+      {
+        id: 'PPH21-202611-004',
+        tanggal: '2026-11-05',
+        noBuktiPotong: 'BUPOT-21/BAS/2026/11/004',
+        noBkk: 'BKK/2026/11/0045',
+        bkkId: 'bkk-4',
+        vendor: 'SUWANDI (Checker Quarry Manyar)',
+        vendorId: 'checker-1',
+        npwpNik: '3525021907860004',
+        objekPajak: 'Honorarium Pengawas & Checker Quarry',
+        kategori: 'Pegawai Tidak Tetap / Tenaga Lepas',
+        tarif: 2.5,
+        dpp: 4800000,
+        potonganPph: 120000,
+        nettoBkk: 4680000,
+        statusBupot: 'TERBIT',
+        created_at: '2026-11-05 16:00:00'
+      },
+      {
+        id: 'PPH21-202611-005',
+        tanggal: '2026-11-02',
+        noBuktiPotong: 'BUPOT-21/BAS/2026/11/005',
+        noBkk: 'BKK/2026/11/0046',
+        bkkId: 'bkk-5',
+        vendor: 'AGUS PRASETYO (Driver Dump Truck)',
+        vendorId: 'driver-3',
+        npwpNik: '3525032109880005',
+        objekPajak: 'Upah Pengemudi Angkut Sirtu Urug',
+        kategori: 'Pegawai Tidak Tetap / Tenaga Lepas',
+        tarif: 2.5,
+        dpp: 7200000,
+        potonganPph: 180000,
+        nettoBkk: 7020000,
+        statusBupot: 'TERBIT',
+        created_at: '2026-11-02 09:40:00'
+      }
+    ];
+
+    for (const p of initialPph21) {
+      insertPph21.run(
         p.id, p.tanggal, p.noBuktiPotong, p.noBkk, p.bkkId, p.vendor, p.vendorId,
         p.npwpNik, p.objekPajak, p.kategori, p.tarif, p.dpp, p.potonganPph, p.nettoBkk, p.statusBupot, p.created_at
       );

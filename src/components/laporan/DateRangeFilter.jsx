@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { Calendar, AlertCircle } from 'lucide-react';
 import DateField from '../form/DateField';
 import { useApp } from '../../context/AppContext';
@@ -8,6 +9,7 @@ import { useApp } from '../../context/AppContext';
  * - Start & End date inputs using project DateField
  * - Restricts end date min to start date
  * - End date < start date validation with user-friendly warning
+ * - Auto-populates start date & end date to current month if empty on first open
  */
 export default function DateRangeFilter({
   startDate = '',
@@ -17,8 +19,28 @@ export default function DateRangeFilter({
   disabled = false,
   error = '',
   className = '',
+  onOpenCalendar,
 }) {
   const { isDark } = useApp();
+
+  const ensureDateRangePopulated = () => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    if (!startDate && onStartDateChange) {
+      onStartDateChange(`${year}-${month}-01`);
+    }
+    if (!endDate && onEndDateChange) {
+      const lastDay = new Date(year, now.getMonth() + 1, 0).getDate();
+      onEndDateChange(`${year}-${month}-${String(lastDay).padStart(2, '0')}`);
+    }
+    onOpenCalendar?.();
+  };
+
+  // Auto-populate start and end dates with current month on mount if not yet provided
+  useEffect(() => {
+    ensureDateRangePopulated();
+  }, [startDate, endDate, onStartDateChange, onEndDateChange]);
 
   const isInvalidRange = Boolean(startDate && endDate && endDate < startDate);
 
@@ -39,15 +61,23 @@ export default function DateRangeFilter({
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <DateField
           label="Tanggal Mulai"
+          name="startDate"
+          data-testid="start-date"
+          aria-label="Tanggal Mulai"
           value={startDate}
           onChange={handleStartChange}
+          onFocus={ensureDateRangePopulated}
           disabled={disabled}
           max={endDate || undefined}
         />
         <DateField
           label="Tanggal Akhir"
+          name="endDate"
+          data-testid="end-date"
+          aria-label="Tanggal Akhir"
           value={endDate}
           onChange={handleEndChange}
+          onFocus={ensureDateRangePopulated}
           disabled={disabled}
           min={startDate || undefined}
           error={isInvalidRange ? 'Tanggal akhir tidak boleh sebelum tanggal mulai' : ''}

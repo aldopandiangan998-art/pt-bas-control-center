@@ -130,7 +130,53 @@ export default function JenisLaporanPajakModal({ isOpen, onClose, onSelect }) {
                 </div>
               </button>
 
-              {/* Option 2: Pajak Penghasilan Pasal 23 (PPh 23) */}
+              {/* Option 2: Pajak Penghasilan Pasal 21 (PPh 21) */}
+              <button
+                type="button"
+                onClick={() => onSelect('pph21')}
+                className={`w-full flex items-center justify-between p-3.5 rounded-xl border transition-all cursor-pointer group text-left ${
+                  isDark
+                    ? 'bg-[#20242B] border-[#373F4B] hover:border-amber-500 hover:bg-[#262C34]'
+                    : 'bg-slate-50 border-slate-200 hover:border-amber-500 hover:bg-amber-50/70 shadow-2xs'
+                }`}
+              >
+                <div className="flex items-center gap-3.5 min-w-0">
+                  <div className="w-10 h-10 rounded-xl bg-amber-500/15 text-amber-400 flex items-center justify-center font-bold text-sm shrink-0 group-hover:scale-105 transition-transform">
+                    <Banknote className="w-5 h-5" />
+                  </div>
+                  <div className="min-w-0">
+                    <div
+                      className={`font-semibold text-sm transition-colors ${
+                        isDark ? 'text-white group-hover:text-amber-400' : 'text-slate-900 group-hover:text-amber-700'
+                      }`}
+                    >
+                      Pajak Penghasilan Pasal 21 (PPh 21)
+                    </div>
+                    <div className={`text-[11px] mt-0.5 truncate ${isDark ? 'text-neutral-300' : 'text-slate-500'}`}>
+                      Potongan PPh 21 (2.5% - 5.0%) upah driver & tenaga kerja lepas BKK
+                    </div>
+                  </div>
+                </div>
+
+                <div className="shrink-0 ml-2 flex items-center gap-2">
+                  <span
+                    className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded uppercase border ${
+                      isDark
+                        ? 'bg-amber-500/15 text-amber-400 border-amber-500/30'
+                        : 'bg-amber-50 text-amber-700 border-amber-200'
+                    }`}
+                  >
+                    2.5% / 5%
+                  </span>
+                  <ChevronRight
+                    className={`w-4 h-4 transition-transform group-hover:translate-x-0.5 ${
+                      isDark ? 'text-neutral-400 group-hover:text-amber-400' : 'text-slate-400 group-hover:text-amber-700'
+                    }`}
+                  />
+                </div>
+              </button>
+
+              {/* Option 3: Pajak Penghasilan Pasal 23 (PPh 23) */}
               <button
                 type="button"
                 onClick={() => onSelect('pph23')}

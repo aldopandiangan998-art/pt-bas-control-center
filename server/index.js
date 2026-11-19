@@ -1924,14 +1924,24 @@ app.get('/api/reports/ppn', (req, res) => {
 
   const { start_date, end_date } = req.query;
 
-  if (!start_date || !end_date || !isValidDate(start_date) || !isValidDate(end_date)) {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const defaultStart = `${year}-${month}-01`;
+  const lastDay = new Date(year, now.getMonth() + 1, 0).getDate();
+  const defaultEnd = `${year}-${month}-${String(lastDay).padStart(2, '0')}`;
+
+  const start = start_date || defaultStart;
+  const end = end_date || defaultEnd;
+
+  if (!isValidDate(start) || !isValidDate(end)) {
     return res.status(400).json({
       success: false,
       message: 'Parameter start_date dan end_date wajib diisi dengan format YYYY-MM-DD yang valid.',
     });
   }
 
-  if (end_date < start_date) {
+  if (end < start) {
     return res.status(400).json({
       success: false,
       message: 'Tanggal akhir (end_date) tidak boleh lebih awal dari tanggal mulai (start_date).',
@@ -1942,7 +1952,7 @@ app.get('/api/reports/ppn', (req, res) => {
     SELECT * FROM invoices
     WHERE tanggal >= ? AND tanggal <= ?
     ORDER BY tanggal DESC, id DESC
-  `).all(start_date, end_date);
+  `).all(start, end);
 
   const totalDpp = transactions.reduce((acc, t) => acc + (Number(t.dpp) || 0), 0);
   const totalPpn = transactions.reduce((acc, t) => acc + (Number(t.ppn) || 0), 0);
@@ -1957,35 +1967,50 @@ app.get('/api/reports/ppn', (req, res) => {
       totalAmount,
       totalTransactions: transactions.length,
     },
-    filters: { start_date, end_date },
+    filters: { start_date: start, end_date: end },
   });
 });
 
-// 2. PPh 23 Report
-app.get('/api/reports/pph-23', (req, res) => {
+// 2. PPh 21 Report (Article 21 Income Tax)
+const handlePph21Report = (req, res) => {
   if (!checkReportPermission(req, res)) return;
 
   const { start_date, end_date } = req.query;
 
-  if (!start_date || !end_date || !isValidDate(start_date) || !isValidDate(end_date)) {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const defaultStart = `${year}-${month}-01`;
+  const lastDay = new Date(year, now.getMonth() + 1, 0).getDate();
+  const defaultEnd = `${year}-${month}-${String(lastDay).padStart(2, '0')}`;
+
+  const start = start_date || defaultStart;
+  const end = end_date || defaultEnd;
+
+  if (!isValidDate(start) || !isValidDate(end)) {
     return res.status(400).json({
       success: false,
       message: 'Parameter start_date dan end_date wajib diisi dengan format YYYY-MM-DD yang valid.',
     });
   }
 
-  if (end_date < start_date) {
+  if (end < start) {
     return res.status(400).json({
       success: false,
       message: 'Tanggal akhir (end_date) tidak boleh lebih awal dari tanggal mulai (start_date).',
     });
   }
 
-  const transactions = db.prepare(`
-    SELECT * FROM pph23_records
-    WHERE tanggal >= ? AND tanggal <= ?
-    ORDER BY tanggal DESC, id DESC
-  `).all(start_date, end_date);
+  let transactions = [];
+  try {
+    transactions = db.prepare(`
+      SELECT * FROM pph21_records
+      WHERE tanggal >= ? AND tanggal <= ?
+      ORDER BY tanggal DESC, id DESC
+    `).all(start, end);
+  } catch (err) {
+    console.warn('pph21_records query fallback:', err.message);
+  }
 
   const totalDpp = transactions.reduce((acc, t) => acc + (Number(t.dpp) || 0), 0);
   const totalPotonganPph = transactions.reduce((acc, t) => acc + (Number(t.potonganPph) || 0), 0);
@@ -2000,7 +2025,63 @@ app.get('/api/reports/pph-23', (req, res) => {
       totalNetto,
       totalTransactions: transactions.length,
     },
-    filters: { start_date, end_date },
+    filters: { start_date: start, end_date: end },
+  });
+};
+
+app.get('/api/reports/pph-21', handlePph21Report);
+app.get('/api/reports/pph21', handlePph21Report);
+
+// 3. PPh 23 Report (Article 23 Income Tax)
+app.get('/api/reports/pph-23', (req, res) => {
+  if (!checkReportPermission(req, res)) return;
+
+  const { start_date, end_date } = req.query;
+
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const defaultStart = `${year}-${month}-01`;
+  const lastDay = new Date(year, now.getMonth() + 1, 0).getDate();
+  const defaultEnd = `${year}-${month}-${String(lastDay).padStart(2, '0')}`;
+
+  const start = start_date || defaultStart;
+  const end = end_date || defaultEnd;
+
+  if (!isValidDate(start) || !isValidDate(end)) {
+    return res.status(400).json({
+      success: false,
+      message: 'Parameter start_date dan end_date wajib diisi dengan format YYYY-MM-DD yang valid.',
+    });
+  }
+
+  if (end < start) {
+    return res.status(400).json({
+      success: false,
+      message: 'Tanggal akhir (end_date) tidak boleh lebih awal dari tanggal mulai (start_date).',
+    });
+  }
+
+  const transactions = db.prepare(`
+    SELECT * FROM pph23_records
+    WHERE tanggal >= ? AND tanggal <= ?
+    ORDER BY tanggal DESC, id DESC
+  `).all(start, end);
+
+  const totalDpp = transactions.reduce((acc, t) => acc + (Number(t.dpp) || 0), 0);
+  const totalPotonganPph = transactions.reduce((acc, t) => acc + (Number(t.potonganPph) || 0), 0);
+  const totalNetto = transactions.reduce((acc, t) => acc + (Number(t.nettoBkk) || 0), 0);
+
+  res.json({
+    success: true,
+    data: transactions,
+    summary: {
+      totalDpp,
+      totalPotonganPph,
+      totalNetto,
+      totalTransactions: transactions.length,
+    },
+    filters: { start_date: start, end_date: end },
   });
 });
 

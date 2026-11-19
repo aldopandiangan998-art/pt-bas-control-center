@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import {
   HardHat,
   Search,
@@ -27,18 +27,56 @@ import DateRangeFilter from '../../components/laporan/DateRangeFilter';
 import ReportFilterCard from '../../components/laporan/ReportFilterCard';
 import ReportEmptyState from '../../components/laporan/ReportEmptyState';
 
+// Helper to calculate current month start & end dates in YYYY-MM-DD format
+const getDefaultDateRange = () => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const startDate = `${year}-${month}-01`;
+  const lastDay = new Date(year, now.getMonth() + 1, 0).getDate();
+  const endDate = `${year}-${month}-${String(lastDay).padStart(2, '0')}`;
+  return { startDate, endDate };
+};
+
 export default function LaporanSupplierPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const location = useLocation();
   const { addToast } = useToast();
   const { isSuperAdmin } = useAuth();
   const { isDark } = useApp();
   const { suppliers: contextSuppliers, bkkList } = useData();
 
-  // Filters state
+  // Filters state: auto-populates from URL query params or current month on initial open
   const [selectedSupplierId, setSelectedSupplierId] = useState('');
-  const [startDate, setStartDate] = useState('2026-11-01');
-  const [endDate, setEndDate] = useState('2026-11-30');
+  const [startDate, setStartDate] = useState(() => {
+    const urlStart = searchParams.get('startDate') || searchParams.get('start_date') || location.state?.startDate;
+    if (urlStart) return urlStart;
+    return getDefaultDateRange().startDate;
+  });
+  const [endDate, setEndDate] = useState(() => {
+    const urlEnd = searchParams.get('endDate') || searchParams.get('end_date') || location.state?.endDate;
+    if (urlEnd) return urlEnd;
+    return getDefaultDateRange().endDate;
+  });
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Keep state synchronized if URL search params or location state change
+  useEffect(() => {
+    const urlStart = searchParams.get('startDate') || searchParams.get('start_date') || location.state?.startDate;
+    const urlEnd = searchParams.get('endDate') || searchParams.get('end_date') || location.state?.endDate;
+    const def = getDefaultDateRange();
+    if (urlStart && urlStart !== startDate) {
+      setStartDate(urlStart);
+    } else if (!startDate) {
+      setStartDate(def.startDate);
+    }
+    if (urlEnd && urlEnd !== endDate) {
+      setEndDate(urlEnd);
+    } else if (!endDate) {
+      setEndDate(def.endDate);
+    }
+  }, [searchParams, location.state]);
 
   // Execution state
   const [loading, setLoading] = useState(false);
@@ -163,16 +201,17 @@ export default function LaporanSupplierPage() {
   };
 
   const handleReset = () => {
+    const def = getDefaultDateRange();
     if (supplierOptions.length > 0) {
       setSelectedSupplierId(supplierOptions[0].value);
     }
-    setStartDate('2026-11-01');
-    setEndDate('2026-11-30');
+    setStartDate(def.startDate);
+    setEndDate(def.endDate);
     setSearchQuery('');
     if (supplierOptions.length > 0) {
-      fetchReport(supplierOptions[0].value, '2026-11-01', '2026-11-30');
+      fetchReport(supplierOptions[0].value, def.startDate, def.endDate);
     }
-    addToast('Filter supplier berhasil direset.', 'info');
+    addToast('Filter supplier berhasil direset ke bulan berjalan.', 'info');
   };
 
   // Filtered rows for client-side search query

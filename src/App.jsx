@@ -19,6 +19,7 @@ import RekapanPage from './pages/Rekapan/RekapanPage';
 import BkkPage from './pages/Bkk/BkkPage';
 import InvoicePage from './pages/Invoice/InvoicePage';
 import LaporanPpnPage from './pages/Laporan/LaporanPpnPage';
+import LaporanPph21Page from './pages/Laporan/LaporanPph21Page';
 import LaporanPph23Page from './pages/Laporan/LaporanPph23Page';
 import LaporanAllInOnePage from './pages/Laporan/LaporanAllInOnePage';
 import LaporanSupplierPage from './pages/Laporan/LaporanSupplierPage';
@@ -136,6 +137,22 @@ export default function App() {
                     element={
                       <SuperAdminOnlyRoute>
                         <LaporanPpnPage />
+                      </SuperAdminOnlyRoute>
+                    }
+                  />
+                  <Route
+                    path="laporan/pph-21"
+                    element={
+                      <SuperAdminOnlyRoute>
+                        <LaporanPph21Page />
+                      </SuperAdminOnlyRoute>
+                    }
+                  />
+                  <Route
+                    path="laporan/pph21"
+                    element={
+                      <SuperAdminOnlyRoute>
+                        <LaporanPph21Page />
                       </SuperAdminOnlyRoute>
                     }
                   />

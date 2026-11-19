@@ -153,6 +153,12 @@ export const NAV_CATEGORIES = [
             description: 'Laporan Pajak Pertambahan Nilai (PPN 11%)',
           },
           {
+            path: '/laporan/pph-21',
+            label: 'Pajak Penghasilan Pasal 21 (PPh 21)',
+            icon: 'Banknote',
+            description: 'Laporan Pajak Penghasilan Pasal 21 (PPh 21)',
+          },
+          {
             path: '/laporan/pph-23',
             label: 'Pajak Penghasilan Pasal 23 (PPh 23)',
             icon: 'Banknote',

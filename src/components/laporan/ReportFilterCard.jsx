@@ -19,9 +19,16 @@ export default function ReportFilterCard({
   applyLabel = 'Terapkan Filter',
   canReset = true,
   className = '',
+  onToggleCollapse,
 }) {
   const { isDark } = useApp();
   const [collapsed, setCollapsed] = useState(false);
+
+  const handleToggle = () => {
+    const next = !collapsed;
+    setCollapsed(next);
+    onToggleCollapse?.(!next);
+  };
 
   return (
     <div
@@ -81,7 +88,7 @@ export default function ReportFilterCard({
 
           <button
             type="button"
-            onClick={() => setCollapsed(!collapsed)}
+            onClick={handleToggle}
             className={`p-1.5 rounded-lg border transition-colors cursor-pointer ${
               isDark
                 ? 'border-neutral-800 text-neutral-400 hover:text-white hover:bg-neutral-800'

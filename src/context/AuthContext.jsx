@@ -355,13 +355,25 @@ export function AuthProvider({ children }) {
       const res = await fetch(`/api/users/${userId}`, { method: 'DELETE' });
       const data = await res.json();
       if (res.ok && data.success) {
-        setUsers((prev) => prev.filter((u) => u.id !== userId));
-        return { success: true };
+        setUsers((prev) => {
+          const updated = prev.filter((u) => u.id !== userId);
+          try {
+            localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(updated));
+          } catch (err) {}
+          return updated;
+        });
+        return { success: true, message: data.message || 'Pengguna berhasil dihapus.' };
       }
-      return { success: false, message: data.message };
+      return { success: false, message: data.message || 'Gagal menghapus pengguna.' };
     } catch (e) {
-      setUsers((prev) => prev.filter((u) => u.id !== userId));
-      return { success: true };
+      setUsers((prev) => {
+        const updated = prev.filter((u) => u.id !== userId);
+        try {
+          localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(updated));
+        } catch (err) {}
+        return updated;
+      });
+      return { success: true, message: 'Pengguna berhasil dihapus (offline mode).' };
     }
   };
 

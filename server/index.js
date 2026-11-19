@@ -593,12 +593,12 @@ app.put('/api/users/:id/toggle-status', (req, res) => {
 // Delete user
 app.delete('/api/users/:id', (req, res) => {
   const { id } = req.params;
-  const user = db.prepare('SELECT id, role FROM users WHERE id = ?').get(id);
+  const user = db.prepare('SELECT id, role, email FROM users WHERE id = ?').get(id);
   if (!user) {
     return res.status(404).json({ success: false, message: 'Pengguna tidak ditemukan.' });
   }
-  if (user.role === 'superadmin') {
-    return res.status(400).json({ success: false, message: 'Akun Super Admin tidak dapat dihapus.' });
+  if (user.id === 'usr-1' || user.email?.toLowerCase() === 'superadmin@ptbas.co.id') {
+    return res.status(400).json({ success: false, message: 'Akun Super Admin utama (root) tidak dapat dihapus.' });
   }
 
   db.prepare('DELETE FROM users WHERE id = ?').run(id);

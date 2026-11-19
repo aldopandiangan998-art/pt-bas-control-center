@@ -50,6 +50,7 @@ import {
   Receipt,
   DollarSign,
   Globe,
+  AlertTriangle,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useData } from '../../context/DataContext';
@@ -172,6 +173,7 @@ export default function MasterDataPage() {
   };
 
   const {
+    currentUser,
     users,
     approveUser,
     toggleUserStatus,
@@ -604,6 +606,51 @@ export default function MasterDataPage() {
     }
   };
 
+  // Dedicated Delete User Modal state (Super Admin)
+  const [deleteUserModal, setDeleteUserModal] = useState(false);
+  const [userToDelete, setUserToDelete] = useState(null);
+  const [isDeletingUser, setIsDeletingUser] = useState(false);
+
+  const handleOpenDeleteUser = (user) => {
+    if (user.id === 'usr-1' || user.email?.toLowerCase() === 'superadmin@ptbas.co.id') {
+      addToast('Akun Super Admin utama (root) diproteksi dan tidak dapat dihapus.', 'warning');
+      return;
+    }
+    if (currentUser && (user.id === currentUser.id || user.email?.toLowerCase() === currentUser.email?.toLowerCase())) {
+      addToast('Anda tidak dapat menghapus akun Anda sendiri yang sedang aktif digunakan.', 'warning');
+      return;
+    }
+    setUserToDelete(user);
+    setDeleteUserModal(true);
+  };
+
+  const handleCloseDeleteUser = () => {
+    if (isDeletingUser) return;
+    setDeleteUserModal(false);
+    setUserToDelete(null);
+  };
+
+  const handleConfirmDeleteUser = async () => {
+    if (!userToDelete || isDeletingUser) return;
+    setIsDeletingUser(true);
+    try {
+      const res = await deleteUser(userToDelete.id);
+      if (res?.success) {
+        addToast(`Pengguna ${userToDelete.name} (${userToDelete.roleLabel || userToDelete.role}) berhasil dihapus.`, 'success');
+        setSelectedIds((prev) => prev.filter((id) => id !== userToDelete.id));
+        setDeleteUserModal(false);
+        setUserToDelete(null);
+      } else {
+        addToast(res?.message || 'Gagal menghapus pengguna.', 'error');
+      }
+    } catch (err) {
+      console.error('Error deleting user:', err);
+      addToast('Terjadi kesalahan saat menghapus pengguna.', 'error');
+    } finally {
+      setIsDeletingUser(false);
+    }
+  };
+
   // Delete confirmation modal state
   const [deleteConfirm, setDeleteConfirm] = useState({
     open: false,
@@ -624,8 +671,8 @@ export default function MasterDataPage() {
     }
     if (type === 'pengguna') {
       const targetUser = (activeUsers || []).find((u) => u.id === id);
-      if (targetUser?.id === 'usr-1' || targetUser?.email === 'superadmin@ptbas.co.id') {
-        addToast('Akun Super Admin utama tidak dapat dihapus.', 'warning');
+      if (targetUser) {
+        handleOpenDeleteUser(targetUser);
         return;
       }
     }
@@ -646,10 +693,15 @@ export default function MasterDataPage() {
 
     if (currentTab === 'pengguna') {
       const hasMainAdmin = (activeUsers || []).some(
-        (u) => selectedIds.includes(u.id) && (u.id === 'usr-1' || u.email === 'superadmin@ptbas.co.id')
+        (u) => selectedIds.includes(u.id) && (u.id === 'usr-1' || u.email?.toLowerCase() === 'superadmin@ptbas.co.id')
       );
       if (hasMainAdmin) {
         addToast('Akun Super Admin utama diproteksi dan tidak dapat dihapus.', 'warning');
+        return;
+      }
+      const hasSelf = currentUser && selectedIds.includes(currentUser.id);
+      if (hasSelf) {
+        addToast('Akun Anda sendiri terpilih dan diproteksi dari penghapusan massal.', 'warning');
         return;
       }
     }
@@ -688,8 +740,17 @@ export default function MasterDataPage() {
         addToast(`${targetIds.length} rekening bank berhasil dihapus`, 'info');
       } else if (type === 'pengguna') {
         if (typeof deleteUser === 'function') {
-          targetIds.forEach((tId) => deleteUser(tId));
-          addToast(`${targetIds.length} pengguna berhasil dihapus`, 'info');
+          let count = 0;
+          for (const tId of targetIds) {
+            const u = (activeUsers || []).find((usr) => usr.id === tId);
+            if (u?.id !== 'usr-1' && u?.email?.toLowerCase() !== 'superadmin@ptbas.co.id' && u?.id !== currentUser?.id) {
+              deleteUser(tId);
+              count++;
+            }
+          }
+          if (count > 0) {
+            addToast(`${count} akun pengguna berhasil dihapus.`, 'info');
+          }
         }
       } else if (type === 'mata-uang') {
         let deletedCount = 0;
@@ -3906,7 +3967,7 @@ export default function MasterDataPage() {
                                       {user.id !== 'usr-1' && user.email !== 'superadmin@ptbas.co.id' && (
                                         <button
                                           type="button"
-                                          onClick={() => handleAskDelete('pengguna', user.id, user.name)}
+                                          onClick={() => handleOpenDeleteUser(user)}
                                           className="p-1.5 rounded-lg bg-[#1E242C] hover:bg-rose-500/20 text-neutral-400 hover:text-rose-400 border border-[#2B3542] hover:border-rose-500/40 transition-all cursor-pointer shadow-2xs"
                                           title="Hapus Akun"
                                         >
@@ -4088,7 +4149,7 @@ export default function MasterDataPage() {
                                     {user.id !== 'usr-1' && user.email !== 'superadmin@ptbas.co.id' && (
                                       <button
                                         type="button"
-                                        onClick={() => handleAskDelete('pengguna', user.id, user.name)}
+                                        onClick={() => handleOpenDeleteUser(user)}
                                         className="p-1.5 rounded-lg bg-[#1E242C] hover:bg-rose-500/20 text-neutral-400 hover:text-rose-400 border border-[#2B3542] hover:border-rose-500/40 transition-all cursor-pointer shadow-2xs"
                                         title="Hapus Akun"
                                       >
@@ -6865,6 +6926,92 @@ export default function MasterDataPage() {
             </Button>
           </div>
         </form>
+      </Modal>
+
+      {/* ======================================================== */}
+      {/* MODAL: HAPUS PENGGUNA SISTEM (SUPER ADMIN) */}
+      {/* ======================================================== */}
+      <Modal
+        isOpen={deleteUserModal}
+        onClose={handleCloseDeleteUser}
+        title="Konfirmasi Hapus Pengguna"
+        subtitle={userToDelete ? `ID: ${userToDelete.id} • ${userToDelete.name}` : ''}
+        maxWidth="max-w-md"
+      >
+        {userToDelete && (
+          <div className="p-4 space-y-4 font-mono text-xs" data-testid="delete-user-modal">
+            {/* Warning banner */}
+            <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 flex items-start gap-3">
+              <AlertTriangle className="w-5 h-5 text-rose-400 shrink-0 mt-0.5" />
+              <div>
+                <p className="font-bold text-white text-xs">Peringatan: Penghapusan Akun Pengguna</p>
+                <p className="mt-1 text-[11px] text-neutral-300 leading-relaxed font-sans">
+                  Akun <strong className="text-white font-mono">{userToDelete.name}</strong> akan dihapus secara permanen dari basis data sistem PT BAS. Karyawan/pengguna yang bersangkutan tidak akan dapat login kembali.
+                </p>
+              </div>
+            </div>
+
+            {/* User details card */}
+            <div className="bg-[#0E1012] rounded-xl p-3.5 border border-[#22262A] space-y-2.5">
+              <div className="flex justify-between items-center pb-2 border-b border-[#1C1F23]">
+                <span className="text-neutral-400 font-sans">Nama Lengkap:</span>
+                <span className="text-white font-bold">{userToDelete.name}</span>
+              </div>
+              <div className="flex justify-between items-center pb-2 border-b border-[#1C1F23]">
+                <span className="text-neutral-400 font-sans">Email Akun:</span>
+                <span className="text-neutral-200">{userToDelete.email}</span>
+              </div>
+              <div className="flex justify-between items-center pb-2 border-b border-[#1C1F23]">
+                <span className="text-neutral-400 font-sans">Peran / Otoritas:</span>
+                <Badge size="xs" variant={userToDelete.role === 'superadmin' || userToDelete.roleLabel === 'Super Admin' ? 'primary' : 'neutral'}>
+                  {userToDelete.roleLabel || userToDelete.role}
+                </Badge>
+              </div>
+              <div className="flex justify-between items-center pb-2 border-b border-[#1C1F23]">
+                <span className="text-neutral-400 font-sans">Unit / Cabang:</span>
+                <span className="text-neutral-300">{userToDelete.branch || 'Hub Gresik'}</span>
+              </div>
+              <div className="flex justify-between items-center pb-2 border-b border-[#1C1F23]">
+                <span className="text-neutral-400 font-sans">Status Saat Ini:</span>
+                <Badge size="xs" variant={userToDelete.aktif ? 'success' : 'neutral'}>
+                  {userToDelete.aktif ? 'Aktif' : 'Non-aktif'}
+                </Badge>
+              </div>
+              <div className="flex justify-between items-center pt-0.5">
+                <span className="text-neutral-400 font-sans">Dihapus Oleh:</span>
+                <span className="text-rose-400 font-bold">
+                  {currentUser?.name || 'Super Admin'} (Super Admin)
+                </span>
+              </div>
+            </div>
+
+            <p className="text-[11px] text-neutral-400 font-sans">
+              Tindakan ini tidak dapat dibatalkan. Pastikan akun ini sudah tidak memiliki tugas berjalan di sistem.
+            </p>
+
+            {/* Actions */}
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#22262A]">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleCloseDeleteUser}
+                disabled={isDeletingUser}
+              >
+                Batal
+              </Button>
+              <Button
+                variant="danger"
+                size="sm"
+                icon={Trash2}
+                onClick={handleConfirmDeleteUser}
+                disabled={isDeletingUser}
+                className="bg-rose-600 hover:bg-rose-700 text-white font-bold"
+              >
+                {isDeletingUser ? 'Menghapus...' : 'Ya, Hapus Pengguna'}
+              </Button>
+            </div>
+          </div>
+        )}
       </Modal>
 
       {/* ======================================================== */}

@@ -24,6 +24,7 @@ import {
   Ticket,
   FileText,
 } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
 import { useData } from '../../context/DataContext';
 import { useToast } from '../../context/ToastContext';
 import { formatCurrency } from '../../utils/formatters';
@@ -391,6 +392,7 @@ function CashOutGroupedTable({
 export default function BkkPage() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { isSuperAdmin } = useAuth();
   const {
     bkkList,
     markBkkPaid,
@@ -1351,21 +1353,23 @@ export default function BkkPage() {
               </div>
             </div>
 
-            <div className="flex justify-between items-center pt-2 border-t border-[#262A2F]">
-              <Button
-                variant="danger"
-                size="sm"
-                icon={Trash2}
-                onClick={() => {
-                  if (window.confirm(`Yakin ingin menghapus BKK ${infoModalItem.kodeTransaksi}?`)) {
-                    deleteBkk(infoModalItem.id);
-                    setSelectedItems((prev) => prev.filter((id) => id !== infoModalItem.id));
-                    setInfoModalItem(null);
-                  }
-                }}
-              >
-                Hapus BKK
-              </Button>
+            <div className={`flex ${isSuperAdmin ? 'justify-between' : 'justify-end'} items-center pt-2 border-t border-[#262A2F]`}>
+              {isSuperAdmin && (
+                <Button
+                  variant="danger"
+                  size="sm"
+                  icon={Trash2}
+                  onClick={() => {
+                    if (window.confirm(`Yakin ingin menghapus BKK ${infoModalItem.kodeTransaksi}?`)) {
+                      deleteBkk(infoModalItem.id);
+                      setSelectedItems((prev) => prev.filter((id) => id !== infoModalItem.id));
+                      setInfoModalItem(null);
+                    }
+                  }}
+                >
+                  Hapus BKK
+                </Button>
+              )}
               <Button variant="primary" size="sm" onClick={() => setInfoModalItem(null)}>Tutup</Button>
             </div>
           </div>

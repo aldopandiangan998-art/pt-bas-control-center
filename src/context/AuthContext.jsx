@@ -156,6 +156,9 @@ export function AuthProvider({ children }) {
     canManageMasterData: isSuperAdmin, // Superadmin only (dihapus untuk role admin)
     canExportReports: isSuperAdmin,   // Superadmin only (dihapus untuk role admin)
     canViewReports: isSuperAdmin,     // Superadmin only (dihapus untuk role admin)
+    canDeletePreOrder: isSuperAdmin,  // Superadmin only (Admin tidak boleh hapus Received Order)
+    canDeleteBkk: isSuperAdmin,       // Superadmin only (Admin tidak boleh hapus BKK Cash Out)
+    canDeleteInvoice: isSuperAdmin,   // Superadmin only (Admin tidak boleh hapus Invoices)
   };
 
   /**

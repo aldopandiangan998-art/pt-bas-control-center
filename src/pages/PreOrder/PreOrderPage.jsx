@@ -404,6 +404,10 @@ export default function PreOrderPage() {
   };
 
   const handleDeleteSelected = async () => {
+    if (!isSuperAdmin) {
+      addToast('Akses ditolak: Hanya Super Admin yang diizinkan untuk menghapus Received Order.', 'error');
+      return;
+    }
     if (selectedIds.size === 0) return;
     if (!window.confirm(`Hapus ${selectedIds.size} Received Order yang dipilih?`)) return;
     for (const id of selectedIds) {
@@ -1414,12 +1418,14 @@ export default function PreOrderPage() {
                                             title="Buat Surat Jalan (GI)"
                                           ><Truck className="w-4 h-4" /></button>
                                         )}
-                                        <button
-                                          type="button"
-                                          onClick={() => { setPoToDelete(po); setDeleteModalOpen(true); }}
-                                          className="text-[#F4511E] hover:text-red-400 transition-colors cursor-pointer p-0.5"
-                                          title="Hapus"
-                                        ><Trash2 className="w-4 h-4" /></button>
+                                        {isSuperAdmin && (
+                                          <button
+                                            type="button"
+                                            onClick={() => { setPoToDelete(po); setDeleteModalOpen(true); }}
+                                            className="text-[#F4511E] hover:text-red-400 transition-colors cursor-pointer p-0.5"
+                                            title="Hapus"
+                                          ><Trash2 className="w-4 h-4" /></button>
+                                        )}
                                         <button
                                           type="button"
                                           onClick={() => { setSelectedDetailPo(po); setDetailModalOpen(true); }}
@@ -1570,40 +1576,51 @@ export default function PreOrderPage() {
                       </div>
 
                       {/* Grid Card Footer: [ SJ | Trash | Info ] */}
-                      <div className={`border-t border-[#20242A] grid ${po.status === 'APPROVED' ? 'grid-cols-3' : 'grid-cols-2'} bg-[#0E1012]`}>
-                        {po.status === 'APPROVED' && (
-                          <button
-                            type="button"
-                            onClick={() => handleBuatSuratJalan(po)}
-                            className="py-2.5 flex items-center justify-center text-emerald-400 hover:bg-emerald-500/10 active:bg-emerald-500/20 transition-colors cursor-pointer"
-                            title="Buat Surat Jalan (GI)"
-                          >
-                            <Truck className="w-4 h-4" />
-                          </button>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setPoToDelete(po);
-                            setDeleteModalOpen(true);
-                          }}
-                          className={`py-2.5 flex items-center justify-center text-[#F4511E] hover:bg-[#F4511E]/10 active:bg-[#F4511E]/20 transition-colors cursor-pointer ${po.status === 'APPROVED' ? 'border-l border-[#20242A]' : ''}`}
-                          title="Hapus Received Order"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setSelectedDetailPo(po);
-                            setDetailModalOpen(true);
-                          }}
-                          className="py-2.5 flex items-center justify-center text-[#F4511E] hover:bg-[#F4511E]/10 active:bg-[#F4511E]/20 transition-colors cursor-pointer border-l border-[#20242A]"
-                          title="Detail Received Order"
-                        >
-                          <Info className="w-4 h-4" />
-                        </button>
-                      </div>
+                      {(() => {
+                        const showSj = po.status === 'APPROVED';
+                        const showDelete = isSuperAdmin;
+                        const colCount = (showSj ? 1 : 0) + (showDelete ? 1 : 0) + 1;
+                        const colClass = colCount === 3 ? 'grid-cols-3' : colCount === 2 ? 'grid-cols-2' : 'grid-cols-1';
+
+                        return (
+                          <div className={`border-t border-[#20242A] grid ${colClass} bg-[#0E1012]`}>
+                            {showSj && (
+                              <button
+                                type="button"
+                                onClick={() => handleBuatSuratJalan(po)}
+                                className="py-2.5 flex items-center justify-center text-emerald-400 hover:bg-emerald-500/10 active:bg-emerald-500/20 transition-colors cursor-pointer"
+                                title="Buat Surat Jalan (GI)"
+                              >
+                                <Truck className="w-4 h-4" />
+                              </button>
+                            )}
+                            {showDelete && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setPoToDelete(po);
+                                  setDeleteModalOpen(true);
+                                }}
+                                className={`py-2.5 flex items-center justify-center text-[#F4511E] hover:bg-[#F4511E]/10 active:bg-[#F4511E]/20 transition-colors cursor-pointer ${showSj ? 'border-l border-[#20242A]' : ''}`}
+                                title="Hapus Received Order"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSelectedDetailPo(po);
+                                setDetailModalOpen(true);
+                              }}
+                              className={`py-2.5 flex items-center justify-center text-[#F4511E] hover:bg-[#F4511E]/10 active:bg-[#F4511E]/20 transition-colors cursor-pointer ${showSj || showDelete ? 'border-l border-[#20242A]' : ''}`}
+                              title="Detail Received Order"
+                            >
+                              <Info className="w-4 h-4" />
+                            </button>
+                          </div>
+                        );
+                      })()}
                     </div>
                   );
                 })}
@@ -1615,14 +1632,16 @@ export default function PreOrderPage() {
           {selectedIds.size > 0 && (
             <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-40 bg-[#16191D] border border-[#2B313C] rounded-full px-4 py-2.5 shadow-2xl flex items-center gap-3 font-mono text-xs">
               <span className="text-white font-bold">{selectedIds.size} dipilih</span>
-              <button
-                type="button"
-                onClick={handleDeleteSelected}
-                className="px-3 py-1 rounded-full bg-rose-600 hover:bg-rose-500 text-white font-bold text-[11px] flex items-center gap-1.5 transition-colors cursor-pointer"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-                <span>Hapus Terpilih</span>
-              </button>
+              {isSuperAdmin && (
+                <button
+                  type="button"
+                  onClick={handleDeleteSelected}
+                  className="px-3 py-1 rounded-full bg-rose-600 hover:bg-rose-500 text-white font-bold text-[11px] flex items-center gap-1.5 transition-colors cursor-pointer"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Hapus Terpilih</span>
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => setSelectedIds(new Set())}
@@ -1743,7 +1762,7 @@ export default function PreOrderPage() {
 
           {/* ── DELETE CONFIRMATION MODAL ── */}
           <Modal
-            isOpen={deleteModalOpen}
+            isOpen={deleteModalOpen && isSuperAdmin}
             onClose={() => setDeleteModalOpen(false)}
             title="Hapus Data Received Order"
             subtitle={poToDelete ? `Nomor RO: ${poToDelete.nomorRO || poToDelete.nomorRo || poToDelete.id}` : ''}
@@ -1767,6 +1786,11 @@ export default function PreOrderPage() {
                     variant="danger"
                     icon={Trash2}
                     onClick={async () => {
+                      if (!isSuperAdmin) {
+                        addToast('Akses ditolak: Hanya Super Admin yang diizinkan untuk menghapus Received Order.', 'error');
+                        setDeleteModalOpen(false);
+                        return;
+                      }
                       if (deletePreOrder) await deletePreOrder(poToDelete.id);
                       setDeleteModalOpen(false);
                       setPoToDelete(null);

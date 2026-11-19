@@ -34,6 +34,7 @@ import {
 } from 'lucide-react';
 import { formatCurrency } from '../../utils/formatters';
 import { TAX_RATES } from '../../utils/constants';
+import { useAuth } from '../../context/AuthContext';
 import { useData } from '../../context/DataContext';
 import { useToast } from '../../context/ToastContext';
 import { groupInvoices, groupCheckState } from '../../utils/cashOutGrouping';
@@ -159,7 +160,7 @@ function InvoiceGroupHeader({ group, expanded, onToggle, checkState, onGroupChec
 // ─────────────────────────────────────────────────────────────────────────────
 // InvoiceRow (tabular row for list view)
 // ─────────────────────────────────────────────────────────────────────────────
-function InvoiceRow({ item, isSelected, onSelect, onInfo, onDelete, isEven }) {
+function InvoiceRow({ item, isSelected, onSelect, onInfo, onDelete, isEven, canDelete = true }) {
   const isPaid = item.statusBayar === 'Lunas';
   return (
     <tr
@@ -216,14 +217,16 @@ function InvoiceRow({ item, isSelected, onSelect, onInfo, onDelete, isEven }) {
       {/* Aksi (Trash & Info) */}
       <td className="px-3 py-2.5 text-center whitespace-nowrap w-16">
         <div className="inline-flex items-center gap-1.5">
-          <button
-            type="button"
-            onClick={onDelete}
-            className="text-rose-500/80 hover:text-rose-400 transition-colors cursor-pointer p-1"
-            title="Hapus Invoice"
-          >
-            <Trash2 className="w-3.5 h-3.5" />
-          </button>
+          {canDelete && (
+            <button
+              type="button"
+              onClick={onDelete}
+              className="text-rose-500/80 hover:text-rose-400 transition-colors cursor-pointer p-1"
+              title="Hapus Invoice"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+          )}
           <button
             type="button"
             onClick={onInfo}
@@ -241,7 +244,7 @@ function InvoiceRow({ item, isSelected, onSelect, onInfo, onDelete, isEven }) {
 // ─────────────────────────────────────────────────────────────────────────────
 // InvoiceGridCard (compact card for grid view)
 // ─────────────────────────────────────────────────────────────────────────────
-function InvoiceGridCard({ item, isSelected, onSelect, onInfo, onDelete }) {
+function InvoiceGridCard({ item, isSelected, onSelect, onInfo, onDelete, canDelete = true }) {
   const isPaid = item.statusBayar === 'Lunas';
   return (
     <div
@@ -266,14 +269,16 @@ function InvoiceGridCard({ item, isSelected, onSelect, onInfo, onDelete }) {
         </div>
         <div className="flex items-center gap-1 shrink-0">
           <StatusBadge paid={isPaid} small />
-          <button
-            type="button"
-            onClick={onDelete}
-            className="w-6 h-6 flex items-center justify-center rounded-lg text-neutral-400 hover:text-rose-400 hover:bg-[#1E2228] transition-colors cursor-pointer"
-            title="Hapus Invoice"
-          >
-            <Trash2 className="w-3.5 h-3.5" />
-          </button>
+          {canDelete && (
+            <button
+              type="button"
+              onClick={onDelete}
+              className="w-6 h-6 flex items-center justify-center rounded-lg text-neutral-400 hover:text-rose-400 hover:bg-[#1E2228] transition-colors cursor-pointer"
+              title="Hapus Invoice"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+          )}
           <button
             type="button"
             onClick={onInfo}
@@ -328,6 +333,7 @@ function InvoiceGroupedTable({
   onToggleGroupSelect,
   onInfo,
   onDelete,
+  canDelete = false,
   displayMode = 'list',
 }) {
   if (groups.length === 0) {
@@ -382,6 +388,7 @@ function InvoiceGroupedTable({
                           onSelect={() => onToggleSelect(item.id)}
                           onInfo={() => onInfo(item)}
                           onDelete={() => onDelete(item)}
+                          canDelete={canDelete}
                         />
                       ))}
                     </tbody>
@@ -397,6 +404,7 @@ function InvoiceGroupedTable({
                       onSelect={() => onToggleSelect(item.id)}
                       onInfo={() => onInfo(item)}
                       onDelete={() => onDelete(item)}
+                      canDelete={canDelete}
                     />
                   ))}
                 </div>
@@ -415,6 +423,7 @@ function InvoiceGroupedTable({
 export default function InvoicePage() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { isSuperAdmin } = useAuth();
   const {
     customers,
     bankAccounts,
@@ -478,15 +487,23 @@ export default function InvoicePage() {
   const [deleteConfirmInvoice, setDeleteConfirmInvoice] = useState({ open: false, id: null, label: '', item: null });
 
   const handleAskDeleteInvoice = (id, label, item = null) => {
+    if (!isSuperAdmin) {
+      addToast('Akses ditolak: Hanya Super Admin yang diizinkan untuk menghapus Invoice.', 'error');
+      return;
+    }
     setDeleteConfirmInvoice({ open: true, id, label, item });
   };
 
   const handleConfirmDeleteInvoice = () => {
+    if (!isSuperAdmin) {
+      addToast('Akses ditolak: Hanya Super Admin yang diizinkan untuk menghapus Invoice.', 'error');
+      setDeleteConfirmInvoice({ open: false, id: null, label: '', item: null });
+      return;
+    }
     if (deleteConfirmInvoice.id) {
       deleteInvoice(deleteConfirmInvoice.id);
       setSelectedItems((prev) => prev.filter((i) => i !== deleteConfirmInvoice.id));
       setDeleteConfirmInvoice({ open: false, id: null, label: '', item: null });
-      addToast('Faktur invoice berhasil dihapus', 'info');
     }
   };
 
@@ -1039,6 +1056,7 @@ export default function InvoicePage() {
             onToggleGroupSelect={handleToggleGroupSelect}
             onInfo={setInfoModalItem}
             onDelete={(item) => handleAskDeleteInvoice(item.id, item.kodeTransaksi, item)}
+            canDelete={isSuperAdmin}
             displayMode={displayMode}
           />
         </div>
@@ -1528,7 +1546,7 @@ export default function InvoicePage() {
 
       {/* MODAL: KONFIRMASI HAPUS INVOICE */}
       <Modal
-        isOpen={deleteConfirmInvoice.open}
+        isOpen={deleteConfirmInvoice.open && isSuperAdmin}
         onClose={() => setDeleteConfirmInvoice({ open: false, id: null, label: '', item: null })}
         title="Konfirmasi Hapus Invoice"
         subtitle="Tindakan ini tidak dapat dibatalkan"

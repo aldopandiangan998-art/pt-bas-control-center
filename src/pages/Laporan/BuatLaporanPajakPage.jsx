@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams, Navigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   ArrowLeft,
@@ -48,19 +48,20 @@ export default function BuatLaporanPajakPage() {
   const isPph21 = taxType === 'pph21' || taxType === 'pph-21' || taxType === 'pasal21' || taxType === 'pasal-21' || taxType === '21';
   const isPph23 = !isPph21 && (taxType === 'pph23' || taxType === 'pph-23' || taxType.includes('pph'));
 
-  // Redirect to official submenus with search params preserved
-  useEffect(() => {
-    const search = searchParams.toString() ? `?${searchParams.toString()}` : '';
-    if (taxType === 'all-in-one' || taxType === 'all') {
-      navigate(`/laporan/all-in-one${search}`, { replace: true });
-    } else if (taxType === 'ppn') {
-      navigate(`/laporan/ppn${search}`, { replace: true });
-    } else if (isPph21) {
-      navigate(`/laporan/pph-21${search}`, { replace: true });
-    } else if (isPph23) {
-      navigate(`/laporan/pph-23${search}`, { replace: true });
-    }
-  }, [taxType, isPph21, isPph23, navigate, searchParams]);
+  // ── Immediate redirect to canonical pages — no content rendered first ──
+  const search = searchParams.toString() ? `?${searchParams.toString()}` : '';
+  if (taxType === 'all-in-one' || taxType === 'all') {
+    return <Navigate to={`/laporan/all-in-one${search}`} replace />;
+  }
+  if (taxType === 'ppn') {
+    return <Navigate to={`/laporan/ppn${search}`} replace />;
+  }
+  if (isPph21) {
+    return <Navigate to={`/laporan/pph-21${search}`} replace />;
+  }
+  if (isPph23) {
+    return <Navigate to={`/laporan/pph-23${search}`} replace />;
+  }
 
   // Title matching screenshot: "Buat Laporan PPH 21", "Buat Laporan PPH 23", or "Buat Laporan PPN"
   const pageTitle = isPph21 ? 'Buat Laporan PPH 21' : isPph23 ? 'Buat Laporan PPH 23' : 'Buat Laporan PPN';

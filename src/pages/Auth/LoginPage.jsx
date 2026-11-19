@@ -22,6 +22,8 @@ import {
   KeyRound,
   Copy,
   ExternalLink,
+  Clock,
+  ShieldCheck,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
@@ -66,6 +68,9 @@ export default function LoginPage({ defaultMode = null }) {
   const [rememberSession, setRememberSession] = useState(true);
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+
+  // Pending approval state (after registration)
+  const [pendingInfo, setPendingInfo] = useState(null); // { name, email }
 
   // Modals
   const [showForgotPasswordModal, setShowForgotPasswordModal] = useState(false);
@@ -201,19 +206,19 @@ export default function LoginPage({ defaultMode = null }) {
 
       if (res && res.success) {
         if (res.pendingApproval) {
-          addToast(
-            'Pendaftaran berhasil dikirim. Menunggu verifikasi dari Super Admin.',
-            'info'
-          );
+          // Show waiting-for-approval screen
+          setPendingInfo({ name: regData.fullName, email: regData.email });
+          setMode('pending');
+          navigate('/login');
         } else {
           addToast(
             'Pendaftaran berhasil! Akun Anda telah aktif.',
             'success'
           );
+          switchToMode('login');
+          setLoginEmail(regData.email);
+          setLoginPassword(regData.password);
         }
-        switchToMode('login');
-        setLoginEmail(regData.email);
-        setLoginPassword(regData.password);
       } else {
         setErrorMessage(res?.message || 'Pengajuan registrasi gagal.');
       }
@@ -291,6 +296,7 @@ export default function LoginPage({ defaultMode = null }) {
             <div className="absolute top-0 left-1/4 right-1/4 h-[2px] bg-gradient-to-r from-transparent via-[#F4511E] to-transparent shadow-[0_0_12px_#F4511E]" />
 
             {/* Mode Switcher Tabs: Login / Register */}
+            {mode !== 'pending' && (
             <div
               className={`grid grid-cols-2 p-1 rounded-xl mb-4.5 border ${isDark ? 'bg-[#060A12] border-[#182336]' : 'bg-slate-100 border-slate-200'
                 }`}
@@ -322,9 +328,84 @@ export default function LoginPage({ defaultMode = null }) {
                 <span>Register</span>
               </button>
             </div>
+            )}
+
+            {/* ---------------------------------------------------- */}
+            {/* MODE 3: PENDING APPROVAL SCREEN                       */}
+            {/* ---------------------------------------------------- */}
+            {mode === 'pending' && pendingInfo && (
+              <motion.div
+                key="pending"
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.35, ease: 'easeOut' }}
+                className="flex flex-col items-center text-center py-4 px-2 space-y-5"
+              >
+                {/* Animated icon */}
+                <div className="relative">
+                  <div className="w-20 h-20 rounded-full bg-amber-500/10 border-2 border-amber-500/40 flex items-center justify-center shadow-lg shadow-amber-500/10">
+                    <Clock className="w-9 h-9 text-amber-400 animate-pulse" />
+                  </div>
+                  <div className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full bg-[#F4511E]/15 border border-[#F4511E]/40 flex items-center justify-center">
+                    <ShieldCheck className="w-4 h-4 text-[#F4511E]" />
+                  </div>
+                </div>
+
+                {/* Title */}
+                <div>
+                  <h2 className={`text-lg font-black tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                    Menunggu Persetujuan
+                  </h2>
+                  <p className={`text-xs mt-1.5 leading-relaxed ${isDark ? 'text-neutral-400' : 'text-slate-500'}`}>
+                    Pendaftaran akun Anda telah berhasil dikirim dan sedang menunggu verifikasi dari <span className="text-amber-400 font-bold">Super Admin</span>.
+                  </p>
+                </div>
+
+                {/* Info box: user data */}
+                <div className={`w-full rounded-xl border p-4 text-left space-y-2.5 ${isDark ? 'bg-[#0D1420] border-[#1E2D44]' : 'bg-slate-50 border-slate-200'}`}>
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-7 h-7 rounded-lg bg-[#F4511E]/15 border border-[#F4511E]/30 flex items-center justify-center shrink-0">
+                      <User className="w-3.5 h-3.5 text-[#F4511E]" />
+                    </div>
+                    <div>
+                      <div className={`text-[10px] font-mono uppercase tracking-wider ${isDark ? 'text-neutral-500' : 'text-slate-400'}`}>Nama</div>
+                      <div className={`text-sm font-bold ${isDark ? 'text-white' : 'text-slate-800'}`}>{pendingInfo.name}</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-7 h-7 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center shrink-0">
+                      <Mail className="w-3.5 h-3.5 text-blue-400" />
+                    </div>
+                    <div>
+                      <div className={`text-[10px] font-mono uppercase tracking-wider ${isDark ? 'text-neutral-500' : 'text-slate-400'}`}>Email</div>
+                      <div className={`text-sm font-mono ${isDark ? 'text-white' : 'text-slate-800'}`}>{pendingInfo.email}</div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Info note */}
+                <div className={`w-full rounded-xl border p-3 flex items-start gap-2.5 text-xs text-left ${isDark ? 'bg-amber-500/5 border-amber-500/20 text-amber-300/80' : 'bg-amber-50 border-amber-200 text-amber-700'}`}>
+                  <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-amber-400" />
+                  <span>Akun Anda akan diaktifkan setelah disetujui oleh Super Admin. Silakan hubungi Super Admin PT BAS untuk mempercepat proses persetujuan.</span>
+                </div>
+
+                {/* Back to login button */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPendingInfo(null);
+                    switchToMode('login');
+                  }}
+                  className="w-full py-3 px-4 rounded-xl border border-[#F4511E]/40 text-[#F4511E] hover:bg-[#F4511E]/10 font-bold text-sm transition-all cursor-pointer flex items-center justify-center gap-2"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                  Kembali ke Halaman Login
+                </button>
+              </motion.div>
+            )}
 
             {/* Header Row: Title & Subtitle */}
-            {mode === 'login' ? (
+            {mode !== 'pending' && (mode === 'login' ? (
               <div className="mb-5">
                 <h1 className={`text-xl sm:text-2xl font-black tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
                   Login
@@ -353,10 +434,10 @@ export default function LoginPage({ defaultMode = null }) {
                   </p>
                 </div>
               </div>
-            )}
+            ))}
 
             {/* Error Message Banner */}
-            {errorMessage && (
+            {mode !== 'pending' && errorMessage && (
               <motion.div
                 initial={{ opacity: 0, y: -6 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -698,6 +779,7 @@ export default function LoginPage({ defaultMode = null }) {
           {/* ======================================================== */}
           {/* REGISTER / LOGIN SWITCH LINK                             */}
           {/* ======================================================== */}
+          {mode !== 'pending' && (
           <div className={`text-center text-xs mb-4 font-sans ${isDark ? 'text-neutral-300' : 'text-slate-600'}`}>
             {mode === 'login' ? (
               <>
@@ -723,6 +805,7 @@ export default function LoginPage({ defaultMode = null }) {
               </>
             )}
           </div>
+          )}
 
           {/* ======================================================== */}
           {/* SYSTEM FOOTER                                            */}

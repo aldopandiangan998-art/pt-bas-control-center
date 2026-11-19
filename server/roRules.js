@@ -3,8 +3,8 @@
  *
  * Rules:
  * 1. JASA ANGKUT + MATERIAL:
- *    - Hanya item Jasa Angkut (tanpa satuan) yang boleh dipilih.
- *    - Sistem otomatis membuat item Material dari item Jasa Angkut yang dipilih.
+ *    - Item Material (dengan satuan) yang dipilih dan kuantitas diinput pada baris Material.
+ *    - Sistem otomatis membuat baris Jasa Angkut (tanpa satuan) yang kuantitasnya mengikuti kuantitas Material.
  * 2. MATERIAL SAJA:
  *    - Hanya item Material yang boleh ditambahkan (Jasa Angkut dilarang).
  * 3. JASA ANGKUT SAJA:
@@ -24,19 +24,22 @@ export const RO_TYPES = {
 
 export const RO_ITEM_RULES = {
   [RO_TYPES.JASA_ANGKUT_MATERIAL]: {
-    allowedItemTypes: [ITEM_TYPES.JASA_ANGKUT],
-    autoCreateMaterial: true,
+    allowedItemTypes: [ITEM_TYPES.MATERIAL],
+    autoCreateJasaAngkut: true,
+    autoCreateMaterial: false,
     label: 'Jasa Angkut + Material',
-    description: 'Hanya item Jasa Angkut yang dipilih; item Material dibuat otomatis oleh sistem',
+    description: 'Item Material dipilih; item Jasa Angkut dibuat otomatis oleh sistem dan mengikuti kuantitas material',
   },
   [RO_TYPES.MATERIAL_SAJA]: {
     allowedItemTypes: [ITEM_TYPES.MATERIAL],
+    autoCreateJasaAngkut: false,
     autoCreateMaterial: false,
     label: 'Material Saja',
     description: 'Hanya item Material yang dapat ditambahkan',
   },
   [RO_TYPES.JASA_ANGKUT_SAJA]: {
     allowedItemTypes: [ITEM_TYPES.JASA_ANGKUT],
+    autoCreateJasaAngkut: false,
     autoCreateMaterial: false,
     label: 'Jasa Angkut Saja',
     description: 'Hanya item Jasa Angkut yang dapat ditambahkan',
@@ -86,11 +89,18 @@ export function getAllowedItemTypes(roType) {
 }
 
 /**
- * Returns whether the RO type requires automatic generation of Material items
+ * Returns whether the RO type requires automatic generation of Jasa Angkut items
+ */
+export function shouldAutoCreateJasaAngkut(roType) {
+  const norm = normalizeRoType(roType);
+  return Boolean(RO_ITEM_RULES[norm]?.autoCreateJasaAngkut);
+}
+
+/**
+ * Backward compatibility alias
  */
 export function shouldAutoCreateMaterial(roType) {
-  const norm = normalizeRoType(roType);
-  return Boolean(RO_ITEM_RULES[norm]?.autoCreateMaterial);
+  return shouldAutoCreateJasaAngkut(roType);
 }
 
 /**
@@ -137,14 +147,14 @@ export function validateRoItems(roType, items = []) {
     if (manualItems.length === 0) {
       return {
         isValid: false,
-        error: 'Harus memilih minimal 1 item Jasa Angkut',
+        error: 'Harus memilih minimal 1 item Material',
       };
     }
-    const invalidManual = manualItems.some((it) => getItemType(it) !== ITEM_TYPES.JASA_ANGKUT);
+    const invalidManual = manualItems.some((it) => getItemType(it) !== ITEM_TYPES.MATERIAL);
     if (invalidManual) {
       return {
         isValid: false,
-        error: 'Hanya item Jasa Angkut yang boleh dipilih pada RO jenis Jasa Angkut + Material',
+        error: 'Hanya item Material yang boleh dipilih pada RO jenis Jasa Angkut + Material',
       };
     }
   }

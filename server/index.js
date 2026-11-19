@@ -94,6 +94,8 @@ app.post('/api/auth/login', (req, res) => {
     return res.status(403).json({
       success: false,
       isPendingApproval: true,
+      userName: user.name,
+      userEmail: user.email,
       message: 'Akun Anda sedang menunggu persetujuan (approval) dari Super Admin. Silakan hubungi Super Admin untuk aktivasi.',
     });
   }

@@ -181,6 +181,8 @@ export function AuthProvider({ children }) {
       return {
         success: false,
         isPendingApproval: data.isPendingApproval || false,
+        userName: data.userName || null,
+        userEmail: data.userEmail || cleanEmail,
         message: data.message || 'Email atau kata sandi tidak valid.',
       };
     } catch (err) {
@@ -195,6 +197,8 @@ export function AuthProvider({ children }) {
           return {
             success: false,
             isPendingApproval: true,
+            userName: user.name,
+            userEmail: user.email,
             message: 'Akun Anda sedang menunggu persetujuan (approval) dari Super Admin. Silakan hubungi Super Admin untuk aktivasi.',
           };
         }

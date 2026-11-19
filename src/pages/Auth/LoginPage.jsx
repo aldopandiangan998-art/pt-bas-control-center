@@ -155,6 +155,10 @@ export default function LoginPage({ defaultMode = null }) {
           'success'
         );
         navigate('/');
+      } else if (res?.isPendingApproval) {
+        // Account registered but not yet approved by Super Admin
+        setPendingInfo({ name: res.userName || loginEmail.split('@')[0], email: res.userEmail || loginEmail });
+        setMode('pending');
       } else {
         setErrorMessage(res?.message || 'Email operasional atau kata sandi tidak valid.');
       }

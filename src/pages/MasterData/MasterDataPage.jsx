@@ -1600,7 +1600,7 @@ export default function MasterDataPage() {
         u.name,
         u.email,
         u.roleLabel || u.role,
-        (u.aktif === 1 || u.aktif === true) ? 'Aktif' : 'Menunggu Approval',
+        (u.aktif === 1 || u.aktif === true) ? 'Aktif' : 'Non-aktif',
       ]);
     } else if (currentTab === 'mata-uang') {
       const list = customItems || filteredCurrencies;
@@ -3758,7 +3758,7 @@ export default function MasterDataPage() {
                   </div>
                   <div className="master-stat-card stat-rose p-3 rounded-xl bg-[#121822]/90 border border-[#1E2938] flex items-center justify-between shadow-xs">
                     <div>
-                      <div className="text-[10px] font-mono text-neutral-400 uppercase tracking-wider">Menunggu Approval</div>
+                      <div className="text-[10px] font-mono text-neutral-400 uppercase tracking-wider">Non-aktif</div>
                       <div className="text-xl font-bold font-mono text-rose-400 mt-0.5">
                         {activeUsers.filter((u) => !u.aktif || u.aktif === 0).length}
                       </div>
@@ -3781,11 +3781,6 @@ export default function MasterDataPage() {
                         <strong className="text-white">Otoritas Direksi:</strong> Super Admin dapat menyetujui (<span className="text-emerald-400">approve</span>), mengaktifkan, atau menolak pendaftaran akun Admin baru.
                       </span>
                     </div>
-                    {activeUsers.some((u) => !u.aktif || u.aktif === 0) && (
-                      <Badge size="xs" variant="warning" dot className="animate-pulse shrink-0">
-                        {activeUsers.filter((u) => !u.aktif || u.aktif === 0).length} Menunggu Persetujuan
-                      </Badge>
-                    )}
                   </div>
                 )}
 
@@ -3831,7 +3826,7 @@ export default function MasterDataPage() {
                         </thead>
                         <tbody className="divide-y divide-[#202326]">
                           {filtered.map((user) => {
-                            const isPending = user.pendingApproval === true || user.isApproved === false || (!user.aktif && user.id?.startsWith('usr-reg-'));
+                            const isPending = !isSuperAdmin && (user.pendingApproval === true || user.isApproved === false || (!user.aktif && user.id?.startsWith('usr-reg-')));
                             const isSuper = user.role === 'superadmin' || user.roleLabel === 'Super Admin';
                             const isUserActive = user.aktif === 1 || user.aktif === true;
 
@@ -3992,7 +3987,7 @@ export default function MasterDataPage() {
                     className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3.5"
                   >
                     {filtered.map((user) => {
-                      const isPending = user.pendingApproval === true || user.isApproved === false || (!user.aktif && user.id?.startsWith('usr-reg-'));
+                      const isPending = !isSuperAdmin && (user.pendingApproval === true || user.isApproved === false || (!user.aktif && user.id?.startsWith('usr-reg-')));
                       const isSuper = user.role === 'superadmin' || user.roleLabel === 'Super Admin';
                       const isUserActive = user.aktif === 1 || user.aktif === true;
 

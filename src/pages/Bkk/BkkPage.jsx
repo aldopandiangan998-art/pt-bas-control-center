@@ -23,6 +23,8 @@ import {
   Building2,
   Ticket,
   FileText,
+  AlertTriangle,
+  Loader2,
 } from 'lucide-react';
 import { useData } from '../../context/DataContext';
 import { useToast } from '../../context/ToastContext';
@@ -150,7 +152,7 @@ function CashOutGroupHeader({ group, expanded, onToggle, checkState, onGroupChec
 // ─────────────────────────────────────────────────────────────────────────────
 // CashOutRow  (compact table row for grouped-table view)
 // ─────────────────────────────────────────────────────────────────────────────
-function CashOutRow({ item, isSelected, onSelect, onInfo, isEven }) {
+function CashOutRow({ item, isSelected, onSelect, onInfo, onDelete, isEven }) {
   const isPaid = item.statusBayar === 'Lunas';
   return (
     <tr
@@ -209,16 +211,26 @@ function CashOutRow({ item, isSelected, onSelect, onInfo, isEven }) {
         {item.periode || (item.tanggal ? item.tanggal.slice(0, 7) : '-')}
       </td>
 
-      {/* Aksi info */}
-      <td className="px-3 py-2.5 text-center w-10">
-        <button
-          type="button"
-          onClick={onInfo}
-          className="text-[#F4511E] hover:text-[#F4511E]/80 transition-colors cursor-pointer"
-          title="Detail Informasi"
-        >
-          <Info className="w-3.5 h-3.5" />
-        </button>
+      {/* Aksi info & delete */}
+      <td className="px-3 py-2.5 text-center w-16">
+        <div className="flex items-center justify-center gap-1">
+          <button
+            type="button"
+            onClick={onInfo}
+            className="w-6 h-6 flex items-center justify-center rounded-md text-[#F4511E] hover:bg-[#1E2228] transition-colors cursor-pointer"
+            title="Detail Informasi"
+          >
+            <Info className="w-3.5 h-3.5" />
+          </button>
+          <button
+            type="button"
+            onClick={onDelete}
+            className="w-6 h-6 flex items-center justify-center rounded-md text-neutral-400 hover:text-rose-400 hover:bg-rose-500/10 transition-colors cursor-pointer"
+            title="Hapus BKK"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
+        </div>
       </td>
     </tr>
   );
@@ -227,7 +239,7 @@ function CashOutRow({ item, isSelected, onSelect, onInfo, isEven }) {
 // ─────────────────────────────────────────────────────────────────────────────
 // CashOutGridCard (compact structured card for grid view)
 // ─────────────────────────────────────────────────────────────────────────────
-function CashOutGridCard({ item, isSelected, onSelect, onInfo }) {
+function CashOutGridCard({ item, isSelected, onSelect, onInfo, onDelete }) {
   const isPaid = item.statusBayar === 'Lunas';
   return (
     <div
@@ -237,7 +249,7 @@ function CashOutGridCard({ item, isSelected, onSelect, onInfo }) {
           : 'border-[#24282C]'
       }`}
     >
-      {/* Top Header: Checkbox + Dokumen + Status + Info */}
+      {/* Top Header: Checkbox + Dokumen + Status + Aksi */}
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2 min-w-0">
           <input
@@ -250,7 +262,7 @@ function CashOutGridCard({ item, isSelected, onSelect, onInfo }) {
             {item.kodeTransaksi}
           </span>
         </div>
-        <div className="flex items-center gap-1.5 shrink-0">
+        <div className="flex items-center gap-1 shrink-0">
           <StatusBadge paid={isPaid} small />
           <button
             type="button"
@@ -259,6 +271,14 @@ function CashOutGridCard({ item, isSelected, onSelect, onInfo }) {
             title="Detail Informasi"
           >
             <Info className="w-3.5 h-3.5" />
+          </button>
+          <button
+            type="button"
+            onClick={onDelete}
+            className="w-6 h-6 flex items-center justify-center rounded-lg text-neutral-400 hover:text-rose-400 hover:bg-rose-500/10 transition-colors cursor-pointer"
+            title="Hapus BKK"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
           </button>
         </div>
       </div>
@@ -305,6 +325,7 @@ function CashOutGroupedTable({
   onToggleSelect,
   onToggleGroupSelect,
   onInfo,
+  onDelete,
   displayMode = 'list',
 }) {
   if (groups.length === 0) {
@@ -347,7 +368,7 @@ function CashOutGroupedTable({
                         <th className="px-3 py-2 text-[10px] font-semibold text-neutral-400 uppercase tracking-wide whitespace-nowrap">Status</th>
                         <th className="px-3 py-2 text-[10px] font-semibold text-neutral-400 uppercase tracking-wide">PIC</th>
                         <th className="px-3 py-2 text-[10px] font-semibold text-neutral-400 uppercase tracking-wide whitespace-nowrap">Periode</th>
-                        <th className="px-3 py-2 text-[10px] font-semibold text-neutral-400 uppercase tracking-wide text-center w-10">Info</th>
+                        <th className="px-3 py-2 text-[10px] font-semibold text-neutral-400 uppercase tracking-wide text-center w-16">Aksi</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -359,6 +380,7 @@ function CashOutGroupedTable({
                           isEven={idx % 2 === 0}
                           onSelect={() => onToggleSelect(item.id)}
                           onInfo={() => onInfo(item)}
+                          onDelete={() => onDelete(item)}
                         />
                       ))}
                     </tbody>
@@ -373,6 +395,7 @@ function CashOutGroupedTable({
                       isSelected={selectedItems.includes(item.id)}
                       onSelect={() => onToggleSelect(item.id)}
                       onInfo={() => onInfo(item)}
+                      onDelete={() => onDelete(item)}
                     />
                   ))}
                 </div>
@@ -643,6 +666,14 @@ export default function BkkPage() {
     rekeningSumber: 'BCA - 0188920199 a/n PT Berkah Alam Semesta',
   });
 
+  // ── Delete BKK Modal
+  const [bkkToDelete, setBkkToDelete] = useState(null);
+  const [isDeletingBkk, setIsDeletingBkk] = useState(false);
+
+  // ── Bulk Delete Modal
+  const [isBulkDeleteModalOpen, setIsBulkDeleteModalOpen] = useState(false);
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
+
   // ── Filtered list (search + status applied before grouping)
   const filteredBkk = useMemo(() => {
     return bkkList.filter((item) => {
@@ -749,6 +780,41 @@ export default function BkkPage() {
     markBkkPaid(selectedItems, paymentForm);
     setSelectedItems([]);
     setShowPaymentModal(false);
+  };
+
+  // ── Delete handlers
+  const handleOpenDeleteBkk = (item) => {
+    setInfoModalItem(null); // close detail modal if open
+    setBkkToDelete(item);
+  };
+
+  const handleCloseDeleteBkk = () => {
+    if (isDeletingBkk) return;
+    setBkkToDelete(null);
+  };
+
+  const handleConfirmDeleteBkk = async () => {
+    if (!bkkToDelete) return;
+    setIsDeletingBkk(true);
+    await deleteBkk(bkkToDelete.id);
+    setSelectedItems((prev) => prev.filter((id) => id !== bkkToDelete.id));
+    setIsDeletingBkk(false);
+    setBkkToDelete(null);
+  };
+
+  const handleOpenBulkDelete = () => {
+    if (selectedItems.length === 0) return;
+    setIsBulkDeleteModalOpen(true);
+  };
+
+  const handleConfirmBulkDelete = async () => {
+    setIsBulkDeleting(true);
+    for (const id of selectedItems) {
+      await deleteBkk(id);
+    }
+    setSelectedItems([]);
+    setIsBulkDeleting(false);
+    setIsBulkDeleteModalOpen(false);
   };
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -989,6 +1055,7 @@ export default function BkkPage() {
             onToggleSelect={toggleSelect}
             onToggleGroupSelect={handleToggleGroupSelect}
             onInfo={setInfoModalItem}
+            onDelete={handleOpenDeleteBkk}
             displayMode={displayMode}
           />
         </div>
@@ -1291,6 +1358,14 @@ export default function BkkPage() {
               </button>
               <button
                 type="button"
+                onClick={handleOpenBulkDelete}
+                className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 transition-colors shadow-md shadow-rose-500/20 flex items-center gap-1.5 cursor-pointer"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Hapus ({selectedItems.length})</span>
+              </button>
+              <button
+                type="button"
                 onClick={() => setShowPaymentModal(true)}
                 className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-[#F4511E] hover:bg-[#E04418] transition-colors shadow-md shadow-[#F4511E]/20 flex items-center gap-1.5 cursor-pointer"
               >
@@ -1356,13 +1431,7 @@ export default function BkkPage() {
                 variant="danger"
                 size="sm"
                 icon={Trash2}
-                onClick={() => {
-                  if (window.confirm(`Yakin ingin menghapus BKK ${infoModalItem.kodeTransaksi}?`)) {
-                    deleteBkk(infoModalItem.id);
-                    setSelectedItems((prev) => prev.filter((id) => id !== infoModalItem.id));
-                    setInfoModalItem(null);
-                  }
-                }}
+                onClick={() => handleOpenDeleteBkk(infoModalItem)}
               >
                 Hapus BKK
               </Button>
@@ -1416,6 +1485,130 @@ export default function BkkPage() {
           <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#24282C]">
             <Button variant="ghost" onClick={() => setShowPaymentModal(false)}>Batal</Button>
             <Button variant="primary" icon={CheckCircle2} onClick={handleConfirmPayment}>Simpan Pelunasan</Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* ── MODAL HAPUS BKK (SINGLE) ── */}
+      <Modal
+        isOpen={Boolean(bkkToDelete)}
+        onClose={handleCloseDeleteBkk}
+        title="Hapus Catatan Kas Keluar"
+        subtitle={bkkToDelete?.kodeTransaksi}
+        maxWidth="max-w-md"
+      >
+        {bkkToDelete && (
+          <div className="space-y-4 p-1">
+            {/* Warning Banner */}
+            <div className="p-3 rounded-lg bg-rose-950/20 border border-rose-900/30 text-rose-300 text-xs flex items-start gap-2.5">
+              <AlertTriangle className="w-4 h-4 shrink-0 text-rose-400 mt-0.5" />
+              <div>
+                <p className="font-semibold text-rose-200">Peringatan: Penghapusan Catatan BKK</p>
+                <p className="mt-0.5 text-neutral-300">
+                  Tindakan ini akan menghapus data kas keluar secara permanen dan tidak dapat dibatalkan.
+                </p>
+              </div>
+            </div>
+
+            {/* Detail Card */}
+            <div className="bg-[#0E1012] rounded-lg p-3 border border-[#22262A] space-y-2 font-mono text-xs">
+              <div className="flex justify-between items-center pb-2 border-b border-[#1C1F23]">
+                <span className="text-neutral-400">Kode Transaksi:</span>
+                <span className="text-white font-bold">{bkkToDelete.kodeTransaksi}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-neutral-400">Nominal:</span>
+                <span className="text-rose-400 font-bold">{formatCurrency(bkkToDelete.amount)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-neutral-400">Material:</span>
+                <span className="text-white">{bkkToDelete.material}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-neutral-400">Volume:</span>
+                <span className="text-white">{(Number(bkkToDelete.volume ?? bkkToDelete.kubikasi) || 0).toFixed(2)} m³</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-neutral-400">Customer / PIC:</span>
+                <span className="text-neutral-200 text-right max-w-[60%] truncate">{bkkToDelete.perusahaan || bkkToDelete.subDetail || '-'}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-neutral-400">Status Bayar:</span>
+                <span className={bkkToDelete.statusBayar === 'Lunas' ? 'text-emerald-400 font-bold' : 'text-rose-400 font-bold'}>
+                  {bkkToDelete.statusBayar}
+                </span>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex items-center justify-end gap-2 pt-1 border-t border-[#1C1F23]">
+              <Button variant="ghost" onClick={handleCloseDeleteBkk} disabled={isDeletingBkk}>
+                Batal
+              </Button>
+              <Button
+                variant="danger"
+                icon={isDeletingBkk ? Loader2 : Trash2}
+                onClick={handleConfirmDeleteBkk}
+                disabled={isDeletingBkk}
+              >
+                {isDeletingBkk ? 'Menghapus...' : 'Ya, Hapus BKK'}
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* ── MODAL HAPUS MASSAL BKK ── */}
+      <Modal
+        isOpen={isBulkDeleteModalOpen}
+        onClose={() => { if (!isBulkDeleting) setIsBulkDeleteModalOpen(false); }}
+        title="Hapus BKK Terpilih"
+        subtitle={`${selectedItems.length} Catatan BKK akan dihapus`}
+        maxWidth="max-w-md"
+      >
+        <div className="space-y-4 p-1">
+          {/* Warning Banner */}
+          <div className="p-3 rounded-lg bg-rose-950/20 border border-rose-900/30 text-rose-300 text-xs flex items-start gap-2.5">
+            <AlertTriangle className="w-4 h-4 shrink-0 text-rose-400 mt-0.5" />
+            <div>
+              <p className="font-semibold text-rose-200">
+                Penghapusan {selectedItems.length} Catatan BKK Sekaligus
+              </p>
+              <p className="mt-0.5 text-neutral-300">
+                Semua data kas keluar yang dipilih akan dihapus permanen. Proses ini tidak dapat dibatalkan.
+              </p>
+            </div>
+          </div>
+
+          {/* Summary Card */}
+          <div className="bg-[#0E1012] rounded-lg p-3 border border-[#22262A] space-y-2 font-mono text-xs">
+            <div className="flex justify-between">
+              <span className="text-neutral-400">Jumlah BKK Terpilih:</span>
+              <span className="text-rose-400 font-bold">{selectedItems.length} Dokumen</span>
+            </div>
+            <div className="flex justify-between border-t border-[#1C1F23] pt-2">
+              <span className="text-neutral-400">Total Nominal:</span>
+              <span className="text-rose-400 font-bold">{formatCurrency(totalSelected)}</span>
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex items-center justify-end gap-2 pt-1 border-t border-[#1C1F23]">
+            <Button
+              variant="ghost"
+              onClick={() => setIsBulkDeleteModalOpen(false)}
+              disabled={isBulkDeleting}
+            >
+              Batal
+            </Button>
+            <Button
+              variant="danger"
+              icon={isBulkDeleting ? Loader2 : Trash2}
+              onClick={handleConfirmBulkDelete}
+              disabled={isBulkDeleting}
+            >
+              {isBulkDeleting ? 'Menghapus...' : `Hapus ${selectedItems.length} BKK Terpilih`}
+            </Button>
           </div>
         </div>
       </Modal>

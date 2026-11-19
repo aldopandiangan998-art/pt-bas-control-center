@@ -1055,9 +1055,12 @@ export function DataProvider({ children }) {
       } else {
         const errJson = await res.json().catch(() => ({}));
         console.warn('Backend PO sync failed:', res.status, errJson);
+        await fetchPreOrders();
+        throw new Error(errJson.message || 'Gagal menyimpan Pre Order ke database');
       }
     } catch (err) {
-      console.warn('Backend PO sync failed, saved in localStorage:', err);
+      console.warn('Backend PO sync failed:', err);
+      throw err;
     }
 
     addToast('Pre Order berhasil diajukan! Menunggu persetujuan Super Admin.', 'success');

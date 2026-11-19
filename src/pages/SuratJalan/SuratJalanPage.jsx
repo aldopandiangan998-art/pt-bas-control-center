@@ -17,6 +17,7 @@ import {
   CheckCircle2,
   AlertCircle,
   RotateCcw,
+  Lock,
 } from 'lucide-react';
 import { useData } from '../../context/DataContext';
 import { useToast } from '../../context/ToastContext';
@@ -44,6 +45,22 @@ export default function SuratJalanPage() {
   const approvedPos = useMemo(() => {
     return (preOrders || []).filter((po) => po.status === 'APPROVED');
   }, [preOrders]);
+
+  // Helper for normalizing service type to standard values
+  const normalizeServiceType = (val) => {
+    if (!val) return '';
+    const s = String(val).toUpperCase().trim();
+    if ((s.includes('JASA ANGKUT') && s.includes('MATERIAL')) || s.includes('+')) {
+      return 'Jasa Angkut + Material';
+    }
+    if (s.includes('MATERIAL') || s === 'CURAH' || s.includes('CURAH SAJA') || s === 'MATERIAL SAJA') {
+      return 'Material Curah Saja';
+    }
+    if (s.includes('JASA ANGKUT') || s === 'JASA' || s === 'JASA ANGKUT SAJA') {
+      return 'Jasa Angkut Saja';
+    }
+    return val;
+  };
 
   // Helper for matching customer name robustly across variations (e.g. PT LION WINGS vs LION WINGS, PT)
   const normalizeCustomer = (val) => {
@@ -165,7 +182,7 @@ export default function SuratJalanPage() {
         nomorRo: targetRoNumber,
         preOrderId: targetPreOrderId,
         materialId: targetMaterialId,
-        jenis: preOrderState.jenis || matchedPo?.jenisRO || matchedPo?.jenis || 'Jasa Angkut + Material',
+        jenis: normalizeServiceType(preOrderState.jenis || matchedPo?.jenisRO || matchedPo?.jenis || 'Jasa Angkut + Material'),
         tanggal: now.toISOString().split('T')[0],
         waktu: timeStr,
         nomorNota: notaNum,
@@ -242,7 +259,7 @@ export default function SuratJalanPage() {
         nomorRo: location.state.nomorRo || location.state.nomorRO || prev.nomorRo,
         preOrderId: location.state.preOrderId || prev.preOrderId,
         materialId: targetMat || prev.materialId,
-        jenis: location.state.jenis || prev.jenis || 'Jasa Angkut + Material',
+        jenis: normalizeServiceType(location.state.jenis || prev.jenis || 'Jasa Angkut + Material'),
         tanggal: prev.tanggal || now.toISOString().split('T')[0],
         waktu: prev.waktu || timeStr,
         nomorNota: prev.nomorNota || notaNum,
@@ -277,7 +294,7 @@ export default function SuratJalanPage() {
         preOrderId: prev.preOrderId || topPo.id,
         materialId: prev.materialId || newMatId,
         isPpn: topPo.jenisWajibPajak === 'PKP',
-        jenis: prev.jenis || topPo.jenisRO || topPo.jenis || 'Jasa Angkut + Material',
+        jenis: normalizeServiceType(topPo.jenisRO || topPo.jenis || prev.jenis || 'Jasa Angkut + Material'),
       }));
     }
   }, [formData.customer, formData.poNumber, customerApprovedPos, materials]);
@@ -338,7 +355,7 @@ export default function SuratJalanPage() {
         waktu: prev.waktu || timeStr,
         nomorSj: prev.nomorSj || `296${Math.floor(70 + Math.random() * 29)}`,
         nomorNota: prev.nomorNota || `NT-${Math.floor(88900 + Math.random() * 99)}`,
-        jenis: targetPo.jenisRO || targetPo.jenis || prev.jenis || 'Jasa Angkut + Material',
+        jenis: normalizeServiceType(targetPo.jenisRO || targetPo.jenis || prev.jenis || 'Jasa Angkut + Material'),
         nomorPolisi: prev.nomorPolisi || defaultArmada.nopol || 'W 9821 UB',
         panjangCm: prev.panjangCm || defaultArmada.panjangCm || 650,
         lebarCm: prev.lebarCm || defaultArmada.lebarCm || 250,
@@ -413,7 +430,7 @@ export default function SuratJalanPage() {
       preOrderId: selectedPo.id || '',
       materialId: newMatId || prev.materialId,
       isPpn: selectedPo.jenisWajibPajak === 'PKP',
-      jenis: selectedPo.jenisRO || selectedPo.jenis || prev.jenis || 'Jasa Angkut + Material',
+      jenis: normalizeServiceType(selectedPo.jenisRO || selectedPo.jenis || prev.jenis || 'Jasa Angkut + Material'),
     }));
   };
 
@@ -564,9 +581,11 @@ export default function SuratJalanPage() {
     const selectedMat = materials.find((m) => m.id === formData.materialId);
     const finalRoNumber = currentPo?.nomorRO || currentPo?.nomorRo || formData.nomorRo || `RO-${currentPo?.id}`;
     const finalPoNumber = currentPo?.nomorPo || currentPo?.nomorPoCustomer || formData.poNumber;
+    const finalJenis = normalizeServiceType(currentPo?.jenisRO || currentPo?.jenis || formData.jenis || 'Jasa Angkut + Material');
 
     createSuratJalan({
       ...formData,
+      jenis: finalJenis,
       poNumber: finalPoNumber,
       nopol: formData.nomorPolisi,
       nomorRo: finalRoNumber,
@@ -800,18 +819,39 @@ export default function SuratJalanPage() {
                 ))}
               </Select>
 
-              <Select
-                label="Jenis Layanan"
-                icon={Monitor}
-                required
-                value={formData.jenis}
-                onChange={(e) => setFormData({ ...formData, jenis: e.target.value })}
-              >
-                <option value="">-- Pilih Jenis Layanan --</option>
-                <option value="Jasa Angkut + Material">Jasa Angkut + Material</option>
-                <option value="Material Curah Saja">Material Curah Saja</option>
-                <option value="Jasa Angkut Saja">Jasa Angkut Saja</option>
-              </Select>
+              <div className="space-y-1">
+                <Select
+                  label="Jenis Layanan"
+                  icon={Lock}
+                  required
+                  disabled={true}
+                  value={formData.jenis}
+                  onChange={(e) => setFormData({ ...formData, jenis: e.target.value })}
+                  title="Jenis Layanan dikunci otomatis sesuai kontrak Receive Order (RO)"
+                  className="cursor-not-allowed opacity-80"
+                >
+                  {!formData.jenis ? (
+                    <option value="">-- Terkunci Sesuai RO Terpilih --</option>
+                  ) : (
+                    <>
+                      <option value="Jasa Angkut + Material">Jasa Angkut + Material</option>
+                      <option value="Material Curah Saja">Material Curah Saja</option>
+                      <option value="Jasa Angkut Saja">Jasa Angkut Saja</option>
+                      {!['Jasa Angkut + Material', 'Material Curah Saja', 'Jasa Angkut Saja'].includes(formData.jenis) && (
+                        <option value={formData.jenis}>{formData.jenis}</option>
+                      )}
+                    </>
+                  )}
+                </Select>
+                <p className="text-[11px] text-neutral-400 font-mono flex items-center gap-1.5 pt-0.5">
+                  <Lock className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                  <span>
+                    {formData.jenis
+                      ? `Terkunci: ${formData.jenis} (sesuai RO)`
+                      : 'Otomatis terkunci sesuai kontrak Receive Order (RO)'}
+                  </span>
+                </p>
+              </div>
             </div>
 
             {/* Row 5: Tanggal & Waktu */}

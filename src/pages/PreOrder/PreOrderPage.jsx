@@ -27,6 +27,7 @@ import {
   X,
   RotateCcw,
   SlidersHorizontal,
+  ArrowUpDown,
   ChevronDown,
   ChevronRight,
   Filter,
@@ -55,7 +56,6 @@ import {
   DateField,
   SelectField,
   TextField,
-  FormAppBar,
 } from '../../components/form';
 
 /* ─────────────────────────── constants ─────────────────────────── */
@@ -972,78 +972,66 @@ export default function PreOrderPage() {
   return (
     <div className="w-full space-y-4 pb-28 min-h-screen bg-[#0A0C0E] text-white font-sans select-none relative">
 
-      {/* ── TOP APP BAR matching media_1794965493152_ca523882.jpg ── */}
-      {activeTab === 'list' && (
-        <header className="sticky top-0 z-30 bg-[#0A0C0E] border-b border-[#1A1D21] px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={() => {
-                if (window.history.length > 1) navigate(-1);
-                else navigate('/');
-              }}
-              className="p-1 rounded-lg text-neutral-300 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
-              title="Kembali"
-              aria-label="Kembali"
-            >
-              <ArrowLeft className="w-5 h-5 text-white" />
-            </button>
+      {/* ── TOP APP BAR matching user screenshot ── */}
+      <header className="sticky top-0 z-30 bg-[#0A0C0E] border-b border-[#1A1D21] px-4 py-3 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => {
+              if (activeTab === 'create') {
+                setActiveTab('list');
+              } else if (window.history.length > 1) {
+                navigate(-1);
+              } else {
+                navigate('/');
+              }
+            }}
+            className="p-1 rounded-lg text-neutral-300 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+            title="Kembali"
+            aria-label="Kembali"
+          >
+            <ArrowLeft className="w-5 h-5 text-white" />
+          </button>
+          <div>
             <h1 className="text-base sm:text-lg font-bold tracking-tight text-white font-sans">
               Data Received Order
             </h1>
+            <p className="text-xs text-neutral-400 font-sans">
+              Pencatatan &amp; administrasi pesanan masuk dari customer
+            </p>
           </div>
+        </div>
 
-          {/* 4 Toolbar Action Icons */}
-          <div className="flex items-center gap-1">
-            <button
-              type="button"
-              onClick={() => {
-                if (searchInputRef.current) {
-                  searchInputRef.current.focus();
-                  searchInputRef.current.select();
-                }
-              }}
-              className={`p-2 rounded-lg transition-colors cursor-pointer ${
-                searchQuery ? 'text-[#F4511E] bg-[#F4511E]/15' : 'text-neutral-300 hover:text-white hover:bg-white/10'
-              }`}
-              title="Cari Received Order"
-            >
-              <Search className="w-4.5 h-4.5" />
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setFilterOpen(!filterOpen)}
-              className={`p-2 rounded-lg transition-colors cursor-pointer ${
-                filterOpen || hasActiveFilters ? 'text-[#F4511E] bg-[#F4511E]/15' : 'text-neutral-300 hover:text-white hover:bg-white/10'
-              }`}
-              title="Filter Status & Customer"
-            >
-              <Filter className="w-4.5 h-4.5" />
-            </button>
-
-            <button
-              type="button"
-              onClick={handleToggleCalendar}
-              className={`p-2 rounded-lg transition-colors cursor-pointer ${
-                calendarOpen || startDate || endDate ? 'text-[#F4511E] bg-[#F4511E]/15' : 'text-neutral-300 hover:text-white hover:bg-white/10'
-              }`}
-              title="Filter Rentang Tanggal"
-            >
-              <Calendar className="w-4.5 h-4.5" />
-            </button>
-
-            <button
-              type="button"
-              onClick={handleRefresh}
-              className="p-2 rounded-lg text-neutral-300 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
-              title="Refresh & Reset Filter"
-            >
-              <RotateCcw className="w-4.5 h-4.5" />
-            </button>
-          </div>
-        </header>
-      )}
+        {/* Tab Switcher: Daftar RO vs + Input Received Order */}
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setActiveTab('list')}
+            className={`px-4 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+              activeTab === 'list'
+                ? 'bg-[#F4511E] text-white shadow-sm'
+                : 'text-neutral-400 hover:text-white hover:bg-white/5'
+            }`}
+          >
+            Daftar RO ({safePreOrders.length})
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              handleResetForm();
+              setActiveTab('create');
+            }}
+            className={`px-4 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
+              activeTab === 'create'
+                ? 'bg-[#F4511E] text-white shadow-sm'
+                : 'text-neutral-400 hover:text-white hover:bg-white/5'
+            }`}
+          >
+            <Plus className="w-4 h-4" />
+            <span>Input Received Order</span>
+          </button>
+        </div>
+      </header>
 
       {/* ══════════ VIEW 1: DAFTAR RECEIVED ORDER (FAITHFUL TO SCREENSHOT) ══════════ */}
       {activeTab === 'list' && (
@@ -1059,9 +1047,9 @@ export default function PreOrderPage() {
                 <div className="flex items-center gap-1">
                   <button
                     type="button"
-                    onClick={() => { if (searchInputRef.current) { searchInputRef.current.focus(); searchInputRef.current.select(); } }}
-                    className={`p-1.5 rounded-lg transition-colors cursor-pointer ${searchQuery ? 'text-[#F4511E]' : 'text-neutral-400 hover:text-white hover:bg-white/5'}`}
-                    title="Cari"
+                    onClick={() => setFilterOpen(!filterOpen)}
+                    className={`p-1.5 rounded-lg transition-colors cursor-pointer ${filterOpen || hasActiveFilters ? 'text-[#F4511E]' : 'text-neutral-400 hover:text-white hover:bg-white/5'}`}
+                    title="Filter Status & Customer"
                   ><Filter className="w-4 h-4" /></button>
                   <button type="button" onClick={handleToggleCalendar}
                     className={`p-1.5 rounded-lg transition-colors cursor-pointer ${calendarOpen || startDate || endDate ? 'text-[#F4511E]' : 'text-neutral-400 hover:text-white hover:bg-white/5'}`}
@@ -1107,7 +1095,7 @@ export default function PreOrderPage() {
                 <button type="button" onClick={() => setFilterOpen(!filterOpen)}
                   className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-mono transition-colors cursor-pointer ${filterOpen || hasActiveFilters ? 'border-[#F4511E] text-[#F4511E] bg-[#F4511E]/10' : 'border-[#24282F] text-neutral-300 hover:border-neutral-500 bg-[#14171A]'}`}
                 >
-                  <SlidersHorizontal className="w-3.5 h-3.5" />
+                  <ArrowUpDown className="w-3.5 h-3.5" />
                   <span>Prioritas</span>
                 </button>
 
@@ -1645,19 +1633,7 @@ export default function PreOrderPage() {
             </div>
           )}
 
-          {/* ── FLOATING ACTION BUTTON (+) matching Screenshot ── */}
-          <button
-            type="button"
-            onClick={() => {
-              handleResetForm();
-              setActiveTab('create');
-            }}
-            className="fixed bottom-6 right-6 z-40 w-14 h-14 rounded-full bg-[#F4511E] hover:bg-[#E04418] active:scale-95 text-white flex items-center justify-center shadow-xl shadow-[#F4511E]/40 transition-all cursor-pointer"
-            title="Tambah Received Order Baru"
-            aria-label="Tambah Received Order"
-          >
-            <Plus className="w-6 h-6 stroke-[2.5]" />
-          </button>
+
 
           {/* ── DETAIL MODAL ── */}
           <Modal
@@ -1807,8 +1783,7 @@ export default function PreOrderPage() {
 
       {/* ══════════ VIEW 2: FORM BUAT RO (TERSTRUKTUR & RAPI) ══════════ */}
       {activeTab === 'create' && (
-        <div className="space-y-6">
-          <FormAppBar title="Buat Received Order (RO) Baru" onBack={handleCancel} />
+        <div className="px-4 space-y-6 mx-auto max-w-6xl pt-2">
 
           <form onSubmit={handleCreate} noValidate className="space-y-6 pb-6">
 

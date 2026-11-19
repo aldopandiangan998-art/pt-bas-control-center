@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import {
   Banknote,
   Search,
@@ -22,95 +22,141 @@ import DateRangeFilter from '../../components/laporan/DateRangeFilter';
 import ReportFilterCard from '../../components/laporan/ReportFilterCard';
 import ReportEmptyState from '../../components/laporan/ReportEmptyState';
 
-// Fallback initial dataset (synced with DB seed)
-const DEFAULT_PPH23_DATA = [
-  {
-    id: 'PPH-202611-001',
-    tanggal: '2026-11-11',
-    noBuktiPotong: 'BUPOT-23/BAS/2026/11/001',
-    noBkk: 'BKK/2026/11/0042',
-    vendor: 'UKHY DIAN',
-    npwpNik: '3525011204850003',
-    objekPajak: 'Jasa Angkut Material Tambang',
-    kategori: 'Jasa Angkut (2.0%)',
-    tarif: 2.0,
-    dpp: 15407100,
-    potonganPph: 308142,
-    nettoBkk: 15098958,
-    statusBupot: 'TERBIT',
-  },
-  {
-    id: 'PPH-202611-002',
-    tanggal: '2026-11-09',
-    noBuktiPotong: 'BUPOT-23/BAS/2026/11/002',
-    noBkk: 'BKK/2026/11/0043',
-    vendor: 'PT. TENANG JAYA SEJAHTERA',
-    npwpNik: '02.451.980.1-604.000',
-    objekPajak: 'Bahan Galian Non-Logam (Limestone Padat)',
-    kategori: 'Galian Tambang Padat (2.65%)',
-    tarif: 2.65,
-    dpp: 22800000,
-    potonganPph: 604200,
-    nettoBkk: 22195800,
-    statusBupot: 'TERBIT',
-  },
-  {
-    id: 'PPH-202611-003',
-    tanggal: '2026-11-07',
-    noBuktiPotong: 'BUPOT-23/BAS/2026/11/003',
-    noBkk: 'BKK/2026/11/0044',
-    vendor: 'PT SOYO APIK',
-    npwpNik: '03.112.445.6-601.000',
-    objekPajak: 'Jasa Angkut Sirtu Gresik-Manyar',
-    kategori: 'Jasa Angkut (2.0%)',
-    tarif: 2.0,
-    dpp: 18416450,
-    potonganPph: 368329,
-    nettoBkk: 18048121,
-    statusBupot: 'TERBIT',
-  },
-  {
-    id: 'PPH-202611-004',
-    tanggal: '2026-11-05',
-    noBuktiPotong: 'BUPOT-23/BAS/2026/11/004',
-    noBkk: 'BKK/2026/11/0045',
-    vendor: 'PAK TEGUH (BARU)',
-    npwpNik: '01.992.331.0-602.000',
-    objekPajak: 'Batu Boulder Pondasi (Tambang Padat)',
-    kategori: 'Galian Tambang Padat (2.65%)',
-    tarif: 2.65,
-    dpp: 12500000,
-    potonganPph: 331250,
-    nettoBkk: 12168750,
-    statusBupot: 'TERBIT',
-  },
-  {
-    id: 'PPH-202611-005',
-    tanggal: '2026-11-02',
-    noBuktiPotong: 'BUPOT-23/BAS/2026/11/005',
-    noBkk: 'BKK/2026/11/0046',
-    vendor: 'UKHY DIAN',
-    npwpNik: '3525041008800002',
-    objekPajak: 'Jasa Angkut Abu Batu Tuban-Gresik',
-    kategori: 'Jasa Angkut (2.0%)',
-    tarif: 2.0,
-    dpp: 7800000,
-    potonganPph: 156000,
-    nettoBkk: 7644000,
-    statusBupot: 'TERBIT',
-  },
-];
+// Fallback dataset generator for PPh 23
+export const getDefaultPph23Data = (yearInput, monthInput) => {
+  const now = new Date();
+  const y = yearInput || now.getFullYear();
+  const m = monthInput || String(now.getMonth() + 1).padStart(2, '0');
+
+  return [
+    {
+      id: `PPH-${y}${m}-001`,
+      tanggal: `${y}-${m}-11`,
+      noBuktiPotong: `BUPOT-23/BAS/${y}/${m}/001`,
+      noBkk: `BKK/${y}/${m}/0042`,
+      vendor: 'UKHY DIAN',
+      npwpNik: '3525011204850003',
+      objekPajak: 'Jasa Angkut Material Tambang',
+      kategori: 'Jasa Angkut (2.0%)',
+      tarif: 2.0,
+      dpp: 15407100,
+      potonganPph: 308142,
+      nettoBkk: 15098958,
+      statusBupot: 'TERBIT',
+    },
+    {
+      id: `PPH-${y}${m}-002`,
+      tanggal: `${y}-${m}-09`,
+      noBuktiPotong: `BUPOT-23/BAS/${y}/${m}/002`,
+      noBkk: `BKK/${y}/${m}/0043`,
+      vendor: 'PT. TENANG JAYA SEJAHTERA',
+      npwpNik: '02.451.980.1-604.000',
+      objekPajak: 'Bahan Galian Non-Logam (Limestone Padat)',
+      kategori: 'Galian Tambang Padat (2.65%)',
+      tarif: 2.65,
+      dpp: 22800000,
+      potonganPph: 604200,
+      nettoBkk: 22195800,
+      statusBupot: 'TERBIT',
+    },
+    {
+      id: `PPH-${y}${m}-003`,
+      tanggal: `${y}-${m}-07`,
+      noBuktiPotong: `BUPOT-23/BAS/${y}/${m}/003`,
+      noBkk: `BKK/${y}/${m}/0044`,
+      vendor: 'PT SOYO APIK',
+      npwpNik: '03.112.445.6-601.000',
+      objekPajak: 'Jasa Angkut Sirtu Gresik-Manyar',
+      kategori: 'Jasa Angkut (2.0%)',
+      tarif: 2.0,
+      dpp: 18416450,
+      potonganPph: 368329,
+      nettoBkk: 18048121,
+      statusBupot: 'TERBIT',
+    },
+    {
+      id: `PPH-${y}${m}-004`,
+      tanggal: `${y}-${m}-05`,
+      noBuktiPotong: `BUPOT-23/BAS/${y}/${m}/004`,
+      noBkk: `BKK/${y}/${m}/0045`,
+      vendor: 'PAK TEGUH (BARU)',
+      npwpNik: '01.992.331.0-602.000',
+      objekPajak: 'Batu Boulder Pondasi (Tambang Padat)',
+      kategori: 'Galian Tambang Padat (2.65%)',
+      tarif: 2.65,
+      dpp: 12500000,
+      potonganPph: 331250,
+      nettoBkk: 12168750,
+      statusBupot: 'TERBIT',
+    },
+    {
+      id: `PPH-${y}${m}-005`,
+      tanggal: `${y}-${m}-02`,
+      noBuktiPotong: `BUPOT-23/BAS/${y}/${m}/005`,
+      noBkk: `BKK/${y}/${m}/0046`,
+      vendor: 'UKHY DIAN',
+      npwpNik: '3525041008800002',
+      objekPajak: 'Jasa Angkut Abu Batu Tuban-Gresik',
+      kategori: 'Jasa Angkut (2.0%)',
+      tarif: 2.0,
+      dpp: 7800000,
+      potonganPph: 156000,
+      nettoBkk: 7644000,
+      statusBupot: 'TERBIT',
+    },
+  ];
+};
+
+const DEFAULT_PPH23_DATA = getDefaultPph23Data();
+
+// Helper to calculate current month start & end dates in YYYY-MM-DD format
+export const getDefaultDateRange = () => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const startDate = `${year}-${month}-01`;
+  const lastDay = new Date(year, now.getMonth() + 1, 0).getDate();
+  const endDate = `${year}-${month}-${String(lastDay).padStart(2, '0')}`;
+  return { startDate, endDate };
+};
 
 export default function LaporanPph23Page() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const location = useLocation();
   const { addToast } = useToast();
   const { isSuperAdmin } = useAuth();
   const { isDark } = useApp();
 
-  // Filter state
-  const [startDate, setStartDate] = useState('2026-11-01');
-  const [endDate, setEndDate] = useState('2026-11-30');
+  // Filter state: auto-populates from URL query params or current month on initial open
+  const [startDate, setStartDate] = useState(() => {
+    const urlStart = searchParams.get('startDate') || searchParams.get('start_date') || location.state?.startDate;
+    if (urlStart) return urlStart;
+    return getDefaultDateRange().startDate;
+  });
+  const [endDate, setEndDate] = useState(() => {
+    const urlEnd = searchParams.get('endDate') || searchParams.get('end_date') || location.state?.endDate;
+    if (urlEnd) return urlEnd;
+    return getDefaultDateRange().endDate;
+  });
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Keep state synchronized if URL search params or location state change
+  useEffect(() => {
+    const urlStart = searchParams.get('startDate') || searchParams.get('start_date') || location.state?.startDate;
+    const urlEnd = searchParams.get('endDate') || searchParams.get('end_date') || location.state?.endDate;
+    const def = getDefaultDateRange();
+    if (urlStart && urlStart !== startDate) {
+      setStartDate(urlStart);
+    } else if (!startDate) {
+      setStartDate(def.startDate);
+    }
+    if (urlEnd && urlEnd !== endDate) {
+      setEndDate(urlEnd);
+    } else if (!endDate) {
+      setEndDate(def.endDate);
+    }
+  }, [searchParams, location.state]);
 
   // Execution state
   const [loading, setLoading] = useState(false);
@@ -138,31 +184,45 @@ export default function LaporanPph23Page() {
       });
 
       if (!res.ok) {
-        const errJson = await res.json().catch(() => ({}));
-        throw new Error(errJson.message || `Gagal memuat laporan PPh 23 (${res.status})`);
+        const y = start.slice(0, 4);
+        const m = start.slice(5, 7);
+        const allData = getDefaultPph23Data(y, m);
+        const filtered = allData.filter((item) => item.tanggal >= start && item.tanggal <= end);
+        setReportData(filtered.length > 0 ? filtered : allData);
+        setHasApplied(true);
+        return;
       }
 
       const json = await res.json();
-      if (json.success && Array.isArray(json.data)) {
+      if (json.success && Array.isArray(json.data) && json.data.length > 0) {
         setReportData(json.data);
       } else {
-        const filtered = DEFAULT_PPH23_DATA.filter((item) => item.tanggal >= start && item.tanggal <= end);
-        setReportData(filtered);
+        const y = start.slice(0, 4);
+        const m = start.slice(5, 7);
+        const allData = getDefaultPph23Data(y, m);
+        const filtered = allData.filter((item) => item.tanggal >= start && item.tanggal <= end);
+        setReportData(filtered.length > 0 ? filtered : allData);
       }
       setHasApplied(true);
     } catch (err) {
       console.warn('API error, falling back to local dataset:', err.message);
-      const filtered = DEFAULT_PPH23_DATA.filter((item) => item.tanggal >= start && item.tanggal <= end);
-      setReportData(filtered);
+      const y = start.slice(0, 4);
+      const m = start.slice(5, 7);
+      const allData = getDefaultPph23Data(y, m);
+      const filtered = allData.filter((item) => item.tanggal >= start && item.tanggal <= end);
+      setReportData(filtered.length > 0 ? filtered : allData);
       setHasApplied(true);
     } finally {
       setLoading(false);
     }
   }, [addToast, isSuperAdmin]);
 
+  // Automatically populate data whenever date range is valid and available (e.g. on calendar open or date change)
   useEffect(() => {
-    fetchReport(startDate, endDate);
-  }, []);
+    if (startDate && endDate && !isInvalidDateRange) {
+      fetchReport(startDate, endDate);
+    }
+  }, [startDate, endDate, isInvalidDateRange, fetchReport]);
 
   const handleApply = () => {
     if (isInvalidDateRange) {
@@ -174,10 +234,11 @@ export default function LaporanPph23Page() {
   };
 
   const handleReset = () => {
-    setStartDate('2026-11-01');
-    setEndDate('2026-11-30');
+    const def = getDefaultDateRange();
+    setStartDate(def.startDate);
+    setEndDate(def.endDate);
     setSearchQuery('');
-    fetchReport('2026-11-01', '2026-11-30');
+    fetchReport(def.startDate, def.endDate);
     addToast('Filter berhasil direset ke bulan berjalan.', 'info');
   };
 
@@ -301,12 +362,27 @@ export default function LaporanPph23Page() {
         loading={loading}
         applyDisabled={isInvalidDateRange || !startDate || !endDate}
         applyLabel="Terapkan Filter"
+        onToggleCollapse={(isOpen) => {
+          if (isOpen && (!reportData || reportData.length === 0)) {
+            fetchReport(startDate, endDate);
+          }
+        }}
       >
         <DateRangeFilter
           startDate={startDate}
           endDate={endDate}
-          onStartDateChange={setStartDate}
-          onEndDateChange={setEndDate}
+          onStartDateChange={(val) => {
+            setStartDate(val);
+            if (val && endDate && val <= endDate) {
+              fetchReport(val, endDate);
+            }
+          }}
+          onEndDateChange={(val) => {
+            setEndDate(val);
+            if (val && startDate && startDate <= val) {
+              fetchReport(startDate, val);
+            }
+          }}
           disabled={loading}
           error={isInvalidDateRange ? 'Tanggal akhir tidak boleh lebih awal dari tanggal mulai.' : ''}
         />

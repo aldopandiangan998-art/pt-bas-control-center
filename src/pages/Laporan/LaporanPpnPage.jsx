@@ -1,5 +1,5 @@
-import { useState, useMemo, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import {
   Receipt,
   Search,
@@ -95,16 +95,54 @@ const DEFAULT_PPN_DATA = [
   },
 ];
 
+// Helper to calculate current month start & end dates in YYYY-MM-DD format
+const getDefaultDateRange = () => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const startDate = `${year}-${month}-01`;
+  const lastDay = new Date(year, now.getMonth() + 1, 0).getDate();
+  const endDate = `${year}-${month}-${String(lastDay).padStart(2, '0')}`;
+  return { startDate, endDate };
+};
+
 export default function LaporanPpnPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const location = useLocation();
   const { addToast } = useToast();
   const { isSuperAdmin } = useAuth();
   const { isDark } = useApp();
 
-  // Filters state
-  const [startDate, setStartDate] = useState('2026-11-01');
-  const [endDate, setEndDate] = useState('2026-11-30');
+  // Filters state: auto-populates from URL query params or current month on initial open
+  const [startDate, setStartDate] = useState(() => {
+    const urlStart = searchParams.get('startDate') || searchParams.get('start_date') || location.state?.startDate;
+    if (urlStart) return urlStart;
+    return getDefaultDateRange().startDate;
+  });
+  const [endDate, setEndDate] = useState(() => {
+    const urlEnd = searchParams.get('endDate') || searchParams.get('end_date') || location.state?.endDate;
+    if (urlEnd) return urlEnd;
+    return getDefaultDateRange().endDate;
+  });
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Keep state synchronized if URL search params or location state change
+  useEffect(() => {
+    const urlStart = searchParams.get('startDate') || searchParams.get('start_date') || location.state?.startDate;
+    const urlEnd = searchParams.get('endDate') || searchParams.get('end_date') || location.state?.endDate;
+    const def = getDefaultDateRange();
+    if (urlStart && urlStart !== startDate) {
+      setStartDate(urlStart);
+    } else if (!startDate) {
+      setStartDate(def.startDate);
+    }
+    if (urlEnd && urlEnd !== endDate) {
+      setEndDate(urlEnd);
+    } else if (!endDate) {
+      setEndDate(def.endDate);
+    }
+  }, [searchParams, location.state]);
 
   // Execution state
   const [loading, setLoading] = useState(false);
@@ -158,6 +196,13 @@ export default function LaporanPpnPage() {
     }
   }, [addToast, isSuperAdmin]);
 
+  useEffect(() => {
+    const def = getDefaultDateRange();
+    const effectiveStart = startDate || def.startDate;
+    const effectiveEnd = endDate || def.endDate;
+    fetchReport(effectiveStart, effectiveEnd);
+  }, []);
+
   const handleApply = () => {
     if (isInvalidDateRange) {
       addToast('Tanggal akhir tidak boleh lebih awal dari tanggal mulai.', 'error');
@@ -168,12 +213,12 @@ export default function LaporanPpnPage() {
   };
 
   const handleReset = () => {
-    setStartDate('2026-11-01');
-    setEndDate('2026-11-30');
+    const def = getDefaultDateRange();
+    setStartDate(def.startDate);
+    setEndDate(def.endDate);
     setSearchQuery('');
-    setReportData([]);
-    setHasApplied(false);
-    addToast('Filter berhasil direset.', 'info');
+    fetchReport(def.startDate, def.endDate);
+    addToast('Filter berhasil direset ke bulan berjalan.', 'info');
   };
 
   // Filtered rows for client search

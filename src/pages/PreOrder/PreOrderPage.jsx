@@ -343,6 +343,21 @@ export default function PreOrderPage() {
   const collapseAllGroups = () => setCollapsedGroups(new Set(filteredPreOrders.map((p) => p.customer || 'Lainnya')));
   const expandAllGroups = () => setCollapsedGroups(new Set());
 
+  const handleToggleCalendar = () => {
+    const next = !calendarOpen;
+    setCalendarOpen(next);
+    if (next && (!startDate || !endDate)) {
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      if (!startDate) setStartDate(`${year}-${month}-01`);
+      if (!endDate) {
+        const lastDay = new Date(year, now.getMonth() + 1, 0).getDate();
+        setEndDate(`${year}-${month}-${String(lastDay).padStart(2, '0')}`);
+      }
+    }
+  };
+
   const handleStartDateChange = (val) => {
     setStartDate(val);
     if (val && endDate && endDate < val) {
@@ -1001,7 +1016,7 @@ export default function PreOrderPage() {
 
             <button
               type="button"
-              onClick={() => setCalendarOpen(!calendarOpen)}
+              onClick={handleToggleCalendar}
               className={`p-2 rounded-lg transition-colors cursor-pointer ${
                 calendarOpen || startDate || endDate ? 'text-[#F4511E] bg-[#F4511E]/15' : 'text-neutral-300 hover:text-white hover:bg-white/10'
               }`}
@@ -1040,7 +1055,7 @@ export default function PreOrderPage() {
                     className={`p-1.5 rounded-lg transition-colors cursor-pointer ${searchQuery ? 'text-[#F4511E]' : 'text-neutral-400 hover:text-white hover:bg-white/5'}`}
                     title="Cari"
                   ><Filter className="w-4 h-4" /></button>
-                  <button type="button" onClick={() => setCalendarOpen(!calendarOpen)}
+                  <button type="button" onClick={handleToggleCalendar}
                     className={`p-1.5 rounded-lg transition-colors cursor-pointer ${calendarOpen || startDate || endDate ? 'text-[#F4511E]' : 'text-neutral-400 hover:text-white hover:bg-white/5'}`}
                     title="Rentang Tanggal"
                   ><Calendar className="w-4 h-4" /></button>

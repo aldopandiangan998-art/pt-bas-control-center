@@ -1138,10 +1138,11 @@ app.post('/api/pre-orders', (req, res) => {
     const firstMaterial = finalizedItems.find((it) => getItemType(it) === ITEM_TYPES.MATERIAL) || firstItem;
 
     // Database transaction (Section 5.3 item 3)
+    const resolvedPoNumber = b.nomorPo || b.nomorPoCustomer || null;
     const insertTransaction = db.transaction(() => {
       const params = [
         id,
-        b.nomorPo ?? null,
+        resolvedPoNumber,
         b.customer ?? '',
         b.customerAddress ?? '',
         firstMaterial.materialId ?? b.materialId ?? '',

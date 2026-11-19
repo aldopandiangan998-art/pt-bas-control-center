@@ -45,6 +45,67 @@ export default function SuratJalanPage() {
     return (preOrders || []).filter((po) => po.status === 'APPROVED');
   }, [preOrders]);
 
+  // Helper for matching customer name robustly across variations (e.g. PT LION WINGS vs LION WINGS, PT)
+  const normalizeCustomer = (val) => {
+    if (!val) return '';
+    return String(val)
+      .toUpperCase()
+      .replace(/\b(PT\.?|CV\.?|UD\.?|TBK\.?|PERSERO)\b/gi, '')
+      .replace(/[^A-Z0-9]/g, '')
+      .trim();
+  };
+
+  const isCustomerMatch = (custA, custB) => {
+    if (!custA || !custB) return false;
+    if (custA === custB) return true;
+    if (custA.trim().toLowerCase() === custB.trim().toLowerCase()) return true;
+
+    const normA = normalizeCustomer(custA);
+    const normB = normalizeCustomer(custB);
+    if (normA && normB && normA === normB) return true;
+
+    const masterA = customers.find(
+      (c) =>
+        c.name === custA ||
+        normalizeCustomer(c.name) === normA ||
+        (c.alias && normalizeCustomer(c.alias) === normA)
+    );
+    const masterB = customers.find(
+      (c) =>
+        c.name === custB ||
+        normalizeCustomer(c.name) === normB ||
+        (c.alias && normalizeCustomer(c.alias) === normB)
+    );
+
+    if (masterA && masterB && masterA.id === masterB.id) return true;
+    if (masterA && (masterA.name === custB || normalizeCustomer(masterA.name) === normB || (masterA.alias && normalizeCustomer(masterA.alias) === normB))) return true;
+    if (masterB && (masterB.name === custA || normalizeCustomer(masterB.name) === normA || (masterB.alias && normalizeCustomer(masterB.alias) === normA))) return true;
+
+    if (normA.length >= 4 && normB.length >= 4) {
+      if (normA.includes(normB) || normB.includes(normA)) return true;
+    }
+
+    return false;
+  };
+
+  // Customer dropdown list containing master customers plus any customer having an approved RO
+  const customerOptions = useMemo(() => {
+    const list = [...customers];
+    (approvedPos || []).forEach((po) => {
+      if (!po.customer) return;
+      const exists = list.some((c) => isCustomerMatch(c.name, po.customer));
+      if (!exists) {
+        list.push({
+          id: `cust-po-${po.id}`,
+          name: po.customer,
+          kodePrefix: po.customer.slice(0, 2).toUpperCase(),
+          alias: po.customer,
+        });
+      }
+    });
+    return list;
+  }, [customers, approvedPos]);
+
   // Check if navigation came from an unapproved PO
   const navPo = useMemo(() => {
     if (!preOrderState.preOrderId && !preOrderState.nomorPo) return null;
@@ -142,11 +203,17 @@ export default function SuratJalanPage() {
     };
   });
 
-  // Approved POs for the currently selected customer
+  // Approved POs for the currently selected customer, sorted with newest first
   const customerApprovedPos = useMemo(() => {
     if (!formData.customer) return [];
-    return approvedPos.filter((po) => po.customer === formData.customer);
-  }, [approvedPos, formData.customer]);
+    return approvedPos
+      .filter((po) => isCustomerMatch(po.customer, formData.customer))
+      .sort((a, b) => {
+        const dateA = a.tanggal || a.approvedAt || '';
+        const dateB = b.tanggal || b.approvedAt || '';
+        return dateB.localeCompare(dateA) || String(b.id).localeCompare(String(a.id));
+      });
+  }, [approvedPos, formData.customer, customers]);
 
   // Sync state if location.state changes
   useEffect(() => {
@@ -188,7 +255,34 @@ export default function SuratJalanPage() {
     }
   }, [location.state, materials, armadaList]);
 
-  // Customer dropdown change handler
+  // Reactive auto-detection when customer is set but PO number is still blank
+  useEffect(() => {
+    if (formData.customer && !formData.poNumber && customerApprovedPos.length > 0) {
+      const topPo = customerApprovedPos[0];
+      const detectedPoVal = topPo.nomorPo || topPo.nomorPoCustomer || topPo.id;
+      const detectedRo = topPo.nomorRO || topPo.nomorRo || `RO-${topPo.id}`;
+
+      let newMatId = topPo.materialId;
+      if (!newMatId && topPo.materialName) {
+        const match = materials.find(
+          (m) => m.name.toLowerCase() === topPo.materialName.toLowerCase()
+        );
+        if (match) newMatId = match.id;
+      }
+
+      setFormData((prev) => ({
+        ...prev,
+        poNumber: detectedPoVal,
+        nomorRo: prev.nomorRo || detectedRo,
+        preOrderId: prev.preOrderId || topPo.id,
+        materialId: prev.materialId || newMatId,
+        isPpn: topPo.jenisWajibPajak === 'PKP',
+        jenis: prev.jenis || topPo.jenisRO || topPo.jenis || 'Jasa Angkut + Material',
+      }));
+    }
+  }, [formData.customer, formData.poNumber, customerApprovedPos, materials]);
+
+  // Customer dropdown change handler: detects PO Number automatically!
   const handleCustomerChange = (newCustomer) => {
     if (!newCustomer) {
       setFormData((prev) => ({
@@ -203,34 +297,79 @@ export default function SuratJalanPage() {
       return;
     }
 
-    const custPos = approvedPos.filter((po) => po.customer === newCustomer);
-    const firstPo = custPos[0];
-    let newMatId = formData.materialId;
-    if (firstPo?.materialId) {
-      newMatId = firstPo.materialId;
-    } else if (firstPo?.materialName) {
-      const match = materials.find(
-        (m) => m.name.toLowerCase() === firstPo.materialName.toLowerCase()
+    const matchingPos = approvedPos
+      .filter((po) => isCustomerMatch(po.customer, newCustomer))
+      .sort((a, b) => {
+        const dateA = a.tanggal || a.approvedAt || '';
+        const dateB = b.tanggal || b.approvedAt || '';
+        return dateB.localeCompare(dateA) || String(b.id).localeCompare(String(a.id));
+      });
+
+    const targetPo = matchingPos[0];
+    const defaultArmada = armadaList[0] || {};
+    const now = new Date();
+    const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+    const todayStr = now.toISOString().split('T')[0];
+
+    if (targetPo) {
+      const detectedPoVal = targetPo.nomorPo || targetPo.nomorPoCustomer || targetPo.id;
+      const detectedRo = targetPo.nomorRO || targetPo.nomorRo || (targetPo.id ? `RO-${targetPo.id}` : '');
+
+      let newMatId = targetPo.materialId;
+      if (!newMatId && targetPo.materialName) {
+        const match = materials.find(
+          (m) => m.name.toLowerCase() === targetPo.materialName.toLowerCase()
+        );
+        if (match) newMatId = match.id;
+      }
+      if (!newMatId && materials.length > 0) {
+        newMatId = materials[0].id;
+      }
+
+      setFormData((prev) => ({
+        ...prev,
+        customer: newCustomer,
+        poNumber: detectedPoVal,
+        nomorRo: detectedRo,
+        preOrderId: targetPo.id || '',
+        materialId: newMatId || prev.materialId,
+        isPpn: targetPo.jenisWajibPajak === 'PKP',
+        tanggal: prev.tanggal || todayStr,
+        waktu: prev.waktu || timeStr,
+        nomorSj: prev.nomorSj || `296${Math.floor(70 + Math.random() * 29)}`,
+        nomorNota: prev.nomorNota || `NT-${Math.floor(88900 + Math.random() * 99)}`,
+        jenis: targetPo.jenisRO || targetPo.jenis || prev.jenis || 'Jasa Angkut + Material',
+        nomorPolisi: prev.nomorPolisi || defaultArmada.nopol || 'W 9821 UB',
+        panjangCm: prev.panjangCm || defaultArmada.panjangCm || 650,
+        lebarCm: prev.lebarCm || defaultArmada.lebarCm || 250,
+        tinggiCm: prev.tinggiCm || defaultArmada.tinggiCm || 200,
+        koreksiTinggiCm: prev.koreksiTinggiCm || 0,
+      }));
+
+      if (targetPo.nomorPo || targetPo.nomorPoCustomer) {
+        addToast(
+          `Nomor PO "${detectedPoVal}" otomatis terdeteksi untuk ${newCustomer} (RO: ${detectedRo}).`,
+          'success'
+        );
+      } else {
+        addToast(
+          `RO "${detectedRo}" terdeteksi untuk ${newCustomer}. Nomor PO akan terbit otomatis pada Surat Jalan pertama.`,
+          'info'
+        );
+      }
+    } else {
+      setFormData((prev) => ({
+        ...prev,
+        customer: newCustomer,
+        poNumber: '',
+        nomorRo: '',
+        preOrderId: '',
+      }));
+      addToast(
+        `Customer "${newCustomer}" belum memiliki RO yang disetujui (APPROVED) oleh Super Admin.`,
+        'warning'
       );
-      if (match) newMatId = match.id;
     }
-
-    const resolvedRo = firstPo?.nomorRO || firstPo?.nomorRo || (firstPo ? `RO-${firstPo.id}` : formData.nomorRo);
-
-    setFormData((prev) => ({
-      ...prev,
-      customer: newCustomer,
-      poNumber: firstPo?.nomorPo || firstPo?.id || '',
-      nomorRo: resolvedRo,
-      preOrderId: firstPo?.id || '',
-      materialId: newMatId || prev.materialId,
-      isPpn: firstPo?.jenisWajibPajak === 'PKP' ? true : prev.isPpn,
-      tanggal: prev.tanggal || new Date().toISOString().split('T')[0],
-      waktu: prev.waktu || `${String(new Date().getHours()).padStart(2, '0')}:${String(new Date().getMinutes()).padStart(2, '0')}`,
-      nomorSj: prev.nomorSj || `296${Math.floor(70 + Math.random() * 29)}`,
-      nomorNota: prev.nomorNota || `NT-${Math.floor(88900 + Math.random() * 99)}`,
-      jenis: prev.jenis || firstPo?.jenisRO || firstPo?.jenis || 'Jasa Angkut + Material',
-    }));
   };
 
   // PO selection handler
@@ -245,26 +384,36 @@ export default function SuratJalanPage() {
       return;
     }
 
-    const selectedPo = approvedPos.find((po) => (po.nomorPo && po.nomorPo === selVal) || po.id === selVal);
-    let newMatId = formData.materialId;
-    if (selectedPo?.materialId) {
-      newMatId = selectedPo.materialId;
-    } else if (selectedPo?.materialName) {
+    const selectedPo = approvedPos.find(
+      (po) =>
+        (po.nomorPo && po.nomorPo === selVal) ||
+        (po.nomorPoCustomer && po.nomorPoCustomer === selVal) ||
+        po.id === selVal ||
+        (po.nomorRO && po.nomorRO === selVal)
+    );
+
+    if (!selectedPo) {
+      setFormData((prev) => ({ ...prev, poNumber: selVal }));
+      return;
+    }
+
+    let newMatId = selectedPo.materialId;
+    if (!newMatId && selectedPo.materialName) {
       const match = materials.find(
         (m) => m.name.toLowerCase() === selectedPo.materialName.toLowerCase()
       );
       if (match) newMatId = match.id;
     }
-    const resolvedRo = selectedPo?.nomorRO || selectedPo?.nomorRo || (selectedPo ? `RO-${selectedPo.id}` : formData.nomorRo);
+    const resolvedRo = selectedPo.nomorRO || selectedPo.nomorRo || (selectedPo ? `RO-${selectedPo.id}` : formData.nomorRo);
 
     setFormData((prev) => ({
       ...prev,
       poNumber: selVal,
       nomorRo: resolvedRo,
-      preOrderId: selectedPo?.id || '',
+      preOrderId: selectedPo.id || '',
       materialId: newMatId || prev.materialId,
-      isPpn: selectedPo?.jenisWajibPajak === 'PKP' ? true : prev.isPpn,
-      jenis: prev.jenis || selectedPo?.jenisRO || selectedPo?.jenis || 'Jasa Angkut + Material',
+      isPpn: selectedPo.jenisWajibPajak === 'PKP',
+      jenis: selectedPo.jenisRO || selectedPo.jenis || prev.jenis || 'Jasa Angkut + Material',
     }));
   };
 
@@ -372,7 +521,11 @@ export default function SuratJalanPage() {
     }
 
     const currentPo = approvedPos.find(
-      (po) => (po.nomorPo && po.nomorPo === formData.poNumber) || po.id === formData.poNumber
+      (po) =>
+        (po.nomorPo && po.nomorPo === formData.poNumber) ||
+        (po.nomorPoCustomer && po.nomorPoCustomer === formData.poNumber) ||
+        po.id === formData.poNumber ||
+        (po.nomorRO && (po.nomorRO === formData.poNumber || po.nomorRO === formData.nomorRo))
     );
 
     if (!currentPo || currentPo.status !== 'APPROVED') {
@@ -410,9 +563,11 @@ export default function SuratJalanPage() {
 
     const selectedMat = materials.find((m) => m.id === formData.materialId);
     const finalRoNumber = currentPo?.nomorRO || currentPo?.nomorRo || formData.nomorRo || `RO-${currentPo?.id}`;
+    const finalPoNumber = currentPo?.nomorPo || currentPo?.nomorPoCustomer || formData.poNumber;
 
     createSuratJalan({
       ...formData,
+      poNumber: finalPoNumber,
       nopol: formData.nomorPolisi,
       nomorRo: finalRoNumber,
       nomorRO: finalRoNumber,
@@ -548,12 +703,12 @@ export default function SuratJalanPage() {
               onChange={(e) => handleCustomerChange(e.target.value)}
             >
               <option value="">-- Pilih Customer --</option>
-              {customers.map((c) => (
+              {customerOptions.map((c) => (
                 <option key={c.id || c.name} value={c.name}>
                   {c.kodePrefix ? `${c.kodePrefix} - ` : ''}{c.name}
                 </option>
               ))}
-              {!customers.some((c) => c.name === formData.customer) && formData.customer && (
+              {!customerOptions.some((c) => c.name === formData.customer) && formData.customer && (
                 <option value={formData.customer}>{formData.customer}</option>
               )}
             </Select>
@@ -576,14 +731,25 @@ export default function SuratJalanPage() {
                 ) : (
                   <>
                     <option value="">-- Pilih Nomor PO --</option>
-                    {customerApprovedPos.map((po) => (
-                      <option key={po.id} value={po.nomorPo || po.id}>
-                        [{po.nomorRO || `RO-${po.id}`}] {po.nomorPo ? `(PO: ${po.nomorPo})` : '(Draft Terverifikasi)'} - {po.customer} ({po.materialName})
-                      </option>
-                    ))}
+                    {customerApprovedPos.map((po) => {
+                      const poVal = po.nomorPo || po.nomorPoCustomer || po.id;
+                      const roLabel = po.nomorRO || `RO-${po.id}`;
+                      const poDisplay = po.nomorPo || po.nomorPoCustomer;
+                      return (
+                        <option key={po.id} value={poVal}>
+                          [{roLabel}] {poDisplay ? `(PO: ${poDisplay})` : '(Draft Terverifikasi - PO Otomatis)'} - {po.customer} ({po.materialName || 'Material'})
+                        </option>
+                      );
+                    })}
                   </>
                 )}
               </Select>
+              {formData.customer && customerApprovedPos.length > 0 && formData.poNumber && (
+                <p className="text-[11px] text-emerald-400 font-mono flex items-center gap-1.5 pt-0.5">
+                  <CheckCircle2 className="w-3.5 h-3.5 shrink-0 text-emerald-400" />
+                  <span>Nomor PO otomatis terdeteksi dari RO berstatus APPROVED.</span>
+                </p>
+              )}
               {formData.customer && customerApprovedPos.length === 0 && (
                 <p className="text-[11px] text-amber-400 font-mono flex items-center gap-1.5 pt-0.5">
                   <AlertCircle className="w-3.5 h-3.5 shrink-0" />

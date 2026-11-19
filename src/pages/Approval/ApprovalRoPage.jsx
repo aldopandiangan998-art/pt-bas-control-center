@@ -1060,11 +1060,12 @@ export default function ApprovalRoPage() {
                               fromPreOrder: true,
                               preOrderId: po.id,
                               customer: po.customer,
-                              nomorPo: po.nomorPo || po.id,
+                              nomorPo: po.nomorPo || po.nomorPoCustomer || po.id,
                               materialId: po.materialId,
                               materialName: po.materialName,
-                              jenis: po.jenis || 'Jasa Angkut + Material',
+                              jenis: po.jenisRO || po.jenis || 'Jasa Angkut + Material',
                               nomorRo: po.nomorRo || po.nomorRO || `RO-${po.id}`,
+                              isPpn: po.jenisWajibPajak === 'PKP',
                             },
                           })
                         }

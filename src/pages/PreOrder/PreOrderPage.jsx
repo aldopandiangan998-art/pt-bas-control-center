@@ -876,6 +876,7 @@ export default function PreOrderPage() {
 
       await createPreOrder({
         ...formData,
+        nomorPo: formData.nomorPoCustomer || formData.nomorPo || null,
         customerAddress,
         items,
         materialId: firstMaterial.materialId || 'mat-8',
@@ -934,11 +935,12 @@ export default function PreOrderPage() {
         fromPreOrder: true,
         preOrderId: po.id,
         customer: po.customer,
-        nomorPo: po.nomorPo || po.id,
+        nomorPo: po.nomorPo || po.nomorPoCustomer || po.id,
         materialId: po.materialId,
         materialName: po.materialName,
-        jenis: po.jenis || 'Jasa Angkut + Material',
+        jenis: po.jenisRO || po.jenis || 'Jasa Angkut + Material',
         nomorRo: po.nomorRO || po.nomorRo || `RO-${po.id}`,
+        isPpn: po.jenisWajibPajak === 'PKP',
       },
     });
   };

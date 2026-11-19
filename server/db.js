@@ -436,6 +436,7 @@ export function initDb() {
       ['nomorFakturPajak', 'TEXT'],
       ['npwp', 'TEXT'],
       ['materialType', 'TEXT'],
+      ['jenis', 'TEXT'],
       ['dpp', 'REAL DEFAULT 0'],
       ['tarifPpn', 'REAL DEFAULT 11'],
       ['ppn', 'REAL DEFAULT 0'],
@@ -444,6 +445,8 @@ export function initDb() {
       ['statusFaktur', "TEXT DEFAULT 'APPROVED DJP'"],
       ['customerId', 'TEXT'],
       ['supplierId', 'TEXT'],
+      ['preOrderId', 'TEXT'],
+      ['jurnalId', 'TEXT'],
       ['customerAddress', 'TEXT'],
       ['subtotalJasa', 'REAL DEFAULT 0'],
       ['ppnNominal', 'REAL DEFAULT 0'],
@@ -454,6 +457,8 @@ export function initDb() {
       ['tanggalBayar', 'TEXT'],
       ['kirimKeRekening', 'TEXT'],
       ['rekeningAtasNama', 'TEXT'],
+      ['timestamp', 'TEXT'],
+      ['updated_at', 'TEXT'],
     ];
     for (const [col, colType] of newInvCols) {
       if (!invCols.includes(col)) {
@@ -786,10 +791,10 @@ export function syncBkkAndInvoices() {
         db.prepare(`
           INSERT INTO invoices (
             id, kodeTransaksi, nomorRO, preOrderId, jurnalId, poNumber,
-            customerId, supplierId, perusahaan, customerAddress, material, jenis, volume, satuan,
+            customerId, supplierId, perusahaan, customer, customerAddress, material, jenis, volume, satuan,
             hargaSatuan, subtotalJasa, ppnNominal, pphNominal, amount, statusBayar, tanggal, waktu,
             timestamp, periode, kirimKeRekening, rekeningAtasNama, created_at, updated_at
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `).run(
           invId,
           invCode,
@@ -799,6 +804,7 @@ export function syncBkkAndInvoices() {
           jrn.poNumber,
           custId,
           supId,
+          jrn.customer,
           jrn.customer,
           jrn.customerAddress || '',
           jrn.material,
@@ -937,7 +943,7 @@ function seedInitialData() {
   try {
     db.prepare("DELETE FROM users WHERE id IN ('usr-2', 'usr-3') OR LOWER(email) IN ('admin@ptbas.co.id', 'admin.dummy@ptbas.co.id')").run();
     db.prepare("UPDATE users SET branch = 'Hub Gresik' WHERE branch LIKE '%Site [%' OR branch LIKE '%// Tgl:%'").run();
-  } catch (e) {}
+  } catch (e) { }
 
   const insertUser = db.prepare(`
     INSERT INTO users (id, name, email, password, role, roleLabel, branch, phone, birth_date, gender, aktif, created_at)
@@ -1030,19 +1036,22 @@ function seedInitialData() {
     insertArm.run('arm-6', 'W 9821 UB', 650, 250, 200, 'Hino Ranger 500', 'VIN-990123', 'J08E-991', 2023);
   }
 
-  // Seed customers if empty
-  const custCount = db.prepare('SELECT COUNT(*) as count FROM customers').get().count;
-  if (custCount === 0) {
-    const insertCust = db.prepare(`
-      INSERT INTO customers (id, name, alias, badanUsaha, alamat, npwp, telepon, kodePrefix, aktif)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)
-    `);
+  // Seed customers if empty or missing standard customers
+  const insertCust = db.prepare(`
+    INSERT OR IGNORE INTO customers (id, name, alias, badanUsaha, alamat, npwp, telepon, kodePrefix, aktif)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)
+  `);
 
-    insertCust.run('cust-1', 'PT LION WINGS', 'LION', 'PT', 'Kawasan Industri Gresik (KIG) Blok C-12, Manyar, Gresik', '01.234.567.8-012.000', '031-3981234', 'LW');
-    insertCust.run('cust-2', 'PT SEMEN INDONESIA', 'SMN', 'PT', 'Jl. Veteran, Gresik', '01.987.654.3-098.000', '031-3985678', 'SI');
-    insertCust.run('cust-3', 'PT SOLUSI BANGUN INDONESIA', 'SBI', 'PT', 'Tuban Quarry Complex', '02.345.678.9-023.000', '0356-321456', 'SBI');
-    insertCust.run('cust-4', 'PT PETROKIMIA GRESIK', 'PG', 'PT', 'Jl. Jenderal Ahmad Yani, Gresik', '01.111.222.3-011.000', '031-3982200', 'PG');
-  }
+  insertCust.run('cust-1', 'PT LION WINGS', 'LION WINGS, PT', 'PT', 'Kawasan Industri Gresik (KIG) Blok C-12, Manyar, Gresik', '01.234.567.8-012.000', '031-3981234', 'LW');
+  insertCust.run('cust-2', 'PT SEMEN INDONESIA', 'SMN', 'PT', 'Jl. Veteran, Gresik', '01.987.654.3-098.000', '031-3985678', 'SI');
+  insertCust.run('cust-3', 'PT SOLUSI BANGUN INDONESIA', 'SBI', 'PT', 'Tuban Quarry Complex', '02.345.678.9-023.000', '0356-321456', 'SBI');
+  insertCust.run('cust-4', 'PT PETROKIMIA GRESIK', 'PG', 'PT', 'Jl. Jenderal Ahmad Yani, Gresik', '01.111.222.3-011.000', '031-3982200', 'PG');
+  insertCust.run('cust-5', 'PT WINGS SURYA', 'WINGS SURYA, PT', 'PT', 'Jl. Rungkut Industri III, Surabaya', '01.234.567.8-013.000', '031-8431234', 'WS');
+  insertCust.run('cust-6', 'PT KARYA INDAH ALAM SEJAHTERA', 'KARYA INDAH ALAM SEJAHTERA, PT', 'PT', 'Jl. Raya Manyar Km. 11, Gresik', '01.234.567.8-014.000', '031-3951234', 'KIAS');
+  insertCust.run('cust-7', 'PT SEHAT ALAM SEGAR', 'SEHAT ALAM SEGAR, PT', 'PT', 'Kawasan Industri Sedati, Sidoarjo', '01.234.567.8-015.000', '031-8661234', 'SAS');
+  insertCust.run('cust-8', 'PT ADHI KARYA', 'ADHI KARYA', 'PT', 'Proyek Smelter Freeport Manyar, Gresik', '01.001.611.1-093.000', '031-7992000', 'ADM');
+  insertCust.run('cust-9', 'PT ANEKA SISTEM', 'ANEKA SISTEM', 'PT', 'Jl. Raya Manyar Km. 11, Gresik', '02.345.678.9-612.000', '031-3958800', 'AS');
+  insertCust.run('cust-10', 'PT BERKAH ALAM SEMESTA', 'BERKAH ALAM SEMESTA', 'PT', 'Gresik Hub, Jawa Timur', '03.456.789.0-612.000', '031-3980000', 'BAS');
 
   // Pre-orders, Surat Jalan, Jurnal GI, BKK, and Invoices are NOT seeded with dummy records
   // They are strictly populated from real administrative transactions and synchronized

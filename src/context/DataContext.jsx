@@ -1006,7 +1006,7 @@ export function DataProvider({ children }) {
       ...data,
       id,
       nomorRO,
-      nomorPo: data.nomorPo || null, // Generated on 1st SJ
+      nomorPo: data.nomorPo || data.nomorPoCustomer || null, // Provided or generated on 1st SJ
       terkirim: Number(data.terkirim) || 0,
       status: 'MENUNGGU_APPROVAL',
       createdBy: data.createdBy || 'Admin Gresik',

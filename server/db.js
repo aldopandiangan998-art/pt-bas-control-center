@@ -34,6 +34,7 @@ export function initDb() {
       phone TEXT,
       birth_date TEXT,
       gender TEXT,
+      avatar TEXT,
       reset_token TEXT,
       reset_token_expires INTEGER,
       aktif INTEGER DEFAULT 1,
@@ -335,6 +336,9 @@ export function initDb() {
     }
     if (!cols.includes('gender')) {
       db.exec('ALTER TABLE users ADD COLUMN gender TEXT;');
+    }
+    if (!cols.includes('avatar')) {
+      db.exec('ALTER TABLE users ADD COLUMN avatar TEXT;');
     }
     if (!cols.includes('reset_token')) {
       db.exec('ALTER TABLE users ADD COLUMN reset_token TEXT;');

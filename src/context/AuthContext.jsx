@@ -515,14 +515,14 @@ export function AuthProvider({ children }) {
   /**
    * Update Profile data (Super Admin & Admin)
    */
-  const updateProfile = async ({ name, phone, birth_date, gender }) => {
+  const updateProfile = async ({ name, phone, birth_date, gender, avatar }) => {
     if (!currentUser) return { success: false, message: 'Tidak ada sesi pengguna aktif.' };
 
     try {
       const res = await fetch(`/api/users/profile/${currentUser.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, phone, birth_date, gender }),
+        body: JSON.stringify({ name, phone, birth_date, gender, avatar }),
       });
       const data = await res.json();
       if (res.ok && data.success) {
@@ -539,10 +539,46 @@ export function AuthProvider({ children }) {
         phone: phone || '-',
         birth_date: birth_date || null,
         gender: gender || 'Laki-laki',
+        ...(avatar !== undefined ? { avatar } : {}),
       };
       setCurrentUser(updated);
       setUsers((prev) => prev.map((u) => (u.id === currentUser.id ? updated : u)));
       return { success: true, message: 'Profil akun berhasil diperbarui (offline mode).', user: updated };
+    }
+  };
+
+  /**
+   * Update Profile Avatar (upload photo or remove photo)
+   */
+  const updateAvatar = async (avatarDataUrl) => {
+    if (!currentUser) return { success: false, message: 'Tidak ada sesi pengguna aktif.' };
+
+    try {
+      const res = await fetch(`/api/users/avatar/${currentUser.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ avatar: avatarDataUrl || null }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setCurrentUser(data.user);
+        setUsers((prev) => prev.map((u) => (u.id === currentUser.id ? { ...u, ...data.user } : u)));
+        return { success: true, message: data.message, user: data.user };
+      }
+      return { success: false, message: data.message || 'Gagal memperbarui foto profil.' };
+    } catch (e) {
+      // Fallback
+      const updated = {
+        ...currentUser,
+        avatar: avatarDataUrl || null,
+      };
+      setCurrentUser(updated);
+      setUsers((prev) => prev.map((u) => (u.id === currentUser.id ? updated : u)));
+      return {
+        success: true,
+        message: avatarDataUrl ? 'Foto profil akun berhasil diperbarui (offline mode).' : 'Foto profil akun berhasil dihapus (offline mode).',
+        user: updated,
+      };
     }
   };
 
@@ -676,6 +712,7 @@ export function AuthProvider({ children }) {
         adminUpdateUser,
         adminCreateUser,
         updateProfile,
+        updateAvatar,
         changePassword,
         requestPasswordReset,
         verifyResetToken,

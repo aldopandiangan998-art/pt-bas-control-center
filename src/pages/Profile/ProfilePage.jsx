@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -19,6 +19,9 @@ import {
   Sparkles,
   Save,
   Check,
+  Camera,
+  Trash2,
+  Loader2,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
@@ -28,9 +31,13 @@ import { Button, Badge } from '../../components/ui';
 export default function ProfilePage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { currentUser, isSuperAdmin, updateProfile, changePassword, requestPasswordReset } = useAuth();
+  const { currentUser, isSuperAdmin, updateProfile, updateAvatar, changePassword, requestPasswordReset } = useAuth();
   const { addToast } = useToast();
   const { isDark } = useApp();
+
+  // Avatar upload state & ref
+  const fileInputRef = useRef(null);
+  const [avatarUploading, setAvatarUploading] = useState(false);
 
   // Tab state: 'profile' | 'password' (sync with URL ?tab=...)
   const initialTab = searchParams.get('tab') === 'password' ? 'password' : 'profile';
@@ -89,6 +96,100 @@ export default function ProfilePage() {
   const [sendingResetLink, setSendingResetLink] = useState(false);
   const [latestResetUrl, setLatestResetUrl] = useState('');
   const [copiedLink, setCopiedLink] = useState(false);
+
+  // Client-side image compression: max 400x400 px WebP/JPEG ~30-40KB
+  const compressImage = (file) => {
+    return new Promise((resolve, reject) => {
+      if (!file.type.startsWith('image/')) {
+        reject(new Error('Format file tidak didukung. Harap pilih file gambar (JPG, PNG, atau WebP).'));
+        return;
+      }
+      if (file.size > 10 * 1024 * 1024) {
+        reject(new Error('Ukuran file foto maksimal 10MB sebelum kompresi.'));
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          const maxDimension = 400;
+          let width = img.width;
+          let height = img.height;
+
+          if (width > height) {
+            if (width > maxDimension) {
+              height = Math.round((height * maxDimension) / width);
+              width = maxDimension;
+            }
+          } else {
+            if (height > maxDimension) {
+              width = Math.round((width * maxDimension) / height);
+              height = maxDimension;
+            }
+          }
+
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+
+          // Export as JPEG with 0.85 quality for compact storage
+          const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.85);
+          resolve(compressedDataUrl);
+        };
+        img.onerror = () => reject(new Error('Gagal memproses file gambar.'));
+        img.src = e.target.result;
+      };
+      reader.onerror = () => reject(new Error('Gagal membaca file gambar.'));
+      reader.readAsDataURL(file);
+    });
+  };
+
+  // Handle avatar file input change
+  const handleAvatarFileSelect = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Reset input value so re-selecting same file triggers onChange
+    e.target.value = '';
+
+    setAvatarUploading(true);
+    try {
+      const compressedDataUrl = await compressImage(file);
+      const res = await updateAvatar(compressedDataUrl);
+      setAvatarUploading(false);
+      if (res && res.success) {
+        addToast(res.message || 'Foto profil berhasil diperbarui!', 'success');
+      } else {
+        addToast(res?.message || 'Gagal memperbarui foto profil.', 'error');
+      }
+    } catch (err) {
+      setAvatarUploading(false);
+      addToast(err.message || 'Terjadi kesalahan saat memproses foto.', 'error');
+    }
+  };
+
+  // Handle remove avatar photo
+  const handleRemoveAvatar = async () => {
+    if (!currentUser?.avatar) return;
+    if (!window.confirm('Apakah Anda yakin ingin menghapus foto profil ini?')) return;
+
+    setAvatarUploading(true);
+    try {
+      const res = await updateAvatar(null);
+      setAvatarUploading(false);
+      if (res && res.success) {
+        addToast('Foto profil berhasil dihapus.', 'success');
+      } else {
+        addToast(res?.message || 'Gagal menghapus foto profil.', 'error');
+      }
+    } catch (err) {
+      setAvatarUploading(false);
+      addToast('Terjadi kesalahan saat menghapus foto profil.', 'error');
+    }
+  };
 
   // Handle Save Profile
   const handleSaveProfile = async (e) => {
@@ -260,9 +361,75 @@ export default function ProfilePage() {
         }`}
       >
         <div className="flex items-center gap-4">
-          <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-tr from-[#F4511E] to-[#FF7043] text-white flex items-center justify-center font-extrabold text-lg sm:text-xl shadow-lg shadow-[#F4511E]/20 shrink-0">
-            {userInitials}
+          {/* Hidden File Input for Avatar */}
+          <input
+            type="file"
+            ref={fileInputRef}
+            accept="image/*"
+            onChange={handleAvatarFileSelect}
+            className="hidden"
+          />
+
+          <div className="flex flex-col items-center shrink-0">
+            <div className="relative group">
+              <div
+                onClick={() => fileInputRef.current?.click()}
+                className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-tr from-[#F4511E] to-[#FF7043] text-white flex items-center justify-center font-extrabold text-lg sm:text-xl shadow-lg shadow-[#F4511E]/20 shrink-0 relative overflow-hidden cursor-pointer group/avatar border-2 border-transparent hover:border-[#FF7043] transition-all"
+                title="Klik untuk memilih dan memperbarui foto profil"
+              >
+                {currentUser?.avatar ? (
+                  <img
+                    src={currentUser.avatar}
+                    alt={currentUser.name}
+                    className="w-full h-full object-cover rounded-2xl"
+                  />
+                ) : (
+                  userInitials
+                )}
+
+                {/* Hover Overlay */}
+                <div className="absolute inset-0 bg-black/60 opacity-0 group-hover/avatar:opacity-100 transition-opacity flex flex-col items-center justify-center text-white text-[9px] font-semibold gap-0.5 rounded-2xl backdrop-blur-xs">
+                  {avatarUploading ? (
+                    <Loader2 className="w-5 h-5 animate-spin text-[#FF7043]" />
+                  ) : (
+                    <>
+                      <Camera className="w-4 h-4 text-[#FF7043]" />
+                      <span>Ganti Foto</span>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {/* Corner Camera Button */}
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={avatarUploading}
+                className="absolute -bottom-1 -right-1 w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-[#181B1E] border-2 border-[#F4511E] text-white flex items-center justify-center shadow-md hover:scale-110 active:scale-95 transition-transform cursor-pointer"
+                title="Unggah Foto Profil"
+              >
+                {avatarUploading ? (
+                  <Loader2 className="w-3 h-3 animate-spin text-[#FF7043]" />
+                ) : (
+                  <Camera className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-[#FF7043]" />
+                )}
+              </button>
+            </div>
+
+            {currentUser?.avatar && (
+              <button
+                type="button"
+                onClick={handleRemoveAvatar}
+                disabled={avatarUploading}
+                className="text-[10px] text-neutral-400 hover:text-rose-400 flex items-center gap-1 mt-1.5 transition-colors cursor-pointer"
+                title="Hapus foto profil saat ini"
+              >
+                <Trash2 className="w-3 h-3" />
+                <span>Hapus Foto</span>
+              </button>
+            )}
           </div>
+
           <div>
             <div className="flex items-center gap-2 flex-wrap">
               <span className={`text-base sm:text-lg font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>

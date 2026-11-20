@@ -270,6 +270,221 @@ function formatPoNumber(poNum) {
   return `PO: ${clean}`;
 }
 
+/**
+ * CompactSearchableSelect - In-table and mobile-card searchable select combobox
+ * Built specifically for material row selection with fixed viewport positioning
+ * to avoid any clipping inside overflow containers.
+ */
+function CompactSearchableSelect({
+  value,
+  onChange,
+  options = [],
+  disabled = false,
+  placeholder = 'Pilih material...',
+  className = '',
+}) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState('');
+  const [highlightIdx, setHighlightIdx] = useState(-1);
+  const containerRef = useRef(null);
+  const searchInputRef = useRef(null);
+  const listRef = useRef(null);
+  const [coords, setCoords] = useState(null);
+
+  const filtered = useMemo(() => {
+    if (!search.trim()) return options;
+    const q = search.toLowerCase();
+    return options.filter((opt) =>
+      opt.label.toLowerCase().includes(q) || opt.value.toLowerCase().includes(q)
+    );
+  }, [options, search]);
+
+  const updatePosition = () => {
+    if (!containerRef.current) return;
+    const rect = containerRef.current.getBoundingClientRect();
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const menuH = 220;
+    const placeAbove = spaceBelow < menuH && rect.top > menuH;
+    setCoords({
+      top: placeAbove ? Math.max(10, rect.top - menuH - 4) : Math.min(window.innerHeight - menuH - 10, rect.bottom + 4),
+      left: Math.max(10, Math.min(window.innerWidth - 260, rect.left)),
+      width: Math.max(rect.width, 240),
+    });
+  };
+
+  useEffect(() => {
+    if (!open) return;
+    updatePosition();
+    const handleScrollOrResize = () => {
+      updatePosition();
+    };
+    window.addEventListener('scroll', handleScrollOrResize, true);
+    window.addEventListener('resize', handleScrollOrResize);
+    return () => {
+      window.removeEventListener('scroll', handleScrollOrResize, true);
+      window.removeEventListener('resize', handleScrollOrResize);
+    };
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    const handleClickOutside = (e) => {
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(e.target) &&
+        !e.target.closest('[data-compact-dropdown-menu]')
+      ) {
+        setOpen(false);
+        setSearch('');
+        setHighlightIdx(-1);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [open]);
+
+  useEffect(() => {
+    if (open && searchInputRef.current) {
+      searchInputRef.current.focus();
+    }
+  }, [open]);
+
+  const selectedOption = options.find((o) => o.value === value);
+  const displayText = selectedOption ? selectedOption.label : value || placeholder;
+
+  const handleSelect = (val) => {
+    onChange(val);
+    setOpen(false);
+    setSearch('');
+    setHighlightIdx(-1);
+  };
+
+  const handleKeyDown = (e) => {
+    if (!open) {
+      if (['Enter', ' ', 'ArrowDown', 'ArrowUp'].includes(e.key)) {
+        e.preventDefault();
+        setOpen(true);
+      }
+      return;
+    }
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setHighlightIdx((prev) => Math.min(prev + 1, filtered.length - 1));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setHighlightIdx((prev) => Math.max(prev - 1, 0));
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (highlightIdx >= 0 && filtered[highlightIdx]) {
+        handleSelect(filtered[highlightIdx].value);
+      }
+    } else if (e.key === 'Escape') {
+      setOpen(false);
+      setSearch('');
+      setHighlightIdx(-1);
+    }
+  };
+
+  return (
+    <div ref={containerRef} className={`relative ${className}`}>
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() => {
+          if (!disabled) {
+            setOpen((v) => !v);
+          }
+        }}
+        onKeyDown={handleKeyDown}
+        className={`w-full bg-[#181B1E] border border-[#2B3037] text-white rounded-md px-2.5 py-1.5 text-xs font-semibold focus:outline-none focus:border-[#F4511E] flex items-center justify-between gap-1.5 transition-colors cursor-pointer text-left ${
+          disabled ? 'opacity-60 cursor-not-allowed' : 'hover:border-[#3E454F]'
+        }`}
+      >
+        <span className="truncate block flex-1">{displayText}</span>
+        <ChevronDown
+          className={`w-3.5 h-3.5 text-neutral-400 shrink-0 transition-transform duration-150 ${
+            open ? 'rotate-180 text-[#F4511E]' : ''
+          }`}
+        />
+      </button>
+
+      {open && coords && (
+        <div
+          data-compact-dropdown-menu
+          style={{
+            position: 'fixed',
+            top: coords.top,
+            left: coords.left,
+            width: coords.width,
+            zIndex: 9999,
+          }}
+          className="bg-[#181B1E] border border-[#3A3E45] rounded-lg shadow-2xl overflow-hidden"
+          onKeyDown={handleKeyDown}
+        >
+          <div className="flex items-center gap-1.5 px-2.5 py-1.5 border-b border-[#2A2E35] bg-[#14171A]">
+            <Search className="w-3.5 h-3.5 text-neutral-400 shrink-0" />
+            <input
+              ref={searchInputRef}
+              type="text"
+              value={search}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setHighlightIdx(0);
+              }}
+              placeholder="Cari material..."
+              className="w-full bg-transparent text-xs text-white placeholder-neutral-500 focus:outline-none"
+            />
+            {search && (
+              <button
+                type="button"
+                onClick={() => setSearch('')}
+                className="text-neutral-400 hover:text-white p-0.5 cursor-pointer"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            )}
+          </div>
+
+          <ul
+            ref={listRef}
+            className="max-h-48 overflow-y-auto py-1 divide-y divide-[#22262A]/40 text-xs"
+          >
+            {filtered.length === 0 ? (
+              <li className="px-3 py-2 text-center text-neutral-500 text-xs">
+                Material tidak ditemukan
+              </li>
+            ) : (
+              filtered.map((opt, optIdx) => {
+                const isSelected = opt.value === value;
+                const isHighlighted = optIdx === highlightIdx;
+                return (
+                  <li
+                    key={opt.value}
+                    onClick={() => handleSelect(opt.value)}
+                    onMouseEnter={() => setHighlightIdx(optIdx)}
+                    className={`px-3 py-2 cursor-pointer flex items-center justify-between text-xs transition-colors ${
+                      isSelected
+                        ? 'bg-[#F4511E]/15 text-[#F4511E] font-bold'
+                        : isHighlighted
+                        ? 'bg-[#262A30] text-white'
+                        : 'text-neutral-200 hover:bg-[#202327]'
+                    }`}
+                  >
+                    <span className="truncate">{opt.label}</span>
+                    {isSelected && (
+                      <Check className="w-3.5 h-3.5 shrink-0 text-[#F4511E]" />
+                    )}
+                  </li>
+                );
+              })
+            )}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ─────────────────────────── main component ─────────────────────────── */
 export default function PreOrderPage() {
   const navigate = useNavigate();
@@ -601,6 +816,13 @@ export default function PreOrderPage() {
     const allowed = getAllowedItemTypes(formData.jenisRO);
     return allMaterials.filter((m) => allowed.includes(getItemType(m)));
   }, [allMaterials, formData.jenisRO]);
+
+  const materialDropdownOptions = useMemo(() => {
+    return availableMaterials.map((m) => ({
+      value: m.name || m.nama,
+      label: `${m.name || m.nama}${m.defaultUnit || m.satuan ? ` (${m.defaultUnit || m.satuan})` : ''}`,
+    }));
+  }, [availableMaterials]);
 
   const showHubungkanPo = formData.jenisRO === 'JASA ANGKUT SAJA';
   const showDaftarItem = !!formData.jenisRO;
@@ -1846,6 +2068,7 @@ export default function PreOrderPage() {
                   value={formData.top}
                   onChange={(v) => setField('top', v)}
                   options={TOP_OPTIONS}
+                  searchable
                 />
 
                 {/* Jenis Pengiriman */}
@@ -1856,6 +2079,7 @@ export default function PreOrderPage() {
                     value={formData.jenis}
                     onChange={(v) => setField('jenis', v)}
                     options={JENIS_OPTIONS}
+                    searchable
                     required
                     error={errors.jenis}
                   />
@@ -1869,7 +2093,7 @@ export default function PreOrderPage() {
                     value={formData.customer}
                     onChange={(v) => setField('customer', v)}
                     options={customerOptions}
-                    searchable={customerOptions.length > 4}
+                    searchable
                     required
                     error={errors.customer}
                   />
@@ -1882,6 +2106,7 @@ export default function PreOrderPage() {
                   value={formData.jenisWajibPajak}
                   onChange={(v) => setField('jenisWajibPajak', v)}
                   options={JENIS_PAJAK_OPTIONS}
+                  searchable
                 />
 
                 {/* Mata Uang */}
@@ -1892,6 +2117,7 @@ export default function PreOrderPage() {
                     value={formData.mataUang}
                     onChange={(v) => setField('mataUang', v)}
                     options={mataUangOptions}
+                    searchable
                     required
                     error={errors.mataUang}
                   />
@@ -1915,6 +2141,7 @@ export default function PreOrderPage() {
                     value={formData.jenisRO}
                     onChange={handleJenisRoChange}
                     options={JENIS_RO_OPTIONS}
+                    searchable
                     required
                     error={errors.jenisRO}
                     helper="Aturan: Jasa Angkut + Material (auto-material), Material Saja, atau Jasa Angkut Saja"
@@ -1945,7 +2172,7 @@ export default function PreOrderPage() {
                         }
                       }}
                       options={materialPoOptions}
-                      searchable={materialPoOptions.length > 5}
+                      searchable
                       helper="Kaitkan pengiriman jasa angkut ini dengan PO material yang bersangkutan (satuan otomatis mengikuti PO ini)"
                     />
                   </div>
@@ -2070,18 +2297,13 @@ export default function PreOrderPage() {
                                 </div>
                               ) : (
                                 <div className="space-y-1">
-                                  <select
+                                  <CompactSearchableSelect
                                     value={item.nama}
-                                    onChange={(e) => handleMaterialChange(idx, e.target.value)}
+                                    onChange={(val) => handleMaterialChange(idx, val)}
+                                    options={materialDropdownOptions}
                                     disabled={itemsLocked}
-                                    className="w-full bg-[#181B1E] border border-[#2B3037] text-white rounded-md px-2.5 py-1.5 text-xs font-semibold focus:outline-none focus:border-[#F4511E] disabled:opacity-60 cursor-pointer"
-                                  >
-                                    {availableMaterials.map((m) => (
-                                      <option key={m.id} value={m.name || m.nama} className="bg-[#181B1E] text-white">
-                                        {m.name || m.nama} {m.defaultUnit || m.satuan ? `(${m.defaultUnit || m.satuan})` : ''}
-                                      </option>
-                                    ))}
-                                  </select>
+                                    placeholder="Pilih Material..."
+                                  />
                                 </div>
                               )}
                             </td>
@@ -2237,18 +2459,13 @@ export default function PreOrderPage() {
                               title="Jasa Angkut otomatis mengikuti Material yang dipilih"
                             />
                           ) : (
-                            <select
+                            <CompactSearchableSelect
                               value={item.nama}
-                              onChange={(e) => handleMaterialChange(idx, e.target.value)}
+                              onChange={(val) => handleMaterialChange(idx, val)}
+                              options={materialDropdownOptions}
                               disabled={itemsLocked}
-                              className="w-full bg-[#111315] border border-[#2B3037] text-white rounded-md px-3 py-2 text-xs font-semibold focus:outline-none focus:border-[#F4511E]"
-                            >
-                              {availableMaterials.map((m) => (
-                                <option key={m.id} value={m.name || m.nama}>
-                                  {m.name || m.nama} {m.defaultUnit || m.satuan ? `(${m.defaultUnit || m.satuan})` : ''}
-                                </option>
-                              ))}
-                            </select>
+                              placeholder="Pilih Material..."
+                            />
                           )}
                         </div>
 

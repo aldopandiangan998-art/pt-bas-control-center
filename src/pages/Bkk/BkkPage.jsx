@@ -169,16 +169,8 @@ function CashOutCard({ item, isSelected, onSelect, onDelete, onInfo, canDelete =
 // ─────────────────────────────────────────────────────────────────────────────
 const KETERANGAN_TYPES = [
   'general',
-  'Material',
-  'Jasa Angkut',
-  'Kasbon',
-  'Potongan',
-  'Penyesuaian',
-  'Solar',
-  'Biaya Tambahan',
-  'Operasional',
-  'Administrasi',
-  'Lainnya',
+  'deduction',
+  'addition',
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────

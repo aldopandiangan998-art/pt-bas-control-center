@@ -28,6 +28,34 @@ function loadStorage(key, fallback) {
   }
 }
 
+function getAuthUser() {
+  try {
+    const raw = sessionStorage.getItem('ptbas_auth_session_v1') || localStorage.getItem('ptbas_auth_session_v1');
+    if (raw) return JSON.parse(raw);
+  } catch (e) {}
+  return null;
+}
+
+function getAuthHeaders() {
+  const user = getAuthUser();
+  if (user) {
+    return {
+      'x-user-role': user.role || 'admin',
+      'x-user-email': user.email || '',
+      'x-user-id': user.id || '',
+    };
+  }
+  return {};
+}
+
+function isUserSuperAdmin(user) {
+  if (!user) return false;
+  if (user.role === 'superadmin') return true;
+  const superAdminList = ['superadmin@ptbas.co.id', 'direksi@ptbas.co.id', 'david.rusiah@ptbas.co.id'];
+  const email = (user.email || '').toLowerCase().trim();
+  return superAdminList.includes(email) || email.startsWith('superadmin');
+}
+
 export function normalizeBkkItem(item) {
   if (!item || typeof item !== 'object') return item;
   const vol = Number(item.volume ?? item.kubikasi ?? 0) || 0;
@@ -1104,7 +1132,7 @@ export function DataProvider({ children }) {
       if (exists) return prev;
 
       const targetVol = Number(po.totalOrder) || 0;
-      const targetTrips = po.satuan === 'rit' ? Math.max(1, targetVol) : Math.max(1, Math.ceil(targetVol / 30));
+      const targetTrips = po.satuan === 'rit' ? Math.max(1, targetVol) : 0;
       const hBeli = Number(po.hargaBeli) || 0;
       const hJual = Number(po.hargaJual) || 0;
       const isPpn = po.jenisWajibPajak === 'PKP';
@@ -1222,7 +1250,27 @@ export function DataProvider({ children }) {
   };
 
   const deletePreOrder = async (id) => {
-    // Optimistic update
+    const user = getAuthUser();
+    if (!isUserSuperAdmin(user)) {
+      addToast('Akses ditolak: Hanya Super Admin yang diizinkan untuk menghapus Received Order.', 'error');
+      return { success: false, message: 'Akses ditolak: Hanya Super Admin yang diizinkan untuk menghapus Received Order.' };
+    }
+
+    try {
+      const res = await fetch(`/api/pre-orders/${encodeURIComponent(id)}`, {
+        method: 'DELETE',
+        headers: getAuthHeaders(),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data.success === false) {
+        addToast(data.message || 'Gagal menghapus Received Order: Akses ditolak.', 'error');
+        await fetchPreOrders();
+        return { success: false, message: data.message };
+      }
+    } catch (err) {
+      console.warn('Backend delete pre-order failed, updated in localStorage:', err);
+    }
+
     setPreOrders((prev) => {
       const updated = prev.filter((p) => p.id !== id);
       try {
@@ -1237,13 +1285,8 @@ export function DataProvider({ children }) {
       ch.close();
     } catch (e) {}
 
-    try {
-      await fetch(`/api/pre-orders/${encodeURIComponent(id)}`, { method: 'DELETE' });
-    } catch (err) {
-      console.warn('Backend delete pre-order failed, updated in localStorage:', err);
-    }
-
     addToast('Data Received Order berhasil dihapus.', 'info');
+    return { success: true };
   };
 
   // Surat Jalan Actions
@@ -1363,11 +1406,9 @@ export function DataProvider({ children }) {
           const updatedTotalVol = Number(filteredDetails.reduce((sum, d) => sum + (Number(d.volumeAkhir) || 0), 0).toFixed(2));
           const updatedNominalBeli = Math.round(updatedTotalVol * (Number(jrn.hargaBeli) || 0));
           const updatedNominalJual = Math.round(updatedTotalVol * (Number(jrn.hargaJual) || 0));
-          const targetTrips = Number(jrn.targetRitase) || 0;
           const targetVol = Number(jrn.targetVolume) || 0;
-          const isTripsMet = targetTrips > 0 && updatedTotalSj >= targetTrips;
           const isVolumeMet = targetVol > 0 && updatedTotalVol >= targetVol;
-          const newStatus = (isTripsMet || isVolumeMet) ? 'Selesai Kirim' : 'Dalam Pengiriman';
+          const newStatus = isVolumeMet ? 'Selesai Kirim' : 'Dalam Pengiriman';
 
           return {
             ...jrn,
@@ -1387,7 +1428,7 @@ export function DataProvider({ children }) {
       if (!matched) {
         // Jika belum ada rekapan sebelumnya, otomatis generate dan tempelkan surat jalan ini
         const targetVol = Number(targetPo?.totalOrder) || calc.volumeAkhir;
-        const targetTrips = targetPo?.satuan === 'rit' ? Math.max(1, targetVol) : Math.max(1, Math.ceil(targetVol / 30));
+        const targetTrips = targetPo?.satuan === 'rit' ? Math.max(1, targetVol) : 0;
         const hBeli = Number(targetPo?.hargaBeli) || 40000;
         const hJual = Number(targetPo?.hargaJual) || 50000;
         const newRekId = `REK-${new Date().toISOString().slice(0, 7).replace('-', '')}-${String(Date.now()).slice(-4)}`;
@@ -1413,9 +1454,8 @@ export function DataProvider({ children }) {
           status: 'Selesai',
         };
 
-        const isTripsMet = targetTrips <= 1;
-        const isVolumeMet = calc.volumeAkhir >= targetVol;
-        const initialStatus = (isTripsMet || isVolumeMet) ? 'Selesai Kirim' : 'Dalam Pengiriman';
+        const isVolumeMet = targetVol > 0 && calc.volumeAkhir >= targetVol;
+        const initialStatus = isVolumeMet ? 'Selesai Kirim' : 'Dalam Pengiriman';
 
         const newRek = {
           id: newRekId,
@@ -1572,6 +1612,27 @@ export function DataProvider({ children }) {
   };
 
   const deleteBkk = async (bkkId) => {
+    const user = getAuthUser();
+    if (!isUserSuperAdmin(user)) {
+      addToast('Akses ditolak: Hanya Super Admin yang diizinkan untuk menghapus BKK (Cash Out).', 'error');
+      return { success: false, message: 'Akses ditolak: Hanya Super Admin yang diizinkan untuk menghapus BKK (Cash Out).' };
+    }
+
+    try {
+      const res = await fetch(`/api/bkk/${encodeURIComponent(bkkId)}`, {
+        method: 'DELETE',
+        headers: getAuthHeaders(),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data.success === false) {
+        addToast(data.message || 'Gagal menghapus BKK: Akses ditolak.', 'error');
+        await fetchBkk();
+        return { success: false, message: data.message };
+      }
+    } catch (err) {
+      console.warn('Backend delete BKK failed:', err);
+    }
+
     setBkkList((prev) => {
       const updated = prev.filter((item) => item.id !== bkkId);
       try {
@@ -1579,13 +1640,15 @@ export function DataProvider({ children }) {
       } catch (e) {}
       return updated;
     });
+
     try {
-      await fetch(`/api/bkk/${bkkId}`, { method: 'DELETE' });
       const ch = new BroadcastChannel('ptbas_sync_channel');
       ch.postMessage({ type: 'SYNC_BKK' });
       ch.close();
     } catch (e) {}
+
     addToast('BKK kas keluar berhasil dihapus', 'info');
+    return { success: true };
   };
 
   // ------------------------------------------
@@ -1668,6 +1731,27 @@ export function DataProvider({ children }) {
   };
 
   const deleteInvoice = async (invId) => {
+    const user = getAuthUser();
+    if (!isUserSuperAdmin(user)) {
+      addToast('Akses ditolak: Hanya Super Admin yang diizinkan untuk menghapus Invoice.', 'error');
+      return { success: false, message: 'Akses ditolak: Hanya Super Admin yang diizinkan untuk menghapus Invoice.' };
+    }
+
+    try {
+      const res = await fetch(`/api/invoices/${encodeURIComponent(invId)}`, {
+        method: 'DELETE',
+        headers: getAuthHeaders(),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data.success === false) {
+        addToast(data.message || 'Gagal menghapus Invoice: Akses ditolak.', 'error');
+        await fetchInvoices();
+        return { success: false, message: data.message };
+      }
+    } catch (err) {
+      console.warn('Backend delete invoice failed:', err);
+    }
+
     setInvoiceList((prev) => {
       const updated = prev.filter((item) => item.id !== invId);
       try {
@@ -1677,7 +1761,6 @@ export function DataProvider({ children }) {
     });
 
     try {
-      await fetch(`/api/invoices/${invId}`, { method: 'DELETE' });
       const ch = new BroadcastChannel('ptbas_sync_channel');
       ch.postMessage({ type: 'SYNC_INVOICES' });
       ch.close();
@@ -1685,6 +1768,7 @@ export function DataProvider({ children }) {
     } catch (e) {}
 
     addToast('Invoice berhasil dihapus', 'info');
+    return { success: true };
   };
 
   // ------------------------------------------

@@ -12,6 +12,7 @@ import {
   BookOpen,
   Receipt,
 } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
 import { useData } from '../../context/DataContext';
 import { useToast } from '../../context/ToastContext';
 import { formatCurrency } from '../../utils/formatters';
@@ -26,6 +27,7 @@ function CashOutCard({
   onSelect,
   onDelete,
   onInfo,
+  canDelete = true,
 }) {
   const volumeNum = Number(item.volume ?? item.kubikasi) || 0;
   const formattedVolume = volumeNum.toFixed(2);
@@ -141,15 +143,17 @@ function CashOutCard({
       {/* Divider */}
       <div className="border-t border-[#22262B] mt-3 pt-2.5">
         {/* Bottom Actions: Trash & Info */}
-        <div className="grid grid-cols-2 gap-2">
-          <button
-            type="button"
-            onClick={onDelete}
-            className="py-2 px-3 rounded-xl bg-[#16191D] hover:bg-rose-500/10 border border-[#262A2F] hover:border-rose-500/40 text-[#F4511E] flex items-center justify-center transition-colors cursor-pointer group"
-            title="Hapus Cash Out"
-          >
-            <Trash2 className="w-4 h-4 group-hover:scale-110 transition-transform text-[#F4511E]" />
-          </button>
+        <div className={`grid ${canDelete ? 'grid-cols-2' : 'grid-cols-1'} gap-2`}>
+          {canDelete && (
+            <button
+              type="button"
+              onClick={onDelete}
+              className="py-2 px-3 rounded-xl bg-[#16191D] hover:bg-rose-500/10 border border-[#262A2F] hover:border-rose-500/40 text-[#F4511E] flex items-center justify-center transition-colors cursor-pointer group"
+              title="Hapus Cash Out"
+            >
+              <Trash2 className="w-4 h-4 group-hover:scale-110 transition-transform text-[#F4511E]" />
+            </button>
+          )}
           <button
             type="button"
             onClick={onInfo}
@@ -170,6 +174,7 @@ function CashOutCard({
 export default function BkkPage() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { isSuperAdmin } = useAuth();
   const {
     bkkList,
     markBkkPaid,
@@ -395,6 +400,7 @@ export default function BkkPage() {
                 onSelect={() => toggleSelect(item.id)}
                 onDelete={() => setDeleteConfirmItem(item)}
                 onInfo={() => setInfoModalItem(item)}
+                canDelete={isSuperAdmin}
               />
             ))}
           </div>
@@ -499,18 +505,20 @@ export default function BkkPage() {
               )}
             </div>
 
-            <div className="flex justify-between items-center pt-2 border-t border-[#262A2F]">
-              <Button
-                variant="danger"
-                size="sm"
-                icon={Trash2}
-                onClick={() => {
-                  setDeleteConfirmItem(infoModalItem);
-                  setInfoModalItem(null);
-                }}
-              >
-                Hapus BKK
-              </Button>
+            <div className={`flex ${isSuperAdmin ? 'justify-between' : 'justify-end'} items-center pt-2 border-t border-[#262A2F]`}>
+              {isSuperAdmin && (
+                <Button
+                  variant="danger"
+                  size="sm"
+                  icon={Trash2}
+                  onClick={() => {
+                    setDeleteConfirmItem(infoModalItem);
+                    setInfoModalItem(null);
+                  }}
+                >
+                  Hapus BKK
+                </Button>
+              )}
               <Button variant="primary" size="sm" onClick={() => setInfoModalItem(null)}>
                 Tutup
               </Button>

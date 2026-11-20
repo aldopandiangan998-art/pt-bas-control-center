@@ -69,6 +69,59 @@ function determineRoleByEmail(email) {
   };
 }
 
+/**
+ * Verifikasi Hak Akses Super Admin untuk Operasi Sensitif (Hapus Data)
+ * Memeriksa header/query x-user-role, x-user-email, x-user-id dan mencocokkan ke database users SQLite.
+ * Mencegah Admin melakukan bypass langsung ke API DELETE.
+ */
+function verifySuperAdminPermission(req, res, actionName = 'menghapus data') {
+  const roleHeader = (req.headers['x-user-role'] || req.query.user_role || '').toLowerCase().trim();
+  const emailHeader = (req.headers['x-user-email'] || req.query.user_email || '').toLowerCase().trim();
+  const idHeader = (req.headers['x-user-id'] || req.query.user_id || '').trim();
+
+  // Jika eksplisit menyatakan role admin, tolak langsung
+  if (roleHeader === 'admin') {
+    res.status(403).json({
+      success: false,
+      message: `Akses ditolak: Pengguna dengan role Admin tidak memiliki wewenang untuk ${actionName}. Hanya Super Admin yang diizinkan.`
+    });
+    return false;
+  }
+
+  // Jika menyertakan identitas (email atau id), verifikasi validitas akun dan role di database
+  if (emailHeader || idHeader) {
+    try {
+      const user = db.prepare('SELECT id, email, role, aktif FROM users WHERE id = ? OR LOWER(email) = ?').get(idHeader || '', emailHeader || '');
+      if (user) {
+        const autoRole = determineRoleByEmail(user.email);
+        const isSuper = user.role === 'superadmin' || autoRole.role === 'superadmin';
+        if (!isSuper || user.aktif !== 1) {
+          res.status(403).json({
+            success: false,
+            message: `Akses ditolak: Akun ${user.email} tidak memiliki hak akses Super Admin untuk ${actionName}.`
+          });
+          return false;
+        }
+        return true;
+      }
+    } catch (err) {
+      console.error('Error verifying superadmin permission:', err);
+    }
+  }
+
+  // Jika header menyatakan role superadmin dan tidak ada konflik identitas
+  if (roleHeader === 'superadmin') {
+    return true;
+  }
+
+  // Default: tolak jika tidak ada bukti hak Super Admin yang sah
+  res.status(403).json({
+    success: false,
+    message: `Akses ditolak: Operasi ${actionName} memerlukan wewenang Super Admin.`
+  });
+  return false;
+}
+
 // Login
 app.post('/api/auth/login', (req, res) => {
   const { email, password } = req.body;
@@ -1291,7 +1344,7 @@ app.patch('/api/pre-orders/:id/approve', (req, res) => {
     const hBeli = Number(po.hargaBeli || firstItem.hargaBeli || 0);
     const hJual = Number(po.hargaJual || firstItem.hargaJual || 0);
     const isPpn = po.jenisWajibPajak === 'PKP' ? 1 : 0;
-    const targetTrips = po.satuan === 'rit' ? Math.max(1, targetVol) : Math.max(1, Math.ceil(targetVol / 30));
+    const targetTrips = po.satuan === 'rit' ? Math.max(1, targetVol) : 0;
     const nowIso = new Date().toISOString();
 
     db.prepare(`
@@ -1367,8 +1420,9 @@ app.patch('/api/pre-orders/:id/reject', (req, res) => {
   res.json({ success: true, data: updated });
 });
 
-// Delete Pre-Order and automatically cascade delete/clean any linked journals & waybills
+// Delete Pre-Order and automatically cascade delete/clean any linked journals & waybills (Superadmin Only)
 app.delete('/api/pre-orders/:id', (req, res) => {
+  if (!verifySuperAdminPermission(req, res, 'menghapus Received Order')) return;
   try {
     const { id } = req.params;
     const po = db.prepare('SELECT * FROM pre_orders WHERE id = ?').get(id);
@@ -1525,7 +1579,7 @@ app.post('/api/surat-jalan', (req, res) => {
     const hBeli = targetPo ? Number(targetPo.hargaBeli || 0) : 40000;
     const hJual = targetPo ? Number(targetPo.hargaJual || 0) : 50000;
     const isPpnFlag = targetPo ? (targetPo.jenisWajibPajak === 'PKP' ? 1 : 0) : (isPpn ? 1 : 0);
-    const targetTrips = targetPo?.satuan === 'rit' ? Math.max(1, targetVol) : Math.max(1, Math.ceil(targetVol / 30));
+    const targetTrips = targetPo?.satuan === 'rit' ? Math.max(1, targetVol) : 0;
     const nowIso = new Date().toISOString();
 
     db.prepare(`
@@ -1628,11 +1682,9 @@ app.post('/api/surat-jalan', (req, res) => {
   const updatedTotalVolume = Number(filteredDetails.reduce((sum, d) => sum + (Number(d.volumeAkhir) || 0), 0).toFixed(2));
   const updatedNominalBeli = Math.round(updatedTotalVolume * (Number(jurnal.hargaBeli) || 0));
   const updatedNominalJual = Math.round(updatedTotalVolume * (Number(jurnal.hargaJual) || 0));
-  const targetTrips = Number(jurnal.targetRitase) || 0;
   const targetVol = Number(jurnal.targetVolume) || 0;
-  const isTripsMet = targetTrips > 0 && updatedTotalSj >= targetTrips;
   const isVolumeMet = targetVol > 0 && updatedTotalVolume >= targetVol;
-  const newJurnalStatus = (isTripsMet || isVolumeMet) ? 'Selesai Kirim' : 'Dalam Pengiriman';
+  const newJurnalStatus = isVolumeMet ? 'Selesai Kirim' : 'Dalam Pengiriman';
   const nowIso = new Date().toISOString();
 
   db.prepare(`
@@ -1781,10 +1833,20 @@ app.patch('/api/bkk/pay', (req, res) => {
   res.json({ success: true, count: ids.length });
 });
 
+// Delete BKK Cash Out (Superadmin Only)
 app.delete('/api/bkk/:id', (req, res) => {
-  const { id } = req.params;
-  db.prepare('DELETE FROM bkk WHERE id = ?').run(id);
-  res.json({ success: true, message: `BKK ${id} berhasil dihapus.` });
+  if (!verifySuperAdminPermission(req, res, 'menghapus data BKK (Cash Out)')) return;
+  try {
+    const { id } = req.params;
+    const existing = db.prepare('SELECT id FROM bkk WHERE id = ?').get(id);
+    if (!existing) {
+      return res.status(404).json({ success: false, message: `BKK ${id} tidak ditemukan.` });
+    }
+    db.prepare('DELETE FROM bkk WHERE id = ?').run(id);
+    res.json({ success: true, message: `BKK ${id} berhasil dihapus.` });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
 });
 
 // ==========================================
@@ -1890,10 +1952,20 @@ app.patch('/api/invoices/pay', (req, res) => {
   res.json({ success: true, count: ids.length });
 });
 
+// Delete Invoice (Superadmin Only)
 app.delete('/api/invoices/:id', (req, res) => {
-  const { id } = req.params;
-  db.prepare('DELETE FROM invoices WHERE id = ?').run(id);
-  res.json({ success: true, message: `Invoice ${id} berhasil dihapus.` });
+  if (!verifySuperAdminPermission(req, res, 'menghapus data Invoice')) return;
+  try {
+    const { id } = req.params;
+    const existing = db.prepare('SELECT id FROM invoices WHERE id = ?').get(id);
+    if (!existing) {
+      return res.status(404).json({ success: false, message: `Invoice ${id} tidak ditemukan.` });
+    }
+    db.prepare('DELETE FROM invoices WHERE id = ?').run(id);
+    res.json({ success: true, message: `Invoice ${id} berhasil dihapus.` });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
 });
 
 // ==========================================

@@ -38,6 +38,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useData } from '../../context/DataContext';
 import { useToast } from '../../context/ToastContext';
 import { NAV_CATEGORIES } from '../../utils/constants';
+import logo from '../../assets/logo.png';
 
 const ICON_MAP = {
   LayoutDashboard,
@@ -180,13 +181,15 @@ export default function Sidebar() {
           {!sidebarCollapsed ? (
             <>
               <div className="flex items-center gap-2.5 overflow-hidden">
-                <span className="w-7 h-7 rounded-md bg-[#F4511E] text-white flex items-center justify-center font-bold text-xs shrink-0 font-mono shadow-xs">
-                  B
-                </span>
+                <img
+                  src={logo}
+                  alt="PT BAS Logo"
+                  className="w-7 h-7 object-contain rounded-md shrink-0 shadow-xs"
+                />
                 <span className={`text-xs font-semibold tracking-wider uppercase font-mono truncate ${
                   isDark ? 'text-neutral-200' : 'text-slate-800'
                 }`}>
-                  Modul Operasi
+                  BAS CONTROL CENTER
                 </span>
               </div>
 

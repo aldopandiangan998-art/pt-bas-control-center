@@ -158,14 +158,6 @@ export default function App() {
                     }
                   />
                   <Route
-                    path="laporan/pph21"
-                    element={
-                      <SuperAdminOnlyRoute>
-                        <LaporanPph21Page />
-                      </SuperAdminOnlyRoute>
-                    }
-                  />
-                  <Route
                     path="laporan/pph-23"
                     element={
                       <SuperAdminOnlyRoute>

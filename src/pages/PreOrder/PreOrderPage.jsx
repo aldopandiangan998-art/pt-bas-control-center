@@ -29,7 +29,6 @@ import {
   SlidersHorizontal,
   ArrowUpDown,
   ChevronDown,
-  ChevronUp,
   ChevronRight,
   Filter,
   Info,
@@ -271,6 +270,221 @@ function formatPoNumber(poNum) {
   return `PO: ${clean}`;
 }
 
+/**
+ * CompactSearchableSelect - In-table and mobile-card searchable select combobox
+ * Built specifically for material row selection with fixed viewport positioning
+ * to avoid any clipping inside overflow containers.
+ */
+function CompactSearchableSelect({
+  value,
+  onChange,
+  options = [],
+  disabled = false,
+  placeholder = 'Pilih material...',
+  className = '',
+}) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState('');
+  const [highlightIdx, setHighlightIdx] = useState(-1);
+  const containerRef = useRef(null);
+  const searchInputRef = useRef(null);
+  const listRef = useRef(null);
+  const [coords, setCoords] = useState(null);
+
+  const filtered = useMemo(() => {
+    if (!search.trim()) return options;
+    const q = search.toLowerCase();
+    return options.filter((opt) =>
+      opt.label.toLowerCase().includes(q) || opt.value.toLowerCase().includes(q)
+    );
+  }, [options, search]);
+
+  const updatePosition = () => {
+    if (!containerRef.current) return;
+    const rect = containerRef.current.getBoundingClientRect();
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const menuH = 220;
+    const placeAbove = spaceBelow < menuH && rect.top > menuH;
+    setCoords({
+      top: placeAbove ? Math.max(10, rect.top - menuH - 4) : Math.min(window.innerHeight - menuH - 10, rect.bottom + 4),
+      left: Math.max(10, Math.min(window.innerWidth - 260, rect.left)),
+      width: Math.max(rect.width, 240),
+    });
+  };
+
+  useEffect(() => {
+    if (!open) return;
+    updatePosition();
+    const handleScrollOrResize = () => {
+      updatePosition();
+    };
+    window.addEventListener('scroll', handleScrollOrResize, true);
+    window.addEventListener('resize', handleScrollOrResize);
+    return () => {
+      window.removeEventListener('scroll', handleScrollOrResize, true);
+      window.removeEventListener('resize', handleScrollOrResize);
+    };
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    const handleClickOutside = (e) => {
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(e.target) &&
+        !e.target.closest('[data-compact-dropdown-menu]')
+      ) {
+        setOpen(false);
+        setSearch('');
+        setHighlightIdx(-1);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [open]);
+
+  useEffect(() => {
+    if (open && searchInputRef.current) {
+      searchInputRef.current.focus();
+    }
+  }, [open]);
+
+  const selectedOption = options.find((o) => o.value === value);
+  const displayText = selectedOption ? selectedOption.label : value || placeholder;
+
+  const handleSelect = (val) => {
+    onChange(val);
+    setOpen(false);
+    setSearch('');
+    setHighlightIdx(-1);
+  };
+
+  const handleKeyDown = (e) => {
+    if (!open) {
+      if (['Enter', ' ', 'ArrowDown', 'ArrowUp'].includes(e.key)) {
+        e.preventDefault();
+        setOpen(true);
+      }
+      return;
+    }
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setHighlightIdx((prev) => Math.min(prev + 1, filtered.length - 1));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setHighlightIdx((prev) => Math.max(prev - 1, 0));
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (highlightIdx >= 0 && filtered[highlightIdx]) {
+        handleSelect(filtered[highlightIdx].value);
+      }
+    } else if (e.key === 'Escape') {
+      setOpen(false);
+      setSearch('');
+      setHighlightIdx(-1);
+    }
+  };
+
+  return (
+    <div ref={containerRef} className={`relative ${className}`}>
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() => {
+          if (!disabled) {
+            setOpen((v) => !v);
+          }
+        }}
+        onKeyDown={handleKeyDown}
+        className={`w-full bg-[#181B1E] border border-[#2B3037] text-white rounded-md px-2.5 py-1.5 text-xs font-semibold focus:outline-none focus:border-[#F4511E] flex items-center justify-between gap-1.5 transition-colors cursor-pointer text-left ${
+          disabled ? 'opacity-60 cursor-not-allowed' : 'hover:border-[#3E454F]'
+        }`}
+      >
+        <span className="truncate block flex-1">{displayText}</span>
+        <ChevronDown
+          className={`w-3.5 h-3.5 text-neutral-400 shrink-0 transition-transform duration-150 ${
+            open ? 'rotate-180 text-[#F4511E]' : ''
+          }`}
+        />
+      </button>
+
+      {open && coords && (
+        <div
+          data-compact-dropdown-menu
+          style={{
+            position: 'fixed',
+            top: coords.top,
+            left: coords.left,
+            width: coords.width,
+            zIndex: 9999,
+          }}
+          className="bg-[#181B1E] border border-[#3A3E45] rounded-lg shadow-2xl overflow-hidden"
+          onKeyDown={handleKeyDown}
+        >
+          <div className="flex items-center gap-1.5 px-2.5 py-1.5 border-b border-[#2A2E35] bg-[#14171A]">
+            <Search className="w-3.5 h-3.5 text-neutral-400 shrink-0" />
+            <input
+              ref={searchInputRef}
+              type="text"
+              value={search}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setHighlightIdx(0);
+              }}
+              placeholder="Cari material..."
+              className="w-full bg-transparent text-xs text-white placeholder-neutral-500 focus:outline-none"
+            />
+            {search && (
+              <button
+                type="button"
+                onClick={() => setSearch('')}
+                className="text-neutral-400 hover:text-white p-0.5 cursor-pointer"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            )}
+          </div>
+
+          <ul
+            ref={listRef}
+            className="max-h-48 overflow-y-auto py-1 divide-y divide-[#22262A]/40 text-xs"
+          >
+            {filtered.length === 0 ? (
+              <li className="px-3 py-2 text-center text-neutral-500 text-xs">
+                Material tidak ditemukan
+              </li>
+            ) : (
+              filtered.map((opt, optIdx) => {
+                const isSelected = opt.value === value;
+                const isHighlighted = optIdx === highlightIdx;
+                return (
+                  <li
+                    key={opt.value}
+                    onClick={() => handleSelect(opt.value)}
+                    onMouseEnter={() => setHighlightIdx(optIdx)}
+                    className={`px-3 py-2 cursor-pointer flex items-center justify-between text-xs transition-colors ${
+                      isSelected
+                        ? 'bg-[#F4511E]/15 text-[#F4511E] font-bold'
+                        : isHighlighted
+                        ? 'bg-[#262A30] text-white'
+                        : 'text-neutral-200 hover:bg-[#202327]'
+                    }`}
+                  >
+                    <span className="truncate">{opt.label}</span>
+                    {isSelected && (
+                      <Check className="w-3.5 h-3.5 shrink-0 text-[#F4511E]" />
+                    )}
+                  </li>
+                );
+              })
+            )}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ─────────────────────────── main component ─────────────────────────── */
 export default function PreOrderPage() {
   const navigate = useNavigate();
@@ -286,14 +500,12 @@ export default function PreOrderPage() {
   }, [preOrders]);
 
   const [activeTab, setActiveTab] = useState('list');
-  const [isFormOpen, setIsFormOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState({});
   const [itemsLocked, setItemsLocked] = useState(false);
 
   const [formData, setFormData] = useState(mkDefaultForm());
   const [items, setItems] = useState([]);
-  const formRef = useRef(null);
   const firstErrorRef = useRef(null);
   const searchInputRef = useRef(null);
 
@@ -310,7 +522,7 @@ export default function PreOrderPage() {
     setViewMode(mode);
     try {
       localStorage.setItem('ptbas_ro_viewmode', mode);
-    } catch (e) { }
+    } catch (e) {}
   };
 
   // ── Header Action Controls ──
@@ -407,6 +619,10 @@ export default function PreOrderPage() {
   };
 
   const handleDeleteSelected = async () => {
+    if (!isSuperAdmin) {
+      addToast('Akses ditolak: Hanya Super Admin yang diizinkan untuk menghapus Received Order.', 'error');
+      return;
+    }
     if (selectedIds.size === 0) return;
     if (!window.confirm(`Hapus ${selectedIds.size} Received Order yang dipilih?`)) return;
     for (const id of selectedIds) {
@@ -600,6 +816,13 @@ export default function PreOrderPage() {
     const allowed = getAllowedItemTypes(formData.jenisRO);
     return allMaterials.filter((m) => allowed.includes(getItemType(m)));
   }, [allMaterials, formData.jenisRO]);
+
+  const materialDropdownOptions = useMemo(() => {
+    return availableMaterials.map((m) => ({
+      value: m.name || m.nama,
+      label: `${m.name || m.nama}${m.defaultUnit || m.satuan ? ` (${m.defaultUnit || m.satuan})` : ''}`,
+    }));
+  }, [availableMaterials]);
 
   const showHubungkanPo = formData.jenisRO === 'JASA ANGKUT SAJA';
   const showDaftarItem = !!formData.jenisRO;
@@ -882,10 +1105,6 @@ export default function PreOrderPage() {
   /* ── submit ── */
   const handleCreate = async (e) => {
     e.preventDefault();
-    if (!itemsLocked) {
-      addToast('Harap kunci item material terlebih dahulu sebelum menyimpan & mengajukan Pre Order.', 'warning');
-      return;
-    }
     const errs = validate();
     if (Object.keys(errs).length > 0) {
       setErrors(errs);
@@ -921,7 +1140,6 @@ export default function PreOrderPage() {
 
       handleResetForm();
       setActiveTab('list');
-      setIsFormOpen(false);
     } catch (err) {
       console.error(err);
       addToast(err?.message || 'Terjadi kesalahan saat mengajukan Pre Order', 'error');
@@ -956,7 +1174,6 @@ export default function PreOrderPage() {
   const handleCancel = () => {
     handleResetForm();
     setActiveTab('list');
-    setIsFormOpen(false);
   };
 
   const handleBuatSuratJalan = (po) => {
@@ -982,7 +1199,7 @@ export default function PreOrderPage() {
     <div className="w-full space-y-4 pb-28 min-h-screen bg-[#0A0C0E] text-white font-sans select-none relative">
 
       {/* ── TOP APP BAR matching user screenshot ── */}
-      <header className="sticky top-0 z-30 bg-[#0A0C0E] border-b border-[#1A1D21] px-4 py-3 flex items-center justify-between">
+      <header className="bg-[#0A0C0E] border-b border-[#1A1D21] px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <button
             type="button"
@@ -1015,14 +1232,12 @@ export default function PreOrderPage() {
         <div className="flex items-center gap-2">
           <button
             type="button"
-            onClick={() => {
-              setActiveTab('list');
-              setIsFormOpen(false);
-            }}
-            className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${activeTab === 'list'
-              ? 'bg-[#F4511E] text-white shadow-sm'
-              : 'text-neutral-400 hover:text-white hover:bg-white/5'
-              }`}
+            onClick={() => setActiveTab('list')}
+            className={`px-4 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+              activeTab === 'list'
+                ? 'bg-[#F4511E] text-white shadow-sm'
+                : 'text-neutral-400 hover:text-white hover:bg-white/5'
+            }`}
           >
             Daftar RO ({safePreOrders.length})
           </button>
@@ -1031,690 +1246,23 @@ export default function PreOrderPage() {
             onClick={() => {
               handleResetForm();
               setActiveTab('create');
-              setIsFormOpen(true);
             }}
-            className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${activeTab === 'create'
-              ? 'bg-[#F4511E] text-white shadow-sm'
-              : 'text-neutral-400 hover:text-white hover:bg-white/5'
-              }`}
+            className={`px-4 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
+              activeTab === 'create'
+                ? 'bg-[#F4511E] text-white shadow-sm'
+                : 'text-neutral-400 hover:text-white hover:bg-white/5'
+            }`}
           >
-            <Plus className="w-3.5 h-3.5" />
+            <Plus className="w-4 h-4" />
             <span>Input Received Order</span>
           </button>
         </div>
       </header>
 
-      <main className="px-4 space-y-6 mx-auto max-w-6xl pb-28">
-
-        {/* ══════════ TAB: FORM INPUT RECEIVED ORDER ══════════ */}
-        {activeTab === 'create' && (
-          <section ref={formRef} className="bg-[#14171A] border border-[#22262A] rounded-2xl p-4 sm:p-5 shadow-lg space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#22262A]">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg bg-[#F4511E]/10 border border-[#F4511E]/30 flex items-center justify-center">
-                  <Plus className="w-4.5 h-4.5 text-[#F4511E]" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h2 className="text-sm sm:text-base font-bold text-white tracking-tight">
-                      Input Received Order (RO) Baru
-                    </h2>
-                    <span className="text-[10px] px-2 py-0.5 rounded font-mono font-bold bg-[#1C1F23] text-orange-400 border border-orange-500/20">
-                      Form Input
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-neutral-400">
-                    Formulir input data kontrak pemesanan awal material dari customer
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2 self-end sm:self-auto">
-                <Button
-                  type="button"
-                  size="xs"
-                  variant="ghost"
-                  icon={RotateCcw}
-                  onClick={handleResetForm}
-                  title="Reset seluruh isian form"
-                >
-                  Reset Form
-                </Button>
-                <Button
-                  type="button"
-                  size="xs"
-                  variant={isFormOpen ? "secondary" : "primary"}
-                  icon={isFormOpen ? ChevronUp : ChevronDown}
-                  onClick={() => {
-                    const next = !isFormOpen;
-                    setIsFormOpen(next);
-                    if (next) setActiveTab('create');
-                    else setActiveTab('list');
-                  }}
-                  title={isFormOpen ? "Sembunyikan formulir input" : "Buka formulir input"}
-                >
-                  {isFormOpen ? "Sembunyikan Form" : "Buka Form Input"}
-                </Button>
-              </div>
-            </div>
-
-            {isFormOpen && (
-              <form onSubmit={handleCreate} noValidate className="space-y-6 pt-1">
-
-                {/* ── CARD 1: INFORMASI PEMESANAN & CUSTOMER ── */}
-                <div className="bg-[#14171A] border border-[#22262A] rounded-xl p-5 space-y-4 shadow-sm">
-                  <div className="flex items-center gap-2.5 pb-3 border-b border-[#22262A]">
-                    <div className="w-8 h-8 rounded-lg bg-[#F4511E]/10 border border-[#F4511E]/30 flex items-center justify-center">
-                      <FileText className="w-4 h-4 text-[#F4511E]" />
-                    </div>
-                    <div>
-                      <h3 className="text-sm font-bold text-white tracking-tight">
-                        Informasi Pre Order &amp; Pelanggan
-                      </h3>
-                      <p className="text-[11px] text-neutral-400">
-                        Detail kontrak pemesanan, data pelanggan, dan termin pembayaran
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {/* Tanggal */}
-                    <div ref={errors.tanggal ? firstErrorRef : null}>
-                      <DateField
-                        label="Tanggal Kontrak"
-                        value={formData.tanggal}
-                        onChange={(v) => setField('tanggal', v)}
-                        required
-                        error={errors.tanggal}
-                      />
-                    </div>
-
-                    {/* T.O.P. */}
-                    <SelectField
-                      icon={Calendar}
-                      label="T.O.P. (Term of Payment)"
-                      value={formData.top}
-                      onChange={(v) => setField('top', v)}
-                      options={TOP_OPTIONS}
-                    />
-
-                    {/* Jenis Pengiriman */}
-                    <div ref={errors.jenis ? firstErrorRef : null}>
-                      <SelectField
-                        icon={Monitor}
-                        label="Jenis Pengiriman"
-                        value={formData.jenis}
-                        onChange={(v) => setField('jenis', v)}
-                        options={JENIS_OPTIONS}
-                        required
-                        error={errors.jenis}
-                      />
-                    </div>
-
-                    {/* Pilih Customer */}
-                    <div className="md:col-span-2 lg:col-span-2" ref={errors.customer ? firstErrorRef : null}>
-                      <SelectField
-                        icon={User}
-                        label="Pilih Customer / Pelanggan"
-                        value={formData.customer}
-                        onChange={(v) => setField('customer', v)}
-                        options={customerOptions}
-                        searchable={customerOptions.length > 4}
-                        required
-                        error={errors.customer}
-                      />
-                    </div>
-
-                    {/* Jenis Wajib Pajak */}
-                    <SelectField
-                      icon={Building2}
-                      label="Jenis Wajib Pajak"
-                      value={formData.jenisWajibPajak}
-                      onChange={(v) => setField('jenisWajibPajak', v)}
-                      options={JENIS_PAJAK_OPTIONS}
-                    />
-
-                    {/* Mata Uang */}
-                    <div ref={errors.mataUang ? firstErrorRef : null}>
-                      <SelectField
-                        icon={DollarSign}
-                        label="Mata Uang"
-                        value={formData.mataUang}
-                        onChange={(v) => setField('mataUang', v)}
-                        options={mataUangOptions}
-                        required
-                        error={errors.mataUang}
-                      />
-                    </div>
-
-                    {/* Nomor PO Customer */}
-                    <TextField
-                      icon={FileText}
-                      label="Nomor PO Customer"
-                      value={formData.nomorPoCustomer}
-                      onChange={(e) => setField('nomorPoCustomer', e.target.value)}
-                      helper="Opsional (biarkan kosong jika belum terbit)"
-                      autoComplete="off"
-                    />
-
-                    {/* Pilih Jenis RO (Trigger Pembuka Item Material) */}
-                    <div ref={errors.jenisRO ? firstErrorRef : null}>
-                      <SelectField
-                        icon={List}
-                        label="Pilih Jenis RO"
-                        value={formData.jenisRO}
-                        onChange={handleJenisRoChange}
-                        options={JENIS_RO_OPTIONS}
-                        required
-                        error={errors.jenisRO}
-                        helper="Aturan: Jasa Angkut + Material (auto-material), Material Saja, atau Jasa Angkut Saja"
-                      />
-                    </div>
-
-
-
-                    {/* Conditional: Hubungkan Nomor PO Material (jika JASA ANGKUT SAJA) */}
-                    {showHubungkanPo && (
-                      <div className="col-span-full pt-1">
-                        <SelectField
-                          icon={Layers}
-                          label="Hubungkan Nomor PO Material"
-                          value={formData.hubungkanNomorPoMaterial}
-                          onChange={(v) => {
-                            setField('hubungkanNomorPoMaterial', v);
-                            const match = materialPoOptions.find((opt) => opt.value === v);
-                            if (match && match.satuan) {
-                              setField('satuanJasaAngkut', match.satuan);
-                              setField('satuan', match.satuan);
-                              setItems((prev) =>
-                                prev.map((it) => ({
-                                  ...it,
-                                  satuan: match.satuan,
-                                }))
-                              );
-                            }
-                          }}
-                          options={materialPoOptions}
-                          searchable={materialPoOptions.length > 5}
-                          helper="Kaitkan pengiriman jasa angkut ini dengan PO material yang bersangkutan (satuan otomatis mengikuti PO ini)"
-                        />
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* ── CARD 2: DAFTAR ITEM MATERIAL & KUANTITAS ── */}
-                {!showDaftarItem ? (
-                  <div className="rounded-xl border border-dashed border-[#2B3037] bg-[#14171A]/60 p-8 text-center">
-                    <div className="w-12 h-12 rounded-full bg-[#1C1F23] text-neutral-400 mx-auto flex items-center justify-center mb-3">
-                      <List className="w-6 h-6 text-[#F4511E]" />
-                    </div>
-                    <h4 className="text-sm font-semibold text-white">Pilih Jenis RO Terlebih Dahulu</h4>
-                    <p className="text-xs text-neutral-400 mt-1 max-w-md mx-auto">
-                      Silakan pilih <strong className="text-amber-400">Jenis RO</strong> pada form di atas untuk memuat daftar item lengkap beserta harga beli dan harga jual dari database secara otomatis.
-                    </p>
-                  </div>
-                ) : (
-                  <div className="bg-[#14171A] border border-[#22262A] rounded-xl p-5 space-y-4 shadow-sm" ref={errors.items ? firstErrorRef : null}>
-                    {/* Header Section */}
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#22262A]">
-                      <div className="flex items-center gap-2.5">
-                        <div className="w-8 h-8 rounded-lg bg-[#F4511E]/10 border border-[#F4511E]/30 flex items-center justify-center">
-                          <Package className="w-4 h-4 text-[#F4511E]" />
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <h3 className="text-sm font-bold text-white tracking-tight">
-                              Daftar Item Material
-                            </h3>
-                            <span className="text-[10px] px-2 py-0.5 rounded font-mono font-bold bg-[#1C1F23] text-amber-400 border border-amber-500/20">
-                              {formData.jenisRO}
-                            </span>
-                          </div>
-                          <p className="text-[11px] text-neutral-400 mt-0.5">
-                            Harga beli &amp; harga jual otomatis terisi dari Database Master. Anda hanya perlu mengisi kuantitas.
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        {items.length > 0 && (
-                          <Button
-                            type="button"
-                            size="xs"
-                            variant={itemsLocked ? 'secondary' : 'primary'}
-                            icon={itemsLocked ? Lock : Unlock}
-                            onClick={() => {
-                              const next = !itemsLocked;
-                              setItemsLocked(next);
-                              if (next) {
-                                addToast('Item material berhasil dikunci. Tombol Simpan & Ajukan kini aktif.', 'info');
-                              }
-                            }}
-                            className={!itemsLocked ? 'bg-amber-600 hover:bg-amber-500 text-white font-bold' : ''}
-                          >
-                            {itemsLocked ? 'Buka Kunci Item' : 'Kunci Item'}
-                          </Button>
-                        )}
-                        {!itemsLocked && (
-                          <Button
-                            type="button"
-                            size="xs"
-                            variant="primary"
-                            icon={Plus}
-                            onClick={addItem}
-                          >
-                            Tambah Item
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Error Banner if items invalid */}
-                    {errors.items && (
-                      <div className="p-3 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs flex items-center gap-2">
-                        <AlertCircle className="w-4 h-4 shrink-0" />
-                        <span>{errors.items}</span>
-                      </div>
-                    )}
-
-                    {/* ── DESKTOP/TABLET TABLE ── */}
-                    <div className="hidden md:block overflow-x-auto rounded-lg border border-[#22262A] bg-[#111315]">
-                      <table className="w-full text-left border-collapse">
-                        <thead>
-                          <tr className="bg-[#181B1E] text-[11px] font-semibold text-neutral-400 uppercase tracking-wider border-b border-[#22262A]">
-                            <th className="py-2.5 px-3 text-center w-12 font-mono">#</th>
-                            <th className="py-2.5 px-4 min-w-[220px]">Material / Layanan (Database)</th>
-                            <th className="py-2.5 px-3 w-36 font-mono text-amber-400">
-                              Kuantitas *
-                            </th>
-                            <th className="py-2.5 px-3 w-20 text-center font-mono">Satuan</th>
-                            <th className="py-2.5 px-3 w-36 font-mono">Harga Beli (HPP)</th>
-                            <th className="py-2.5 px-3 w-36 font-mono">Harga Jual</th>
-                            <th className="py-2.5 px-3 w-36 font-mono text-right">Subtotal Beli</th>
-                            <th className="py-2.5 px-3 w-36 font-mono text-right">Subtotal Jual</th>
-                            <th className="py-2.5 px-3 w-14 text-center">Aksi</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-[#22262A] text-xs">
-                          {items.map((item, idx) => {
-                            const isAuto = Boolean(item.isAutoGenerated);
-                            const rowTotalBeli = (Number(item.kuantitas) || 0) * (Number(item.hargaBeli) || 0);
-                            const rowTotalJual = (Number(item.kuantitas) || 0) * (Number(item.hargaJual) || 0);
-                            return (
-                              <tr
-                                key={item.id}
-                              // className={`transition-colors ${
-                              //   isAuto ? 'bg-emerald-950/15 border-l-2 border-emerald-500' : 'hover:bg-[#16181B]'
-                              // }`}
-                              >
-                                {/* Index */}
-                                <td className="py-2.5 px-3 text-center font-mono text-neutral-400 text-xs">
-                                  {idx + 1}
-                                </td>
-
-                                {/* Material Selector with full database items */}
-                                <td className="py-2 px-3">
-                                  {isAuto ? (
-                                    <div className="space-y-1">
-                                      <input
-                                        type="text"
-                                        disabled
-                                        value={item.nama}
-                                        className="w-full bg-[#111315]/80 border border-[#2B3037] text-white font-bold rounded-md px-2.5 py-1.5 text-xs font-mono cursor-not-allowed opacity-90 shadow-inner"
-                                        title="Jasa Angkut otomatis mengikuti Material yang dipilih"
-                                      />
-                                    </div>
-                                  ) : (
-                                    <div className="space-y-1">
-                                      <select
-                                        value={item.nama}
-                                        onChange={(e) => handleMaterialChange(idx, e.target.value)}
-                                        disabled={itemsLocked}
-                                        className="w-full bg-[#181B1E] border border-[#2B3037] text-white rounded-md px-2.5 py-1.5 text-xs font-semibold focus:outline-none focus:border-[#F4511E] disabled:opacity-60 cursor-pointer"
-                                      >
-                                        {availableMaterials.map((m) => (
-                                          <option key={m.id} value={m.name || m.nama} className="bg-[#181B1E] text-white">
-                                            {m.name || m.nama} {m.defaultUnit || m.satuan ? `(${m.defaultUnit || m.satuan})` : ''}
-                                          </option>
-                                        ))}
-                                      </select>
-                                    </div>
-                                  )}
-                                </td>
-
-                                {/* Kuantitas */}
-                                <td className="py-2 px-3">
-                                  <input
-                                    type="number"
-                                    min="0"
-                                    step="any"
-                                    placeholder={isAuto ? 'Mengikuti material' : 'Isi kuantitas'}
-                                    value={item.kuantitas}
-                                    onChange={(e) => updateItem(idx, 'kuantitas', e.target.value)}
-                                    disabled={itemsLocked || isAuto}
-                                    className={`w-full rounded-md px-2.5 py-1.5 text-xs font-mono font-bold focus:outline-none disabled:opacity-60 ${isAuto
-                                      ? 'bg-[#111315]/80 border border-[#22262A] text-neutral-300 cursor-not-allowed shadow-inner'
-                                      : 'bg-[#181B1E] border-2 border-amber-500/60 focus:border-[#F4511E] text-white focus:ring-1 focus:ring-[#F4511E]'
-                                      }`}
-                                    title={isAuto ? 'Kuantitas jasa angkut disable dan mengikuti kuantitas material' : 'Masukkan kuantitas material'}
-                                  />
-                                </td>
-
-                                {/* Satuan (Jasa Angkut tanpa satuan, Material dengan satuan) */}
-                                <td className="py-2 px-3 text-center">
-                                  <input
-                                    type="text"
-                                    disabled
-                                    value={item.itemType === ITEM_TYPES.JASA_ANGKUT ? '-' : (item.satuan || formData.satuan || 'm³')}
-                                    className="w-16 mx-auto text-center bg-[#181B1E]/60 border border-[#2B3037] text-amber-400 rounded-md px-2 py-1 text-xs font-mono font-bold cursor-not-allowed opacity-90 shadow-inner"
-                                    title={item.itemType === ITEM_TYPES.JASA_ANGKUT ? 'Jasa angkut tanpa satuan' : 'Satuan material'}
-                                  />
-                                </td>
-
-                                {/* Harga Beli */}
-                                <td className="py-2 px-3">
-                                  <input
-                                    type="number"
-                                    min="0"
-                                    value={item.hargaBeli}
-                                    onChange={(e) => updateItem(idx, 'hargaBeli', e.target.value)}
-                                    disabled={itemsLocked}
-                                    className="w-full bg-[#181B1E] border border-[#2B3037] text-neutral-300 rounded-md px-2.5 py-1.5 text-xs font-mono focus:outline-none focus:border-[#F4511E] disabled:opacity-60"
-                                    title="Harga beli otomatis terisi dari Database Master (dapat disesuaikan jika perlu)"
-                                  />
-                                </td>
-
-                                {/* Harga Jual */}
-                                <td className="py-2 px-3">
-                                  <input
-                                    type="number"
-                                    min="0"
-                                    value={item.hargaJual}
-                                    onChange={(e) => updateItem(idx, 'hargaJual', e.target.value)}
-                                    disabled={itemsLocked}
-                                    className="w-full bg-[#181B1E] border border-[#2B3037] text-white rounded-md px-2.5 py-1.5 text-xs font-mono font-semibold focus:outline-none focus:border-[#F4511E] disabled:opacity-60"
-                                    title="Harga jual otomatis terisi dari Database Master (dapat disesuaikan jika perlu)"
-                                  />
-                                </td>
-
-                                {/* Subtotal Beli (Read-only) */}
-                                <td className="py-2 px-3 text-right font-mono text-neutral-400 text-xs">
-                                  {formatCurrency(rowTotalBeli)}
-                                </td>
-
-                                {/* Subtotal Jual (Read-only) */}
-                                <td className="py-2 px-3 text-right font-mono text-emerald-400 font-semibold text-xs">
-                                  {formatCurrency(rowTotalJual)}
-                                </td>
-
-                                {/* Action */}
-                                <td className="py-2 px-3 text-center">
-                                  {isAuto ? (
-                                    <span
-                                      className="p-1.5 inline-block text-neutral-600 cursor-not-allowed"
-                                      title="Terhapus otomatis bersama baris Material induk"
-                                    >
-                                      <Lock className="w-3.5 h-3.5 text-neutral-500" />
-                                    </span>
-                                  ) : (
-                                    <button
-                                      type="button"
-                                      onClick={() => removeItem(idx)}
-                                      disabled={itemsLocked || items.filter((it) => !it.isAutoGenerated).length <= 1}
-                                      className="p-1.5 rounded text-neutral-500 hover:text-rose-400 hover:bg-rose-500/10 transition-colors disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
-                                      title="Hapus baris item"
-                                    >
-                                      <Trash2 className="w-3.5 h-3.5" />
-                                    </button>
-                                  )}
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
-
-                    {/* ── MOBILE CARD VIEW (< md) ── */}
-                    <div className="md:hidden space-y-3">
-                      {items.map((item, idx) => {
-                        const isAuto = Boolean(item.isAutoGenerated);
-                        const rowTotalBeli = (Number(item.kuantitas) || 0) * (Number(item.hargaBeli) || 0);
-                        const rowTotalJual = (Number(item.kuantitas) || 0) * (Number(item.hargaJual) || 0);
-                        return (
-                          <div
-                            key={item.id}
-                            className={`border rounded-lg p-3.5 space-y-3 ${isAuto ? 'bg-orange-950/10 border-orange-500/30' : 'bg-[#181B1E] border-[#24282C]'
-                              }`}
-                          >
-                            <div className="flex items-center justify-between pb-2 border-b border-[#22262A]">
-                              <div className="flex items-center gap-2">
-                                <span className="font-mono text-xs font-bold text-neutral-300">
-                                  Item #{idx + 1}
-                                </span>
-                                {isAuto ? (
-                                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-orange-500/15 text-[#F4511E] border border-[#F4511E]/30">
-                                    <Sparkles className="w-2.5 h-2.5" /> Jasa Angkut (Otomatis)
-                                  </span>
-                                ) : formData.jenisRO === 'JASA ANGKUT + MATERIAL' ? (
-                                  <span className="inline-block px-1.5 py-0.2 rounded text-[10px] font-mono font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
-                                    Material
-                                  </span>
-                                ) : null}
-                              </div>
-                              {isAuto ? (
-                                <span className="text-neutral-500 text-[10px] flex items-center gap-1">
-                                  <Lock className="w-3 h-3" /> Terkunci
-                                </span>
-                              ) : (
-                                <button
-                                  type="button"
-                                  onClick={() => removeItem(idx)}
-                                  disabled={itemsLocked || items.filter((it) => !it.isAutoGenerated).length <= 1}
-                                  className="text-neutral-500 hover:text-rose-400 disabled:opacity-30 p-1 cursor-pointer"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </button>
-                              )}
-                            </div>
-
-                            <div>
-                              <label className="text-[11px] text-neutral-400 font-medium block mb-1">
-                                {isAuto ? 'Jasa Angkut Otomatis (Mengikuti Material)' : 'Material'}
-                              </label>
-                              {isAuto ? (
-                                <input
-                                  type="text"
-                                  disabled
-                                  value={item.nama}
-                                  className="w-full bg-[#111315]/80 border border-[#2B3037] text-white font-bold rounded-md px-3 py-2 text-xs font-mono cursor-not-allowed opacity-90 shadow-inner"
-                                  title="Jasa Angkut otomatis mengikuti Material yang dipilih"
-                                />
-                              ) : (
-                                <select
-                                  value={item.nama}
-                                  onChange={(e) => handleMaterialChange(idx, e.target.value)}
-                                  disabled={itemsLocked}
-                                  className="w-full bg-[#111315] border border-[#2B3037] text-white rounded-md px-3 py-2 text-xs font-semibold focus:outline-none focus:border-[#F4511E]"
-                                >
-                                  {availableMaterials.map((m) => (
-                                    <option key={m.id} value={m.name || m.nama}>
-                                      {m.name || m.nama} {m.defaultUnit || m.satuan ? `(${m.defaultUnit || m.satuan})` : ''}
-                                    </option>
-                                  ))}
-                                </select>
-                              )}
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-2">
-                              <div>
-                                <label className="text-[11px] text-amber-400 font-bold block mb-1">
-                                  Kuantitas {item.satuan ? `(${item.satuan})` : ''} *
-                                </label>
-                                <input
-                                  type="number"
-                                  min="0"
-                                  placeholder={isAuto ? 'Mengikuti material' : '0'}
-                                  value={item.kuantitas}
-                                  onChange={(e) => updateItem(idx, 'kuantitas', e.target.value)}
-                                  disabled={itemsLocked || isAuto}
-                                  className={`w-full rounded-md px-3 py-2 text-xs font-mono font-bold focus:outline-none ${isAuto
-                                    ? 'bg-[#111315]/80 border border-[#2B3037] text-neutral-300 cursor-not-allowed shadow-inner'
-                                    : 'bg-[#111315] border-2 border-amber-500/60 focus:border-[#F4511E] text-white'
-                                    }`}
-                                  title={isAuto ? 'Kuantitas jasa angkut disable dan mengikuti kuantitas material' : 'Masukkan kuantitas material'}
-                                />
-                              </div>
-                              <div>
-                                <label className="text-[11px] text-neutral-400 font-medium block mb-1">
-                                  Satuan
-                                </label>
-                                <input
-                                  type="text"
-                                  disabled
-                                  value={item.itemType === ITEM_TYPES.JASA_ANGKUT ? '-' : (item.satuan || formData.satuanJasaAngkut || 'm³')}
-                                  className="w-full bg-[#111315]/80 border border-[#2B3037] text-amber-400 rounded-md px-3 py-2 text-xs font-mono font-bold cursor-not-allowed opacity-90 shadow-inner"
-                                  title={item.itemType === ITEM_TYPES.JASA_ANGKUT ? 'Jasa angkut tanpa satuan' : 'Satuan material'}
-                                />
-                              </div>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-2">
-                              <div>
-                                <label className="text-[11px] text-neutral-400 block mb-1">
-                                  Harga Beli (HPP)
-                                </label>
-                                <input
-                                  type="number"
-                                  min="0"
-                                  value={item.hargaBeli}
-                                  onChange={(e) => updateItem(idx, 'hargaBeli', e.target.value)}
-                                  disabled={itemsLocked}
-                                  className="w-full bg-[#111315] border border-[#2B3037] text-neutral-300 rounded-md px-3 py-2 text-xs font-mono focus:outline-none focus:border-[#F4511E]"
-                                />
-                              </div>
-                              <div>
-                                <label className="text-[11px] text-neutral-400 block mb-1">
-                                  Harga Jual
-                                </label>
-                                <input
-                                  type="number"
-                                  min="0"
-                                  value={item.hargaJual}
-                                  onChange={(e) => updateItem(idx, 'hargaJual', e.target.value)}
-                                  disabled={itemsLocked}
-                                  className="w-full bg-[#111315] border border-[#2B3037] text-white rounded-md px-3 py-2 text-xs font-mono font-bold focus:outline-none focus:border-[#F4511E]"
-                                />
-                              </div>
-                            </div>
-
-                            <div className="flex items-center justify-between pt-2 border-t border-[#22262A] text-xs font-mono">
-                              <span className="text-neutral-400">Total Jual:</span>
-                              <span className="text-emerald-400 font-bold">{formatCurrency(rowTotalJual)}</span>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-
-                    {/* ── SUMMARY STATS BAR ── */}
-                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 pt-2">
-                      <div className="bg-[#181B1E] border border-[#24282C] rounded-lg p-3">
-                        <div className="text-[11px] text-neutral-400 font-medium">Total Volume / Kuantitas</div>
-                        <div className="text-base font-bold font-mono text-white mt-1">
-                          {totalKuantitas.toLocaleString('id-ID')} <span className="text-xs font-normal text-neutral-400">{items[0]?.satuan || formData.satuanJasaAngkut || 'm³'}</span>
-                        </div>
-                      </div>
-
-                      <div className="bg-[#181B1E] border border-[#24282C] rounded-lg p-3">
-                        <div className="text-[11px] text-neutral-400 font-medium">Total Biaya Beli (HPP)</div>
-                        <div className="text-base font-bold font-mono text-neutral-300 mt-1">
-                          {formatCurrency(totalHargaBeli)}
-                        </div>
-                      </div>
-
-                      <div className="bg-[#181B1E] border border-[#24282C] rounded-lg p-3">
-                        <div className="text-[11px] text-neutral-400 font-medium">Total Nilai Penjualan</div>
-                        <div className="text-base font-bold font-mono text-white mt-1">
-                          {formatCurrency(totalHargaJual)}
-                        </div>
-                      </div>
-
-                      <div className="bg-[#181B1E] border border-[#24282C] rounded-lg p-3">
-                        <div className="flex items-center justify-between">
-                          <span className="text-[11px] text-neutral-400 font-medium">Estimasi Gross Margin</span>
-                          <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded ${marginPercentage >= 0 ? 'bg-emerald-950/40 text-emerald-400' : 'bg-rose-950/40 text-rose-400'}`}>
-                            {marginPercentage.toFixed(1)}%
-                          </span>
-                        </div>
-                        <div className={`text-base font-bold font-mono mt-1 ${totalMargin >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                          {formatCurrency(totalMargin)}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* ── ACTION BUTTONS (ALWAYS VISIBLE AT FORM BOTTOM) ── */}
-                <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 border-t border-[#22262A]">
-                  <div className="text-xs text-neutral-400">
-                    {!itemsLocked ? (
-                      <span className="flex items-center gap-1.5 text-amber-400 font-mono text-[11px]">
-                        <Lock className="w-3.5 h-3.5 shrink-0" />
-                        Kunci item material pada tabel di atas untuk mengaktifkan tombol Simpan &amp; Ajukan.
-                      </span>
-                    ) : (
-                      <span className="flex items-center gap-1.5 text-emerald-400 font-mono text-[11px]">
-                        <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
-                        Item material terkunci. Siap disimpan &amp; diajukan.
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      onClick={handleCancel}
-                      disabled={submitting}
-                      title="Batalkan dan bersihkan seluruh isian form"
-                    >
-                      Batal
-                    </Button>
-                    <Button
-                      type="submit"
-                      variant="primary"
-                      disabled={submitting || !itemsLocked}
-                      className={`w-full sm:w-auto px-6 py-2.5 font-bold ${!itemsLocked ? 'opacity-50 cursor-not-allowed' : ''}`}
-                      title={!itemsLocked ? 'Harap kunci item material terlebih dahulu' : 'Simpan & Ajukan Pre Order'}
-                    >
-                      {submitting ? 'Menyimpan...' : 'Simpan & Ajukan Pre Order'}
-                    </Button>
-                  </div>
-                </div>
-
-              </form>
-            )}
-          </section>
-        )}
-
-        {/* ══════════ DAFTAR RECEIVED ORDER (FAITHFUL TO SCREENSHOT) ══════════ */}
-        {activeTab === 'list' && (
-          <section className="space-y-3 pt-2">
-            <div className="flex items-center justify-between pb-2 border-b border-[#1E2227]">
-              <div className="flex items-center gap-2">
-                <div className="w-7 h-7 rounded-lg bg-neutral-800 border border-neutral-700 flex items-center justify-center text-neutral-300">
-                  <List className="w-4 h-4" />
-                </div>
-                <h2 className="text-sm font-bold text-white tracking-tight">
-                  Daftar Received Order
-                </h2>
-                <span className="text-xs font-mono px-2 py-0.5 rounded-full bg-neutral-800 text-neutral-300 border border-neutral-700">
-                  {filteredPreOrders.length}
-                </span>
-              </div>
-            </div>
+      {/* ══════════ VIEW 1: DAFTAR RECEIVED ORDER (FAITHFUL TO SCREENSHOT) ══════════ */}
+      {activeTab === 'list' && (
+        <>
+          <main className="px-4 space-y-3 mx-auto max-w-6xl">
             {/* ── TOP TOOLBAR: SEARCH BAR & GRID / LIST TOGGLE ── */}
             <div className="pt-1 space-y-2">
               {/* Row 1: Total count kiri, icons kanan */}
@@ -1826,10 +1374,11 @@ export default function PreOrderPage() {
                       key={tab.id}
                       type="button"
                       onClick={() => setStatusFilter(tab.id)}
-                      className={`px-3 py-1 rounded-lg text-xs transition-colors cursor-pointer ${statusFilter === tab.id
-                        ? 'bg-[#F4511E] text-white font-bold'
-                        : 'bg-[#1A1D22] text-neutral-400 hover:text-white'
-                        }`}
+                      className={`px-3 py-1 rounded-lg text-xs transition-colors cursor-pointer ${
+                        statusFilter === tab.id
+                          ? 'bg-[#F4511E] text-white font-bold'
+                          : 'bg-[#1A1D22] text-neutral-400 hover:text-white'
+                      }`}
                     >
                       {tab.label}
                     </button>
@@ -1932,18 +1481,22 @@ export default function PreOrderPage() {
                         {/* Group select checkbox */}
                         <button
                           type="button"
-                          size="xs"
-                          variant={itemsLocked ? 'secondary' : 'primary'}
-                          icon={itemsLocked ? Lock : Unlock}
                           onClick={() => {
-                            const nextState = !itemsLocked;
-                            setItemsLocked(nextState);
-                            if (nextState) {
-                              addToast('Item material berhasil dikunci. Tombol Simpan & Ajukan kini aktif.', 'info');
-                            }
+                            const allIds = orders.map((o) => o.id);
+                            setSelectedIds((prev) => {
+                              const next = new Set(prev);
+                              if (allGroupSelected) allIds.forEach((id) => next.delete(id));
+                              else allIds.forEach((id) => next.add(id));
+                              return next;
+                            });
                           }}
-                          className={!itemsLocked ? 'bg-amber-600 hover:bg-amber-500 text-white font-bold' : ''}
-                          title={itemsLocked ? 'Klik untuk membuka kunci item' : 'Kunci item agar dapat menyimpan & mengajukan Pre Order'}
+                          className={`w-4 h-4 rounded border flex items-center justify-center transition-colors cursor-pointer shrink-0 ${
+                            allGroupSelected
+                              ? 'bg-[#F4511E] border-[#F4511E] text-white'
+                              : someGroupSelected
+                              ? 'bg-[#F4511E]/40 border-[#F4511E] text-white'
+                              : 'border-neutral-500 hover:border-neutral-300 bg-transparent'
+                          }`}
                         >
                           {(allGroupSelected || someGroupSelected) && <Check className="w-2.5 h-2.5 stroke-[3]" />}
                         </button>
@@ -2006,25 +1559,27 @@ export default function PreOrderPage() {
                                   isApproved
                                     ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/25'
                                     : isPending
-                                      ? 'bg-amber-500/15 text-amber-400 border-amber-500/25'
-                                      : isSelesai
-                                        ? 'bg-blue-500/15 text-blue-400 border-blue-500/25'
-                                        : 'bg-neutral-700/40 text-neutral-400 border-neutral-600/30';
+                                    ? 'bg-amber-500/15 text-amber-400 border-amber-500/25'
+                                    : isSelesai
+                                    ? 'bg-blue-500/15 text-blue-400 border-blue-500/25'
+                                    : 'bg-neutral-700/40 text-neutral-400 border-neutral-600/30';
                                 return (
                                   <tr
                                     key={po.id}
-                                    className={`border-b border-[#1A1D22] transition-colors ${isSelected ? 'bg-[#F4511E]/5' : idx % 2 === 0 ? 'bg-transparent' : 'bg-[#0E1012]/40'
-                                      } hover:bg-white/[0.03]`}
+                                    className={`border-b border-[#1A1D22] transition-colors ${
+                                      isSelected ? 'bg-[#F4511E]/5' : idx % 2 === 0 ? 'bg-transparent' : 'bg-[#0E1012]/40'
+                                    } hover:bg-white/[0.03]`}
                                   >
                                     {/* Checkbox */}
                                     <td className="px-3 py-2.5">
                                       <button
                                         type="button"
                                         onClick={() => toggleSelect(po.id)}
-                                        className={`w-4 h-4 rounded border flex items-center justify-center transition-colors cursor-pointer ${isSelected
-                                          ? 'bg-[#F4511E] border-[#F4511E] text-white'
-                                          : 'border-neutral-600 hover:border-neutral-400 bg-transparent'
-                                          }`}
+                                        className={`w-4 h-4 rounded border flex items-center justify-center transition-colors cursor-pointer ${
+                                          isSelected
+                                            ? 'bg-[#F4511E] border-[#F4511E] text-white'
+                                            : 'border-neutral-600 hover:border-neutral-400 bg-transparent'
+                                        }`}
                                       >
                                         {isSelected && <Check className="w-2.5 h-2.5 stroke-[3]" />}
                                       </button>
@@ -2085,12 +1640,14 @@ export default function PreOrderPage() {
                                             title="Buat Surat Jalan (GI)"
                                           ><Truck className="w-4 h-4" /></button>
                                         )}
-                                        <button
-                                          type="button"
-                                          onClick={() => { setPoToDelete(po); setDeleteModalOpen(true); }}
-                                          className="text-[#F4511E] hover:text-red-400 transition-colors cursor-pointer p-0.5"
-                                          title="Hapus"
-                                        ><Trash2 className="w-4 h-4" /></button>
+                                        {isSuperAdmin && (
+                                          <button
+                                            type="button"
+                                            onClick={() => { setPoToDelete(po); setDeleteModalOpen(true); }}
+                                            className="text-[#F4511E] hover:text-red-400 transition-colors cursor-pointer p-0.5"
+                                            title="Hapus"
+                                          ><Trash2 className="w-4 h-4" /></button>
+                                        )}
                                         <button
                                           type="button"
                                           onClick={() => { setSelectedDetailPo(po); setDetailModalOpen(true); }}
@@ -2119,10 +1676,11 @@ export default function PreOrderPage() {
                   return (
                     <div
                       key={po.id}
-                      className={`bg-[#121417] border rounded-xl overflow-hidden shadow-md transition-all flex flex-col justify-between ${isSelected
-                        ? 'border-[#F4511E] ring-1 ring-[#F4511E]'
-                        : 'border-[#20242A] hover:border-[#2C323B]'
-                        }`}
+                      className={`bg-[#121417] border rounded-xl overflow-hidden shadow-md transition-all flex flex-col justify-between ${
+                        isSelected
+                          ? 'border-[#F4511E] ring-1 ring-[#F4511E]'
+                          : 'border-[#20242A] hover:border-[#2C323B]'
+                      }`}
                     >
                       {/* Grid Card Body */}
                       <div className="p-4 space-y-3 font-mono flex-1">
@@ -2136,24 +1694,26 @@ export default function PreOrderPage() {
                           </div>
                           <div className="flex items-center gap-2">
                             {po.status && (
-                              <span className={`text-[10px] px-2 py-0.5 rounded font-bold uppercase tracking-wider ${po.status === 'SELESAI'
-                                ? 'bg-blue-500/15 text-blue-400 border border-blue-500/30'
-                                : (po.status === 'MENUNGGU_APPROVAL' || po.status === 'PENDING' || po.status === 'MENUNGGU APPROVAL')
+                              <span className={`text-[10px] px-2 py-0.5 rounded font-bold uppercase tracking-wider ${
+                                po.status === 'SELESAI'
+                                  ? 'bg-blue-500/15 text-blue-400 border border-blue-500/30'
+                                  : (po.status === 'MENUNGGU_APPROVAL' || po.status === 'PENDING' || po.status === 'MENUNGGU APPROVAL')
                                   ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30'
                                   : po.status === 'OVER'
-                                    ? 'bg-purple-500/15 text-purple-400 border border-purple-500/30'
-                                    : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                                }`}>
+                                  ? 'bg-purple-500/15 text-purple-400 border border-purple-500/30'
+                                  : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                              }`}>
                                 {po.status === 'MENUNGGU_APPROVAL' ? 'MENUNGGU APPROVAL' : po.status}
                               </span>
                             )}
                             <button
                               type="button"
                               onClick={() => toggleSelect(po.id)}
-                              className={`w-5 h-5 rounded border flex items-center justify-center transition-colors cursor-pointer ${isSelected
-                                ? 'bg-[#F4511E] border-[#F4511E] text-white'
-                                : 'border-neutral-500 hover:border-neutral-300 bg-transparent'
-                                }`}
+                              className={`w-5 h-5 rounded border flex items-center justify-center transition-colors cursor-pointer ${
+                                isSelected
+                                  ? 'bg-[#F4511E] border-[#F4511E] text-white'
+                                  : 'border-neutral-500 hover:border-neutral-300 bg-transparent'
+                              }`}
                               title="Pilih item"
                               aria-label="Pilih item"
                             >
@@ -2238,215 +1798,811 @@ export default function PreOrderPage() {
                       </div>
 
                       {/* Grid Card Footer: [ SJ | Trash | Info ] */}
-                      <div className={`border-t border-[#20242A] grid ${po.status === 'APPROVED' ? 'grid-cols-3' : 'grid-cols-2'} bg-[#0E1012]`}>
-                        {po.status === 'APPROVED' && (
-                          <button
-                            type="button"
-                            onClick={() => handleBuatSuratJalan(po)}
-                            className="py-2.5 flex items-center justify-center text-emerald-400 hover:bg-emerald-500/10 active:bg-emerald-500/20 transition-colors cursor-pointer"
-                            title="Buat Surat Jalan (GI)"
-                          >
-                            <Truck className="w-4 h-4" />
-                          </button>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setPoToDelete(po);
-                            setDeleteModalOpen(true);
-                          }}
-                          className={`py-2.5 flex items-center justify-center text-[#F4511E] hover:bg-[#F4511E]/10 active:bg-[#F4511E]/20 transition-colors cursor-pointer ${po.status === 'APPROVED' ? 'border-l border-[#20242A]' : ''}`}
-                          title="Hapus Received Order"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setSelectedDetailPo(po);
-                            setDetailModalOpen(true);
-                          }}
-                          className="py-2.5 flex items-center justify-center text-[#F4511E] hover:bg-[#F4511E]/10 active:bg-[#F4511E]/20 transition-colors cursor-pointer border-l border-[#20242A]"
-                          title="Detail Received Order"
-                        >
-                          <Info className="w-4 h-4" />
-                        </button>
-                      </div>
+                      {(() => {
+                        const showSj = po.status === 'APPROVED';
+                        const showDelete = isSuperAdmin;
+                        const colCount = (showSj ? 1 : 0) + (showDelete ? 1 : 0) + 1;
+                        const colClass = colCount === 3 ? 'grid-cols-3' : colCount === 2 ? 'grid-cols-2' : 'grid-cols-1';
+
+                        return (
+                          <div className={`border-t border-[#20242A] grid ${colClass} bg-[#0E1012]`}>
+                            {showSj && (
+                              <button
+                                type="button"
+                                onClick={() => handleBuatSuratJalan(po)}
+                                className="py-2.5 flex items-center justify-center text-emerald-400 hover:bg-emerald-500/10 active:bg-emerald-500/20 transition-colors cursor-pointer"
+                                title="Buat Surat Jalan (GI)"
+                              >
+                                <Truck className="w-4 h-4" />
+                              </button>
+                            )}
+                            {showDelete && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setPoToDelete(po);
+                                  setDeleteModalOpen(true);
+                                }}
+                                className={`py-2.5 flex items-center justify-center text-[#F4511E] hover:bg-[#F4511E]/10 active:bg-[#F4511E]/20 transition-colors cursor-pointer ${showSj ? 'border-l border-[#20242A]' : ''}`}
+                                title="Hapus Received Order"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSelectedDetailPo(po);
+                                setDetailModalOpen(true);
+                              }}
+                              className={`py-2.5 flex items-center justify-center text-[#F4511E] hover:bg-[#F4511E]/10 active:bg-[#F4511E]/20 transition-colors cursor-pointer ${showSj || showDelete ? 'border-l border-[#20242A]' : ''}`}
+                              title="Detail Received Order"
+                            >
+                              <Info className="w-4 h-4" />
+                            </button>
+                          </div>
+                        );
+                      })()}
                     </div>
                   );
                 })}
               </div>
             )}
-          </section>
-        )}
-      </main>
+          </main>
+
+          {/* ── FLOATING MULTI-SELECT BAR (when items checked) ── */}
+          {selectedIds.size > 0 && (
+            <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-40 bg-[#16191D] border border-[#2B313C] rounded-full px-4 py-2.5 shadow-2xl flex items-center gap-3 font-mono text-xs">
+              <span className="text-white font-bold">{selectedIds.size} dipilih</span>
+              {isSuperAdmin && (
+                <button
+                  type="button"
+                  onClick={handleDeleteSelected}
+                  className="px-3 py-1 rounded-full bg-rose-600 hover:bg-rose-500 text-white font-bold text-[11px] flex items-center gap-1.5 transition-colors cursor-pointer"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Hapus Terpilih</span>
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => setSelectedIds(new Set())}
+                className="text-neutral-400 hover:text-white text-[11px] cursor-pointer"
+              >
+                Batal
+              </button>
+            </div>
+          )}
 
 
-      {/* ── FLOATING MULTI-SELECT BAR (when items checked) ── */}
-      {selectedIds.size > 0 && (
-        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-40 bg-[#16191D] border border-[#2B313C] rounded-full px-4 py-2.5 shadow-2xl flex items-center gap-3 font-mono text-xs">
-          <span className="text-white font-bold">{selectedIds.size} dipilih</span>
-          <button
-            type="button"
-            onClick={handleDeleteSelected}
-            className="px-3 py-1 rounded-full bg-rose-600 hover:bg-rose-500 text-white font-bold text-[11px] flex items-center gap-1.5 transition-colors cursor-pointer"
+
+          {/* ── DETAIL MODAL ── */}
+          <Modal
+            isOpen={detailModalOpen}
+            onClose={() => setDetailModalOpen(false)}
+            title="Detail Received Order"
+            subtitle={selectedDetailPo ? `RO: ${selectedDetailPo.nomorRO || selectedDetailPo.nomorRo || selectedDetailPo.id}` : ''}
           >
-            <Trash2 className="w-3.5 h-3.5" />
-            <span>Hapus Terpilih</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setSelectedIds(new Set())}
-            className="text-neutral-400 hover:text-white text-[11px] cursor-pointer"
+            {selectedDetailPo && (
+              <div className="p-4 space-y-4 font-mono text-xs">
+                {/* Header Information */}
+                <div className="bg-[#171A1E] p-3.5 rounded-xl border border-[#252A32] space-y-2">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <span className="text-[10px] text-[#F4511E] uppercase font-bold block">Customer</span>
+                      <span className="text-sm font-bold text-white block mt-0.5">{selectedDetailPo.customer}</span>
+                      <span className="text-[11px] text-neutral-400 block">{selectedDetailPo.customerAddress || 'Gresik, Jawa Timur'}</span>
+                    </div>
+                    <span className="px-2 py-0.5 rounded text-[10px] bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                      {selectedDetailPo.status || 'APPROVED'}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 pt-2 border-t border-[#252A32] text-[11px]">
+                    <div>
+                      <span className="text-neutral-400 block">Nomor PO Customer:</span>
+                      <span className="text-white font-bold">{selectedDetailPo.nomorPo || '-'}</span>
+                    </div>
+                    <div>
+                      <span className="text-neutral-400 block">Tanggal Kontrak:</span>
+                      <span className="text-white font-bold">{selectedDetailPo.tanggal || '-'}</span>
+                    </div>
+                    <div>
+                      <span className="text-neutral-400 block">Jenis Layanan:</span>
+                      <span className="text-white">{selectedDetailPo.jenisRO || selectedDetailPo.jenis || 'Jasa Angkut + Material'}</span>
+                    </div>
+                    <div>
+                      <span className="text-neutral-400 block">Termin Pembayaran:</span>
+                      <span className="text-white">{selectedDetailPo.top || '14 hari'} ({selectedDetailPo.jenisPajak || 'PKP'})</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Volumes & Delivery Progress */}
+                <div className="bg-[#171A1E] p-3.5 rounded-xl border border-[#252A32] space-y-2">
+                  <span className="text-[10px] text-neutral-400 uppercase font-bold block">Volume & Realisasi Kirim</span>
+                  <div className="flex justify-between items-center text-sm font-bold">
+                    <span className="text-white">
+                      Target: {formatNumber(selectedDetailPo.totalOrder)} {selectedDetailPo.satuan || 'm³'}
+                    </span>
+                    <span className="text-emerald-400">
+                      Terkirim: {formatNumber(selectedDetailPo.terkirim || 0)} {selectedDetailPo.satuan || 'm³'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Pricing Breakdown */}
+                <div className="bg-[#171A1E] p-3.5 rounded-xl border border-[#252A32] space-y-1.5 text-[11px]">
+                  <span className="text-[10px] text-neutral-400 uppercase font-bold block">Harga Satuan & Margin</span>
+                  <div className="flex justify-between">
+                    <span className="text-neutral-400">Harga Beli Supplier:</span>
+                    <span className="text-white font-bold">{formatCurrency(selectedDetailPo.hargaBeli)}/{selectedDetailPo.satuan || 'm³'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-neutral-400">Harga Jual Customer:</span>
+                    <span className="text-white font-bold">{formatCurrency(selectedDetailPo.hargaJual)}/{selectedDetailPo.satuan || 'm³'}</span>
+                  </div>
+                  <div className="flex justify-between pt-1 border-t border-[#252A32] text-emerald-400 font-bold">
+                    <span>Estimasi Gross Margin:</span>
+                    <span>
+                      {formatCurrency(((Number(selectedDetailPo.hargaJual) || 0) - (Number(selectedDetailPo.hargaBeli) || 0)) * (Number(selectedDetailPo.totalOrder) || 1))}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="pt-2 flex flex-col sm:flex-row items-center justify-end gap-2">
+                  {selectedDetailPo.status === 'APPROVED' ? (
+                    <Button
+                      variant="primary"
+                      icon={FileText}
+                      onClick={() => {
+                        setDetailModalOpen(false);
+                        handleBuatSuratJalan(selectedDetailPo);
+                      }}
+                      className="w-full sm:w-auto"
+                    >
+                      Buat Surat Jalan GI &rarr;
+                    </Button>
+                  ) : (
+                    <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/25 text-amber-400 text-xs">
+                      <Clock className="w-4 h-4 shrink-0" />
+                      <span>Menunggu persetujuan Super Admin sebelum Surat Jalan dapat diterbitkan</span>
+                    </div>
+                  )}
+                  <Button
+                    variant="outline"
+                    onClick={() => setDetailModalOpen(false)}
+                    className="w-full sm:w-auto"
+                  >
+                    Tutup
+                  </Button>
+                </div>
+              </div>
+            )}
+          </Modal>
+
+          {/* ── DELETE CONFIRMATION MODAL ── */}
+          <Modal
+            isOpen={deleteModalOpen && isSuperAdmin}
+            onClose={() => setDeleteModalOpen(false)}
+            title="Hapus Data Received Order"
+            subtitle={poToDelete ? `Nomor RO: ${poToDelete.nomorRO || poToDelete.nomorRo || poToDelete.id}` : ''}
           >
-            Batal
-          </button>
-        </div>
+            {poToDelete && (
+              <div className="p-4 space-y-4 font-mono text-xs">
+                <p className="text-neutral-300 leading-relaxed">
+                  Apakah Anda yakin ingin menghapus data Received Order untuk pelanggan{' '}
+                  <strong className="text-white">{poToDelete.customer}</strong> sebesar{' '}
+                  <strong className="text-[#F4511E]">{formatNumber(poToDelete.totalOrder)} {poToDelete.satuan || 'm³'}</strong>?
+                </p>
+                <p className="text-[11px] text-neutral-500">
+                  Tindakan ini akan menghapus data kontrak pesanan secara permanen dari sistem.
+                </p>
+
+                <div className="pt-2 flex items-center justify-end gap-2">
+                  <Button variant="outline" onClick={() => setDeleteModalOpen(false)}>
+                    Batal
+                  </Button>
+                  <Button
+                    variant="danger"
+                    icon={Trash2}
+                    onClick={async () => {
+                      if (!isSuperAdmin) {
+                        addToast('Akses ditolak: Hanya Super Admin yang diizinkan untuk menghapus Received Order.', 'error');
+                        setDeleteModalOpen(false);
+                        return;
+                      }
+                      if (deletePreOrder) await deletePreOrder(poToDelete.id);
+                      setDeleteModalOpen(false);
+                      setPoToDelete(null);
+                    }}
+                  >
+                    Ya, Hapus RO
+                  </Button>
+                </div>
+              </div>
+            )}
+          </Modal>
+        </>
       )}
 
-      {/* ── DETAIL MODAL ── */}
-      <Modal
-        isOpen={detailModalOpen}
-        onClose={() => setDetailModalOpen(false)}
-        title="Detail Received Order"
-        subtitle={selectedDetailPo ? `RO: ${selectedDetailPo.nomorRO || selectedDetailPo.nomorRo || selectedDetailPo.id}` : ''}
-      >
-        {selectedDetailPo && (
-          <div className="p-4 space-y-4 font-mono text-xs">
-            {/* Header Information */}
-            <div className="bg-[#171A1E] p-3.5 rounded-xl border border-[#252A32] space-y-2">
-              <div className="flex justify-between items-start">
-                <div>
-                  <span className="text-[10px] text-[#F4511E] uppercase font-bold block">Customer</span>
-                  <span className="text-sm font-bold text-white block mt-0.5">{selectedDetailPo.customer}</span>
-                  <span className="text-[11px] text-neutral-400 block">{selectedDetailPo.customerAddress || 'Gresik, Jawa Timur'}</span>
+      {/* ══════════ VIEW 2: FORM BUAT RO (TERSTRUKTUR & RAPI) ══════════ */}
+      {activeTab === 'create' && (
+        <div className="px-4 space-y-6 mx-auto max-w-6xl pt-2">
+
+          <form onSubmit={handleCreate} noValidate className="space-y-6 pb-6">
+
+            {/* ── CARD 1: INFORMASI PEMESANAN & CUSTOMER ── */}
+            <div className="bg-[#14171A] border border-[#22262A] rounded-xl p-5 space-y-4 shadow-sm">
+              <div className="flex items-center gap-2.5 pb-3 border-b border-[#22262A]">
+                <div className="w-8 h-8 rounded-lg bg-[#F4511E]/10 border border-[#F4511E]/30 flex items-center justify-center">
+                  <FileText className="w-4 h-4 text-[#F4511E]" />
                 </div>
-                <span className="px-2 py-0.5 rounded text-[10px] bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
-                  {selectedDetailPo.status || 'APPROVED'}
-                </span>
+                <div>
+                  <h3 className="text-sm font-bold text-white tracking-tight">
+                    Informasi Pre Order &amp; Pelanggan
+                  </h3>
+                  <p className="text-[11px] text-neutral-400">
+                    Detail kontrak pemesanan, data pelanggan, dan termin pembayaran
+                  </p>
+                </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-2 pt-2 border-t border-[#252A32] text-[11px]">
-                <div>
-                  <span className="text-neutral-400 block">Nomor PO Customer:</span>
-                  <span className="text-white font-bold">{selectedDetailPo.nomorPo || '-'}</span>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {/* Tanggal */}
+                <div ref={errors.tanggal ? firstErrorRef : null}>
+                  <DateField
+                    label="Tanggal Kontrak"
+                    value={formData.tanggal}
+                    onChange={(v) => setField('tanggal', v)}
+                    required
+                    error={errors.tanggal}
+                  />
                 </div>
-                <div>
-                  <span className="text-neutral-400 block">Tanggal Kontrak:</span>
-                  <span className="text-white font-bold">{selectedDetailPo.tanggal || '-'}</span>
-                </div>
-                <div>
-                  <span className="text-neutral-400 block">Jenis Layanan:</span>
-                  <span className="text-white">{selectedDetailPo.jenisRO || selectedDetailPo.jenis || 'Jasa Angkut + Material'}</span>
-                </div>
-                <div>
-                  <span className="text-neutral-400 block">Termin Pembayaran:</span>
-                  <span className="text-white">{selectedDetailPo.top || '14 hari'} ({selectedDetailPo.jenisPajak || 'PKP'})</span>
-                </div>
-              </div>
-            </div>
 
-            {/* Volumes & Delivery Progress */}
-            <div className="bg-[#171A1E] p-3.5 rounded-xl border border-[#252A32] space-y-2">
-              <span className="text-[10px] text-neutral-400 uppercase font-bold block">Volume & Realisasi Kirim</span>
-              <div className="flex justify-between items-center text-sm font-bold">
-                <span className="text-white">
-                  Target: {formatNumber(selectedDetailPo.totalOrder)} {selectedDetailPo.satuan || 'm³'}
-                </span>
-                <span className="text-emerald-400">
-                  Terkirim: {formatNumber(selectedDetailPo.terkirim || 0)} {selectedDetailPo.satuan || 'm³'}
-                </span>
-              </div>
-            </div>
+                {/* T.O.P. */}
+                <SelectField
+                  icon={Calendar}
+                  label="T.O.P. (Term of Payment)"
+                  value={formData.top}
+                  onChange={(v) => setField('top', v)}
+                  options={TOP_OPTIONS}
+                  searchable
+                />
 
-            {/* Pricing Breakdown */}
-            <div className="bg-[#171A1E] p-3.5 rounded-xl border border-[#252A32] space-y-1.5 text-[11px]">
-              <span className="text-[10px] text-neutral-400 uppercase font-bold block">Harga Satuan & Margin</span>
-              <div className="flex justify-between">
-                <span className="text-neutral-400">Harga Beli Supplier:</span>
-                <span className="text-white font-bold">{formatCurrency(selectedDetailPo.hargaBeli)}/{selectedDetailPo.satuan || 'm³'}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-neutral-400">Harga Jual Customer:</span>
-                <span className="text-white font-bold">{formatCurrency(selectedDetailPo.hargaJual)}/{selectedDetailPo.satuan || 'm³'}</span>
-              </div>
-              <div className="flex justify-between pt-1 border-t border-[#252A32] text-emerald-400 font-bold">
-                <span>Estimasi Gross Margin:</span>
-                <span>
-                  {formatCurrency(((Number(selectedDetailPo.hargaJual) || 0) - (Number(selectedDetailPo.hargaBeli) || 0)) * (Number(selectedDetailPo.totalOrder) || 1))}
-                </span>
-              </div>
-            </div>
+                {/* Jenis Pengiriman */}
+                <div ref={errors.jenis ? firstErrorRef : null}>
+                  <SelectField
+                    icon={Monitor}
+                    label="Jenis Pengiriman"
+                    value={formData.jenis}
+                    onChange={(v) => setField('jenis', v)}
+                    options={JENIS_OPTIONS}
+                    searchable
+                    required
+                    error={errors.jenis}
+                  />
+                </div>
 
-            {/* Action Buttons */}
-            <div className="pt-2 flex flex-col sm:flex-row items-center justify-end gap-2">
-              {selectedDetailPo.status === 'APPROVED' ? (
-                <Button
-                  variant="primary"
+                {/* Pilih Customer */}
+                <div className="md:col-span-2 lg:col-span-2" ref={errors.customer ? firstErrorRef : null}>
+                  <SelectField
+                    icon={User}
+                    label="Pilih Customer / Pelanggan"
+                    value={formData.customer}
+                    onChange={(v) => setField('customer', v)}
+                    options={customerOptions}
+                    searchable
+                    required
+                    error={errors.customer}
+                  />
+                </div>
+
+                {/* Jenis Wajib Pajak */}
+                <SelectField
+                  icon={Building2}
+                  label="Jenis Wajib Pajak"
+                  value={formData.jenisWajibPajak}
+                  onChange={(v) => setField('jenisWajibPajak', v)}
+                  options={JENIS_PAJAK_OPTIONS}
+                  searchable
+                />
+
+                {/* Mata Uang */}
+                <div ref={errors.mataUang ? firstErrorRef : null}>
+                  <SelectField
+                    icon={DollarSign}
+                    label="Mata Uang"
+                    value={formData.mataUang}
+                    onChange={(v) => setField('mataUang', v)}
+                    options={mataUangOptions}
+                    searchable
+                    required
+                    error={errors.mataUang}
+                  />
+                </div>
+
+                {/* Nomor PO Customer */}
+                <TextField
                   icon={FileText}
-                  onClick={() => {
-                    setDetailModalOpen(false);
-                    handleBuatSuratJalan(selectedDetailPo);
-                  }}
-                  className="w-full sm:w-auto"
-                >
-                  Buat Surat Jalan GI &rarr;
-                </Button>
-              ) : (
-                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/25 text-amber-400 text-xs">
-                  <Clock className="w-4 h-4 shrink-0" />
-                  <span>Menunggu persetujuan Super Admin sebelum Surat Jalan dapat diterbitkan</span>
+                  label="Nomor PO Customer"
+                  value={formData.nomorPoCustomer}
+                  onChange={(e) => setField('nomorPoCustomer', e.target.value)}
+                  helper="Opsional (biarkan kosong jika belum terbit)"
+                  autoComplete="off"
+                />
+
+                {/* Pilih Jenis RO (Trigger Pembuka Item Material) */}
+                <div ref={errors.jenisRO ? firstErrorRef : null}>
+                  <SelectField
+                    icon={List}
+                    label="Pilih Jenis RO"
+                    value={formData.jenisRO}
+                    onChange={handleJenisRoChange}
+                    options={JENIS_RO_OPTIONS}
+                    searchable
+                    required
+                    error={errors.jenisRO}
+                    helper="Aturan: Jasa Angkut + Material (auto-material), Material Saja, atau Jasa Angkut Saja"
+                  />
                 </div>
-              )}
-              <Button
-                variant="outline"
-                onClick={() => setDetailModalOpen(false)}
-                className="w-full sm:w-auto"
-              >
-                Tutup
-              </Button>
+
+                
+
+                {/* Conditional: Hubungkan Nomor PO Material (jika JASA ANGKUT SAJA) */}
+                {showHubungkanPo && (
+                  <div className="col-span-full pt-1">
+                    <SelectField
+                      icon={Layers}
+                      label="Hubungkan Nomor PO Material"
+                      value={formData.hubungkanNomorPoMaterial}
+                      onChange={(v) => {
+                        setField('hubungkanNomorPoMaterial', v);
+                        const match = materialPoOptions.find((opt) => opt.value === v);
+                        if (match && match.satuan) {
+                          setField('satuanJasaAngkut', match.satuan);
+                          setField('satuan', match.satuan);
+                          setItems((prev) =>
+                            prev.map((it) => ({
+                              ...it,
+                              satuan: match.satuan,
+                            }))
+                          );
+                        }
+                      }}
+                      options={materialPoOptions}
+                      searchable
+                      helper="Kaitkan pengiriman jasa angkut ini dengan PO material yang bersangkutan (satuan otomatis mengikuti PO ini)"
+                    />
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
-        )}
-      </Modal>
 
-      {/* ── DELETE CONFIRMATION MODAL ── */}
-      <Modal
-        isOpen={deleteModalOpen}
-        onClose={() => setDeleteModalOpen(false)}
-        title="Hapus Data Received Order"
-        subtitle={poToDelete ? `Nomor RO: ${poToDelete.nomorRO || poToDelete.nomorRo || poToDelete.id}` : ''}
-      >
-        {poToDelete && (
-          <div className="p-4 space-y-4 font-mono text-xs">
-            <p className="text-neutral-300 leading-relaxed">
-              Apakah Anda yakin ingin menghapus data Received Order untuk pelanggan{' '}
-              <strong className="text-white">{poToDelete.customer}</strong> sebesar{' '}
-              <strong className="text-[#F4511E]">{formatNumber(poToDelete.totalOrder)} {poToDelete.satuan || 'm³'}</strong>?
-            </p>
-            <p className="text-[11px] text-neutral-500">
-              Tindakan ini akan menghapus data kontrak pesanan secara permanen dari sistem.
-            </p>
+            {/* ── CARD 2: DAFTAR ITEM MATERIAL & KUANTITAS ── */}
+            {!showDaftarItem ? (
+              <div className="rounded-xl border border-dashed border-[#2B3037] bg-[#14171A]/60 p-8 text-center">
+                <div className="w-12 h-12 rounded-full bg-[#1C1F23] text-neutral-400 mx-auto flex items-center justify-center mb-3">
+                  <List className="w-6 h-6 text-[#F4511E]" />
+                </div>
+                <h4 className="text-sm font-semibold text-white">Pilih Jenis RO Terlebih Dahulu</h4>
+                <p className="text-xs text-neutral-400 mt-1 max-w-md mx-auto">
+                  Silakan pilih <strong className="text-amber-400">Jenis RO</strong> pada form di atas untuk memuat daftar item lengkap beserta harga beli dan harga jual dari database secara otomatis.
+                </p>
+              </div>
+            ) : (
+              <div className="bg-[#14171A] border border-[#22262A] rounded-xl p-5 space-y-4 shadow-sm" ref={errors.items ? firstErrorRef : null}>
+                {/* Header Section */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#22262A]">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-lg bg-[#F4511E]/10 border border-[#F4511E]/30 flex items-center justify-center">
+                      <Package className="w-4 h-4 text-[#F4511E]" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-sm font-bold text-white tracking-tight">
+                          Daftar Item Material
+                        </h3>
+                        <span className="text-[10px] px-2 py-0.5 rounded font-mono font-bold bg-[#1C1F23] text-amber-400 border border-amber-500/20">
+                          {formData.jenisRO}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-neutral-400 mt-0.5">
+                        Harga beli &amp; harga jual otomatis terisi dari Database Master. Anda hanya perlu mengisi kuantitas.
+                      </p>
+                    </div>
+                  </div>
 
-            <div className="pt-2 flex items-center justify-end gap-2">
-              <Button variant="outline" onClick={() => setDeleteModalOpen(false)}>
+                  <div className="flex items-center gap-2">
+                    {items.length > 0 && (
+                      <Button
+                        type="button"
+                        size="xs"
+                        variant={itemsLocked ? 'secondary' : 'ghost'}
+                        icon={itemsLocked ? Lock : Unlock}
+                        onClick={() => setItemsLocked((v) => !v)}
+                      >
+                        {itemsLocked ? 'Buka Kunci' : 'Kunci Item'}
+                      </Button>
+                    )}
+                    {!itemsLocked && (
+                      <Button
+                        type="button"
+                        size="xs"
+                        variant="primary"
+                        icon={Plus}
+                        onClick={addItem}
+                      >
+                        Tambah Item
+                      </Button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Error Banner if items invalid */}
+                {errors.items && (
+                  <div className="p-3 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs flex items-center gap-2">
+                    <AlertCircle className="w-4 h-4 shrink-0" />
+                    <span>{errors.items}</span>
+                  </div>
+                )}
+
+                {/* ── DESKTOP/TABLET TABLE ── */}
+                <div className="hidden md:block overflow-x-auto rounded-lg border border-[#22262A] bg-[#111315]">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="bg-[#181B1E] text-[11px] font-semibold text-neutral-400 uppercase tracking-wider border-b border-[#22262A]">
+                        <th className="py-2.5 px-3 text-center w-12 font-mono">#</th>
+                        <th className="py-2.5 px-4 min-w-[220px]">Material / Layanan (Database)</th>
+                        <th className="py-2.5 px-3 w-36 font-mono text-amber-400">
+                          Kuantitas *
+                        </th>
+                        <th className="py-2.5 px-3 w-20 text-center font-mono">Satuan</th>
+                        <th className="py-2.5 px-3 w-36 font-mono">Harga Beli (HPP)</th>
+                        <th className="py-2.5 px-3 w-36 font-mono">Harga Jual</th>
+                        <th className="py-2.5 px-3 w-36 font-mono text-right">Subtotal Beli</th>
+                        <th className="py-2.5 px-3 w-36 font-mono text-right">Subtotal Jual</th>
+                        <th className="py-2.5 px-3 w-14 text-center">Aksi</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#22262A] text-xs">
+                      {items.map((item, idx) => {
+                        const isAuto = Boolean(item.isAutoGenerated);
+                        const rowTotalBeli = (Number(item.kuantitas) || 0) * (Number(item.hargaBeli) || 0);
+                        const rowTotalJual = (Number(item.kuantitas) || 0) * (Number(item.hargaJual) || 0);
+                        return (
+                          <tr
+                            key={item.id}
+                            // className={`transition-colors ${
+                            //   isAuto ? 'bg-emerald-950/15 border-l-2 border-emerald-500' : 'hover:bg-[#16181B]'
+                            // }`}
+                          >
+                            {/* Index */}
+                            <td className="py-2.5 px-3 text-center font-mono text-neutral-400 text-xs">
+                              {idx + 1}
+                            </td>
+
+                            {/* Material Selector with full database items */}
+                            <td className="py-2 px-3">
+                              {isAuto ? (
+                                <div className="space-y-1">
+                                  <input
+                                    type="text"
+                                    disabled
+                                    value={item.nama}
+                                    className="w-full bg-[#111315]/80 border border-[#2B3037] text-white font-bold rounded-md px-2.5 py-1.5 text-xs font-mono cursor-not-allowed opacity-90 shadow-inner"
+                                    title="Jasa Angkut otomatis mengikuti Material yang dipilih"
+                                  />
+                                </div>
+                              ) : (
+                                <div className="space-y-1">
+                                  <CompactSearchableSelect
+                                    value={item.nama}
+                                    onChange={(val) => handleMaterialChange(idx, val)}
+                                    options={materialDropdownOptions}
+                                    disabled={itemsLocked}
+                                    placeholder="Pilih Material..."
+                                  />
+                                </div>
+                              )}
+                            </td>
+
+                            {/* Kuantitas */}
+                            <td className="py-2 px-3">
+                              <input
+                                type="number"
+                                min="0"
+                                step="any"
+                                placeholder={isAuto ? 'Mengikuti material' : 'Isi kuantitas'}
+                                value={item.kuantitas}
+                                onChange={(e) => updateItem(idx, 'kuantitas', e.target.value)}
+                                disabled={itemsLocked || isAuto}
+                                className={`w-full rounded-md px-2.5 py-1.5 text-xs font-mono font-bold focus:outline-none disabled:opacity-60 ${
+                                  isAuto
+                                    ? 'bg-[#111315]/80 border border-[#22262A] text-neutral-300 cursor-not-allowed shadow-inner'
+                                    : 'bg-[#181B1E] border-2 border-amber-500/60 focus:border-[#F4511E] text-white focus:ring-1 focus:ring-[#F4511E]'
+                                }`}
+                                title={isAuto ? 'Kuantitas jasa angkut disable dan mengikuti kuantitas material' : 'Masukkan kuantitas material'}
+                              />
+                            </td>
+
+                            {/* Satuan (Jasa Angkut tanpa satuan, Material dengan satuan) */}
+                            <td className="py-2 px-3 text-center">
+                              <input
+                                type="text"
+                                disabled
+                                value={item.itemType === ITEM_TYPES.JASA_ANGKUT ? '-' : (item.satuan || formData.satuan || 'm³')}
+                                className="w-16 mx-auto text-center bg-[#181B1E]/60 border border-[#2B3037] text-amber-400 rounded-md px-2 py-1 text-xs font-mono font-bold cursor-not-allowed opacity-90 shadow-inner"
+                                title={item.itemType === ITEM_TYPES.JASA_ANGKUT ? 'Jasa angkut tanpa satuan' : 'Satuan material'}
+                              />
+                            </td>
+
+                            {/* Harga Beli */}
+                            <td className="py-2 px-3">
+                              <input
+                                type="number"
+                                min="0"
+                                value={item.hargaBeli}
+                                onChange={(e) => updateItem(idx, 'hargaBeli', e.target.value)}
+                                disabled={itemsLocked}
+                                className="w-full bg-[#181B1E] border border-[#2B3037] text-neutral-300 rounded-md px-2.5 py-1.5 text-xs font-mono focus:outline-none focus:border-[#F4511E] disabled:opacity-60"
+                                title="Harga beli otomatis terisi dari Database Master (dapat disesuaikan jika perlu)"
+                              />
+                            </td>
+
+                            {/* Harga Jual */}
+                            <td className="py-2 px-3">
+                              <input
+                                type="number"
+                                min="0"
+                                value={item.hargaJual}
+                                onChange={(e) => updateItem(idx, 'hargaJual', e.target.value)}
+                                disabled={itemsLocked}
+                                className="w-full bg-[#181B1E] border border-[#2B3037] text-white rounded-md px-2.5 py-1.5 text-xs font-mono font-semibold focus:outline-none focus:border-[#F4511E] disabled:opacity-60"
+                                title="Harga jual otomatis terisi dari Database Master (dapat disesuaikan jika perlu)"
+                              />
+                            </td>
+
+                            {/* Subtotal Beli (Read-only) */}
+                            <td className="py-2 px-3 text-right font-mono text-neutral-400 text-xs">
+                              {formatCurrency(rowTotalBeli)}
+                            </td>
+
+                            {/* Subtotal Jual (Read-only) */}
+                            <td className="py-2 px-3 text-right font-mono text-emerald-400 font-semibold text-xs">
+                              {formatCurrency(rowTotalJual)}
+                            </td>
+
+                            {/* Action */}
+                            <td className="py-2 px-3 text-center">
+                              {isAuto ? (
+                                <span
+                                  className="p-1.5 inline-block text-neutral-600 cursor-not-allowed"
+                                  title="Terhapus otomatis bersama baris Material induk"
+                                >
+                                  <Lock className="w-3.5 h-3.5 text-neutral-500" />
+                                </span>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => removeItem(idx)}
+                                  disabled={itemsLocked || items.filter((it) => !it.isAutoGenerated).length <= 1}
+                                  className="p-1.5 rounded text-neutral-500 hover:text-rose-400 hover:bg-rose-500/10 transition-colors disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+                                  title="Hapus baris item"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* ── MOBILE CARD VIEW (< md) ── */}
+                <div className="md:hidden space-y-3">
+                  {items.map((item, idx) => {
+                    const isAuto = Boolean(item.isAutoGenerated);
+                    const rowTotalBeli = (Number(item.kuantitas) || 0) * (Number(item.hargaBeli) || 0);
+                    const rowTotalJual = (Number(item.kuantitas) || 0) * (Number(item.hargaJual) || 0);
+                    return (
+                      <div
+                        key={item.id}
+                        className={`border rounded-lg p-3.5 space-y-3 ${
+                          isAuto ? 'bg-orange-950/10 border-orange-500/30' : 'bg-[#181B1E] border-[#24282C]'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between pb-2 border-b border-[#22262A]">
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono text-xs font-bold text-neutral-300">
+                              Item #{idx + 1}
+                            </span>
+                            {isAuto ? (
+                              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-orange-500/15 text-[#F4511E] border border-[#F4511E]/30">
+                                <Sparkles className="w-2.5 h-2.5" /> Jasa Angkut (Otomatis)
+                              </span>
+                            ) : formData.jenisRO === 'JASA ANGKUT + MATERIAL' ? (
+                              <span className="inline-block px-1.5 py-0.2 rounded text-[10px] font-mono font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                                Material
+                              </span>
+                            ) : null}
+                          </div>
+                          {isAuto ? (
+                            <span className="text-neutral-500 text-[10px] flex items-center gap-1">
+                              <Lock className="w-3 h-3" /> Terkunci
+                            </span>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => removeItem(idx)}
+                              disabled={itemsLocked || items.filter((it) => !it.isAutoGenerated).length <= 1}
+                              className="text-neutral-500 hover:text-rose-400 disabled:opacity-30 p-1 cursor-pointer"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
+
+                        <div>
+                          <label className="text-[11px] text-neutral-400 font-medium block mb-1">
+                            {isAuto ? 'Jasa Angkut Otomatis (Mengikuti Material)' : 'Material'}
+                          </label>
+                          {isAuto ? (
+                            <input
+                              type="text"
+                              disabled
+                              value={item.nama}
+                              className="w-full bg-[#111315]/80 border border-[#2B3037] text-white font-bold rounded-md px-3 py-2 text-xs font-mono cursor-not-allowed opacity-90 shadow-inner"
+                              title="Jasa Angkut otomatis mengikuti Material yang dipilih"
+                            />
+                          ) : (
+                            <CompactSearchableSelect
+                              value={item.nama}
+                              onChange={(val) => handleMaterialChange(idx, val)}
+                              options={materialDropdownOptions}
+                              disabled={itemsLocked}
+                              placeholder="Pilih Material..."
+                            />
+                          )}
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="text-[11px] text-amber-400 font-bold block mb-1">
+                              Kuantitas {item.satuan ? `(${item.satuan})` : ''} *
+                            </label>
+                            <input
+                              type="number"
+                              min="0"
+                              placeholder={isAuto ? 'Mengikuti material' : '0'}
+                              value={item.kuantitas}
+                              onChange={(e) => updateItem(idx, 'kuantitas', e.target.value)}
+                              disabled={itemsLocked || isAuto}
+                              className={`w-full rounded-md px-3 py-2 text-xs font-mono font-bold focus:outline-none ${
+                                isAuto
+                                  ? 'bg-[#111315]/80 border border-[#2B3037] text-neutral-300 cursor-not-allowed shadow-inner'
+                                  : 'bg-[#111315] border-2 border-amber-500/60 focus:border-[#F4511E] text-white'
+                              }`}
+                              title={isAuto ? 'Kuantitas jasa angkut disable dan mengikuti kuantitas material' : 'Masukkan kuantitas material'}
+                            />
+                          </div>
+                          <div>
+                            <label className="text-[11px] text-neutral-400 font-medium block mb-1">
+                              Satuan
+                            </label>
+                            <input
+                              type="text"
+                              disabled
+                              value={item.itemType === ITEM_TYPES.JASA_ANGKUT ? '-' : (item.satuan || formData.satuanJasaAngkut || 'm³')}
+                              className="w-full bg-[#111315]/80 border border-[#2B3037] text-amber-400 rounded-md px-3 py-2 text-xs font-mono font-bold cursor-not-allowed opacity-90 shadow-inner"
+                              title={item.itemType === ITEM_TYPES.JASA_ANGKUT ? 'Jasa angkut tanpa satuan' : 'Satuan material'}
+                            />
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="text-[11px] text-neutral-400 block mb-1">
+                              Harga Beli (HPP)
+                            </label>
+                            <input
+                              type="number"
+                              min="0"
+                              value={item.hargaBeli}
+                              onChange={(e) => updateItem(idx, 'hargaBeli', e.target.value)}
+                              disabled={itemsLocked}
+                              className="w-full bg-[#111315] border border-[#2B3037] text-neutral-300 rounded-md px-3 py-2 text-xs font-mono focus:outline-none focus:border-[#F4511E]"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-[11px] text-neutral-400 block mb-1">
+                              Harga Jual
+                            </label>
+                            <input
+                              type="number"
+                              min="0"
+                              value={item.hargaJual}
+                              onChange={(e) => updateItem(idx, 'hargaJual', e.target.value)}
+                              disabled={itemsLocked}
+                              className="w-full bg-[#111315] border border-[#2B3037] text-white rounded-md px-3 py-2 text-xs font-mono font-bold focus:outline-none focus:border-[#F4511E]"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-between pt-2 border-t border-[#22262A] text-xs font-mono">
+                          <span className="text-neutral-400">Total Jual:</span>
+                          <span className="text-emerald-400 font-bold">{formatCurrency(rowTotalJual)}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* ── SUMMARY STATS BAR ── */}
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 pt-2">
+                  <div className="bg-[#181B1E] border border-[#24282C] rounded-lg p-3">
+                    <div className="text-[11px] text-neutral-400 font-medium">Total Volume / Kuantitas</div>
+                    <div className="text-base font-bold font-mono text-white mt-1">
+                      {totalKuantitas.toLocaleString('id-ID')} <span className="text-xs font-normal text-neutral-400">{items[0]?.satuan || formData.satuanJasaAngkut || 'm³'}</span>
+                    </div>
+                  </div>
+
+                  <div className="bg-[#181B1E] border border-[#24282C] rounded-lg p-3">
+                    <div className="text-[11px] text-neutral-400 font-medium">Total Biaya Beli (HPP)</div>
+                    <div className="text-base font-bold font-mono text-neutral-300 mt-1">
+                      {formatCurrency(totalHargaBeli)}
+                    </div>
+                  </div>
+
+                  <div className="bg-[#181B1E] border border-[#24282C] rounded-lg p-3">
+                    <div className="text-[11px] text-neutral-400 font-medium">Total Nilai Penjualan</div>
+                    <div className="text-base font-bold font-mono text-white mt-1">
+                      {formatCurrency(totalHargaJual)}
+                    </div>
+                  </div>
+
+                  <div className="bg-[#181B1E] border border-[#24282C] rounded-lg p-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] text-neutral-400 font-medium">Estimasi Gross Margin</span>
+                      <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded ${marginPercentage >= 0 ? 'bg-emerald-950/40 text-emerald-400' : 'bg-rose-950/40 text-rose-400'}`}>
+                        {marginPercentage.toFixed(1)}%
+                      </span>
+                    </div>
+                    <div className={`text-base font-bold font-mono mt-1 ${totalMargin >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                      {formatCurrency(totalMargin)}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ── ACTION BUTTONS (ALWAYS VISIBLE AT FORM BOTTOM) ── */}
+            <div className="flex flex-col sm:flex-row items-center justify-end gap-3 pt-4 border-t border-[#22262A]">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={handleCancel}
+                disabled={submitting}
+                title="Batalkan dan bersihkan seluruh isian form"
+              >
                 Batal
               </Button>
               <Button
-                variant="danger"
-                icon={Trash2}
-                onClick={async () => {
-                  if (deletePreOrder) await deletePreOrder(poToDelete.id);
-                  setDeleteModalOpen(false);
-                  setPoToDelete(null);
-                }}
+                type="submit"
+                variant="primary"
+                disabled={submitting}
+                className="w-full sm:w-auto px-6 py-2.5 font-bold"
               >
-                Ya, Hapus RO
+                {submitting ? 'Menyimpan...' : 'Simpan & Ajukan Pre Order'}
               </Button>
             </div>
-          </div>
-        )}
-      </Modal>
+
+          </form>
+        </div>
+      )}
     </div>
   );
 }

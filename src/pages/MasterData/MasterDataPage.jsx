@@ -1920,58 +1920,6 @@ export default function MasterDataPage() {
 
             return (
               <div className="space-y-3.5">
-                {/* Metric Summary Header Banner */}
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
-                  <div className="master-stat-card p-3 rounded-xl bg-[#121822]/90 border border-[#1E2938] flex items-center justify-between shadow-xs">
-                    <div>
-                      <div className="text-[10px] font-mono text-neutral-400 uppercase tracking-wider">Total Supplier</div>
-                      <div className="text-xl font-bold font-mono text-white mt-0.5">{suppliers.length}</div>
-                      <div className="text-[10px] text-neutral-400 mt-0.5">Mitra Tambang Terdaftar</div>
-                    </div>
-                    <div className="w-10 h-10 rounded-xl bg-orange-500/10 border border-orange-500/30 flex items-center justify-center text-[#F4511E]">
-                      <HardHat className="w-5 h-5" />
-                    </div>
-                  </div>
-                  <div className="master-stat-card stat-emerald p-3 rounded-xl bg-[#121822]/90 border border-[#1E2938] flex items-center justify-between shadow-xs">
-                    <div>
-                      <div className="text-[10px] font-mono text-neutral-400 uppercase tracking-wider">Supplier Aktif</div>
-                      <div className="text-xl font-bold font-mono text-emerald-400 mt-0.5">
-                        {suppliers.filter((s) => s.aktif).length}
-                      </div>
-                      <div className="text-[10px] text-emerald-400/80 mt-0.5">
-                        {Math.round((suppliers.filter((s) => s.aktif).length / (suppliers.length || 1)) * 100)}% Siap Transaksi
-                      </div>
-                    </div>
-                    <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
-                      <CheckCircle2 className="w-5 h-5" />
-                    </div>
-                  </div>
-                  <div className="master-stat-card stat-sky p-3 rounded-xl bg-[#121822]/90 border border-[#1E2938] flex items-center justify-between shadow-xs">
-                    <div>
-                      <div className="text-[10px] font-mono text-neutral-400 uppercase tracking-wider">Terdaftar PKP</div>
-                      <div className="text-xl font-bold font-mono text-sky-400 mt-0.5">
-                        {suppliers.filter((s) => s.pkp).length}
-                      </div>
-                      <div className="text-[10px] text-neutral-400 mt-0.5">Faktur Pajak Standar</div>
-                    </div>
-                    <div className="w-10 h-10 rounded-xl bg-sky-500/10 border border-sky-500/30 flex items-center justify-center text-sky-400">
-                      <ShieldCheck className="w-5 h-5" />
-                    </div>
-                  </div>
-                  <div className="master-stat-card stat-amber p-3 rounded-xl bg-[#121822]/90 border border-[#1E2938] flex items-center justify-between shadow-xs">
-                    <div>
-                      <div className="text-[10px] font-mono text-neutral-400 uppercase tracking-wider">Rekening Bank</div>
-                      <div className="text-xl font-bold font-mono text-amber-400 mt-0.5">
-                        {new Set(suppliers.map((s) => s.bank)).size} Bank
-                      </div>
-                      <div className="text-[10px] text-neutral-400 mt-0.5">Tujuan Pencairan BKK</div>
-                    </div>
-                    <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
-                      <CreditCard className="w-5 h-5" />
-                    </div>
-                  </div>
-                </div>
-
                 {filtered.length === 0 ? (
                   <MasterEmptyState
                     icon={HardHat}
@@ -3721,80 +3669,6 @@ export default function MasterDataPage() {
 
             return (
               <div className="space-y-3.5">
-                {/* Metric Summary Header Banner */}
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
-                  <div className="master-stat-card p-3 rounded-xl bg-[#121822]/90 border border-[#1E2938] flex items-center justify-between shadow-xs">
-                    <div>
-                      <div className="text-[10px] font-mono text-neutral-400 uppercase tracking-wider">Total Akun</div>
-                      <div className="text-xl font-bold font-mono text-white mt-0.5">{activeUsers.length}</div>
-                      <div className="text-[10px] text-neutral-400 mt-0.5">Karyawan & Manajemen</div>
-                    </div>
-                    <div className="w-10 h-10 rounded-xl bg-orange-500/10 border border-orange-500/30 flex items-center justify-center text-[#F4511E]">
-                      <Users className="w-5 h-5" />
-                    </div>
-                  </div>
-                  <div className="master-stat-card stat-amber p-3 rounded-xl bg-[#121822]/90 border border-[#1E2938] flex items-center justify-between shadow-xs">
-                    <div>
-                      <div className="text-[10px] font-mono text-neutral-400 uppercase tracking-wider">Super Admin</div>
-                      <div className="text-xl font-bold font-mono text-amber-400 mt-0.5">
-                        {activeUsers.filter((u) => u.role === 'superadmin' || u.roleLabel === 'Super Admin').length}
-                      </div>
-                      <div className="text-[10px] text-amber-400/80 mt-0.5">Otoritas Direksi</div>
-                    </div>
-                    <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
-                      <ShieldCheck className="w-5 h-5" />
-                    </div>
-                  </div>
-                  <div className="master-stat-card stat-emerald p-3 rounded-xl bg-[#121822]/90 border border-[#1E2938] flex items-center justify-between shadow-xs">
-                    <div>
-                      <div className="text-[10px] font-mono text-neutral-400 uppercase tracking-wider">Admin Aktif</div>
-                      <div className="text-xl font-bold font-mono text-emerald-400 mt-0.5">
-                        {activeUsers.filter((u) => (u.aktif === 1 || u.aktif === true) && u.role !== 'superadmin').length}
-                      </div>
-                      <div className="text-[10px] text-emerald-400/80 mt-0.5">Akses Operasional</div>
-                    </div>
-                    <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
-                      <CheckCircle2 className="w-5 h-5" />
-                    </div>
-                  </div>
-                  <div className="master-stat-card stat-rose p-3 rounded-xl bg-[#121822]/90 border border-[#1E2938] flex items-center justify-between shadow-xs">
-                    <div>
-                      <div className="text-[10px] font-mono text-neutral-400 uppercase tracking-wider">Non-aktif</div>
-                      <div className="text-xl font-bold font-mono text-rose-400 mt-0.5">
-                        {activeUsers.filter((u) => !u.aktif || u.aktif === 0).length}
-                      </div>
-                      <div className="text-[10px] text-neutral-400 mt-0.5">Registrasi Akun Baru</div>
-                    </div>
-                    <div className="w-10 h-10 rounded-xl bg-rose-500/10 border border-rose-500/30 flex items-center justify-center text-rose-400">
-                      <Shield className="w-5 h-5" />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Header Info Banner for Super Admin */}
-                {isSuperAdmin && (
-                  <div className="p-3.5 rounded-xl bg-[#131922] border border-[#232F3E] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs shadow-xs">
-                    <div className="flex items-center gap-2.5 text-neutral-300">
-                      <div className="w-7 h-7 rounded-lg bg-amber-500/15 border border-amber-500/30 flex items-center justify-center shrink-0 text-amber-400">
-                        <ShieldCheck className="w-4 h-4" />
-                      </div>
-                      <span>
-                        <strong className="text-white">Otoritas Direksi:</strong> Super Admin dapat menyetujui (<span className="text-emerald-400">approve</span>), mengaktifkan, atau menolak pendaftaran akun Admin baru.
-                      </span>
-                    </div>
-
-                    <Button
-                      size="xs"
-                      variant="primary"
-                      icon={UserCheck}
-                      onClick={() => navigate('/approval-admin')}
-                      className="bg-amber-600 hover:bg-amber-500 text-white font-bold text-[11px] shrink-0"
-                    >
-                      Buka Approval Registrasi Admin &rarr;
-                    </Button>
-                  </div>
-                )}
-
                 {filtered.length === 0 ? (
                   <MasterEmptyState
                     icon={Users}
@@ -4187,53 +4061,6 @@ export default function MasterDataPage() {
               animate="visible"
               className="space-y-4"
             >
-              {/* Top Quick Stat Banners */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                <div className="master-stat-card p-3.5 rounded-xl bg-[#121822]/90 border border-[#1E2938] shadow-xs">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-mono text-neutral-400 uppercase tracking-wider">Basis Akuntansi</span>
-                    <div className="w-6 h-6 rounded-lg bg-[#F4511E]/15 border border-[#F4511E]/30 text-[#F4511E] flex items-center justify-center">
-                      <Coins className="w-3.5 h-3.5" />
-                    </div>
-                  </div>
-                  <div className="text-xl font-bold font-mono text-white mt-1">IDR (Rp)</div>
-                  <div className="text-[11px] text-neutral-400 mt-0.5">Indonesian Rupiah • ISO 360</div>
-                </div>
-
-                <div className="master-stat-card stat-amber p-3.5 rounded-xl bg-[#121822]/90 border border-[#1E2938] shadow-xs">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-mono text-neutral-400 uppercase tracking-wider">Format Angka</span>
-                    <div className="w-6 h-6 rounded-lg bg-amber-500/15 border border-amber-500/30 text-amber-400 flex items-center justify-center">
-                      <Calculator className="w-3.5 h-3.5" />
-                    </div>
-                  </div>
-                  <div className="text-xl font-bold font-mono text-amber-400 mt-1">Titik (.)</div>
-                  <div className="text-[11px] text-neutral-400 mt-0.5">Format: Rp 18.712.800,00</div>
-                </div>
-
-                <div className="master-stat-card stat-emerald p-3.5 rounded-xl bg-[#121822]/90 border border-[#1E2938] shadow-xs">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-mono text-neutral-400 uppercase tracking-wider">Presisi Kubikasi</span>
-                    <div className="w-6 h-6 rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 flex items-center justify-center">
-                      <Layers className="w-3.5 h-3.5" />
-                    </div>
-                  </div>
-                  <div className="text-xl font-bold font-mono text-emerald-400 mt-1">2 Digit Koma</div>
-                  <div className="text-[11px] text-neutral-400 mt-0.5">Standar Dump Truck: 155,94 m³</div>
-                </div>
-
-                <div className="master-stat-card p-3.5 rounded-xl bg-[#121822]/90 border border-[#1E2938] shadow-xs">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-mono text-neutral-400 uppercase tracking-wider">Regulasi Pajak</span>
-                    <div className="w-6 h-6 rounded-lg bg-sky-500/15 border border-sky-500/30 text-sky-400 flex items-center justify-center">
-                      <Receipt className="w-3.5 h-3.5" />
-                    </div>
-                  </div>
-                  <div className="text-xl font-bold font-mono text-sky-400 mt-1">PPN 11% + PPh 22</div>
-                  <div className="text-[11px] text-neutral-400 mt-0.5">Tarif: 0,25% (Industri) - 1,5%</div>
-                </div>
-              </div>
-
               {filteredCurrencies.length === 0 ? (
                 <MasterEmptyState
                   icon={Coins}

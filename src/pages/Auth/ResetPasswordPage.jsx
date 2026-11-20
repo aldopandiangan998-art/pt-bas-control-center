@@ -18,6 +18,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { useApp } from '../../context/AppContext';
 import MiningPitInteractiveBg from '../../components/common/MiningPitInteractiveBg';
+import logo from '../../assets/logo.png';
 
 export default function ResetPasswordPage() {
   const navigate = useNavigate();
@@ -127,8 +128,10 @@ export default function ResetPasswordPage() {
         >
           {/* Header Title */}
           <div className="text-center mb-6">
-            <div className="w-12 h-12 mx-auto rounded-2xl bg-gradient-to-tr from-[#F4511E] to-[#FF7043] flex items-center justify-center text-white mb-3 shadow-lg shadow-[#F4511E]/30">
-              <Lock className="w-6 h-6" />
+            <div className={`w-14 h-14 mx-auto rounded-2xl p-2 border mb-3 flex items-center justify-center transition-colors shadow-lg ${
+              isDark ? 'bg-black/30 border-white/10 shadow-black/50' : 'bg-slate-50 border-slate-200 shadow-slate-200/50'
+            }`}>
+              <img src={logo} alt="PT BAS Logo" className="w-full h-full object-contain drop-shadow" />
             </div>
             <h1
               className={`text-lg sm:text-xl font-bold tracking-tight font-sans ${

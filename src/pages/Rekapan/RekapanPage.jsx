@@ -107,18 +107,17 @@ export default function RekapanPage() {
       const firstItem = parsedItems[0] || {};
       const matName = po.materialName || firstItem.nama || 'SIRTU';
       const targetVol = Number(po.totalOrder || firstItem.kuantitas || 0);
-      const targetTrips = po.satuan === 'rit' ? Math.max(1, targetVol) : Math.max(1, Math.ceil(targetVol / 30));
 
       // Match journal
       const matchedJurnal = (rekapanList || []).find((r) => r.nomorRO === finalRo || r.preOrderId === po.id);
       const details = Array.isArray(matchedJurnal?.suratJalanDetails) ? matchedJurnal.suratJalanDetails : [];
       const currentVol = details.length > 0
         ? Number(details.reduce((sum, d) => sum + (Number(d.volumeAkhir) || 0), 0).toFixed(2))
-        : Number(po.terkirim || 0);
-      const currentSj = details.length;
+        : Number(po.terkirim || matchedJurnal?.totalVolume || 0);
+      const currentSj = details.length > 0 ? details.length : Number(matchedJurnal?.totalSj || 0);
       const sisaVolume = Math.max(0, Number((targetVol - currentVol).toFixed(2)));
-      const sisaRitase = Math.max(0, targetTrips - currentSj);
-      const isCompleted = (targetTrips > 0 && currentSj >= targetTrips) || (targetVol > 0 && currentVol >= targetVol);
+      // Delivery progress measured EXCLUSIVELY by total delivered cubic volume (m³)
+      const isCompleted = targetVol > 0 && currentVol >= targetVol;
 
       list.push({
         id: matchedJurnal?.id || `RO-SYNC-${po.id}`,
@@ -132,12 +131,10 @@ export default function RekapanPage() {
         tanggal: po.tanggal || matchedJurnal?.tanggal,
         isPpn: po.jenisWajibPajak === 'PKP',
         targetVolume: targetVol,
-        targetRitase: targetTrips,
         totalSj: currentSj,
         totalVolume: currentVol,
         sisaVolume,
-        sisaRitase,
-        status: isCompleted ? 'Selesai Kirim' : (currentSj > 0 ? 'Dalam Pengiriman' : 'Siap Kirim'),
+        status: isCompleted ? 'Selesai Kirim' : (currentVol > 0 || currentSj > 0 ? 'Dalam Pengiriman' : 'Siap Kirim'),
         suratJalanDetails: details,
         hargaBeli: Number(po.hargaBeli || firstItem.hargaBeli || 0),
         hargaJual: Number(po.hargaJual || firstItem.hargaJual || 0),
@@ -156,11 +153,13 @@ export default function RekapanPage() {
 
       seenRos.add(roKey);
       const targetVol = Number(rek.targetVolume) || 0;
-      const targetTrips = Number(rek.targetRitase) || Math.max(1, Math.ceil(targetVol / 30));
       const details = Array.isArray(rek.suratJalanDetails) ? rek.suratJalanDetails : [];
-      const currentVol = Number(rek.totalVolume || 0);
-      const currentSj = details.length;
-      const isCompleted = (targetTrips > 0 && currentSj >= targetTrips) || (targetVol > 0 && currentVol >= targetVol);
+      const currentVol = details.length > 0
+        ? Number(details.reduce((sum, d) => sum + (Number(d.volumeAkhir) || 0), 0).toFixed(2))
+        : Number(rek.totalVolume || 0);
+      const currentSj = details.length > 0 ? details.length : Number(rek.totalSj || 0);
+      const sisaVolume = Math.max(0, Number((targetVol - currentVol).toFixed(2)));
+      const isCompleted = targetVol > 0 && currentVol >= targetVol;
 
       list.push({
         id: rek.id,
@@ -174,12 +173,10 @@ export default function RekapanPage() {
         tanggal: rek.tanggal,
         isPpn: rek.isPpn,
         targetVolume: targetVol,
-        targetRitase: targetTrips,
         totalSj: currentSj,
         totalVolume: currentVol,
-        sisaVolume: Math.max(0, Number((targetVol - currentVol).toFixed(2))),
-        sisaRitase: Math.max(0, targetTrips - currentSj),
-        status: isCompleted ? 'Selesai Kirim' : (currentSj > 0 ? 'Dalam Pengiriman' : 'Siap Kirim'),
+        sisaVolume,
+        status: isCompleted ? 'Selesai Kirim' : (currentVol > 0 || currentSj > 0 ? 'Dalam Pengiriman' : 'Siap Kirim'),
         suratJalanDetails: details,
         hargaBeli: rek.hargaBeli,
         hargaJual: rek.hargaJual,
@@ -207,20 +204,22 @@ export default function RekapanPage() {
   // Overall RO Statistics
   const roStats = useMemo(() => {
     const totalRo = receivedOrders.length;
-    const totalTargetVol = receivedOrders.reduce((sum, r) => sum + r.targetVolume, 0);
-    const totalDeliveredVol = receivedOrders.reduce((sum, r) => sum + r.totalVolume, 0);
-    const totalTargetRitase = receivedOrders.reduce((sum, r) => sum + r.targetRitase, 0);
-    const totalIssuedSj = receivedOrders.reduce((sum, r) => sum + r.totalSj, 0);
+    const totalTargetVol = Number(receivedOrders.reduce((sum, r) => sum + (Number(r.targetVolume) || 0), 0).toFixed(2));
+    const totalDeliveredVol = Number(receivedOrders.reduce((sum, r) => sum + (Number(r.totalVolume) || 0), 0).toFixed(2));
+    const totalIssuedSj = receivedOrders.reduce((sum, r) => sum + (Number(r.totalSj) || 0), 0);
     const totalSelesai = receivedOrders.filter((r) => r.status === 'Selesai Kirim').length;
     const totalBerjalan = receivedOrders.filter((r) => r.status === 'Dalam Pengiriman').length;
+    const progressPct = totalTargetVol > 0
+      ? Math.min(100, Math.round((totalDeliveredVol / totalTargetVol) * 100))
+      : 0;
     return {
       totalRo,
       totalTargetVol,
       totalDeliveredVol,
-      totalTargetRitase,
       totalIssuedSj,
       totalSelesai,
       totalBerjalan,
+      progressPct,
     };
   }, [receivedOrders]);
 
@@ -283,7 +282,7 @@ export default function RekapanPage() {
               <Badge size="xs" variant="primary">Dispatch Ledger</Badge>
             </h1>
             <p className="text-xs text-neutral-400">
-              Monitoring Received Order (RO), realisasi Surat Jalan harian per ritase, dan buku besar rekapan tagihan
+              Monitoring Received Order (RO), realisasi volume pengiriman Good Issue (GI), dan buku besar rekapan tagihan
             </p>
           </div>
         </div>
@@ -352,15 +351,13 @@ export default function RekapanPage() {
             <div className="bg-[#131517] border border-[#24282C] rounded-lg p-3">
               <div className="text-[10px] font-mono text-neutral-400 uppercase tracking-wider flex items-center justify-between">
                 <span>Surat Jalan Diterbitkan</span>
-                <Truck className="w-3.5 h-3.5 text-blue-400" />
+                <FileText className="w-3.5 h-3.5 text-blue-400" />
               </div>
               <div className="text-base sm:text-lg font-bold text-white font-mono mt-0.5">
-                {roStats.totalIssuedSj} <span className="text-xs font-normal text-neutral-400">/ {roStats.totalTargetRitase} Rit</span>
+                {roStats.totalIssuedSj} <span className="text-xs font-normal text-neutral-400">Dokumen</span>
               </div>
               <div className="text-[11px] text-neutral-500 mt-1">
-                {roStats.totalTargetRitase > 0
-                  ? `${Math.round((roStats.totalIssuedSj / roStats.totalTargetRitase) * 100)}% kuota armada terisi`
-                  : 'Siap pengiriman'}
+                Total Good Issue (GI) terbit
               </div>
             </div>
 
@@ -373,7 +370,7 @@ export default function RekapanPage() {
                 {formatVolume(roStats.totalDeliveredVol)}
               </div>
               <div className="text-[11px] text-neutral-500 mt-1">
-                Target: {formatVolume(roStats.totalTargetVol)}
+                Target: {formatVolume(roStats.totalTargetVol)} ({roStats.progressPct}%)
               </div>
             </div>
 
@@ -383,10 +380,10 @@ export default function RekapanPage() {
                 <Clock className="w-3.5 h-3.5 text-emerald-400" />
               </div>
               <div className="text-base sm:text-lg font-bold text-emerald-400 font-mono mt-0.5">
-                {formatVolume(Math.max(0, roStats.totalTargetVol - roStats.totalDeliveredVol))}
+                {formatVolume(Math.max(0, Number((roStats.totalTargetVol - roStats.totalDeliveredVol).toFixed(2))))}
               </div>
               <div className="text-[11px] text-neutral-500 mt-1">
-                {Math.max(0, roStats.totalTargetRitase - roStats.totalIssuedSj)} Rit armada tersisa
+                Belum terealisasi dari target
               </div>
             </div>
           </div>
@@ -420,12 +417,9 @@ export default function RekapanPage() {
           ) : (
             <div className="space-y-3.5">
               {filteredReceivedOrders.map((ro) => {
-                const fulfillmentRitasePct = ro.targetRitase > 0
-                  ? Math.min(100, Math.round((ro.totalSj / ro.targetRitase) * 100))
-                  : 0;
                 const fulfillmentVolPct = ro.targetVolume > 0
                   ? Math.min(100, Math.round((ro.totalVolume / ro.targetVolume) * 100))
-                  : 0;
+                  : (ro.totalVolume > 0 ? 100 : 0);
 
                 return (
                   <Card
@@ -537,37 +531,40 @@ export default function RekapanPage() {
                       </div>
                     </div>
 
-                    {/* Progress Bar & Fulfillment Metrics */}
+                    {/* Delivery Progress & Information Metrics */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-[#111315] p-3 rounded-lg border border-[#1F2327]">
-                      {/* Ritase Progress */}
+                      {/* Surat Jalan Terbit (Informational Data: Actual Good Issues) */}
                       <div className="space-y-1.5 font-mono text-xs">
                         <div className="flex justify-between items-center text-neutral-300">
                           <span className="flex items-center gap-1.5">
-                            <Truck className="w-3.5 h-3.5 text-[#F4511E]" />
-                            <span>Surat Jalan Diterbitkan:</span>
+                            <FileText className="w-3.5 h-3.5 text-[#F4511E]" />
+                            <span>Surat Jalan Terbit:</span>
                           </span>
                           <span className="font-bold text-white">
-                            {ro.totalSj} dari {ro.targetRitase} Rit ({fulfillmentRitasePct}%)
+                            {ro.totalSj} Good Issue (GI)
                           </span>
                         </div>
-                        <div className="w-full h-2 rounded-full bg-[#1C1F23] overflow-hidden">
-                          <div
-                            className="h-full bg-[#F4511E] transition-all duration-300"
-                            style={{ width: `${fulfillmentRitasePct}%` }}
-                          />
+                        <div className="text-[11px] text-neutral-400 bg-[#171A1D] px-2.5 py-1.5 rounded border border-[#22262B]">
+                          {ro.totalSj > 0 ? (
+                            <span>
+                              Tercatat <strong className="text-white">{ro.totalSj} Good Issue (GI)</strong> riil pengiriman armada
+                            </span>
+                          ) : (
+                            <span className="text-neutral-500">Belum ada Good Issue yang diterbitkan</span>
+                          )}
                         </div>
                         <div className="flex justify-between text-[11px] text-neutral-500">
-                          <span>Tersedia: {ro.sisaRitase} rit lagi</span>
-                          <span>{ro.totalSj >= ro.targetRitase ? 'Kuota Ritase Penuh' : 'Menunggu Penerbitan SJ'}</span>
+                          <span>Data riil Good Issue tercatat</span>
+                          <span>{ro.isPpn ? 'PKP (PPN 11%)' : 'Non-PPN'}</span>
                         </div>
                       </div>
 
-                      {/* Volume Progress */}
+                      {/* Primary Delivery Progress Measurement: Total Kubikasi Terkirim (m³) */}
                       <div className="space-y-1.5 font-mono text-xs">
                         <div className="flex justify-between items-center text-neutral-300">
                           <span className="flex items-center gap-1.5">
                             <TrendingUp className="w-3.5 h-3.5 text-amber-400" />
-                            <span>Kubikasi Terkirim:</span>
+                            <span>Progress Kubikasi Terkirim:</span>
                           </span>
                           <span className="font-bold text-amber-400">
                             {formatVolume(ro.totalVolume, ro.satuan)} / {formatVolume(ro.targetVolume, ro.satuan)} ({fulfillmentVolPct}%)
@@ -580,8 +577,10 @@ export default function RekapanPage() {
                           />
                         </div>
                         <div className="flex justify-between text-[11px] text-neutral-500">
-                          <span>Sisa kuota: {formatVolume(ro.sisaVolume, ro.satuan)}</span>
-                          <span>{ro.isPpn ? 'Termasuk PPN 11%' : 'Harga Non-PPN'}</span>
+                          <span>Sisa volume: {formatVolume(ro.sisaVolume, ro.satuan)}</span>
+                          <span className={ro.status === 'Selesai Kirim' ? 'text-emerald-400 font-semibold' : 'text-neutral-400'}>
+                            {ro.status === 'Selesai Kirim' ? '✓ Kuota Volume Terpenuhi' : `${fulfillmentVolPct}% terealisasi`}
+                          </span>
                         </div>
                       </div>
                     </div>
@@ -590,9 +589,9 @@ export default function RekapanPage() {
                     <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pt-2.5 border-t border-[#202428]">
                       <div className="flex items-center gap-2 text-xs font-mono text-neutral-400">
                         <FileText className="w-3.5 h-3.5 text-[#F4511E]" />
-                        <span>Dokumen Surat Jalan: </span>
-                        <strong className="text-white font-bold">{ro.suratJalanDetails.length} Dokumen Terbit</strong>
-                        <span className="text-neutral-500">({ro.sisaRitase} rit tersisa)</span>
+                        <span>Dokumen Pengiriman: </span>
+                        <strong className="text-white font-bold">{ro.suratJalanDetails.length} Good Issue (GI) Terbit</strong>
+                        <span className="text-neutral-500">&bull; Realisasi: {formatVolume(ro.totalVolume, ro.satuan)}</span>
                       </div>
 
                       <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
@@ -747,7 +746,7 @@ export default function RekapanPage() {
                 Total Surat Jalan
               </div>
               <div className="text-base sm:text-lg font-bold text-white font-mono mt-0.5">
-                {stats.totalSj} <span className="text-xs font-normal text-neutral-400">rit</span>
+                {stats.totalSj} <span className="text-xs font-normal text-neutral-400">Dokumen</span>
               </div>
             </div>
 
@@ -854,7 +853,7 @@ export default function RekapanPage() {
                             </span>
                             <span>&bull;</span>
                             <span className="text-white font-medium">
-                              {rek.totalSj} Surat Jalan {rek.targetRitase ? `(Target: ${rek.targetRitase} rit)` : ''}
+                              {details.length || rek.totalSj} Good Issue (Surat Jalan)
                             </span>
                             <span>&bull;</span>
                             <span>
@@ -968,7 +967,7 @@ export default function RekapanPage() {
                   {formatVolume(selectedOrderForModal.targetVolume, selectedOrderForModal.satuan)}
                 </div>
                 <div className="text-[10px] text-neutral-500 mt-0.5">
-                  Target: {selectedOrderForModal.targetRitase} Ritase
+                  Total kuota volume order
                 </div>
               </div>
 
@@ -979,7 +978,7 @@ export default function RekapanPage() {
                 </div>
                 <div className="text-[10px] text-neutral-500 mt-0.5">
                   {selectedOrderForModal.targetVolume > 0
-                    ? `${Math.round((selectedOrderForModal.totalVolume / selectedOrderForModal.targetVolume) * 100)}% kuota terpenuhi`
+                    ? `${Math.min(100, Math.round((selectedOrderForModal.totalVolume / selectedOrderForModal.targetVolume) * 100))}% target terpenuhi`
                     : '-'}
                 </div>
               </div>
@@ -987,10 +986,12 @@ export default function RekapanPage() {
               <div>
                 <div className="text-[10px] text-neutral-400 uppercase tracking-wider">Surat Jalan Terbit</div>
                 <div className="text-sm font-bold text-white mt-0.5">
-                  {selectedOrderForModal.totalSj} <span className="text-xs font-normal text-neutral-400">/ {selectedOrderForModal.targetRitase} Rit</span>
+                  {selectedOrderForModal.suratJalanDetails.length} <span className="text-xs font-normal text-neutral-400">Good Issue (GI)</span>
                 </div>
                 <div className="text-[10px] text-neutral-500 mt-0.5">
-                  {selectedOrderForModal.sisaRitase} Ritase tersisa
+                  {selectedOrderForModal.suratJalanDetails.length > 0
+                    ? `${selectedOrderForModal.suratJalanDetails.length} dokumen riil tercatat`
+                    : 'Belum ada GI terbit'}
                 </div>
               </div>
 
@@ -1021,7 +1022,7 @@ export default function RekapanPage() {
             {selectedOrderForModal.suratJalanDetails.length === 0 ? (
               <div className="p-8 rounded-lg bg-[#111315] border border-dashed border-[#2B3037] text-center text-xs text-neutral-400 font-mono space-y-2">
                 <Truck className="w-8 h-8 text-neutral-600 mx-auto" />
-                <p className="font-semibold text-neutral-300">Belum ada Surat Jalan (waybill) yang diterbitkan untuk order ini.</p>
+                <p className="font-semibold text-neutral-300">Belum ada Surat Jalan (Good Issue) yang diterbitkan untuk order ini.</p>
                 <p className="text-neutral-500">
                   Klik tombol <strong>"+ Buat Surat Jalan Baru"</strong> di bawah untuk menerbitkan dokumen pengiriman armada pertama.
                 </p>
@@ -1031,7 +1032,7 @@ export default function RekapanPage() {
                 <table className="w-full text-left border-collapse text-xs font-mono">
                   <thead>
                     <tr className="bg-[#181B1E] text-[11px] text-neutral-400 uppercase tracking-wider border-b border-[#22262A]">
-                      <th className="py-2.5 px-3 text-center w-12">Ritase</th>
+                      <th className="py-2.5 px-3 text-center w-14">No. GI</th>
                       <th className="py-2.5 px-3">No. Surat Jalan</th>
                       <th className="py-2.5 px-3">Nopol Armada</th>
                       <th className="py-2.5 px-3">Sopir / Driver</th>
@@ -1046,7 +1047,7 @@ export default function RekapanPage() {
                     {selectedOrderForModal.suratJalanDetails.map((sj, idx) => (
                       <tr key={sj.id || idx} className="hover:bg-[#16181B] transition-colors">
                         <td className="py-2.5 px-3 text-center text-[#F4511E] font-bold">
-                          Rit #{idx + 1}
+                          GI #{idx + 1}
                         </td>
                         <td className="py-2.5 px-3 font-bold text-white">
                           {sj.nomorSj}
@@ -1087,7 +1088,7 @@ export default function RekapanPage() {
             {/* Footer Actions inside Modal */}
             <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-3 border-t border-[#22262A]">
               <div className="text-xs text-neutral-400 font-mono">
-                Total: <strong className="text-white">{selectedOrderForModal.suratJalanDetails.length} dokumen</strong> terbit untuk {selectedOrderForModal.nomorRO}
+                Total: <strong className="text-white">{selectedOrderForModal.suratJalanDetails.length} Good Issue (Surat Jalan)</strong> terbit &bull; Volume Terkirim: <strong className="text-amber-400">{formatVolume(selectedOrderForModal.totalVolume, selectedOrderForModal.satuan)}</strong>
               </div>
 
               <div className="flex items-center gap-2 self-end sm:self-auto flex-wrap">

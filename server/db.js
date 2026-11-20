@@ -590,7 +590,7 @@ export function syncJournalsAndWaybills() {
         const hBeli = Number(po.hargaBeli || firstItem.hargaBeli || 0);
         const hJual = Number(po.hargaJual || firstItem.hargaJual || 0);
         const isPpn = po.jenisWajibPajak === 'PKP' ? 1 : 0;
-        const targetTrips = po.satuan === 'rit' ? Math.max(1, targetVol) : Math.max(1, Math.ceil(targetVol / 30));
+        const targetTrips = po.satuan === 'rit' ? Math.max(1, targetVol) : 0;
         const nowIso = new Date().toISOString();
 
         db.prepare(`
@@ -701,11 +701,9 @@ export function syncJournalsAndWaybills() {
           const totalVolume = Number(details.reduce((sum, d) => sum + (Number(d.volumeAkhir) || 0), 0).toFixed(2));
           const nominalBeli = Math.round(totalVolume * (Number(jurnal.hargaBeli) || 0));
           const nominalJual = Math.round(totalVolume * (Number(jurnal.hargaJual) || 0));
-          const targetTrips = Number(jurnal.targetRitase) || 0;
           const targetVol = Number(jurnal.targetVolume) || 0;
-          const isTripsMet = targetTrips > 0 && totalSj >= targetTrips;
           const isVolumeMet = targetVol > 0 && totalVolume >= targetVol;
-          const status = (isTripsMet || isVolumeMet) ? 'Selesai Kirim' : 'Dalam Pengiriman';
+          const status = isVolumeMet ? 'Selesai Kirim' : 'Dalam Pengiriman';
 
           db.prepare(`
             UPDATE jurnal_gi

@@ -10,7 +10,7 @@ export default function FormAppBar({ title = 'Buat Received Order (RO)', onBack 
 
   return (
     <div
-      className={`sticky top-0 z-30 flex items-center gap-3 h-14 px-2 mb-4 transition-colors ${
+      className={`flex items-center gap-3 h-14 px-2 mb-4 transition-colors ${
         isDark
           ? 'bg-[#111315] border-b border-[#22262A]'
           : 'bg-white border-b border-slate-200 shadow-xs'

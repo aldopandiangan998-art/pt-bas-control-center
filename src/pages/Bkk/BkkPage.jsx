@@ -15,10 +15,7 @@ import {
   ChevronDown,
   ChevronUp,
   User,
-  RefreshCw,
-  Banknote,
-  AlertTriangle,
-  Loader2,
+  ListFilter,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useData } from '../../context/DataContext';
@@ -27,7 +24,19 @@ import { formatCurrency } from '../../utils/formatters';
 import { Modal, Button } from '../../components/ui';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// CashOutCard
+// Binary Icon (1011 / 001) matching reference screenshot
+// ─────────────────────────────────────────────────────────────────────────────
+function BinaryIcon({ className = 'text-neutral-500' }) {
+  return (
+    <div className={`font-mono text-[9px] font-bold leading-[9px] tracking-tighter select-none ${className}`}>
+      <div>1011</div>
+      <div>001</div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CashOutCard (Faithful replica of user screenshot)
 // ─────────────────────────────────────────────────────────────────────────────
 function CashOutCard({ item, isSelected, onSelect, onDelete, onInfo, canDelete = true }) {
   const volumeNum = Number(item.volume ?? item.kubikasi) || 0;
@@ -154,418 +163,24 @@ function CashOutCard({ item, isSelected, onSelect, onDelete, onInfo, canDelete =
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// CreateBkkForm — Inline create form
+// Keterangan Type Options
 // ─────────────────────────────────────────────────────────────────────────────
 const KETERANGAN_TYPES = [
   'general',
   'Material',
   'Jasa Angkut',
+  'Kasbon',
+  'Potongan',
+  'Penyesuaian',
+  'Solar',
+  'Biaya Tambahan',
   'Operasional',
   'Administrasi',
   'Lainnya',
 ];
 
-const MATERIAL_OPTIONS = [
-  'SIRTU (Curah)',
-  'BATU SPLIT (Curah)',
-  'PASIR (Curah)',
-  'TANAH URUG (Curah)',
-  'BATU KALI (Curah)',
-  'JASA ANGKUT',
-  'Lainnya',
-];
-
-function CreateBkkForm({ suppliers, customers, bankAccounts, onSubmit, onCancel, isSubmitting }) {
-  const today = new Date().toISOString().split('T')[0];
-
-  const [form, setForm] = useState({
-    tanggal: today,
-    supplierId: '',
-    customerId: '',
-    nomorPO: '',
-    nomorRO: '',
-    material: 'SIRTU (Curah)',
-    volume: '',
-    satuan: 'm³',
-    amount: '',
-    keterangan: [{ type: 'general', deskripsi: '' }],
-    statusBayar: 'Belum Dibayar',
-    rekeningTujuan: '',
-  });
-
-  const [errors, setErrors] = useState({});
-
-  const selectedSupplier = suppliers.find((s) => s.id === form.supplierId) || null;
-
-  const set = (key, val) => setForm((prev) => ({ ...prev, [key]: val }));
-
-  const addKeterangan = () =>
-    setForm((prev) => ({
-      ...prev,
-      keterangan: [...prev.keterangan, { type: 'general', deskripsi: '' }],
-    }));
-
-  const removeKeterangan = (idx) =>
-    setForm((prev) => ({
-      ...prev,
-      keterangan: prev.keterangan.filter((_, i) => i !== idx),
-    }));
-
-  const updateKeterangan = (idx, key, val) =>
-    setForm((prev) => {
-      const updated = [...prev.keterangan];
-      updated[idx] = { ...updated[idx], [key]: val };
-      return { ...prev, keterangan: updated };
-    });
-
-  const validate = () => {
-    const e = {};
-    if (!form.tanggal) e.tanggal = 'Tanggal wajib diisi';
-    if (!form.supplierId) e.supplierId = 'Pilih supplier';
-    if (!form.amount || isNaN(Number(form.amount)) || Number(form.amount) <= 0)
-      e.amount = 'Nominal harus lebih dari 0';
-    return e;
-  };
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    const errs = validate();
-    if (Object.keys(errs).length > 0) {
-      setErrors(errs);
-      return;
-    }
-    setErrors({});
-
-    const sup = selectedSupplier;
-    const cust = customers.find((c) => c.id === form.customerId) || null;
-    const keteranganText = form.keterangan
-      .filter((k) => k.deskripsi)
-      .map((k) => `[${k.type}] ${k.deskripsi}`)
-      .join(' | ');
-
-    onSubmit({
-      tanggal: form.tanggal,
-      timestamp: `${form.tanggal} ${new Date().toTimeString().slice(0, 8)}`,
-      supplierId: form.supplierId,
-      penerima: sup?.penerima || sup?.name || '',
-      perusahaan: sup?.name || '',
-      rekeningTujuan: form.rekeningTujuan ||
-        (sup ? `${sup.bank} - ${sup.noRekening} a/n ${sup.rekeningAtasNama}` : ''),
-      rekeningAtasNama: sup?.rekeningAtasNama || '',
-      customerId: form.customerId,
-      customer: cust?.name || '',
-      poNumber: form.nomorPO,
-      nomorRO: form.nomorRO,
-      material: form.material,
-      volume: Number(form.volume) || 0,
-      kubikasi: Number(form.volume) || 0,
-      satuan: form.satuan,
-      amount: Number(String(form.amount).replace(/\D/g, '')) || 0,
-      subDetail: keteranganText || form.nomorPO || '-',
-      keteranganList: form.keterangan,
-      statusBayar: form.statusBayar,
-      periode: form.tanggal.slice(0, 7),
-    });
-  };
-
-  const inputCls = (err) =>
-    `w-full bg-[#111315] border ${err ? 'border-rose-500' : 'border-[#2B3037]'} text-white rounded-xl px-3 py-2.5 text-xs focus:outline-none focus:border-[#F4511E] placeholder-neutral-600 transition-colors`;
-
-  const labelCls = 'block text-[11px] text-neutral-400 font-medium mb-1 uppercase tracking-wide';
-
-  return (
-    <form
-      onSubmit={handleSubmit}
-      className="bg-[#111315] border border-[#F4511E]/30 rounded-2xl p-4 sm:p-5 space-y-4"
-    >
-      <div className="flex items-center gap-2 pb-3 border-b border-[#1E2228]">
-        <div className="w-7 h-7 rounded-lg bg-[#F4511E]/20 border border-[#F4511E]/30 flex items-center justify-center shrink-0">
-          <Banknote className="w-4 h-4 text-[#F4511E]" />
-        </div>
-        <div>
-          <div className="text-sm font-bold text-white">Buat Cash Out Baru</div>
-          <div className="text-[11px] text-neutral-500">Isi data transaksi kas keluar ke supplier</div>
-        </div>
-      </div>
-
-      {/* Row 1: Tanggal & Status Bayar */}
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className={labelCls}>Tanggal Transaksi</label>
-          <input
-            type="date"
-            value={form.tanggal}
-            onChange={(e) => set('tanggal', e.target.value)}
-            className={inputCls(errors.tanggal)}
-          />
-          {errors.tanggal && <p className="text-rose-400 text-[10px] mt-1">{errors.tanggal}</p>}
-        </div>
-        <div>
-          <label className={labelCls}>Status Pembayaran</label>
-          <select
-            value={form.statusBayar}
-            onChange={(e) => set('statusBayar', e.target.value)}
-            className={inputCls(false)}
-          >
-            <option value="Belum Dibayar">Belum Dibayar</option>
-            <option value="Lunas">Lunas</option>
-          </select>
-        </div>
-      </div>
-
-      {/* Row 2: Pilih Supplier */}
-      <div>
-        <label className={labelCls}>
-          <User className="w-3 h-3 inline mr-1 mb-0.5" />
-          Pilih Supplier
-        </label>
-        <select
-          value={form.supplierId}
-          onChange={(e) => {
-            const s = suppliers.find((x) => x.id === e.target.value);
-            set('supplierId', e.target.value);
-            if (s) set('rekeningTujuan', `${s.bank} - ${s.noRekening} a/n ${s.rekeningAtasNama}`);
-            else set('rekeningTujuan', '');
-            if (errors.supplierId) setErrors((prev) => ({ ...prev, supplierId: '' }));
-          }}
-          className={inputCls(errors.supplierId)}
-        >
-          <option value="">— Pilih Supplier —</option>
-          {suppliers.filter((s) => s.aktif !== false).map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.name}
-            </option>
-          ))}
-        </select>
-        {errors.supplierId && <p className="text-rose-400 text-[10px] mt-1">{errors.supplierId}</p>}
-      </div>
-
-      {/* Supplier Info (auto-populated) */}
-      {selectedSupplier && (
-        <div className="bg-[#0E1012] border border-[#1E2228] rounded-xl p-3 grid grid-cols-2 gap-2 text-xs font-mono">
-          <div>
-            <span className="text-neutral-500 text-[10px] uppercase block">Rekening</span>
-            <span className="text-neutral-200">{selectedSupplier.bank} – {selectedSupplier.noRekening}</span>
-          </div>
-          <div>
-            <span className="text-neutral-500 text-[10px] uppercase block">A/N</span>
-            <span className="text-neutral-200">{selectedSupplier.rekeningAtasNama}</span>
-          </div>
-          <div>
-            <span className="text-neutral-500 text-[10px] uppercase block">Penerima</span>
-            <span className="text-neutral-200">{selectedSupplier.penerima}</span>
-          </div>
-          <div>
-            <span className="text-neutral-500 text-[10px] uppercase block">PKP</span>
-            <span className={selectedSupplier.pkp ? 'text-emerald-400' : 'text-neutral-400'}>
-              {selectedSupplier.pkp ? 'PKP' : 'Non-PKP'}
-            </span>
-          </div>
-        </div>
-      )}
-
-      {/* Row 3: Pilih Customer (optional) */}
-      <div>
-        <label className={labelCls}>Pilih Customer (Opsional)</label>
-        <select
-          value={form.customerId}
-          onChange={(e) => set('customerId', e.target.value)}
-          className={inputCls(false)}
-        >
-          <option value="">— Customer (Opsional) —</option>
-          {customers.filter((c) => c.aktif !== false).map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.idProgram ? `${c.idProgram} - ${c.name}` : c.name}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      {/* Row 4: ID PO & ID RO */}
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className={labelCls}>ID Nomor Purchase Order</label>
-          <input
-            type="text"
-            value={form.nomorPO}
-            onChange={(e) => set('nomorPO', e.target.value)}
-            placeholder="Nomor PO..."
-            className={inputCls(false)}
-          />
-        </div>
-        <div>
-          <label className={labelCls}>ID Nomor Received Order</label>
-          <input
-            type="text"
-            value={form.nomorRO}
-            onChange={(e) => set('nomorRO', e.target.value)}
-            placeholder="Nomor RO (auto)..."
-            className={inputCls(false)}
-          />
-        </div>
-      </div>
-
-      {/* Row 5: Material & Volume */}
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className={labelCls}>Material</label>
-          <select
-            value={form.material}
-            onChange={(e) => set('material', e.target.value)}
-            className={inputCls(false)}
-          >
-            {MATERIAL_OPTIONS.map((m) => (
-              <option key={m} value={m}>{m}</option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className={labelCls}>Volume / Kuantitas</label>
-          <div className="flex gap-1.5">
-            <input
-              type="number"
-              min="0"
-              step="0.01"
-              value={form.volume}
-              onChange={(e) => set('volume', e.target.value)}
-              placeholder="0.00"
-              className={`flex-1 ${inputCls(false)}`}
-            />
-            <select
-              value={form.satuan}
-              onChange={(e) => set('satuan', e.target.value)}
-              className="bg-[#111315] border border-[#2B3037] text-white rounded-xl px-2 py-2.5 text-xs focus:outline-none focus:border-[#F4511E] w-16"
-            >
-              <option value="m³">m³</option>
-              <option value="rit">rit</option>
-              <option value="ton">ton</option>
-              <option value="trip">trip</option>
-              <option value="kg">kg</option>
-            </select>
-          </div>
-        </div>
-      </div>
-
-      {/* Row 6: Nominal Kas Keluar */}
-      <div>
-        <label className={labelCls}>Nominal Kas Keluar (IDR)</label>
-        <div className="relative">
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 text-xs font-mono pointer-events-none">
-            Rp
-          </span>
-          <input
-            type="number"
-            min="0"
-            step="1"
-            value={form.amount}
-            onChange={(e) => {
-              set('amount', e.target.value);
-              if (errors.amount) setErrors((prev) => ({ ...prev, amount: '' }));
-            }}
-            placeholder="0"
-            className={`${inputCls(errors.amount)} pl-9`}
-          />
-        </div>
-        {errors.amount && <p className="text-rose-400 text-[10px] mt-1">{errors.amount}</p>}
-        {form.amount && Number(form.amount) > 0 && (
-          <p className="text-[11px] text-neutral-500 mt-1 font-mono">
-            = {formatCurrency(Number(form.amount))}
-          </p>
-        )}
-      </div>
-
-      {/* Row 7: Rekening Tujuan */}
-      <div>
-        <label className={labelCls}>Rekening Tujuan Pembayaran</label>
-        <input
-          type="text"
-          value={form.rekeningTujuan}
-          onChange={(e) => set('rekeningTujuan', e.target.value)}
-          placeholder="Bank - No. Rekening a/n Nama (auto dari supplier)"
-          className={inputCls(false)}
-        />
-      </div>
-
-      {/* Row 8: Daftar Keterangan */}
-      <div>
-        <div className="flex items-center justify-between mb-2">
-          <label className={labelCls + ' mb-0'}>Daftar Keterangan</label>
-          <button
-            type="button"
-            onClick={addKeterangan}
-            className="text-[10px] text-[#F4511E] hover:text-white bg-[#F4511E]/10 hover:bg-[#F4511E]/20 border border-[#F4511E]/30 px-2 py-1 rounded-lg flex items-center gap-1 cursor-pointer transition-colors"
-          >
-            <Plus className="w-3 h-3" />
-            Tambah Keterangan
-          </button>
-        </div>
-        <div className="space-y-2">
-          {form.keterangan.map((k, idx) => (
-            <div key={idx} className="flex items-center gap-2">
-              <select
-                value={k.type}
-                onChange={(e) => updateKeterangan(idx, 'type', e.target.value)}
-                className="bg-[#111315] border border-[#2B3037] text-white rounded-xl px-2 py-2.5 text-xs focus:outline-none focus:border-[#F4511E] w-32 shrink-0"
-              >
-                {KETERANGAN_TYPES.map((t) => (
-                  <option key={t} value={t}>{t}</option>
-                ))}
-              </select>
-              <input
-                type="text"
-                value={k.deskripsi}
-                onChange={(e) => updateKeterangan(idx, 'deskripsi', e.target.value)}
-                placeholder="Item / Deskripsi..."
-                className="flex-1 bg-[#111315] border border-[#2B3037] text-white rounded-xl px-3 py-2.5 text-xs focus:outline-none focus:border-[#F4511E] placeholder-neutral-600"
-              />
-              {form.keterangan.length > 1 && (
-                <button
-                  type="button"
-                  onClick={() => removeKeterangan(idx)}
-                  className="p-2 rounded-lg text-rose-400 hover:bg-rose-500/10 border border-transparent hover:border-rose-500/30 cursor-pointer transition-colors shrink-0"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
-              )}
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Action Buttons */}
-      <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-[#1E2228]">
-        <button
-          type="button"
-          onClick={onCancel}
-          disabled={isSubmitting}
-          className="px-4 py-2 rounded-xl text-xs font-semibold text-neutral-400 hover:text-white bg-[#1C1F24] border border-[#2A2E33] transition-colors cursor-pointer disabled:opacity-50"
-        >
-          Batal
-        </button>
-        <button
-          type="submit"
-          disabled={isSubmitting}
-          className="px-5 py-2 rounded-xl text-xs font-bold text-white bg-[#F4511E] hover:bg-[#E04418] transition-colors shadow-md shadow-[#F4511E]/20 flex items-center gap-1.5 cursor-pointer disabled:opacity-60"
-        >
-          {isSubmitting ? (
-            <>
-              <Loader2 className="w-3.5 h-3.5 animate-spin" />
-              Menyimpan...
-            </>
-          ) : (
-            <>
-              <CheckCircle2 className="w-3.5 h-3.5" />
-              TERAPKAN
-            </>
-          )}
-        </button>
-      </div>
-    </form>
-  );
-}
-
 // ─────────────────────────────────────────────────────────────────────────────
-// BkkPage (Main Page)
+// BkkPage (Main Page matching provided screenshot)
 // ─────────────────────────────────────────────────────────────────────────────
 export default function BkkPage() {
   const navigate = useNavigate();
@@ -573,43 +188,152 @@ export default function BkkPage() {
   const { isSuperAdmin } = useAuth();
   const {
     bkkList,
-    createBkk,
-    markBkkPaid,
     deleteBkk,
+    markBkkPaid,
     bankAccounts,
     suppliers,
     customers,
   } = useData();
   const { addToast } = useToast();
 
-  // ── UI State
-  const [showCreateForm, setShowCreateForm] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [searchFilter, setSearchFilter] = useState('');
+  // ── Form & Filter State matching screenshot defaults
+  // Find ASCO DWI MOBILINDO and ADITA JUSTIA SAPUTRA from master data for accurate initial match
+  const defaultCustomer = useMemo(() => {
+    return customers.find((c) => c.name.includes('ASCO') || c.kodePrefix?.includes('ADM 044')) || customers[0] || null;
+  }, [customers]);
+
+  const defaultSupplier = useMemo(() => {
+    return suppliers.find((s) => s.name.includes('ADITA') || s.rekeningAtasNama?.includes('ADITA')) || suppliers[0] || null;
+  }, [suppliers]);
+
+  const [formCustomerId, setFormCustomerId] = useState('');
+  const [formSupplierId, setFormSupplierId] = useState('');
+  const [formPoNumber, setFormPoNumber] = useState('');
+  const [formRoNumber, setFormRoNumber] = useState('');
+  const [keteranganList, setKeteranganList] = useState([
+    { id: 1, type: 'general', deskripsi: '' },
+  ]);
+
+  // Set initial default selections once master data loads
+  useEffect(() => {
+    if (!formCustomerId && defaultCustomer) {
+      setFormCustomerId(defaultCustomer.id);
+    }
+  }, [defaultCustomer, formCustomerId]);
+
+  useEffect(() => {
+    if (!formSupplierId && defaultSupplier) {
+      setFormSupplierId(defaultSupplier.id);
+    }
+  }, [defaultSupplier, formSupplierId]);
+
+  // Handle incoming order state
+  useEffect(() => {
+    if (location.state?.order) {
+      const o = location.state.order;
+      if (o.nomorRO) setFormRoNumber(o.nomorRO);
+      if (o.poNumber) setFormPoNumber(o.poNumber);
+      if (o.customer) {
+        const c = customers.find((x) => x.name.toLowerCase().includes(o.customer.toLowerCase()));
+        if (c) setFormCustomerId(c.id);
+      }
+    }
+  }, [location.state, customers]);
+
+  // Selected entities derived
+  const selectedCustomer = useMemo(() => {
+    return customers.find((c) => c.id === formCustomerId) || null;
+  }, [customers, formCustomerId]);
+
+  const selectedSupplier = useMemo(() => {
+    return suppliers.find((s) => s.id === formSupplierId) || null;
+  }, [suppliers, formSupplierId]);
+
+  // Auto-filled bank & receiver data from selected supplier
+  const nomorRekeningDisplay = selectedSupplier
+    ? `${selectedSupplier.bank} - ${selectedSupplier.noRekening}`
+    : '';
+  const rekeningAtasNamaDisplay = selectedSupplier?.rekeningAtasNama || '';
+  const penerimaDisplay = selectedSupplier?.penerima || '';
+
+  // ── UI Visibility & Filter State
+  const [showFilter, setShowFilter] = useState(true);
+  const [appliedFilters, setAppliedFilters] = useState(null);
   const [statusFilter, setStatusFilter] = useState('ALL');
+  const [searchFilter, setSearchFilter] = useState('');
   const [selectedItems, setSelectedItems] = useState([]);
 
   // ── Modals
   const [infoModalItem, setInfoModalItem] = useState(null);
   const [deleteConfirmItem, setDeleteConfirmItem] = useState(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
-
   const [paymentForm, setPaymentForm] = useState({
     tanggalBayar: new Date().toISOString().split('T')[0],
     rekeningSumber: 'BCA - 0188920199 a/n PT Berkah Alam Semesta',
   });
 
-  // Handle incoming navigation
-  useEffect(() => {
-    if (location.state?.order) {
-      const o = location.state.order;
-      if (o.nomorRO) setSearchFilter(o.nomorRO);
-    }
-  }, [location.state]);
+  // ── Reset handlers
+  const handleResetCustomer = () => {
+    setFormCustomerId('');
+    addToast('Pilihan pelanggan di-reset', 'info');
+  };
 
-  // ── Filtered list
+  const handleResetSupplier = () => {
+    setFormSupplierId('');
+    addToast('Pilihan supplier di-reset', 'info');
+  };
+
+  const handleResetAll = () => {
+    setFormCustomerId('');
+    setFormSupplierId('');
+    setFormPoNumber('');
+    setFormRoNumber('');
+    setSearchFilter('');
+    setStatusFilter('ALL');
+    setAppliedFilters(null);
+    setSelectedItems([]);
+    setKeteranganList([{ id: 1, type: 'general', deskripsi: '' }]);
+    addToast('Semua input & filter berhasil di-reset', 'info');
+  };
+
+  // ── Keterangan list handlers
+  const handleAddKeterangan = () => {
+    setKeteranganList((prev) => [
+      ...prev,
+      { id: Date.now(), type: 'general', deskripsi: '' },
+    ]);
+  };
+
+  const handleRemoveKeterangan = (id) => {
+    if (keteranganList.length <= 1) {
+      setKeteranganList([{ id: Date.now(), type: 'general', deskripsi: '' }]);
+      return;
+    }
+    setKeteranganList((prev) => prev.filter((k) => k.id !== id));
+  };
+
+  const handleUpdateKeterangan = (id, field, value) => {
+    setKeteranganList((prev) =>
+      prev.map((k) => (k.id === id ? { ...k, [field]: value } : k))
+    );
+  };
+
+  // ── Apply Filter
+  const handleApply = (e) => {
+    if (e && e.preventDefault) e.preventDefault();
+    setAppliedFilters({
+      customerId: formCustomerId,
+      supplierId: formSupplierId,
+      poNumber: formPoNumber,
+      roNumber: formRoNumber,
+    });
+    addToast('Filter kas keluar berhasil diterapkan!', 'success');
+  };
+
+  // ── Filtered BKK items
   const filteredBkk = useMemo(() => {
     return bkkList.filter((item) => {
+      // Free text search
       const q = (searchFilter || '').toLowerCase().trim();
       const matchSearch =
         !q ||
@@ -622,21 +346,56 @@ export default function BkkPage() {
         (item.subDetail && item.subDetail.toLowerCase().includes(q)) ||
         (item.penerima && item.penerima.toLowerCase().includes(q));
 
+      // Status filter
       const matchStatus =
         statusFilter === 'ALL' ||
         (statusFilter === 'BELUM_BAYAR' && item.statusBayar !== 'Lunas') ||
         (statusFilter === 'LUNAS' && item.statusBayar === 'Lunas');
 
-      return matchSearch && matchStatus;
-    });
-  }, [bkkList, searchFilter, statusFilter]);
+      // Applied customer filter
+      let matchCustomer = true;
+      if (appliedFilters?.customerId) {
+        const cust = customers.find((c) => c.id === appliedFilters.customerId);
+        if (cust) {
+          const cName = cust.name.toLowerCase();
+          matchCustomer =
+            (item.customer && item.customer.toLowerCase().includes(cName)) ||
+            (item.perusahaan && item.perusahaan.toLowerCase().includes(cName));
+        }
+      }
 
-  const handleResetAll = () => {
-    setSearchFilter('');
-    setStatusFilter('ALL');
-    setSelectedItems([]);
-    addToast('Filter data berhasil di-reset', 'info');
-  };
+      // Applied supplier filter
+      let matchSupplier = true;
+      if (appliedFilters?.supplierId) {
+        const sup = suppliers.find((s) => s.id === appliedFilters.supplierId);
+        if (sup) {
+          const sName = sup.name.toLowerCase();
+          const pName = (sup.penerima || '').toLowerCase();
+          matchSupplier =
+            (item.penerima && item.penerima.toLowerCase().includes(sName)) ||
+            (item.subDetail && item.subDetail.toLowerCase().includes(sName)) ||
+            (item.perusahaan && item.perusahaan.toLowerCase().includes(sName)) ||
+            (pName && item.penerima && item.penerima.toLowerCase().includes(pName));
+        }
+      }
+
+      // Applied PO
+      let matchPo = true;
+      if (appliedFilters?.poNumber) {
+        const po = appliedFilters.poNumber.toLowerCase();
+        matchPo = item.poNumber && item.poNumber.toLowerCase().includes(po);
+      }
+
+      // Applied RO
+      let matchRo = true;
+      if (appliedFilters?.roNumber) {
+        const ro = appliedFilters.roNumber.toLowerCase();
+        matchRo = item.nomorRO && item.nomorRO.toLowerCase().includes(ro);
+      }
+
+      return matchSearch && matchStatus && matchCustomer && matchSupplier && matchPo && matchRo;
+    });
+  }, [bkkList, searchFilter, statusFilter, appliedFilters, customers, suppliers]);
 
   const toggleSelect = useCallback((id) => {
     setSelectedItems((prev) =>
@@ -654,22 +413,10 @@ export default function BkkPage() {
     setShowPaymentModal(false);
   };
 
-  const handleCreateSubmit = async (data) => {
-    setIsSubmitting(true);
-    try {
-      await createBkk(data);
-      setShowCreateForm(false);
-    } catch (err) {
-      addToast('Gagal membuat BKK. Coba lagi.', 'error');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
   return (
-    <div className="min-h-screen bg-[#0A0C0E] text-white flex flex-col font-sans select-none relative pb-32">
-      {/* ── TOP APP BAR ── */}
-      <header className="sticky top-0 z-30 bg-[#0A0C0E] border-b border-[#1A1D21] px-4 py-3.5 flex items-center justify-between">
+    <div className="min-h-screen bg-[#0C0D0F] text-white flex flex-col font-sans select-none relative pb-32">
+      {/* ── TOP APP BAR matching screenshot: "< Buat Cash Out" + Filter toggle + Reload ── */}
+      <header className="sticky top-0 z-30 bg-[#0C0D0F] border-b border-[#1A1D21] px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <button
             type="button"
@@ -682,104 +429,302 @@ export default function BkkPage() {
           >
             <ArrowLeft className="w-5 h-5 text-white" />
           </button>
-          <div>
-            <h1 className="text-base sm:text-lg font-bold tracking-tight text-white font-sans">
-              BKK (Cash Out)
-            </h1>
-            <p className="text-[11px] text-neutral-400">
-              Bukti Kas Keluar ke supplier & pelunasan kas operasional
-            </p>
-          </div>
+          <h1 className="text-base sm:text-lg font-bold tracking-tight text-white font-sans">
+            Buat Cash Out
+          </h1>
         </div>
 
         <div className="flex items-center gap-2">
-          {/* Search */}
-          <div className="relative">
-            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" />
-            <input
-              type="text"
-              value={searchFilter}
-              onChange={(e) => setSearchFilter(e.target.value)}
-              placeholder="Cari transaksi..."
-              className="bg-[#14171A] border border-[#24282E] rounded-xl pl-9 pr-8 py-1.5 text-xs text-white placeholder-neutral-500 focus:outline-none focus:border-[#F4511E] w-36 sm:w-52"
-            />
-            {searchFilter && (
-              <X
-                className="w-3.5 h-3.5 absolute right-2.5 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-white cursor-pointer"
-                onClick={() => setSearchFilter('')}
-              />
-            )}
-          </div>
+          {/* Toggle filter */}
+          <button
+            type="button"
+            onClick={() => setShowFilter((prev) => !prev)}
+            className="p-1.5 rounded-lg text-neutral-300 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+            title={showFilter ? 'Sembunyikan Filter' : 'Tampilkan Filter'}
+          >
+            <ListFilter className="w-5 h-5 text-white" />
+          </button>
 
-          {/* Refresh */}
+          {/* Reset all */}
           <button
             type="button"
             onClick={handleResetAll}
             className="p-1.5 rounded-lg text-neutral-300 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
-            title="Refresh Data"
+            title="Reset Form"
           >
             <RotateCw className="w-5 h-5 text-white" />
-          </button>
-
-          {/* Add BKK button */}
-          <button
-            type="button"
-            onClick={() => setShowCreateForm((prev) => !prev)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-colors cursor-pointer ${
-              showCreateForm
-                ? 'bg-[#F4511E]/20 border border-[#F4511E]/50 text-[#F4511E]'
-                : 'bg-[#F4511E] hover:bg-[#E04418] text-white shadow-md shadow-[#F4511E]/20'
-            }`}
-            title={showCreateForm ? 'Tutup Form' : 'Buat Cash Out Baru'}
-          >
-            {showCreateForm ? (
-              <>
-                <ChevronUp className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Tutup</span>
-              </>
-            ) : (
-              <>
-                <Plus className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Buat BKK</span>
-              </>
-            )}
           </button>
         </div>
       </header>
 
-      {/* ── MAIN CONTAINER ── */}
-      <main className="w-full max-w-4xl mx-auto px-4 pt-4 space-y-4">
+      {/* ── MAIN CONTENT (Centered column matching mobile/screenshot layout) ── */}
+      <main className="w-full max-w-xl mx-auto px-3 sm:px-4 pt-3 space-y-3">
 
-        {/* ── CREATE FORM (collapsible) ── */}
-        {showCreateForm && (
-          <CreateBkkForm
-            suppliers={suppliers}
-            customers={customers}
-            bankAccounts={bankAccounts}
-            onSubmit={handleCreateSubmit}
-            onCancel={() => setShowCreateForm(false)}
-            isSubmitting={isSubmitting}
-          />
+        {/* ── BKK INPUT & FILTER FORM (Faithfully styled per screenshot) ── */}
+        {showFilter && (
+          <form onSubmit={handleApply} className="space-y-2.5">
+            {/* 1. Pilih Pelanggan (Customer) + Orange Refresh Button */}
+            <div className="flex items-stretch gap-2">
+              <div className="flex-1 bg-[#1C1F24] rounded-xl px-3.5 py-2.5 flex items-center gap-3">
+                <User className="w-5 h-5 text-neutral-400 shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <label className="block text-[11px] text-neutral-400 font-normal leading-tight mb-0.5">
+                    Pilih Pelanggan
+                  </label>
+                  <div className="relative">
+                    <select
+                      value={formCustomerId}
+                      onChange={(e) => setFormCustomerId(e.target.value)}
+                      className="w-full bg-transparent text-white text-xs sm:text-sm font-semibold uppercase focus:outline-none appearance-none pr-5 cursor-pointer truncate"
+                    >
+                      <option value="" className="bg-[#1C1F24] text-neutral-400">
+                        — Pilih Pelanggan —
+                      </option>
+                      {customers.filter((c) => c.aktif !== false).map((c) => (
+                        <option key={c.id} value={c.id} className="bg-[#1C1F24] text-white">
+                          {c.kodePrefix ? `${c.kodePrefix} - ${c.name}` : c.name}
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronDown className="w-4 h-4 text-neutral-400 absolute right-0 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Orange Refresh Button */}
+              <button
+                type="button"
+                onClick={handleResetCustomer}
+                className="w-12 sm:w-14 rounded-xl bg-[#F4511E] hover:bg-[#E04418] flex items-center justify-center shrink-0 cursor-pointer transition-colors shadow-sm"
+                title="Reset Pelanggan"
+              >
+                <RotateCw className="w-5 h-5 text-white" />
+              </button>
+            </div>
+
+            {/* 2. ID Nomor Purchase Order (Orange bottom border line + Orange chevron) */}
+            <div className="bg-[#1C1F24] border-b-2 border-b-[#F4511E] rounded-xl px-3.5 py-3 flex items-center gap-3">
+              <Receipt className="w-5 h-5 text-neutral-400 shrink-0" />
+              <div className="flex-1 relative">
+                <input
+                  type="text"
+                  value={formPoNumber}
+                  onChange={(e) => setFormPoNumber(e.target.value)}
+                  placeholder="ID Nomor Purchase Order"
+                  className="w-full bg-transparent text-xs sm:text-sm text-[#F4511E] font-medium placeholder-[#F4511E]/80 focus:outline-none pr-5"
+                />
+                <ChevronDown className="w-4 h-4 text-[#F4511E] absolute right-0 top-1/2 -translate-y-1/2 pointer-events-none" />
+              </div>
+            </div>
+
+            {/* 3. ID Nomor Received Order (auto) */}
+            <div className="bg-[#1C1F24] rounded-xl px-3.5 py-3 flex items-center gap-3">
+              <Receipt className="w-5 h-5 text-neutral-500 shrink-0" />
+              <input
+                type="text"
+                value={formRoNumber}
+                onChange={(e) => setFormRoNumber(e.target.value)}
+                placeholder="ID Nomor Received Order (auto)"
+                className="flex-1 bg-transparent text-xs sm:text-sm text-neutral-200 placeholder-neutral-400 focus:outline-none"
+              />
+            </div>
+
+            {/* 4. Pilih Supplier + Orange Refresh Button */}
+            <div className="flex items-stretch gap-2">
+              <div className="flex-1 bg-[#1C1F24] rounded-xl px-3.5 py-2.5 flex items-center gap-3">
+                <User className="w-5 h-5 text-neutral-400 shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <label className="block text-[11px] text-neutral-400 font-normal leading-tight mb-0.5">
+                    Pilih Supplier
+                  </label>
+                  <div className="relative">
+                    <select
+                      value={formSupplierId}
+                      onChange={(e) => setFormSupplierId(e.target.value)}
+                      className="w-full bg-transparent text-white text-xs sm:text-sm font-semibold uppercase focus:outline-none appearance-none pr-5 cursor-pointer truncate"
+                    >
+                      <option value="" className="bg-[#1C1F24] text-neutral-400">
+                        — Pilih Supplier —
+                      </option>
+                      {suppliers.filter((s) => s.aktif !== false).map((s) => (
+                        <option key={s.id} value={s.id} className="bg-[#1C1F24] text-white">
+                          {s.name}
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronDown className="w-4 h-4 text-neutral-400 absolute right-0 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Orange Refresh Button */}
+              <button
+                type="button"
+                onClick={handleResetSupplier}
+                className="w-12 sm:w-14 rounded-xl bg-[#F4511E] hover:bg-[#E04418] flex items-center justify-center shrink-0 cursor-pointer transition-colors shadow-sm"
+                title="Reset Supplier"
+              >
+                <RotateCw className="w-5 h-5 text-white" />
+              </button>
+            </div>
+
+            {/* 5. Nomor Rekening (auto) */}
+            <div className="bg-[#1C1F24] rounded-xl px-3.5 py-2.5 flex items-center gap-3">
+              <BinaryIcon className="text-neutral-400 shrink-0" />
+              <div className="flex-1 min-w-0">
+                <div className="text-[11px] text-neutral-400 leading-tight">Nomor Rekening (auto)</div>
+                <div className="text-xs sm:text-sm text-white font-mono font-medium mt-0.5">
+                  {nomorRekeningDisplay || <span className="text-neutral-600">—</span>}
+                </div>
+              </div>
+            </div>
+
+            {/* 6. Rekening Atas Nama & Penerima Pembayaran (2 columns) */}
+            <div className="grid grid-cols-2 gap-2">
+              <div className="bg-[#1C1F24] rounded-xl px-3 py-2.5 flex items-start gap-2.5 min-w-0">
+                <User className="w-4 h-4 text-neutral-400 mt-0.5 shrink-0" />
+                <div className="min-w-0">
+                  <div className="text-[10px] text-neutral-400 leading-tight truncate">
+                    Rekening Atas Nama ...
+                  </div>
+                  <div className="text-xs text-white font-medium uppercase truncate mt-0.5">
+                    {rekeningAtasNamaDisplay || <span className="text-neutral-600">—</span>}
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-[#1C1F24] rounded-xl px-3 py-2.5 flex items-start gap-2.5 min-w-0">
+                <User className="w-4 h-4 text-neutral-400 mt-0.5 shrink-0" />
+                <div className="min-w-0">
+                  <div className="text-[10px] text-neutral-400 leading-tight truncate">
+                    Penerima Pembayara...
+                  </div>
+                  <div className="text-xs text-white font-medium uppercase truncate mt-0.5">
+                    {penerimaDisplay || <span className="text-neutral-600">—</span>}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Horizontal Divider */}
+            <div className="border-b border-[#252930] my-2" />
+
+            {/* 7. Section: Daftar Keterangan */}
+            <div className="space-y-2 pt-0.5">
+              <div className="text-xs text-neutral-400 font-normal">
+                Daftar Keterangan
+              </div>
+
+              {keteranganList.map((ket) => (
+                <div key={ket.id} className="flex items-center gap-2">
+                  {/* Red Square Trash Button */}
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveKeterangan(ket.id)}
+                    className="w-10 h-10 rounded-lg bg-[#C62828] hover:bg-[#B71C1C] flex items-center justify-center shrink-0 cursor-pointer transition-colors shadow-xs"
+                    title="Hapus Keterangan"
+                  >
+                    <Trash2 className="w-4 h-4 text-white" />
+                  </button>
+
+                  {/* Dropdown Tipe Keterangan */}
+                  <div className="bg-[#1C1F24] rounded-xl px-3 py-2.5 flex-1 relative flex items-center">
+                    <select
+                      value={ket.type}
+                      onChange={(e) => handleUpdateKeterangan(ket.id, 'type', e.target.value)}
+                      className="w-full bg-transparent text-neutral-200 text-xs focus:outline-none appearance-none pr-5 cursor-pointer truncate"
+                    >
+                      {KETERANGAN_TYPES.map((t) => (
+                        <option key={t} value={t} className="bg-[#1C1F24] text-white">
+                          {t}
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronDown className="w-3.5 h-3.5 text-neutral-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  </div>
+
+                  {/* Item / Deskripsi Input */}
+                  <div className="bg-[#1C1F24] rounded-xl px-3 py-2.5 flex-[1.4] flex items-center">
+                    <input
+                      type="text"
+                      value={ket.deskripsi}
+                      onChange={(e) => handleUpdateKeterangan(ket.id, 'deskripsi', e.target.value)}
+                      placeholder="Item/Deskripsi"
+                      className="w-full bg-transparent text-white text-xs placeholder-neutral-400 focus:outline-none"
+                    />
+                  </div>
+                </div>
+              ))}
+
+              {/* 8. Button: + TAMBAH KETERANGAN */}
+              <button
+                type="button"
+                onClick={handleAddKeterangan}
+                className="w-full py-2.5 rounded-xl border border-[#F4511E] bg-[#16191D]/40 hover:bg-[#F4511E]/10 text-[#F4511E] text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 transition-colors cursor-pointer mt-2"
+              >
+                <span className="w-4 h-4 rounded-full border border-[#F4511E] flex items-center justify-center text-[10px] font-black leading-none">
+                  +
+                </span>
+                <span>TAMBAH KETERANGAN</span>
+              </button>
+            </div>
+
+            {/* 9. Button: TERAPKAN */}
+            <button
+              type="submit"
+              className="w-full py-3.5 rounded-xl bg-[#F4511E] hover:bg-[#E04418] active:bg-[#D84315] text-[#121417] text-xs sm:text-sm font-extrabold uppercase tracking-wider transition-colors cursor-pointer shadow-md shadow-[#F4511E]/20 mt-3"
+            >
+              TERAPKAN
+            </button>
+
+            {/* 10. Button: Sembunyikan Filter ^ */}
+            <div className="flex justify-center pt-2 pb-1">
+              <button
+                type="button"
+                onClick={() => setShowFilter(false)}
+                className="px-6 py-1.5 rounded-lg border border-[#F4511E] text-[#F4511E] hover:bg-[#F4511E]/10 text-xs font-semibold inline-flex items-center gap-1.5 transition-colors cursor-pointer"
+              >
+                <span>Sembunyikan Filter</span>
+                <ChevronUp className="w-3.5 h-3.5 text-[#F4511E]" />
+              </button>
+            </div>
+          </form>
         )}
 
-        {/* ── TOOLBAR & STATUS FILTER ── */}
-        <div className="flex items-center justify-between px-1 flex-wrap gap-2">
+        {/* ── TOGGLE TAMPILKAN FILTER BUTTON (When filter is hidden) ── */}
+        {!showFilter && (
+          <div className="flex justify-center py-1">
+            <button
+              type="button"
+              onClick={() => setShowFilter(true)}
+              className="px-6 py-1.5 rounded-lg border border-[#F4511E] text-[#F4511E] hover:bg-[#F4511E]/10 text-xs font-semibold inline-flex items-center gap-1.5 transition-colors cursor-pointer"
+            >
+              <span>Tampilkan Filter</span>
+              <ChevronDown className="w-3.5 h-3.5 text-[#F4511E]" />
+            </button>
+          </div>
+        )}
+
+        {/* ── STATUS BADGES & QUICK TOOLBAR ── */}
+        <div className="flex items-center justify-between px-1 pt-2 flex-wrap gap-2">
           <div className="flex items-center gap-2">
             <span className="text-xs font-mono font-semibold text-neutral-300">
               Total {filteredBkk.length} Transaksi Cash Out
             </span>
-            {searchFilter && (
+            {(searchFilter || appliedFilters) && (
               <span className="text-[11px] font-mono text-[#F4511E] bg-[#F4511E]/10 border border-[#F4511E]/30 px-2 py-0.5 rounded-full flex items-center gap-1">
-                <span>Filter: &quot;{searchFilter}&quot;</span>
+                <span>Filter Aktif</span>
                 <X
                   className="w-3 h-3 cursor-pointer hover:text-white"
-                  onClick={() => setSearchFilter('')}
+                  onClick={() => {
+                    setSearchFilter('');
+                    setAppliedFilters(null);
+                  }}
                 />
               </span>
             )}
           </div>
 
-          {/* Status chips */}
           <div className="flex items-center gap-1.5">
             <button
               type="button"
@@ -817,7 +762,7 @@ export default function BkkPage() {
           </div>
         </div>
 
-        {/* ── BKK LIST ── */}
+        {/* ── BKK CASH OUT LIST ── */}
         {filteredBkk.length === 0 ? (
           <div className="p-8 text-center bg-[#121417] border border-[#20242A] rounded-2xl space-y-3 font-mono">
             <Receipt className="w-10 h-10 text-neutral-500 mx-auto" />
@@ -825,21 +770,11 @@ export default function BkkPage() {
               Tidak ada data Cash Out yang sesuai filter
             </div>
             <p className="text-xs text-neutral-500">
-              Coba reset filter atau buat transaksi Cash Out baru.
+              Coba reset filter atau pilih kriteria lain.
             </p>
-            <div className="flex items-center justify-center gap-2 mt-2">
-              <Button size="xs" variant="outline" onClick={handleResetAll}>
-                Reset Filter
-              </Button>
-              <Button
-                size="xs"
-                variant="primary"
-                icon={Plus}
-                onClick={() => setShowCreateForm(true)}
-              >
-                Buat BKK
-              </Button>
-            </div>
+            <Button size="xs" variant="outline" onClick={handleResetAll} className="mt-2">
+              Reset Semua Filter
+            </Button>
           </div>
         ) : (
           <div className="space-y-3">
@@ -861,7 +796,7 @@ export default function BkkPage() {
       {/* ── STICKY SELECTION & PAYMENT BAR ── */}
       {selectedItems.length > 0 && (
         <div className="fixed bottom-0 left-0 right-0 z-40 bg-[#111315]/95 backdrop-blur-md border-t border-[#262A2F] p-3 shadow-2xl">
-          <div className="w-full max-w-4xl mx-auto flex items-center justify-between gap-3 px-2">
+          <div className="w-full max-w-xl mx-auto flex items-center justify-between gap-3 px-2">
             <div className="flex items-center gap-2 min-w-0">
               <span className="w-2 h-2 rounded-full bg-[#F4511E] animate-pulse shrink-0" />
               <div className="text-xs font-mono text-neutral-300 truncate">

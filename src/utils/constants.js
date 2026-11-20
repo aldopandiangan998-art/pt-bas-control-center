@@ -200,6 +200,13 @@ export const NAV_CATEGORIES = [
         ],
       },
       {
+        path: '/approval-admin',
+        label: 'Approval Registrasi Admin',
+        icon: 'UserCheck',
+        description: 'Persetujuan pendaftaran akun Admin baru oleh Super Admin',
+        superAdminOnly: true,
+      },
+      {
         path: '/pengaturan',
         label: 'Pengaturan',
         icon: 'Settings',

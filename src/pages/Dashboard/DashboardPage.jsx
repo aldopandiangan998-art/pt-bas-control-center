@@ -254,7 +254,7 @@ export default function DashboardPage() {
                     y1={grid.y}
                     x2="530"
                     y2={grid.y}
-                    stroke="#22262A"
+                    stroke={isDark ? '#22262A' : '#E2E8F0'}
                     strokeWidth="1"
                     strokeDasharray={idx === 5 ? 'none' : '3 3'}
                   />
@@ -412,7 +412,7 @@ export default function DashboardPage() {
                   cy="80"
                   r="56"
                   fill="none"
-                  stroke="#22262A"
+                  stroke={isDark ? '#22262A' : '#E2E8F0'}
                   strokeWidth="20"
                 />
 
@@ -464,13 +464,13 @@ export default function DashboardPage() {
                   strokeDashoffset="-211.4"
                 />
 
-                {/* Slice 5: 30.0% (105.5 / 351.6) - Dark Charcoal #374151 */}
+                {/* Slice 5: 30.0% (105.5 / 351.6) - Dark Charcoal / Slate */}
                 <circle
                   cx="80"
                   cy="80"
                   r="56"
                   fill="none"
-                  stroke="#374151"
+                  stroke={isDark ? '#374151' : '#94A3B8'}
                   strokeWidth="20"
                   strokeDasharray="105.5 246.1"
                   strokeDashoffset="-246.6"
@@ -663,7 +663,7 @@ export default function DashboardPage() {
                   <path
                     d="M 20 85 A 60 60 0 0 1 140 85"
                     fill="none"
-                    stroke="#22262A"
+                    stroke={isDark ? '#22262A' : '#E2E8F0'}
                     strokeWidth="16"
                     strokeLinecap="round"
                   />

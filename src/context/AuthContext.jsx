@@ -117,6 +117,39 @@ export function AuthProvider({ children }) {
       });
   }, []);
 
+  /**
+   * Manual refresh users list from API
+   */
+  const refreshUsers = async () => {
+    try {
+      const res = await fetch('/api/users');
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data)) {
+          const sanitized = data
+            .filter(
+              (u) =>
+                u.id !== 'usr-2' &&
+                u.id !== 'usr-3' &&
+                u.email?.toLowerCase() !== 'admin@ptbas.co.id' &&
+                u.email?.toLowerCase() !== 'admin.dummy@ptbas.co.id'
+            )
+            .map((u) => {
+              if (u.branch && (u.branch.includes('Site [') || u.branch.includes('// Tgl:'))) {
+                return { ...u, branch: 'Hub Gresik' };
+              }
+              return u;
+            });
+          setUsers(sanitized);
+          return { success: true, count: sanitized.length };
+        }
+      }
+    } catch (err) {
+      // ignore
+    }
+    return { success: false };
+  };
+
   // Persist users list changes
   useEffect(() => {
     try {
@@ -635,6 +668,7 @@ export function AuthProvider({ children }) {
         approveUser,
         toggleUserStatus,
         deleteUser,
+        refreshUsers,
         adminResetPassword,
         adminUpdateUser,
         adminCreateUser,

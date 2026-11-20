@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { useData } from '../../context/DataContext';
 import { useToast } from '../../context/ToastContext';
+import { useApp } from '../../context/AppContext';
 import { calculateKubikasi, formatVolume } from '../../utils/formatters';
 import TruckVisualizer from '../../components/common/TruckVisualizer';
 import { Button, Badge, Card, Input, Select } from '../../components/ui';
@@ -28,6 +29,7 @@ import { Button, Badge, Card, Input, Select } from '../../components/ui';
 export default function SuratJalanPage() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { isDark } = useApp();
   const { preOrders, createSuratJalan, materials, armadaList, customers } = useData();
   const { addToast } = useToast();
 
@@ -173,7 +175,6 @@ export default function SuratJalanPage() {
       const now = new Date();
       const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
       const sjNum = `296${Math.floor(70 + Math.random() * 29)}`;
-      const notaNum = `NT-${Math.floor(88900 + Math.random() * 99)}`;
 
       return {
         nomorSj: sjNum,
@@ -185,7 +186,7 @@ export default function SuratJalanPage() {
         jenis: normalizeServiceType(preOrderState.jenis || matchedPo?.jenisRO || matchedPo?.jenis || 'Jasa Angkut + Material'),
         tanggal: now.toISOString().split('T')[0],
         waktu: timeStr,
-        nomorNota: notaNum,
+        nomorNota: preOrderState.nomorNota || '',
         nomorPolisi: defaultArmada.nopol || 'W 9821 UB',
         isPpn: preOrderState.isPpn ?? (matchedPo?.jenisWajibPajak === 'PKP'),
         fotoSuratJalan: null,
@@ -249,7 +250,6 @@ export default function SuratJalanPage() {
       const now = new Date();
       const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
       const sjNum = `296${Math.floor(70 + Math.random() * 29)}`;
-      const notaNum = `NT-${Math.floor(88900 + Math.random() * 99)}`;
 
       setFormData((prev) => ({
         ...prev,
@@ -262,7 +262,7 @@ export default function SuratJalanPage() {
         jenis: normalizeServiceType(location.state.jenis || prev.jenis || 'Jasa Angkut + Material'),
         tanggal: prev.tanggal || now.toISOString().split('T')[0],
         waktu: prev.waktu || timeStr,
-        nomorNota: prev.nomorNota || notaNum,
+        nomorNota: prev.nomorNota || location.state.nomorNota || '',
         nomorPolisi: prev.nomorPolisi || defaultArmada.nopol || 'W 9821 UB',
         panjangCm: prev.panjangCm || defaultArmada.panjangCm || 650,
         lebarCm: prev.lebarCm || defaultArmada.lebarCm || 250,
@@ -354,7 +354,7 @@ export default function SuratJalanPage() {
         tanggal: prev.tanggal || todayStr,
         waktu: prev.waktu || timeStr,
         nomorSj: prev.nomorSj || `296${Math.floor(70 + Math.random() * 29)}`,
-        nomorNota: prev.nomorNota || `NT-${Math.floor(88900 + Math.random() * 99)}`,
+        nomorNota: prev.nomorNota || '',
         jenis: normalizeServiceType(targetPo.jenisRO || targetPo.jenis || prev.jenis || 'Jasa Angkut + Material'),
         nomorPolisi: prev.nomorPolisi || defaultArmada.nopol || 'W 9821 UB',
         panjangCm: prev.panjangCm || defaultArmada.panjangCm || 650,
@@ -601,9 +601,11 @@ export default function SuratJalanPage() {
   };
 
   return (
-    <div className="w-full space-y-6 pb-20 select-none">
+    <div className="w-full space-y-6 pb-6 select-none">
       {/* Top Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#24282C]">
+      <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b transition-colors ${
+        isDark ? 'border-[#24282C]' : 'border-slate-200'
+      }`}>
         <div className="flex items-center gap-2.5">
           <Button
             size="sm"
@@ -613,11 +615,13 @@ export default function SuratJalanPage() {
             title="Kembali ke Dashboard"
           />
           <div>
-            <h1 className="text-base sm:text-lg font-bold text-white tracking-tight flex items-center gap-2">
+            <h1 className={`text-base sm:text-lg font-bold tracking-tight flex items-center gap-2 ${
+              isDark ? 'text-white' : 'text-slate-900'
+            }`}>
               <span>Buat Good Issue (Surat Jalan)</span>
               <Badge size="xs" variant="primary">Pencatatan Ritase</Badge>
             </h1>
-            <p className="text-xs text-neutral-400">
+            <p className={`text-xs ${isDark ? 'text-neutral-400' : 'text-slate-500'}`}>
               Kalkulator kubikasi bak dump truck otomatis P &times; L &times; (T + K) / 1.000.000
             </p>
           </div>
@@ -636,13 +640,17 @@ export default function SuratJalanPage() {
           </Button>
 
           {/* PPN Toggle Switch matching screenshot */}
-          <div className="flex items-center gap-2 bg-[#131517] border border-[#24282C] px-3 py-1.5 rounded-md">
-            <span className="text-[11px] text-neutral-300 font-mono font-medium">Format PPN:</span>
+          <div className={`flex items-center gap-2 border px-3 py-1.5 rounded-md transition-colors ${
+            isDark ? 'bg-[#131517] border-[#24282C]' : 'bg-white border-slate-300 shadow-2xs'
+          }`}>
+            <span className={`text-[11px] font-mono font-medium ${
+              isDark ? 'text-neutral-300' : 'text-slate-700'
+            }`}>Format PPN:</span>
             <button
               type="button"
               onClick={() => setFormData({ ...formData, isPpn: !formData.isPpn })}
               className={`w-9 h-5 flex items-center rounded-full p-0.5 transition-colors cursor-pointer ${
-                formData.isPpn ? 'bg-[#F4511E]' : 'bg-[#2A2E33]'
+                formData.isPpn ? 'bg-[#F4511E]' : isDark ? 'bg-[#2A2E33]' : 'bg-slate-300'
               }`}
             >
               <div
@@ -690,7 +698,9 @@ export default function SuratJalanPage() {
       )}
 
       {!isFromCreateGi && (
-        <div className="p-3 rounded-xl bg-[#14171A] border border-[#262A2E] text-neutral-400 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2 font-mono shadow-sm">
+        <div className={`p-3 rounded-xl border text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2 font-mono shadow-sm transition-colors ${
+          isDark ? 'bg-[#14171A] border-[#262A2E] text-neutral-400' : 'bg-slate-50 border-slate-200 text-slate-600'
+        }`}>
           <div className="flex items-center gap-2">
             <FileText className="w-4 h-4 text-[#F4511E] shrink-0" />
             <span>
@@ -708,16 +718,18 @@ export default function SuratJalanPage() {
         </div>
       )}
 
-      {/* Main 2-Column Responsive Layout */}
+      {/* Main 2-Column Responsive Layout (Bounded Grid for Clean Sticky Behavior) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
         {/* Left Form Column (7 cols) - Replicating Screenshot 1 */}
-        <Card className="lg:col-span-7 p-4 sm:p-5">
-          <form onSubmit={handleSubmit} className="space-y-3.5">
-            {/* Field 1: Pilih Customer */}
+        <div className="lg:col-span-7">
+          <Card className="p-4 sm:p-5">
+            <form onSubmit={handleSubmit} className="space-y-3.5">
+              {/* Field 1: Pilih Customer */}
             <Select
               label="Pilih Customer"
               icon={User}
               required
+              searchPlaceholder="Cari nama atau kode customer..."
               value={formData.customer}
               onChange={(e) => handleCustomerChange(e.target.value)}
             >
@@ -738,6 +750,7 @@ export default function SuratJalanPage() {
                 label="Nomor PO Customer (Wajib Berstatus APPROVED)"
                 icon={Ticket}
                 required
+                searchPlaceholder="Cari nomor RO, PO, atau material..."
                 value={formData.poNumber}
                 onChange={(e) => handlePoChange(e.target.value)}
               >
@@ -808,6 +821,7 @@ export default function SuratJalanPage() {
                 label="Material"
                 icon={Box}
                 required
+                searchPlaceholder="Cari jenis material..."
                 value={formData.materialId}
                 onChange={(e) => setFormData({ ...formData, materialId: e.target.value })}
               >
@@ -877,9 +891,10 @@ export default function SuratJalanPage() {
             {/* Row 6: Nomor Nota & Nomor Polisi */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <Input
-                label="Nomor Nota Pengambilan"
+                label="Nomor Nota Pengambilan (Opsional)"
                 icon={FileText}
-                placeholder="Contoh: NT-88921"
+                placeholder="Opsional (contoh: NT-88921)"
+                helperText="Kosongkan jika tidak ada nota pengambilan dari lokasi muat"
                 value={formData.nomorNota}
                 onChange={(e) => setFormData({ ...formData, nomorNota: e.target.value })}
                 className="font-mono"
@@ -888,6 +903,7 @@ export default function SuratJalanPage() {
               <Select
                 label="Nomor Polisi Armada"
                 icon={Truck}
+                searchPlaceholder="Cari nopol atau tipe armada..."
                 value={formData.nomorPolisi}
                 onChange={(e) => handleArmadaChange(e.target.value)}
                 className="font-mono font-bold"
@@ -1019,17 +1035,21 @@ export default function SuratJalanPage() {
 
               {/* Results: Kubikasi Default & Akhir */}
               <div className="grid grid-cols-2 gap-2 pt-1">
-                <div className="bg-[#181B1E] border border-[#2B3036] rounded-md p-2.5">
-                  <span className="block text-[10px] text-neutral-400 mb-0.5">Kubikasi Default</span>
-                  <div className="text-base font-bold font-mono text-neutral-300">
-                    {kubikasi.volumeDefault} <span className="text-[10px] text-neutral-500 font-normal">m³</span>
+                <div className={`border rounded-md p-2.5 transition-colors ${
+                  isDark ? 'bg-[#181B1E] border-[#2B3036]' : 'bg-slate-50 border-slate-200'
+                }`}>
+                  <span className={`block text-[10px] mb-0.5 ${isDark ? 'text-neutral-400' : 'text-slate-500'}`}>Kubikasi Default</span>
+                  <div className={`text-base font-bold font-mono ${isDark ? 'text-neutral-300' : 'text-slate-800'}`}>
+                    {kubikasi.volumeDefault} <span className={`text-[10px] font-normal ${isDark ? 'text-neutral-500' : 'text-slate-500'}`}>m³</span>
                   </div>
                 </div>
 
-                <div className="bg-[#1C1511] border border-[#F4511E]/40 rounded-md p-2.5">
-                  <span className="block text-[10px] text-orange-400 mb-0.5 font-medium">Kubikasi Akhir</span>
+                <div className={`border rounded-md p-2.5 transition-colors ${
+                  isDark ? 'bg-[#1C1511] border-[#F4511E]/40' : 'bg-orange-50/70 border-orange-200'
+                }`}>
+                  <span className={`block text-[10px] mb-0.5 font-medium ${isDark ? 'text-orange-400' : 'text-orange-600'}`}>Kubikasi Akhir</span>
                   <div className="text-base font-bold font-mono text-[#F4511E]">
-                    {kubikasi.volumeAkhir} <span className="text-[10px] text-orange-400 font-normal">m³</span>
+                    {kubikasi.volumeAkhir} <span className={`text-[10px] font-normal ${isDark ? 'text-orange-400' : 'text-orange-600'}`}>m³</span>
                   </div>
                 </div>
               </div>
@@ -1037,11 +1057,15 @@ export default function SuratJalanPage() {
 
             {/* Upload Foto Surat Jalan */}
             <div className="pt-2">
-              <label className="block text-[11px] font-medium text-neutral-400 mb-1 flex items-center gap-1">
-                <Camera className="w-3.5 h-3.5 text-neutral-500" />
+              <label className={`block text-[11px] font-medium mb-1 flex items-center gap-1 ${
+                isDark ? 'text-neutral-400' : 'text-slate-600'
+              }`}>
+                <Camera className={`w-3.5 h-3.5 ${isDark ? 'text-neutral-500' : 'text-slate-400'}`} />
                 Foto Bukti Fisik Surat Jalan
               </label>
-              <div className="border border-dashed border-[#333940] hover:border-[#F4511E] rounded-md p-3 text-center cursor-pointer transition-colors bg-[#101214]">
+              <div className={`border border-dashed hover:border-[#F4511E] rounded-md p-3 text-center cursor-pointer transition-colors ${
+                isDark ? 'border-[#333940] bg-[#101214]' : 'border-slate-300 bg-slate-50'
+              }`}>
                 <input
                   type="file"
                   accept="image/*"
@@ -1055,46 +1079,28 @@ export default function SuratJalanPage() {
                       <img
                         src={formData.fotoPreview}
                         alt="Bukti SJ"
-                        className="w-12 h-12 object-cover rounded border border-[#333]"
+                        className={`w-12 h-12 object-cover rounded border ${isDark ? 'border-[#333]' : 'border-slate-300'}`}
                       />
                       <div className="text-left font-mono text-xs">
-                        <span className="text-emerald-400 font-bold block">✓ {formData.fotoSuratJalan}</span>
-                        <span className="text-[10px] text-neutral-400">Klik untuk mengganti berkas</span>
+                        <span className="text-emerald-500 font-bold block">✓ {formData.fotoSuratJalan}</span>
+                        <span className={`text-[10px] ${isDark ? 'text-neutral-400' : 'text-slate-500'}`}>Klik untuk mengganti berkas</span>
                       </div>
                     </div>
                   ) : (
-                    <span className="text-neutral-400 hover:text-white">
+                    <span className={isDark ? 'text-neutral-400 hover:text-white' : 'text-slate-500 hover:text-slate-800'}>
                       Ambil Foto / Unggah Bukti Fisik Surat Jalan
                     </span>
                   )}
                 </label>
               </div>
             </div>
-
-            <Button
-              type="submit"
-              variant="primary"
-              size="md"
-              icon={Save}
-              disabled={!formData.poNumber || customerApprovedPos.length === 0 || isNavPoUnapproved}
-              className={`w-full mt-2 cursor-pointer ${
-                !formData.poNumber || customerApprovedPos.length === 0 || isNavPoUnapproved
-                  ? 'opacity-50 cursor-not-allowed border border-[#2B3037]'
-                  : ''
-              }`}
-              title={
-                !formData.poNumber || customerApprovedPos.length === 0 || isNavPoUnapproved
-                  ? 'Pre Order harus disetujui Super Admin (APPROVED) sebelum Surat Jalan dapat disimpan'
-                  : 'Simpan Surat Jalan (Good Issue)'
-              }
-            >
-              Simpan Surat Jalan (Good Issue)
-            </Button>
           </form>
         </Card>
+      </div>
 
-        {/* Right Column (5 cols) - Technical Blueprint & Dispatch Summary */}
-        <div className="lg:col-span-5 space-y-3">
+      {/* Right Column (5 cols) - Technical Blueprint & Dispatch Summary (Follows page scroll, adjusts alongside left form) */}
+      <div className="lg:col-span-5 relative">
+        <div className="lg:sticky lg:top-4 space-y-3">
           <TruckVisualizer
             panjangCm={Number(formData.panjangCm) || 0}
             lebarCm={Number(formData.lebarCm) || 0}
@@ -1103,33 +1109,55 @@ export default function SuratJalanPage() {
             onApplyPreset={handleApplyPreset}
           />
 
-          <Card className="p-4 space-y-3">
-            <h2 className="text-xs font-bold text-neutral-300 uppercase tracking-wider font-mono">
-              Verifikasi Kiriman Harian
-            </h2>
+          <Card className={`p-4 space-y-3 shadow-md border transition-colors ${
+            isDark ? 'bg-[#14171A] border-[#22262A]' : 'bg-white border-slate-200'
+          }`}>
+            <div className={`flex items-center justify-between pb-2 border-b ${
+              isDark ? 'border-[#202326]' : 'border-slate-200'
+            }`}>
+              <div className={`flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider font-mono ${
+                isDark ? 'text-neutral-200' : 'text-slate-800'
+              }`}>
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                <span>Verifikasi Kiriman Harian</span>
+              </div>
+              <Badge size="xs" variant={formData.isPpn ? 'primary' : 'outline'}>
+                {formData.isPpn ? 'Format PPN' : 'Non-PPN'}
+              </Badge>
+            </div>
 
             <div className="space-y-1.5 text-xs font-mono">
-              <div className="flex justify-between py-1 border-b border-[#202326]">
-                <span className="text-neutral-500">Nopol Armada:</span>
-                <span className="font-bold text-neutral-200">{formData.nomorPolisi || '-'}</span>
+              <div className={`flex justify-between py-1 border-b ${
+                isDark ? 'border-[#202326]' : 'border-slate-200'
+              }`}>
+                <span className={isDark ? 'text-neutral-500' : 'text-slate-500'}>Nopol Armada:</span>
+                <span className={`font-bold ${isDark ? 'text-neutral-200' : 'text-slate-900'}`}>{formData.nomorPolisi || '-'}</span>
               </div>
-              <div className="flex justify-between py-1 border-b border-[#202326]">
-                <span className="text-neutral-500">Customer:</span>
-                <span className="text-neutral-200">{formData.customer || '-'}</span>
+              <div className={`flex justify-between py-1 border-b ${
+                isDark ? 'border-[#202326]' : 'border-slate-200'
+              }`}>
+                <span className={isDark ? 'text-neutral-500' : 'text-slate-500'}>Customer:</span>
+                <span className={`truncate max-w-[180px] font-medium ${isDark ? 'text-neutral-200' : 'text-slate-900'}`} title={formData.customer}>{formData.customer || '-'}</span>
               </div>
-              <div className="flex justify-between py-1 border-b border-[#202326]">
-                <span className="text-neutral-500">No. PO:</span>
-                <span className="text-neutral-300">{formData.poNumber || '-'}</span>
+              <div className={`flex justify-between py-1 border-b ${
+                isDark ? 'border-[#202326]' : 'border-slate-200'
+              }`}>
+                <span className={isDark ? 'text-neutral-500' : 'text-slate-500'}>No. PO:</span>
+                <span className={isDark ? 'text-neutral-300' : 'text-slate-700'}>{formData.poNumber || '-'}</span>
               </div>
-              <div className="flex justify-between py-1 border-b border-[#202326]">
-                <span className="text-neutral-500">Material:</span>
-                <span className="text-amber-400 font-semibold">
+              <div className={`flex justify-between py-1 border-b ${
+                isDark ? 'border-[#202326]' : 'border-slate-200'
+              }`}>
+                <span className={isDark ? 'text-neutral-500' : 'text-slate-500'}>Material:</span>
+                <span className={`font-semibold truncate max-w-[180px] ${isDark ? 'text-amber-400' : 'text-amber-600'}`}>
                   {materials.find((m) => m.id === formData.materialId)?.name || '-'}
                 </span>
               </div>
-              <div className="flex justify-between py-2 border-t border-[#262A2F] items-baseline font-mono">
-                <span className="font-semibold text-neutral-300">Volume Riil Diterima:</span>
-                <span className="text-lg font-bold text-[#F4511E]">
+              <div className={`flex justify-between py-2.5 px-3 border rounded-lg items-baseline font-mono mt-1 shadow-2xs ${
+                isDark ? 'border-[#F4511E]/30 bg-[#1C1511]' : 'border-orange-200 bg-orange-50/70'
+              }`}>
+                <span className={`font-semibold text-xs ${isDark ? 'text-neutral-200' : 'text-slate-800'}`}>Volume Riil Diterima:</span>
+                <span className="text-lg sm:text-xl font-black text-[#F4511E] tracking-tight">
                   {formatVolume(kubikasi.volumeAkhir)}
                 </span>
               </div>
@@ -1142,16 +1170,22 @@ export default function SuratJalanPage() {
               icon={Save}
               onClick={handleSubmit}
               disabled={!formData.poNumber || customerApprovedPos.length === 0 || isNavPoUnapproved}
-              className={`w-full cursor-pointer ${
+              className={`w-full cursor-pointer py-2.5 font-bold shadow-md shadow-[#F4511E]/20 transition-all ${
                 !formData.poNumber || customerApprovedPos.length === 0 || isNavPoUnapproved
                   ? 'opacity-50 cursor-not-allowed border border-[#2B3037]'
-                  : ''
+                  : 'hover:brightness-110 active:scale-[0.99]'
               }`}
+              title={
+                !formData.poNumber || customerApprovedPos.length === 0 || isNavPoUnapproved
+                  ? 'Pre Order harus disetujui Super Admin (APPROVED) sebelum Surat Jalan dapat disimpan'
+                  : 'Simpan Good Issue'
+              }
             >
               Simpan Good Issue
             </Button>
           </Card>
         </div>
+      </div>
       </div>
     </div>
   );

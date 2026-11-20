@@ -14,6 +14,7 @@ import {
   Search,
   User,
   UserPlus,
+  UserCheck,
   Key,
   Lock,
   Eye,
@@ -3781,6 +3782,16 @@ export default function MasterDataPage() {
                         <strong className="text-white">Otoritas Direksi:</strong> Super Admin dapat menyetujui (<span className="text-emerald-400">approve</span>), mengaktifkan, atau menolak pendaftaran akun Admin baru.
                       </span>
                     </div>
+
+                    <Button
+                      size="xs"
+                      variant="primary"
+                      icon={UserCheck}
+                      onClick={() => navigate('/approval-admin')}
+                      className="bg-amber-600 hover:bg-amber-500 text-white font-bold text-[11px] shrink-0"
+                    >
+                      Buka Approval Registrasi Admin &rarr;
+                    </Button>
                   </div>
                 )}
 

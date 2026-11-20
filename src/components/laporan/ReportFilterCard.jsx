@@ -1,6 +1,14 @@
 import { useState } from 'react';
-import { Filter, RotateCcw, ChevronDown, ChevronUp, Loader2, Printer, FileSpreadsheet } from 'lucide-react';
-import { Button } from '../ui';
+import {
+  SlidersHorizontal,
+  RotateCcw,
+  ChevronDown,
+  ChevronUp,
+  Loader2,
+  Printer,
+  FileSpreadsheet,
+  Search,
+} from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 
 /**
@@ -32,36 +40,50 @@ export default function ReportFilterCard({
 
   return (
     <div
-      className={`rounded-2xl border transition-all ${
+      className={`rounded-2xl border transition-all overflow-hidden ${
         isDark
           ? 'bg-[#14171A] border-[#22262A] shadow-lg shadow-black/40'
           : 'bg-white border-slate-200 shadow-sm'
       } ${className}`}
     >
       {/* Header */}
-      <div className={`px-4 py-3 flex items-center justify-between border-b ${
-        isDark ? 'border-[#22262A] bg-[#181B1E]' : 'border-slate-100 bg-slate-50/70'
-      }`}>
-        <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-lg bg-[#F4511E]/15 text-[#F4511E] flex items-center justify-center">
-            <Filter className="w-3.5 h-3.5" />
+      <div
+        className={`px-4 py-3 flex items-center justify-between border-b ${
+          isDark
+            ? 'border-[#22262A] bg-[#181B1E]'
+            : 'border-slate-100 bg-slate-50/70'
+        }`}
+      >
+        <div className="flex items-center gap-2.5">
+          {/* Icon badge */}
+          <div
+            className={`w-7 h-7 rounded-lg flex items-center justify-center ${
+              isDark
+                ? 'bg-[#F4511E]/15 text-[#F4511E]'
+                : 'bg-orange-50 text-[#F4511E] border border-orange-100'
+            }`}
+          >
+            <SlidersHorizontal className="w-3.5 h-3.5" />
           </div>
-          <span className={`text-xs font-bold font-mono tracking-wide uppercase ${
-            isDark ? 'text-neutral-200' : 'text-slate-800'
-          }`}>
+          <span
+            className={`text-xs font-bold font-mono tracking-wide uppercase ${
+              isDark ? 'text-neutral-200' : 'text-slate-700'
+            }`}
+          >
             {title}
           </span>
         </div>
 
+        {/* Header action buttons */}
         <div className="flex items-center gap-2">
           {onExportCsv && (
             <button
               type="button"
               onClick={onExportCsv}
-              className={`p-1.5 rounded-lg border text-xs font-medium flex items-center gap-1.5 transition-colors cursor-pointer ${
+              className={`px-2.5 py-1.5 rounded-lg border text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
                 isDark
-                  ? 'border-emerald-500/30 text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20'
-                  : 'border-emerald-200 text-emerald-700 bg-emerald-50 hover:bg-emerald-100'
+                  ? 'border-emerald-500/30 text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 hover:border-emerald-500/50'
+                  : 'border-emerald-200 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 hover:border-emerald-300'
               }`}
               title="Ekspor CSV / Excel"
             >
@@ -74,10 +96,10 @@ export default function ReportFilterCard({
             <button
               type="button"
               onClick={onPrint}
-              className={`p-1.5 rounded-lg border text-xs font-medium flex items-center gap-1.5 transition-colors cursor-pointer ${
+              className={`px-2.5 py-1.5 rounded-lg border text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
                 isDark
-                  ? 'border-neutral-700 text-neutral-300 bg-neutral-800 hover:bg-neutral-700'
-                  : 'border-slate-200 text-slate-700 bg-white hover:bg-slate-100'
+                  ? 'border-neutral-700 text-neutral-300 bg-neutral-800/60 hover:bg-neutral-700 hover:text-white'
+                  : 'border-slate-200 text-slate-600 bg-white hover:bg-slate-100 hover:text-slate-800'
               }`}
               title="Cetak Halaman Laporan"
             >
@@ -89,69 +111,94 @@ export default function ReportFilterCard({
           <button
             type="button"
             onClick={handleToggle}
-            className={`p-1.5 rounded-lg border transition-colors cursor-pointer ${
+            className={`p-1.5 rounded-lg border transition-all cursor-pointer ${
               isDark
-                ? 'border-neutral-800 text-neutral-400 hover:text-white hover:bg-neutral-800'
-                : 'border-slate-200 text-slate-500 hover:text-slate-800 hover:bg-slate-100'
+                ? 'border-neutral-800 text-neutral-500 hover:text-white hover:bg-neutral-800 hover:border-neutral-700'
+                : 'border-slate-200 text-slate-400 hover:text-slate-700 hover:bg-slate-100'
             }`}
             title={collapsed ? 'Tampilkan Filter' : 'Sembunyikan Filter'}
             aria-label="Toggle Filter Visibility"
           >
-            {collapsed ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
+            {collapsed ? (
+              <ChevronDown className="w-4 h-4" />
+            ) : (
+              <ChevronUp className="w-4 h-4" />
+            )}
           </button>
         </div>
       </div>
 
       {/* Filter Body */}
       {!collapsed && (
-        <div className="p-4 space-y-4">
-          <div>{children}</div>
+        <>
+          <div className="p-4 space-y-4">
+            {children}
+          </div>
 
-          {/* Action Footer */}
-          <div className={`pt-3 border-t flex flex-wrap items-center justify-between gap-2.5 ${
-            isDark ? 'border-[#22262A]' : 'border-slate-100'
-          }`}>
+          {/* Action Footer — visually separated */}
+          <div
+            className={`px-4 py-3 flex flex-wrap items-center justify-between gap-3 border-t ${
+              isDark
+                ? 'border-[#22262A] bg-[#0F1114]'
+                : 'border-slate-100 bg-slate-50/80'
+            }`}
+          >
+            {/* Left side: Reset */}
             <div className="flex items-center gap-2">
               {canReset && onReset && (
                 <button
                   type="button"
                   onClick={onReset}
                   disabled={loading}
-                  className={`px-3 py-2 rounded-xl border text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
+                  className={`px-3.5 py-2 rounded-xl border text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${
                     isDark
-                      ? 'border-[#2E3339] text-neutral-400 hover:text-neutral-100 hover:bg-[#1E2226]'
-                      : 'border-slate-300 text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                      ? 'border-[#2E3339] text-neutral-400 hover:text-neutral-100 hover:bg-[#1E2226] hover:border-[#3A4049]'
+                      : 'border-slate-300 text-slate-500 hover:text-slate-800 hover:bg-white hover:border-slate-400'
                   }`}
                 >
                   <RotateCcw className="w-3.5 h-3.5" />
-                  <span>Reset Filter</span>
+                  <span>Reset</span>
                 </button>
               )}
             </div>
 
+            {/* Right side: Apply CTA */}
             <div className="flex items-center gap-2 ml-auto">
-              <Button
+              <button
                 type="button"
-                variant="primary"
                 onClick={onApply}
                 disabled={applyDisabled || loading}
-                className="px-5 py-2 text-xs font-bold uppercase tracking-wider flex items-center gap-2 cursor-pointer shadow-md disabled:cursor-not-allowed"
+                className={`
+                  relative inline-flex items-center gap-2 px-5 py-2.5
+                  rounded-xl text-xs font-bold uppercase tracking-wider
+                  transition-all duration-200 cursor-pointer
+                  disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none
+                  focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F4511E] focus-visible:ring-offset-1
+                  ${isDark ? 'focus-visible:ring-offset-[#0F1114]' : 'focus-visible:ring-offset-slate-50'}
+                  ${
+                    applyDisabled || loading
+                      ? isDark
+                        ? 'bg-neutral-800 text-neutral-500 border border-neutral-700'
+                        : 'bg-slate-200 text-slate-400 border border-slate-300'
+                      : 'bg-[#F4511E] hover:bg-[#D84315] active:bg-[#BF360C] text-white border border-[#F4511E]/0 shadow-md shadow-[#F4511E]/25 hover:shadow-lg hover:shadow-[#F4511E]/30 active:scale-[0.98]'
+                  }
+                `}
               >
                 {loading ? (
                   <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <Loader2 className="w-4 h-4 animate-spin shrink-0" />
                     <span>Memproses...</span>
                   </>
                 ) : (
                   <>
-                    <Filter className="w-3.5 h-3.5" />
+                    <Search className="w-3.5 h-3.5 shrink-0" />
                     <span>{applyLabel}</span>
                   </>
                 )}
-              </Button>
+              </button>
             </div>
           </div>
-        </div>
+        </>
       )}
     </div>
   );

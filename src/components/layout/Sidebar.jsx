@@ -31,6 +31,7 @@ import {
   TrendingUp,
   AlertCircle,
   FileText,
+  UserCheck,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { useAuth } from '../../context/AuthContext';
@@ -60,13 +61,14 @@ const ICON_MAP = {
   TrendingUp,
   AlertCircle,
   FileText,
+  UserCheck,
 };
 
 export default function Sidebar() {
   const location = useLocation();
   const navigate = useNavigate();
   const { sidebarOpen, closeMobileSidebar, sidebarCollapsed, toggleCollapseSidebar, isDark } = useApp();
-  const { currentUser, isSuperAdmin, logout } = useAuth();
+  const { currentUser, isSuperAdmin, logout, users } = useAuth();
   const { preOrders } = useData();
   const { addToast } = useToast();
 
@@ -74,6 +76,18 @@ export default function Sidebar() {
   const pendingRoCount = useMemo(() => {
     return preOrders ? preOrders.filter((po) => po.status === 'MENUNGGU_APPROVAL').length : 0;
   }, [preOrders]);
+
+  // Pending Admin Registration counter for Super Admin badge
+  const pendingAdminCount = useMemo(() => {
+    if (!isSuperAdmin || !users) return 0;
+    return users.filter(
+      (u) =>
+        u.role !== 'superadmin' &&
+        u.roleLabel !== 'Super Admin' &&
+        u.id !== 'usr-1' &&
+        (!u.aktif || u.aktif === 0)
+    ).length;
+  }, [users, isSuperAdmin]);
 
   // Profile dropdown state
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
@@ -351,8 +365,10 @@ export default function Sidebar() {
                   }
 
                   // 2. Normal Single NavLink
-                  const isApprovalLink = link.path === '/approval-ro';
-                  const showBadge = isApprovalLink && pendingRoCount > 0;
+                  const isRoApproval = link.path === '/approval-ro';
+                  const isAdminApproval = link.path === '/approval-admin';
+                  const badgeCount = isRoApproval ? pendingRoCount : (isAdminApproval ? pendingAdminCount : 0);
+                  const showBadge = badgeCount > 0;
 
                   return (
                     <NavLink
@@ -374,7 +390,7 @@ export default function Sidebar() {
                               : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
                         }`
                       }
-                      title={sidebarCollapsed ? `${cat.category}: ${link.label}${showBadge ? ` (${pendingRoCount} pending)` : ''}` : link.description}
+                      title={sidebarCollapsed ? `${cat.category}: ${link.label}${showBadge ? ` (${badgeCount} pending)` : ''}` : link.description}
                     >
                       <div className="relative shrink-0 flex items-center justify-center">
                         <Icon className="w-4 h-4 shrink-0 transition-colors group-hover:scale-105" />
@@ -389,7 +405,7 @@ export default function Sidebar() {
 
                       {!sidebarCollapsed && showBadge && (
                         <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-full bg-amber-500 text-black shadow-xs shrink-0 ml-auto animate-pulse">
-                          {pendingRoCount}
+                          {badgeCount}
                         </span>
                       )}
                     </NavLink>

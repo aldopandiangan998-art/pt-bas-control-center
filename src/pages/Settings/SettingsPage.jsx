@@ -66,9 +66,8 @@ export default function SettingsPage() {
     <div className="w-full max-w-4xl mx-auto space-y-6 pb-20 select-none">
       {/* Top Header */}
       <div
-        className={`flex items-center gap-3 pb-3 border-b transition-colors ${
-          isDark ? 'border-[#24282C]' : 'border-slate-200'
-        }`}
+        className={`flex items-center gap-3 pb-3 border-b transition-colors ${isDark ? 'border-[#24282C]' : 'border-slate-200'
+          }`}
       >
         <Button
           size="sm"
@@ -80,9 +79,8 @@ export default function SettingsPage() {
         <div className="flex-1">
           <div className="flex items-center justify-between">
             <h1
-              className={`text-base sm:text-lg font-bold tracking-tight flex items-center gap-2 ${
-                isDark ? 'text-white' : 'text-slate-900'
-              }`}
+              className={`text-base sm:text-lg font-bold tracking-tight flex items-center gap-2 ${isDark ? 'text-white' : 'text-slate-900'
+                }`}
             >
               <span>Pengaturan Sistem</span>
               <Badge size="xs" variant="primary">
@@ -106,17 +104,15 @@ export default function SettingsPage() {
         </div>
 
         <div
-          className={`border rounded-lg overflow-hidden divide-y transition-colors ${
-            isDark
-              ? 'bg-[#131517] border-[#24282C] divide-[#202326]'
-              : 'bg-white border-slate-200 divide-slate-100 shadow-sm'
-          }`}
+          className={`border rounded-lg overflow-hidden divide-y transition-colors ${isDark
+            ? 'bg-[#131517] border-[#24282C] divide-[#202326]'
+            : 'bg-white border-slate-200 divide-slate-100 shadow-sm'
+            }`}
         >
           {/* Jenis Perangkat */}
           <div
-            className={`flex items-center justify-between p-4 sm:p-4.5 transition-colors ${
-              isDark ? 'hover:bg-[#181B1E]' : 'hover:bg-slate-50'
-            }`}
+            className={`flex items-center justify-between p-4 sm:p-4.5 transition-colors ${isDark ? 'hover:bg-[#181B1E]' : 'hover:bg-slate-50'
+              }`}
           >
             <div className="flex items-center gap-3.5">
               <div className="text-emerald-400">
@@ -140,9 +136,8 @@ export default function SettingsPage() {
 
           {/* Quick Login with Biometric Toggle */}
           <div
-            className={`flex items-center justify-between p-4 sm:p-4.5 transition-colors ${
-              isDark ? 'hover:bg-[#181B1E]' : 'hover:bg-slate-50'
-            }`}
+            className={`flex items-center justify-between p-4 sm:p-4.5 transition-colors ${isDark ? 'hover:bg-[#181B1E]' : 'hover:bg-slate-50'
+              }`}
           >
             <div className="flex items-center gap-3.5">
               <div className="text-emerald-400">
@@ -164,14 +159,12 @@ export default function SettingsPage() {
             <button
               type="button"
               onClick={toggleQuickLogin}
-              className={`w-10 h-5 flex items-center rounded-full p-0.5 transition-colors cursor-pointer ${
-                quickLoginEnabled ? 'bg-[#F4511E]' : isDark ? 'bg-[#2A2E33]' : 'bg-slate-300'
-              }`}
+              className={`w-10 h-5 flex items-center rounded-full p-0.5 transition-colors cursor-pointer ${quickLoginEnabled ? 'bg-[#F4511E]' : isDark ? 'bg-[#2A2E33]' : 'bg-slate-300'
+                }`}
             >
               <div
-                className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${
-                  quickLoginEnabled ? 'translate-x-5' : 'translate-x-0'
-                }`}
+                className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${quickLoginEnabled ? 'translate-x-5' : 'translate-x-0'
+                  }`}
               />
             </button>
           </div>
@@ -185,9 +178,8 @@ export default function SettingsPage() {
                 'info'
               );
             }}
-            className={`flex items-center justify-between p-4 sm:p-4.5 transition-colors cursor-pointer select-none ${
-              isDark ? 'hover:bg-[#181B1E]' : 'hover:bg-slate-50'
-            }`}
+            className={`flex items-center justify-between p-4 sm:p-4.5 transition-colors cursor-pointer select-none ${isDark ? 'hover:bg-[#181B1E]' : 'hover:bg-slate-50'
+              }`}
           >
             <div className="flex items-center gap-3.5">
               <div className={!isDark ? 'text-amber-500' : 'text-slate-300'}>
@@ -208,9 +200,8 @@ export default function SettingsPage() {
             {/* Switch Button */}
             <div className="flex items-center gap-2.5">
               <span
-                className={`text-[10px] font-mono font-bold uppercase tracking-wider hidden sm:inline-block ${
-                  isDark ? 'text-neutral-400' : 'text-slate-500'
-                }`}
+                className={`text-[10px] font-mono font-bold uppercase tracking-wider hidden sm:inline-block ${isDark ? 'text-neutral-400' : 'text-slate-500'
+                  }`}
               >
                 {!isDark ? 'Light' : 'Dark'}
               </span>
@@ -223,17 +214,15 @@ export default function SettingsPage() {
                   e.stopPropagation();
                   toggleTheme();
                   addToast(
-                    `Tema diubah ke ${
-                      isDark ? 'Mode Terang (Light Mode)' : 'Mode Gelap (Dark Mode)'
+                    `Tema diubah ke ${isDark ? 'Mode Terang (Light Mode)' : 'Mode Gelap (Dark Mode)'
                     }`,
                     'info'
                   );
                 }}
-                className={`relative inline-flex items-center h-7 w-14 shrink-0 cursor-pointer rounded-full p-0.5 border transition-all duration-300 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-[#F4511E] select-none ${
-                  !isDark
-                    ? 'bg-gradient-to-r from-amber-400 to-orange-400 border-amber-300 shadow-md shadow-amber-500/20'
-                    : 'bg-[#14171A] border-[#2B3037] shadow-inner'
-                }`}
+                className={`relative inline-flex items-center h-7 w-14 shrink-0 cursor-pointer rounded-full p-0.5 border transition-all duration-300 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-[#F4511E] select-none ${!isDark
+                  ? 'bg-gradient-to-r from-amber-400 to-orange-400 border-amber-300 shadow-md shadow-amber-500/20'
+                  : 'bg-[#14171A] border-[#2B3037] shadow-inner'
+                  }`}
                 title={isDark ? 'Beralih ke Mode Terang' : 'Beralih ke Mode Gelap'}
               >
                 <span className="sr-only">Toggle Mode Terang / Gelap</span>
@@ -242,25 +231,22 @@ export default function SettingsPage() {
                 <div className="absolute inset-0 flex items-center justify-between px-1.5 pointer-events-none">
                   <div className="w-6 flex items-center justify-center">
                     <Moon
-                      className={`w-3.5 h-3.5 transition-opacity duration-200 ${
-                        !isDark ? 'text-white/80 opacity-100' : 'opacity-0'
-                      }`}
+                      className={`w-3.5 h-3.5 transition-opacity duration-200 ${!isDark ? 'text-white/80 opacity-100' : 'opacity-0'
+                        }`}
                     />
                   </div>
                   <div className="w-6 flex items-center justify-center">
                     <Sun
-                      className={`w-3.5 h-3.5 transition-opacity duration-200 ${
-                        isDark ? 'text-neutral-500 opacity-100' : 'opacity-0'
-                      }`}
+                      className={`w-3.5 h-3.5 transition-opacity duration-200 ${isDark ? 'text-neutral-500 opacity-100' : 'opacity-0'
+                        }`}
                     />
                   </div>
                 </div>
 
                 {/* Moving Thumb with neatly centered icon */}
                 <span
-                  className={`relative z-10 flex items-center justify-center h-6 w-6 rounded-full bg-white shadow-md transform transition-transform duration-300 ease-in-out ${
-                    !isDark ? 'translate-x-7' : 'translate-x-0'
-                  }`}
+                  className={`relative z-10 flex items-center justify-center h-6 w-6 rounded-full bg-white shadow-md transform transition-transform duration-300 ease-in-out ${!isDark ? 'translate-x-7' : 'translate-x-0'
+                    }`}
                 >
                   {!isDark ? (
                     <Sun className="w-3.5 h-3.5 text-amber-500 shrink-0" />
@@ -281,18 +267,16 @@ export default function SettingsPage() {
         </div>
 
         <div
-          className={`border rounded-lg overflow-hidden divide-y transition-colors ${
-            isDark
-              ? 'bg-[#131517] border-[#24282C] divide-[#202326]'
-              : 'bg-white border-slate-200 divide-slate-100 shadow-sm'
-          }`}
+          className={`border rounded-lg overflow-hidden divide-y transition-colors ${isDark
+            ? 'bg-[#131517] border-[#24282C] divide-[#202326]'
+            : 'bg-white border-slate-200 divide-slate-100 shadow-sm'
+            }`}
         >
           {/* FAQ */}
           <div
             onClick={() => setActiveModal('faq')}
-            className={`flex items-center justify-between p-4 sm:p-4.5 transition-colors cursor-pointer ${
-              isDark ? 'hover:bg-[#181B1E]' : 'hover:bg-slate-50'
-            }`}
+            className={`flex items-center justify-between p-4 sm:p-4.5 transition-colors cursor-pointer ${isDark ? 'hover:bg-[#181B1E]' : 'hover:bg-slate-50'
+              }`}
           >
             <div className="flex items-center gap-3.5">
               <div className="text-emerald-400">
@@ -315,9 +299,8 @@ export default function SettingsPage() {
           {/* Laporkan Masalah */}
           <div
             onClick={() => setActiveModal('report')}
-            className={`flex items-center justify-between p-4 sm:p-4.5 transition-colors cursor-pointer ${
-              isDark ? 'hover:bg-[#181B1E]' : 'hover:bg-slate-50'
-            }`}
+            className={`flex items-center justify-between p-4 sm:p-4.5 transition-colors cursor-pointer ${isDark ? 'hover:bg-[#181B1E]' : 'hover:bg-slate-50'
+              }`}
           >
             <div className="flex items-center gap-3.5">
               <div className="text-emerald-400">
@@ -346,18 +329,16 @@ export default function SettingsPage() {
         </div>
 
         <div
-          className={`border rounded-lg overflow-hidden divide-y transition-colors ${
-            isDark
-              ? 'bg-[#131517] border-[#24282C] divide-[#202326]'
-              : 'bg-white border-slate-200 divide-slate-100 shadow-sm'
-          }`}
+          className={`border rounded-lg overflow-hidden divide-y transition-colors ${isDark
+            ? 'bg-[#131517] border-[#24282C] divide-[#202326]'
+            : 'bg-white border-slate-200 divide-slate-100 shadow-sm'
+            }`}
         >
           {/* Ketentuan-Ketentuan Penggunaan */}
           <div
             onClick={() => setActiveModal('legal')}
-            className={`flex items-center justify-between p-4 sm:p-4.5 transition-colors cursor-pointer ${
-              isDark ? 'hover:bg-[#181B1E]' : 'hover:bg-slate-50'
-            }`}
+            className={`flex items-center justify-between p-4 sm:p-4.5 transition-colors cursor-pointer ${isDark ? 'hover:bg-[#181B1E]' : 'hover:bg-slate-50'
+              }`}
           >
             <div className="flex items-center gap-3.5">
               <div className="text-emerald-400">
@@ -380,9 +361,8 @@ export default function SettingsPage() {
           {/* Kebijakan Privasi */}
           <div
             onClick={() => setActiveModal('privacy')}
-            className={`flex items-center justify-between p-4 sm:p-4.5 transition-colors cursor-pointer ${
-              isDark ? 'hover:bg-[#181B1E]' : 'hover:bg-slate-50'
-            }`}
+            className={`flex items-center justify-between p-4 sm:p-4.5 transition-colors cursor-pointer ${isDark ? 'hover:bg-[#181B1E]' : 'hover:bg-slate-50'
+              }`}
           >
             <div className="flex items-center gap-3.5">
               <div className="text-emerald-400">
@@ -411,18 +391,16 @@ export default function SettingsPage() {
         </div>
 
         <div
-          className={`border rounded-lg overflow-hidden divide-y transition-colors ${
-            isDark
-              ? 'bg-[#131517] border-[#24282C] divide-[#202326]'
-              : 'bg-white border-slate-200 divide-slate-100 shadow-sm'
-          }`}
+          className={`border rounded-lg overflow-hidden divide-y transition-colors ${isDark
+            ? 'bg-[#131517] border-[#24282C] divide-[#202326]'
+            : 'bg-white border-slate-200 divide-slate-100 shadow-sm'
+            }`}
         >
           {/* Pengembang */}
           <div
             onClick={() => setActiveModal('developer')}
-            className={`flex items-center justify-between p-4 sm:p-4.5 transition-colors cursor-pointer ${
-              isDark ? 'hover:bg-[#181B1E]' : 'hover:bg-slate-50'
-            }`}
+            className={`flex items-center justify-between p-4 sm:p-4.5 transition-colors cursor-pointer ${isDark ? 'hover:bg-[#181B1E]' : 'hover:bg-slate-50'
+              }`}
           >
             <div className="flex items-center gap-3.5">
               <div className="text-emerald-400">
@@ -445,9 +423,8 @@ export default function SettingsPage() {
           {/* Catatan Rilis */}
           <div
             onClick={() => setActiveModal('release')}
-            className={`flex items-center justify-between p-4 sm:p-4.5 transition-colors cursor-pointer ${
-              isDark ? 'hover:bg-[#181B1E]' : 'hover:bg-slate-50'
-            }`}
+            className={`flex items-center justify-between p-4 sm:p-4.5 transition-colors cursor-pointer ${isDark ? 'hover:bg-[#181B1E]' : 'hover:bg-slate-50'
+              }`}
           >
             <div className="flex items-center gap-3.5">
               <div className="text-emerald-400">
@@ -469,9 +446,8 @@ export default function SettingsPage() {
 
           {/* Versi Aplikasi */}
           <div
-            className={`flex items-center justify-between p-4 sm:p-4.5 transition-colors ${
-              isDark ? 'hover:bg-[#181B1E]' : 'hover:bg-slate-50'
-            }`}
+            className={`flex items-center justify-between p-4 sm:p-4.5 transition-colors ${isDark ? 'hover:bg-[#181B1E]' : 'hover:bg-slate-50'
+              }`}
           >
             <div className="flex items-center gap-3.5">
               <div className="text-emerald-400">
@@ -494,9 +470,8 @@ export default function SettingsPage() {
           {/* Atribusi Data */}
           <div
             onClick={() => setActiveModal('attribution')}
-            className={`flex items-center justify-between p-4 sm:p-4.5 transition-colors cursor-pointer ${
-              isDark ? 'hover:bg-[#181B1E]' : 'hover:bg-slate-50'
-            }`}
+            className={`flex items-center justify-between p-4 sm:p-4.5 transition-colors cursor-pointer ${isDark ? 'hover:bg-[#181B1E]' : 'hover:bg-slate-50'
+              }`}
           >
             <div className="flex items-center gap-3.5">
               <div className="text-emerald-400">
@@ -533,9 +508,8 @@ export default function SettingsPage() {
           className={`p-4 space-y-3 text-xs ${isDark ? 'text-neutral-300' : 'text-slate-700'}`}
         >
           <div
-            className={`p-3 rounded-md border space-y-1 ${
-              isDark ? 'bg-[#181B1E] border-[#262A2F]' : 'bg-slate-50 border-slate-200'
-            }`}
+            className={`p-3 rounded-md border space-y-1 ${isDark ? 'bg-[#181B1E] border-[#262A2F]' : 'bg-slate-50 border-slate-200'
+              }`}
           >
             <div className={`font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
               Bagaimana rumus perhitungan kubikasi truk?
@@ -546,9 +520,8 @@ export default function SettingsPage() {
           </div>
 
           <div
-            className={`p-3 rounded-md border space-y-1 ${
-              isDark ? 'bg-[#181B1E] border-[#262A2F]' : 'bg-slate-50 border-slate-200'
-            }`}
+            className={`p-3 rounded-md border space-y-1 ${isDark ? 'bg-[#181B1E] border-[#262A2F]' : 'bg-slate-50 border-slate-200'
+              }`}
           >
             <div className={`font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
               Kapan Nomor PO digenerate?
@@ -560,9 +533,8 @@ export default function SettingsPage() {
           </div>
 
           <div
-            className={`p-3 rounded-md border space-y-1 ${
-              isDark ? 'bg-[#181B1E] border-[#262A2F]' : 'bg-slate-50 border-slate-200'
-            }`}
+            className={`p-3 rounded-md border space-y-1 ${isDark ? 'bg-[#181B1E] border-[#262A2F]' : 'bg-slate-50 border-slate-200'
+              }`}
           >
             <div className={`font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
               Siapa yang berwenang menyetujui Pre Order?
@@ -574,9 +546,8 @@ export default function SettingsPage() {
           </div>
 
           <div
-            className={`p-3 rounded-md border space-y-1 ${
-              isDark ? 'bg-[#181B1E] border-[#262A2F]' : 'bg-slate-50 border-slate-200'
-            }`}
+            className={`p-3 rounded-md border space-y-1 ${isDark ? 'bg-[#181B1E] border-[#262A2F]' : 'bg-slate-50 border-slate-200'
+              }`}
           >
             <div className={`font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
               Berapa tarif pajak PPN dan PPH?
@@ -613,9 +584,8 @@ export default function SettingsPage() {
 
           <div>
             <label
-              className={`block text-[11px] font-medium mb-1 ${
-                isDark ? 'text-neutral-300' : 'text-slate-700'
-              }`}
+              className={`block text-[11px] font-medium mb-1 ${isDark ? 'text-neutral-300' : 'text-slate-700'
+                }`}
             >
               Detail Kendala
             </label>
@@ -625,18 +595,16 @@ export default function SettingsPage() {
               value={reportForm.pesan}
               onChange={(e) => setReportForm({ ...reportForm, pesan: e.target.value })}
               placeholder="Jelaskan langkah kejadian dan nomor transaksi jika relevan..."
-              className={`w-full rounded-md px-3 py-2 text-xs border outline-none focus:ring-1 focus:ring-[#F4511E] ${
-                isDark
-                  ? 'bg-[#181B1E] border-[#2D3339] text-white placeholder-neutral-500 focus:border-[#F4511E]'
-                  : 'bg-slate-50 border-slate-300 text-slate-900 placeholder-slate-400 focus:border-[#F4511E]'
-              }`}
+              className={`w-full rounded-md px-3 py-2 text-xs border outline-none focus:ring-1 focus:ring-[#F4511E] ${isDark
+                ? 'bg-[#181B1E] border-[#2D3339] text-white placeholder-neutral-500 focus:border-[#F4511E]'
+                : 'bg-slate-50 border-slate-300 text-slate-900 placeholder-slate-400 focus:border-[#F4511E]'
+                }`}
             />
           </div>
 
           <div
-            className={`pt-2 flex justify-end gap-2 border-t ${
-              isDark ? 'border-[#24282C]' : 'border-slate-200'
-            }`}
+            className={`pt-2 flex justify-end gap-2 border-t ${isDark ? 'border-[#24282C]' : 'border-slate-200'
+              }`}
           >
             <Button variant="ghost" onClick={() => setActiveModal(null)}>
               Batal
@@ -660,9 +628,8 @@ export default function SettingsPage() {
         subtitle="Dokumentasi tata kelola operasional & data internal"
       >
         <div
-          className={`p-4 space-y-3 text-xs leading-relaxed max-h-[60vh] overflow-y-auto ${
-            isDark ? 'text-neutral-300' : 'text-slate-700'
-          }`}
+          className={`p-4 space-y-3 text-xs leading-relaxed max-h-[60vh] overflow-y-auto ${isDark ? 'text-neutral-300' : 'text-slate-700'
+            }`}
         >
           <p>
             Sistem PT BAS Control Center digunakan secara internal oleh seluruh staf, kadiv, admin
@@ -693,17 +660,16 @@ export default function SettingsPage() {
           activeModal === 'developer'
             ? 'Tim Pengembang Sistem'
             : activeModal === 'release'
-            ? 'Catatan Rilis Aplikasi'
-            : 'Atribusi & Hak Cipta'
+              ? 'Catatan Rilis Aplikasi'
+              : 'Atribusi & Hak Cipta'
         }
       >
         <div
           className={`p-4 space-y-3 text-xs ${isDark ? 'text-neutral-300' : 'text-slate-700'}`}
         >
           <div
-            className={`p-3 rounded-md border ${
-              isDark ? 'bg-[#181B1E] border-[#2D3339]' : 'bg-slate-50 border-slate-200'
-            }`}
+            className={`p-3 rounded-md border ${isDark ? 'bg-[#181B1E] border-[#2D3339]' : 'bg-slate-50 border-slate-200'
+              }`}
           >
             <div className={`text-sm font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
               PT BAS Control Center

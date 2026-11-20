@@ -1037,6 +1037,7 @@ function seedInitialData() {
     insertSup.run('sup-3', 'PT SOYO APIK', 'SUP-003', 'PT SOYO APIK', '0821-3344-5566', 1, 'BCA', '829-189-1888', 'PT SOYO APIK');
     insertSup.run('sup-4', 'PAK TEGUH (BARU)', 'SUP-004', 'EKO WAHYUDI PRAYOGO', '0857-1122-3344', 0, 'BCA', '7415250533', 'EKO WAHYUDI PRAYOGO');
     insertSup.run('sup-5', 'PAK TEGUH', 'SUP-005', 'EKO WAHYUDI PRAYOGO', '0857-1122-3345', 0, 'BCA', '7415094256', 'EKO WAHYUDI PRAYOGO');
+    insertSup.run('sup-8', 'ADITA JUSTIA SAPUTRA', 'SUP-008', 'PAK ADIT', '0822-6655-4433', 0, 'BCA', '7415428618', 'ADITA JUSTIA SAPUTRA');
   }
 
   // Seed armada if empty
@@ -1071,6 +1072,7 @@ function seedInitialData() {
   insertCust.run('cust-8', 'PT ADHI KARYA', 'ADHI KARYA', 'PT', 'Proyek Smelter Freeport Manyar, Gresik', '01.001.611.1-093.000', '031-7992000', 'ADM');
   insertCust.run('cust-9', 'PT ANEKA SISTEM', 'ANEKA SISTEM', 'PT', 'Jl. Raya Manyar Km. 11, Gresik', '02.345.678.9-612.000', '031-3958800', 'AS');
   insertCust.run('cust-10', 'PT BERKAH ALAM SEMESTA', 'BERKAH ALAM SEMESTA', 'PT', 'Gresik Hub, Jawa Timur', '03.456.789.0-612.000', '031-3980000', 'BAS');
+  insertCust.run('cust-asco', 'ASCO DWI MOBILINDO, PT', 'ASCO DWI MOBILINDO, PT', 'PT', 'Kawasan Industri Gresik, Manyar', '01.234.567.8-044.000', '031-3984400', 'ADM 044');
 
   // Pre-orders, Surat Jalan, Jurnal GI, BKK, and Invoices are NOT seeded with dummy records
   // They are strictly populated from real administrative transactions and synchronized
@@ -1855,6 +1857,21 @@ function seedInitialData() {
       penerima: 'EKO WAHYUDI PRAYOGO'
     },
     {
+      id: 'bkk-lionwings-1',
+      kodeTransaksi: '2026-11-16 - RCP - 39ZN5',
+      tanggal: '2026-11-16',
+      perusahaan: 'LION WINGS, PT',
+      material: 'SIRTU',
+      ritaseCount: 5,
+      kubikasi: 105.64,
+      hargaSatuan: 120000,
+      amount: 12676800.00,
+      statusBayar: 'Belum Dibayar',
+      tanggalBayar: null,
+      rekeningTujuan: 'BCA - 7415428618',
+      penerima: 'PAK ADIT'
+    },
+    {
       id: 'bkk-8',
       kodeTransaksi: 'TRX-202611-008',
       tanggal: '2026-11-14',
@@ -1882,6 +1899,21 @@ function seedInitialData() {
       insertBkkStmt.run(b.id, b.kodeTransaksi, b.tanggal, b.perusahaan, b.material, b.ritaseCount, b.kubikasi, b.hargaSatuan, b.amount, b.statusBayar, b.tanggalBayar, b.rekeningTujuan, b.penerima);
     }
   }
+
+  // Update specific details for bkk-lionwings-1 to match screenshot
+  db.prepare(`
+    UPDATE bkk
+    SET timestamp = '2026-11-20 09:15:42',
+        periode = 'Periode: 2026-11-16',
+        subDetail = 'LW 655 - CUR - 4590011130',
+        poNumber = 'LW 655 - CUR - 4590011130',
+        nomorRO = '2026-11-16 - RCP - 39ZN5',
+        jenis = 'CURAH | JASA ANGKUT + MATERIAL',
+        volume = 105.64,
+        kubikasi = 105.64,
+        satuan = 'm³'
+    WHERE id = 'bkk-lionwings-1'
+  `).run();
 }
 
 export default db;

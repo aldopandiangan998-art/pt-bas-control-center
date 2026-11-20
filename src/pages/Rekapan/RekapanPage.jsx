@@ -197,10 +197,10 @@ export default function RekapanPage() {
     const q = roSearchQuery.toLowerCase();
     return receivedOrders.filter(
       (ro) =>
-        ro.nomorRO.toLowerCase().includes(q) ||
-        ro.customer.toLowerCase().includes(q) ||
-        ro.material.toLowerCase().includes(q) ||
-        (ro.poNumber && ro.poNumber.toLowerCase().includes(q))
+        (ro.nomorRO || '').toLowerCase().includes(q) ||
+        (ro.customer || '').toLowerCase().includes(q) ||
+        (ro.material || '').toLowerCase().includes(q) ||
+        (ro.poNumber && String(ro.poNumber).toLowerCase().includes(q))
     );
   }, [receivedOrders, roSearchQuery]);
 

@@ -1919,58 +1919,6 @@ export default function MasterDataPage() {
 
             return (
               <div className="space-y-3.5">
-                {/* Metric Summary Header Banner */}
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
-                  <div className="master-stat-card p-3 rounded-xl bg-[#121822]/90 border border-[#1E2938] flex items-center justify-between shadow-xs">
-                    <div>
-                      <div className="text-[10px] font-mono text-neutral-400 uppercase tracking-wider">Total Supplier</div>
-                      <div className="text-xl font-bold font-mono text-white mt-0.5">{suppliers.length}</div>
-                      <div className="text-[10px] text-neutral-400 mt-0.5">Mitra Tambang Terdaftar</div>
-                    </div>
-                    <div className="w-10 h-10 rounded-xl bg-orange-500/10 border border-orange-500/30 flex items-center justify-center text-[#F4511E]">
-                      <HardHat className="w-5 h-5" />
-                    </div>
-                  </div>
-                  <div className="master-stat-card stat-emerald p-3 rounded-xl bg-[#121822]/90 border border-[#1E2938] flex items-center justify-between shadow-xs">
-                    <div>
-                      <div className="text-[10px] font-mono text-neutral-400 uppercase tracking-wider">Supplier Aktif</div>
-                      <div className="text-xl font-bold font-mono text-emerald-400 mt-0.5">
-                        {suppliers.filter((s) => s.aktif).length}
-                      </div>
-                      <div className="text-[10px] text-emerald-400/80 mt-0.5">
-                        {Math.round((suppliers.filter((s) => s.aktif).length / (suppliers.length || 1)) * 100)}% Siap Transaksi
-                      </div>
-                    </div>
-                    <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
-                      <CheckCircle2 className="w-5 h-5" />
-                    </div>
-                  </div>
-                  <div className="master-stat-card stat-sky p-3 rounded-xl bg-[#121822]/90 border border-[#1E2938] flex items-center justify-between shadow-xs">
-                    <div>
-                      <div className="text-[10px] font-mono text-neutral-400 uppercase tracking-wider">Terdaftar PKP</div>
-                      <div className="text-xl font-bold font-mono text-sky-400 mt-0.5">
-                        {suppliers.filter((s) => s.pkp).length}
-                      </div>
-                      <div className="text-[10px] text-neutral-400 mt-0.5">Faktur Pajak Standar</div>
-                    </div>
-                    <div className="w-10 h-10 rounded-xl bg-sky-500/10 border border-sky-500/30 flex items-center justify-center text-sky-400">
-                      <ShieldCheck className="w-5 h-5" />
-                    </div>
-                  </div>
-                  <div className="master-stat-card stat-amber p-3 rounded-xl bg-[#121822]/90 border border-[#1E2938] flex items-center justify-between shadow-xs">
-                    <div>
-                      <div className="text-[10px] font-mono text-neutral-400 uppercase tracking-wider">Rekening Bank</div>
-                      <div className="text-xl font-bold font-mono text-amber-400 mt-0.5">
-                        {new Set(suppliers.map((s) => s.bank)).size} Bank
-                      </div>
-                      <div className="text-[10px] text-neutral-400 mt-0.5">Tujuan Pencairan BKK</div>
-                    </div>
-                    <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
-                      <CreditCard className="w-5 h-5" />
-                    </div>
-                  </div>
-                </div>
-
                 {filtered.length === 0 ? (
                   <MasterEmptyState
                     icon={HardHat}

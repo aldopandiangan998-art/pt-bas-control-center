@@ -370,64 +370,49 @@ export default function ProfilePage() {
             className="hidden"
           />
 
-          <div className="flex flex-col items-center shrink-0">
-            <div className="relative group">
-              <div
-                onClick={() => fileInputRef.current?.click()}
-                className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-tr from-[#F4511E] to-[#FF7043] text-white flex items-center justify-center font-extrabold text-lg sm:text-xl shadow-lg shadow-[#F4511E]/20 shrink-0 relative overflow-hidden cursor-pointer group/avatar border-2 border-transparent hover:border-[#FF7043] transition-all"
-                title="Klik untuk memilih dan memperbarui foto profil"
-              >
-                {currentUser?.avatar ? (
-                  <img
-                    src={currentUser.avatar}
-                    alt={currentUser.name}
-                    className="w-full h-full object-cover rounded-2xl"
-                  />
-                ) : (
-                  userInitials
-                )}
+          <div className="relative group">
+            <div
+              onClick={() => fileInputRef.current?.click()}
+              className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-tr from-[#F4511E] to-[#FF7043] text-white flex items-center justify-center font-extrabold text-lg sm:text-xl shadow-lg shadow-[#F4511E]/20 shrink-0 relative overflow-hidden cursor-pointer group/avatar border-2 border-transparent hover:border-[#FF7043] transition-all"
+              title="Klik untuk memilih dan memperbarui foto profil"
+            >
+              {currentUser?.avatar ? (
+                <img
+                  src={currentUser.avatar}
+                  alt={currentUser.name}
+                  className="w-full h-full object-cover rounded-2xl"
+                />
+              ) : (
+                userInitials
+              )}
 
-                {/* Hover Overlay */}
-                <div className="absolute inset-0 bg-black/60 opacity-0 group-hover/avatar:opacity-100 transition-opacity flex flex-col items-center justify-center text-white text-[9px] font-semibold gap-0.5 rounded-2xl backdrop-blur-xs">
-                  {avatarUploading ? (
-                    <Loader2 className="w-5 h-5 animate-spin text-[#FF7043]" />
-                  ) : (
-                    <>
-                      <Camera className="w-4 h-4 text-[#FF7043]" />
-                      <span>Ganti Foto</span>
-                    </>
-                  )}
-                </div>
-              </div>
-
-              {/* Corner Camera Button */}
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={avatarUploading}
-                className="absolute -bottom-1 -right-1 w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-[#181B1E] border-2 border-[#F4511E] text-white flex items-center justify-center shadow-md hover:scale-110 active:scale-95 transition-transform cursor-pointer"
-                title="Unggah Foto Profil"
-              >
+              {/* Hover Overlay */}
+              <div className="absolute inset-0 bg-black/60 opacity-0 group-hover/avatar:opacity-100 transition-opacity flex flex-col items-center justify-center text-white text-[9px] font-semibold gap-0.5 rounded-2xl backdrop-blur-xs">
                 {avatarUploading ? (
-                  <Loader2 className="w-3 h-3 animate-spin text-[#FF7043]" />
+                  <Loader2 className="w-5 h-5 animate-spin text-[#FF7043]" />
                 ) : (
-                  <Camera className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-[#FF7043]" />
+                  <>
+                    <Camera className="w-4 h-4 text-[#FF7043]" />
+                    <span>Ganti Foto</span>
+                  </>
                 )}
-              </button>
+              </div>
             </div>
 
-            {currentUser?.avatar && (
-              <button
-                type="button"
-                onClick={handleRemoveAvatar}
-                disabled={avatarUploading}
-                className="text-[10px] text-neutral-400 hover:text-rose-400 flex items-center gap-1 mt-1.5 transition-colors cursor-pointer"
-                title="Hapus foto profil saat ini"
-              >
-                <Trash2 className="w-3 h-3" />
-                <span>Hapus Foto</span>
-              </button>
-            )}
+            {/* Corner Camera Button */}
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={avatarUploading}
+              className="absolute -bottom-1 -right-1 w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-[#181B1E] border-2 border-[#F4511E] text-white flex items-center justify-center shadow-md hover:scale-110 active:scale-95 transition-transform cursor-pointer"
+              title="Unggah Foto Profil"
+            >
+              {avatarUploading ? (
+                <Loader2 className="w-3 h-3 animate-spin text-[#FF7043]" />
+              ) : (
+                <Camera className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-[#FF7043]" />
+              )}
+            </button>
           </div>
 
           <div>
@@ -543,6 +528,65 @@ export default function ProfilePage() {
           </div>
 
           <form onSubmit={handleSaveProfile} className="space-y-4">
+            {/* Foto Profil Management Card */}
+            <div
+              className={`p-4 rounded-xl border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 transition-colors ${
+                isDark ? 'bg-[#181B1E] border-[#22262A]' : 'bg-slate-50 border-slate-200'
+              }`}
+            >
+              <div className="flex items-center gap-3.5">
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-[#F4511E] to-[#FF7043] text-white flex items-center justify-center font-bold text-base shrink-0 shadow-md overflow-hidden relative">
+                  {currentUser?.avatar ? (
+                    <img
+                      src={currentUser.avatar}
+                      alt={currentUser.name}
+                      className="w-full h-full object-cover rounded-xl"
+                    />
+                  ) : (
+                    userInitials
+                  )}
+                </div>
+                <div>
+                  <h3 className={`text-xs font-bold uppercase tracking-wider font-mono ${isDark ? 'text-neutral-200' : 'text-slate-800'}`}>
+                    Foto Profil Pengguna
+                  </h3>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={avatarUploading}
+                  className={`px-3 py-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition-colors cursor-pointer flex-1 sm:flex-initial ${
+                    isDark
+                      ? 'bg-[#22262A] text-white hover:bg-[#2B3037] border border-[#333940]'
+                      : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-300 shadow-xs'
+                  }`}
+                >
+                  {avatarUploading ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin text-[#F4511E]" />
+                  ) : (
+                    <Camera className="w-3.5 h-3.5 text-[#F4511E]" />
+                  )}
+                  <span>{currentUser?.avatar ? 'Ganti Foto' : 'Unggah Foto'}</span>
+                </button>
+
+                {currentUser?.avatar && (
+                  <button
+                    type="button"
+                    onClick={handleRemoveAvatar}
+                    disabled={avatarUploading}
+                    className="px-3 py-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 border border-rose-500/30"
+                    title="Hapus Foto Profil"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Hapus</span>
+                  </button>
+                )}
+              </div>
+            </div>
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {/* 1. Nama Lengkap */}
               <div>

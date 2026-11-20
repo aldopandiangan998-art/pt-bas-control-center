@@ -93,11 +93,16 @@ export default function ApprovalUserPage() {
       (u) => u.role === 'superadmin' || u.roleLabel === 'Super Admin' || u.id === 'usr-1'
     ).length;
 
+    const approvalRate = nonSuperAdminUsers.length > 0
+      ? Math.round((approvedList.length / nonSuperAdminUsers.length) * 100)
+      : 100;
+
     return {
       pending: pendingList.length,
       approved: approvedList.length,
       total: nonSuperAdminUsers.length,
       superAdminCount,
+      approvalRate,
     };
   }, [nonSuperAdminUsers, users]);
 
@@ -337,10 +342,14 @@ export default function ApprovalUserPage() {
             <span className="text-2xl font-black text-amber-400 font-mono">
               {metrics.pending}
             </span>
-            <span className="text-xs text-amber-300 font-medium">akun baru</span>
+            <span className={`text-xs font-medium ${metrics.pending > 0 ? 'text-amber-300' : 'text-neutral-400'}`}>
+              {metrics.pending > 0 ? `${metrics.pending} akun tertahan` : 'antrean bersih'}
+            </span>
           </div>
           <p className="text-xs text-neutral-400 mt-1">
-            Memerlukan verifikasi Super Admin
+            {metrics.pending > 0
+              ? `${metrics.pending} permohonan pendaftaran menunggu verifikasi Super Admin`
+              : 'Semua permohonan registrasi telah selesai diverifikasi'}
           </p>
         </Card>
 
@@ -358,10 +367,14 @@ export default function ApprovalUserPage() {
             <span className="text-2xl font-black text-emerald-400 font-mono">
               {metrics.approved}
             </span>
-            <span className="text-xs text-emerald-300 font-medium">aktif beroperasi</span>
+            <span className="text-xs text-emerald-300 font-medium">
+              {metrics.total > 0 ? `${metrics.approvalRate}% aktif` : 'aktif'}
+            </span>
           </div>
           <p className="text-xs text-neutral-400 mt-1">
-            Akses operasional dibuka penuh
+            {metrics.total > 0
+              ? `${metrics.approved} dari ${metrics.total} akun admin telah aktif beroperasi`
+              : 'Belum ada akun admin yang terdaftar'}
           </p>
         </Card>
 
@@ -379,10 +392,14 @@ export default function ApprovalUserPage() {
             <span className="text-2xl font-black text-white font-mono">
               {metrics.total}
             </span>
-            <span className="text-xs text-neutral-400 font-medium">pendaftar</span>
+            <span className="text-xs text-blue-300 font-medium">
+              {branchOptions.length > 0 ? `${branchOptions.length} cabang / hub` : 'total pendaftar'}
+            </span>
           </div>
           <p className="text-xs text-neutral-400 mt-1">
-            Seluruh riwayat pendaftaran Admin
+            {metrics.total > 0
+              ? `${metrics.approved} Disetujui • ${metrics.pending} Menunggu Approval`
+              : 'Belum ada riwayat pendaftaran akun baru'}
           </p>
         </Card>
 
@@ -400,10 +417,14 @@ export default function ApprovalUserPage() {
             <span className="text-2xl font-black text-purple-300 font-mono">
               {metrics.superAdminCount}
             </span>
-            <span className="text-xs text-purple-300 font-medium">direksi utama</span>
+            <span className="text-xs text-purple-300 font-medium">
+              otoritas direksi
+            </span>
           </div>
           <p className="text-xs text-neutral-400 mt-1">
-            Pemegang hak approval tunggal
+            {currentUser?.name
+              ? `${currentUser.name} (${currentUser.branch || 'Pusat & Hub Gresik'})`
+              : 'Pemegang hak verifikasi & approval tunggal'}
           </p>
         </Card>
       </div>

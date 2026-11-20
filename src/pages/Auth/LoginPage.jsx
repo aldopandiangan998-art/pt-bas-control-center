@@ -29,6 +29,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { useApp } from '../../context/AppContext';
 import MiningPitInteractiveBg from '../../components/common/MiningPitInteractiveBg';
+import logo from '../../assets/logo.png';
 
 export default function LoginPage({ defaultMode = null }) {
   const navigate = useNavigate();
@@ -287,6 +288,21 @@ export default function LoginPage({ defaultMode = null }) {
       <div className="w-full flex-1 flex flex-col justify-center py-8 px-4 sm:px-6 relative selection:bg-[#F4511E] selection:text-white font-sans">
         {/* Main Center Column Card */}
         <main className="w-full max-w-[430px] mx-auto flex flex-col items-center">
+          {/* Brand Logo & System Header */}
+          <div className="flex flex-col items-center mb-5 text-center">
+            <div className={`w-16 h-16 rounded-2xl p-2.5 backdrop-blur-md border shadow-xl flex items-center justify-center mb-3 transition-colors ${
+              isDark ? 'bg-black/30 border-white/10 shadow-black/50' : 'bg-white/80 border-slate-200 shadow-slate-200/50'
+            }`}>
+              <img src={logo} alt="PT BAS Logo" className="w-full h-full object-contain drop-shadow" />
+            </div>
+            <h2 className={`font-black text-lg tracking-wider font-mono uppercase ${isDark ? 'text-white' : 'text-slate-900'}`}>
+              PT Berkah Alam Semesta
+            </h2>
+            <p className={`text-xs font-mono tracking-widest uppercase ${isDark ? 'text-neutral-400' : 'text-slate-500'}`}>
+              Control Center Dispatch
+            </p>
+          </div>
+
           {/* ======================================================== */}
           {/* MAIN AUTH CARD: AUTENTIKASI PENGGUNA / REGISTRASI        */}
           {/* ======================================================== */}

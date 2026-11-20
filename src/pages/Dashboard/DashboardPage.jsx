@@ -555,7 +555,7 @@ export default function DashboardPage() {
               </div>
               <div className="text-sm font-bold text-white leading-tight mb-1">Received Order</div>
               <div className="text-[11px] text-neutral-400 leading-snug mb-3">
-                {language === 'en' ? 'Manage incoming orders & customer PO approvals' : 'Kelola pesanan masuk & approval PO dari customer'}
+                {language === 'en' ? 'Manage incoming orders & customer PO approvals' : 'Kelola pesanan masuk & persetujuan PO dari customer'}
               </div>
               <div className="flex items-center justify-between pt-2 border-t border-[#22262A]">
                 <span className="text-[10px] font-mono text-neutral-500 uppercase tracking-wide">

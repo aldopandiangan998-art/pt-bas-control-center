@@ -38,6 +38,7 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { useData } from '../../context/DataContext';
 import { useToast } from '../../context/ToastContext';
+import { useApp } from '../../context/AppContext';
 import { DEFAULT_MATERIALS } from '../../utils/constants';
 import { formatCurrency, formatVolume } from '../../utils/formatters';
 import { Button, Badge, Card, Modal } from '../../components/ui';
@@ -488,6 +489,7 @@ function CompactSearchableSelect({
 /* ─────────────────────────── main component ─────────────────────────── */
 export default function PreOrderPage() {
   const navigate = useNavigate();
+  const { language } = useApp();
   const { currentUser, isSuperAdmin, roleLabel, permissions } = useAuth();
   const { preOrders, createPreOrder, approvePreOrder, rejectPreOrder, deletePreOrder, materials, customers, currencies } = useData();
   const { addToast } = useToast();
@@ -1364,10 +1366,10 @@ export default function PreOrderPage() {
                 {/* Status tabs */}
                 <div className="flex flex-wrap items-center gap-1.5 pb-2 border-b border-[#20242A]">
                   {[
-                    { id: 'ALL', label: 'Semua Status' },
-                    { id: 'PENDING', label: 'Menunggu Approval' },
-                    { id: 'AKTIF', label: 'Aktif' },
-                    { id: 'SELESAI', label: 'Selesai' },
+                    { id: 'ALL', label: language === 'en' ? 'All Status' : 'Semua Status' },
+                    { id: 'PENDING', label: language === 'en' ? 'Pending Approval' : 'Menunggu Persetujuan' },
+                    { id: 'AKTIF', label: language === 'en' ? 'Active' : 'Aktif' },
+                    { id: 'SELESAI', label: language === 'en' ? 'Completed' : 'Selesai' },
                     { id: 'OVER', label: 'Over-Delivery' },
                   ].map((tab) => (
                     <button
@@ -1554,7 +1556,7 @@ export default function PreOrderPage() {
                                 const isApproved = po.status === 'APPROVED';
                                 const isPending = po.status === 'MENUNGGU_APPROVAL' || po.status === 'PENDING' || po.status === 'MENUNGGU APPROVAL';
                                 const isSelesai = po.status === 'SELESAI';
-                                const statusLabel = isPending ? 'MENUNGGU APPROVAL' : (po.status || 'AKTIF');
+                                const statusLabel = isPending ? (language === 'en' ? 'PENDING APPROVAL' : 'MENUNGGU PERSETUJUAN') : (po.status || (language === 'en' ? 'ACTIVE' : 'AKTIF'));
                                 const statusColor =
                                   isApproved
                                     ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/25'
@@ -1703,7 +1705,7 @@ export default function PreOrderPage() {
                                   ? 'bg-purple-500/15 text-purple-400 border border-purple-500/30'
                                   : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
                               }`}>
-                                {po.status === 'MENUNGGU_APPROVAL' ? 'MENUNGGU APPROVAL' : po.status}
+                                {po.status === 'MENUNGGU_APPROVAL' ? (language === 'en' ? 'PENDING APPROVAL' : 'MENUNGGU PERSETUJUAN') : po.status}
                               </span>
                             )}
                             <button

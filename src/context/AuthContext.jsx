@@ -235,7 +235,7 @@ export function AuthProvider({ children }) {
             isPendingApproval: true,
             userName: user.name,
             userEmail: user.email,
-            message: 'Akun Anda sedang menunggu persetujuan (approval) dari Super Admin. Silakan hubungi Super Admin untuk aktivasi.',
+            message: 'Akun Anda sedang menunggu persetujuan dari Super Admin. Silakan hubungi Super Admin untuk aktivasi.',
           };
         }
 

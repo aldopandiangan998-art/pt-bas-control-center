@@ -57,6 +57,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { useData } from '../../context/DataContext';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
+import { useApp } from '../../context/AppContext';
 import { formatCurrency, formatVolume } from '../../utils/formatters';
 import { Button, Badge, Card, Input, Select, Modal } from '../../components/ui';
 
@@ -152,6 +153,7 @@ function MasterEmptyState({ icon: Icon, title, description, searchQuery, statusF
 }
 
 export default function MasterDataPage() {
+  const { language } = useApp();
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const currentTab = searchParams.get('tab') || 'supplier';
@@ -3753,7 +3755,7 @@ export default function MasterDataPage() {
                                 <td className="p-3">
                                   {isPending ? (
                                     <Badge size="xs" variant="warning" dot className="animate-pulse">
-                                      Menunggu Approval
+                                      {language === 'en' ? 'Pending Approval' : 'Menunggu Persetujuan'}
                                     </Badge>
                                   ) : (
                                     <div className="flex items-center gap-2">
@@ -3968,7 +3970,7 @@ export default function MasterDataPage() {
                               <div className="flex items-center justify-between text-[11px]">
                                 {isPending ? (
                                   <Badge size="xs" variant="warning" dot className="animate-pulse">
-                                    Menunggu Approval
+                                    {language === 'en' ? 'Pending Approval' : 'Menunggu Persetujuan'}
                                   </Badge>
                                 ) : (
                                   <Badge size="xs" variant={isUserActive ? 'success' : 'neutral'} dot>

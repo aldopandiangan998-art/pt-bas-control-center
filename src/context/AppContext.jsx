@@ -13,7 +13,7 @@ export const translations = {
     invoice: 'Invoice',
     laporan: 'Laporan',
     masterData: 'Master Data',
-    approval: 'Approval',
+    approval: 'Persetujuan',
     settings: 'Pengaturan',
     profile: 'Profil Akun',
     logout: 'Keluar',

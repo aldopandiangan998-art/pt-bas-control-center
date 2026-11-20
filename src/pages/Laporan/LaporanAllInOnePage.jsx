@@ -38,7 +38,7 @@ import ReportEmptyState from '../../components/laporan/ReportEmptyState';
 export default function LaporanAllInOnePage() {
   const navigate = useNavigate();
   const { addToast } = useToast();
-  const { isDark } = useApp();
+  const { isDark, language } = useApp();
   const { isSuperAdmin } = useAuth();
   const { customers, preOrders, suratJalanList, invoiceList, bkkList } = useData();
 
@@ -664,7 +664,7 @@ export default function LaporanAllInOnePage() {
                         <th className="py-3 px-3">Material</th>
                         <th className="py-3 px-3 text-right">Volume Kontrak</th>
                         <th className="py-3 px-3 text-right">Harga Jual (Rp)</th>
-                        <th className="py-3 px-3 text-center">Status Approval</th>
+                        <th className="py-3 px-3 text-center">{language === 'en' ? 'Approval Status' : 'Status Persetujuan'}</th>
                       </tr>
                     </thead>
                     <tbody className={`divide-y font-mono ${

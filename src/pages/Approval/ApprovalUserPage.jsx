@@ -292,7 +292,7 @@ export default function ApprovalUserPage() {
                 <UserCheck className="w-4 h-4" />
               </span>
               <h1 className="text-lg sm:text-xl font-bold text-white tracking-tight">
-                {language === 'en' ? 'Admin Registration Approval' : 'Approval Registrasi Admin'}
+                {language === 'en' ? 'Admin Registration Approval' : 'Persetujuan Registrasi Admin'}
               </h1>
               <Badge variant="warning" dot>
                 {language === 'en' ? 'Super Admin Authority' : 'Otoritas Super Admin'}
@@ -334,7 +334,7 @@ export default function ApprovalUserPage() {
         <Card className="p-4 bg-[#14171A] border border-[#22262A] relative overflow-hidden group">
           <div className="flex items-center justify-between">
             <span className="text-xs font-mono text-neutral-400 uppercase tracking-wider">
-              {language === 'en' ? 'Pending Approval' : 'Menunggu Approval'}
+              {language === 'en' ? 'Pending Approval' : 'Menunggu Persetujuan'}
             </span>
             <span className="p-1.5 rounded-md bg-amber-500/10 text-amber-400 border border-amber-500/20">
               <Clock className="w-4 h-4" />
@@ -414,7 +414,7 @@ export default function ApprovalUserPage() {
             {metrics.total > 0
               ? (language === 'en'
                   ? `${metrics.approved} Approved • ${metrics.pending} Pending Approval`
-                  : `${metrics.approved} Disetujui • ${metrics.pending} Menunggu Approval`)
+                  : `${metrics.approved} Disetujui • ${metrics.pending} Menunggu Persetujuan`)
               : (language === 'en' ? 'No registration history yet' : 'Belum ada riwayat pendaftaran akun baru')}
           </p>
         </Card>
@@ -440,7 +440,7 @@ export default function ApprovalUserPage() {
           <p className="text-xs text-neutral-400 mt-1">
             {currentUser?.name
               ? `${currentUser.name} (${currentUser.branch || (language === 'en' ? 'HQ & Gresik Hub' : 'Pusat & Hub Gresik')})`
-              : (language === 'en' ? 'Sole verification & approval authority' : 'Pemegang hak verifikasi & approval tunggal')}
+              : (language === 'en' ? 'Sole verification & approval authority' : 'Pemegang hak verifikasi & persetujuan tunggal')}
           </p>
         </Card>
       </div>
@@ -459,7 +459,7 @@ export default function ApprovalUserPage() {
             }`}
           >
             <Clock className="w-3.5 h-3.5" />
-            <span>{language === 'en' ? `Pending Approval (${metrics.pending})` : `Menunggu Approval (${metrics.pending})`}</span>
+            <span>{language === 'en' ? `Pending Approval (${metrics.pending})` : `Menunggu Persetujuan (${metrics.pending})`}</span>
           </button>
           <button
             type="button"
@@ -611,7 +611,7 @@ export default function ApprovalUserPage() {
           </div>
           <h3 className="text-base font-bold text-white">
             {activeTab === 'pending'
-              ? (language === 'en' ? 'No Pending Registrations' : 'Tidak Ada Pendaftaran Menunggu Approval')
+              ? (language === 'en' ? 'No Pending Registrations' : 'Tidak Ada Pendaftaran Menunggu Persetujuan')
               : (language === 'en' ? 'No Registration Data' : 'Tidak Ada Data Pendaftaran')}
           </h3>
           <p className="text-xs text-neutral-400 mt-1 max-w-md mx-auto">
@@ -683,7 +683,7 @@ export default function ApprovalUserPage() {
                         </div>
 
                         <Badge size="xs" variant={isPending ? 'warning' : 'success'} dot={isPending}>
-                          {isPending ? (language === 'en' ? 'Pending Approval' : 'Menunggu Approval') : (language === 'en' ? 'Active' : 'Aktif')}
+                          {isPending ? (language === 'en' ? 'Pending Approval' : 'Menunggu Persetujuan') : (language === 'en' ? 'Active' : 'Aktif')}
                         </Badge>
                       </div>
 
@@ -907,7 +907,7 @@ export default function ApprovalUserPage() {
                         {/* Status */}
                         <td className="py-3 px-3 text-center">
                           <Badge size="xs" variant={isPending ? 'warning' : 'success'} dot={isPending}>
-                            {isPending ? (language === 'en' ? 'Pending Approval' : 'Menunggu Approval') : (language === 'en' ? 'Active' : 'Aktif')}
+                            {isPending ? (language === 'en' ? 'Pending Approval' : 'Menunggu Persetujuan') : (language === 'en' ? 'Active' : 'Aktif')}
                           </Badge>
                         </td>
 

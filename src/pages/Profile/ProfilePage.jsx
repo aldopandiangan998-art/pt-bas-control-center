@@ -518,7 +518,7 @@ export default function ProfilePage() {
               <p className={`text-xs mt-0.5 ${isDark ? 'text-neutral-400' : 'text-slate-500'}`}>
                 {language === 'en'
                   ? 'This data is used for signature identification on Delivery Orders, RO approvals, and BKK authorization.'
-                  : 'Data ini digunakan untuk identifikasi tanda tangan Surat Jalan, approval RO, dan otorisasi BKK.'}
+                  : 'Data ini digunakan untuk identifikasi tanda tangan Surat Jalan, persetujuan RO, dan otorisasi BKK.'}
               </p>
             </div>
             <Sparkles className="w-4 h-4 text-amber-500" />

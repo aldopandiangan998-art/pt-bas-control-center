@@ -38,7 +38,7 @@ import { Button, Badge, Card, Modal } from '../../components/ui';
 
 export default function ApprovalRoPage() {
   const navigate = useNavigate();
-  const { isDark } = useApp();
+  const { isDark, language } = useApp();
   const { currentUser, isSuperAdmin, roleLabel } = useAuth();
   const { preOrders, approvePreOrder, rejectPreOrder } = useData();
   const { addToast } = useToast();
@@ -380,14 +380,16 @@ export default function ApprovalRoPage() {
                 <ShieldCheck className="w-4 h-4" />
               </span>
               <h1 className="text-lg sm:text-xl font-bold text-white tracking-tight">
-                Pusat Persetujuan RO (Received Order)
+                {language === 'en' ? 'RO (Received Order) Approval Center' : 'Pusat Persetujuan RO (Received Order)'}
               </h1>
               <Badge variant="warning" dot>
-                Direksi Approval
+                {language === 'en' ? 'Board Approval' : 'Persetujuan Direksi'}
               </Badge>
             </div>
             <p className="text-xs text-neutral-400 mt-0.5">
-              Otorisasi pesanan customer, evaluasi margin profit, dan syarat pembayaran sebelum diterbitkan Surat Jalan (GI).
+              {language === 'en'
+                ? 'Authorize customer orders, evaluate profit margins, and payment terms before Delivery Order (GI) issuance.'
+                : 'Otorisasi pesanan customer, evaluasi margin profit, dan syarat pembayaran sebelum diterbitkan Surat Jalan (GI).'}
             </p>
           </div>
         </div>
@@ -512,7 +514,7 @@ export default function ApprovalRoPage() {
                 }`}
             >
               <Clock className="w-3.5 h-3.5 text-amber-400" />
-              <span>Perlu Persetujuan</span>
+              <span>{language === 'en' ? 'Needs Approval' : 'Perlu Persetujuan'}</span>
               <span
                 className={`text-[10px] px-1.5 py-0.2 rounded font-bold font-mono ${activeTab === 'pending'
                   ? 'bg-amber-400 text-black shadow-2xs'
@@ -536,7 +538,7 @@ export default function ApprovalRoPage() {
                 }`}
             >
               <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Disetujui</span>
+              <span>{language === 'en' ? 'Approved' : 'Disetujui'}</span>
               <span
                 className={`text-[10px] px-1.5 py-0.2 rounded font-bold font-mono ${activeTab === 'approved'
                   ? 'bg-emerald-400 text-black shadow-2xs'
@@ -560,7 +562,7 @@ export default function ApprovalRoPage() {
                 }`}
             >
               <XCircle className="w-3.5 h-3.5 text-rose-400" />
-              <span>Ditolak</span>
+              <span>{language === 'en' ? 'Rejected' : 'Ditolak'}</span>
               <span
                 className={`text-[10px] px-1.5 py-0.2 rounded font-bold font-mono ${activeTab === 'rejected'
                   ? 'bg-rose-500 text-white shadow-2xs'
@@ -870,9 +872,9 @@ export default function ApprovalRoPage() {
 
                   {/* Status Badge */}
                   <div className="flex items-center gap-2">
-                    {isPending && <Badge variant="warning" dot>MENUNGGU APPROVAL</Badge>}
-                    {isApproved && <Badge variant="success" dot>APPROVED</Badge>}
-                    {isRejected && <Badge variant="error" dot>DITOLAK</Badge>}
+                    {isPending && <Badge variant="warning" dot>{language === 'en' ? 'PENDING APPROVAL' : 'MENUNGGU PERSETUJUAN'}</Badge>}
+                    {isApproved && <Badge variant="success" dot>{language === 'en' ? 'APPROVED' : 'DISETUJUI'}</Badge>}
+                    {isRejected && <Badge variant="error" dot>{language === 'en' ? 'REJECTED' : 'DITOLAK'}</Badge>}
                   </div>
                 </div>
 

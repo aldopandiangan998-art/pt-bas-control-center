@@ -101,7 +101,12 @@ export default function Sidebar() {
   };
 
   const navLabel = (label) => {
-    if (language !== 'en') return label;
+    if (language !== 'en') {
+      // Bahasa Indonesia: ganti "Approval" menjadi "Persetujuan"
+      if (label === 'Approval Registrasi Admin') return 'Persetujuan Registrasi Admin';
+      if (label === 'Approval RO') return 'Persetujuan RO';
+      return label.replace(/\bApproval\b/g, 'Persetujuan');
+    }
     const map = {
       'Data Received Order': 'Received Order',
       'Surat Jalan (GI)': 'Delivery Order (GI)',
@@ -110,8 +115,10 @@ export default function Sidebar() {
       'Laporan': 'Reports',
       'Data Master': 'Master Data',
       'Approval Registrasi Admin': 'Admin Registration Approval',
+      'Persetujuan Registrasi Admin': 'Admin Registration Approval',
       'Pengaturan': 'Settings',
       'Approval RO': 'RO Approval',
+      'Persetujuan RO': 'RO Approval',
       'Pajak Pertambahan Nilai (PPN)': 'Value Added Tax (VAT)',
       'Pajak Penghasilan Pasal 23 (PPh 23)': 'Income Tax Art. 23',
       'Laporan All in One': 'All-in-One Report',

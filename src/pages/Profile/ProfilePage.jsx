@@ -310,20 +310,19 @@ export default function ProfilePage() {
 
   const userInitials = currentUser?.name
     ? currentUser.name
-        .split(' ')
-        .filter(Boolean)
-        .slice(0, 2)
-        .map((n) => n[0].toUpperCase())
-        .join('')
+      .split(' ')
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((n) => n[0].toUpperCase())
+      .join('')
     : 'U';
 
   return (
     <div className="w-full max-w-4xl mx-auto space-y-6 pb-20 select-none">
       {/* ── Top Header with Back Navigation ── */}
       <div
-        className={`flex items-center gap-3 pb-3 border-b transition-colors ${
-          isDark ? 'border-[#22262A]' : 'border-slate-200'
-        }`}
+        className={`flex items-center gap-3 pb-3 border-b transition-colors ${isDark ? 'border-[#22262A]' : 'border-slate-200'
+          }`}
       >
         <Button
           size="sm"
@@ -335,9 +334,8 @@ export default function ProfilePage() {
         <div className="flex-1">
           <div className="flex items-center justify-between">
             <h1
-              className={`text-base sm:text-lg font-bold tracking-tight flex items-center gap-2 ${
-                isDark ? 'text-white' : 'text-slate-900'
-              }`}
+              className={`text-base sm:text-lg font-bold tracking-tight flex items-center gap-2 ${isDark ? 'text-white' : 'text-slate-900'
+                }`}
             >
               <User className="w-5 h-5 text-[#F4511E]" />
               <span>Profil Akun Pengguna</span>
@@ -354,11 +352,10 @@ export default function ProfilePage() {
 
       {/* ── User Identity Hero Banner ── */}
       <div
-        className={`p-4 sm:p-5 rounded-2xl border flex flex-col md:flex-row items-start md:items-center justify-between gap-4 transition-colors shadow-sm ${
-          isDark
-            ? 'bg-gradient-to-r from-[#181B1E] via-[#14171A] to-[#111315] border-[#22262A]'
-            : 'bg-gradient-to-r from-orange-50/80 via-white to-slate-50 border-orange-200/80'
-        }`}
+        className={`p-4 sm:p-5 rounded-2xl border flex flex-col md:flex-row items-start md:items-center justify-between gap-4 transition-colors shadow-sm ${isDark
+          ? 'bg-gradient-to-r from-[#181B1E] via-[#14171A] to-[#111315] border-[#22262A]'
+          : 'bg-gradient-to-r from-orange-50/80 via-white to-slate-50 border-orange-200/80'
+          }`}
       >
         <div className="flex items-center gap-4">
           {/* Hidden File Input for Avatar */}
@@ -421,15 +418,14 @@ export default function ProfilePage() {
                 {currentUser?.name || 'Pengguna'}
               </span>
               <span
-                className={`text-[9px] font-bold font-mono px-2 py-0.5 rounded uppercase tracking-wider ${
-                  isSuperAdmin
-                    ? isDark
-                      ? 'bg-[#F4511E]/20 text-[#FF7043] border border-[#F4511E]/40'
-                      : 'bg-orange-100 text-[#F4511E] border border-orange-200'
-                    : isDark
-                      ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
-                      : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                }`}
+                className={`text-[9px] font-bold font-mono px-2 py-0.5 rounded uppercase tracking-wider ${isSuperAdmin
+                  ? isDark
+                    ? 'bg-[#F4511E]/20 text-[#FF7043] border border-[#F4511E]/40'
+                    : 'bg-orange-100 text-[#F4511E] border border-orange-200'
+                  : isDark
+                    ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
+                    : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                  }`}
               >
                 {isSuperAdmin ? 'Super Admin' : 'Admin Operasional'}
               </span>
@@ -459,9 +455,8 @@ export default function ProfilePage() {
         </div>
 
         <div
-          className={`md:border-l pl-0 md:pl-5 font-mono text-left md:text-right shrink-0 ${
-            isDark ? 'border-[#22262A]' : 'border-slate-200'
-          }`}
+          className={`md:border-l pl-0 md:pl-5 font-mono text-left md:text-right shrink-0 ${isDark ? 'border-[#22262A]' : 'border-slate-200'
+            }`}
         >
           <div className="text-[10px] text-neutral-500 uppercase tracking-wider">ID Akun Pengguna</div>
           <div className="text-sm font-bold text-[#F4511E]">{currentUser?.id || 'usr-1'}</div>
@@ -473,20 +468,18 @@ export default function ProfilePage() {
 
       {/* ── Subtabs: Data Profil vs Keamanan Sandi ── */}
       <div
-        className={`flex items-center gap-2 border-b shrink-0 transition-colors ${
-          isDark ? 'border-[#22262A]' : 'border-slate-200'
-        }`}
+        className={`flex items-center gap-2 border-b shrink-0 transition-colors ${isDark ? 'border-[#22262A]' : 'border-slate-200'
+          }`}
       >
         <button
           type="button"
           onClick={() => handleTabChange('profile')}
-          className={`pb-3 px-4 text-xs font-bold transition-all border-b-2 cursor-pointer flex items-center gap-2 ${
-            activeTab === 'profile'
-              ? 'border-[#F4511E] text-[#F4511E]'
-              : isDark
+          className={`pb-3 px-4 text-xs font-bold transition-all border-b-2 cursor-pointer flex items-center gap-2 ${activeTab === 'profile'
+            ? 'border-[#F4511E] text-[#F4511E]'
+            : isDark
               ? 'border-transparent text-neutral-400 hover:text-white'
               : 'border-transparent text-slate-500 hover:text-slate-900'
-          }`}
+            }`}
         >
           <User className="w-4 h-4" />
           <span>Data Pribadi & Profil</span>
@@ -495,13 +488,12 @@ export default function ProfilePage() {
         <button
           type="button"
           onClick={() => handleTabChange('password')}
-          className={`pb-3 px-4 text-xs font-bold transition-all border-b-2 cursor-pointer flex items-center gap-2 ${
-            activeTab === 'password'
-              ? 'border-[#F4511E] text-[#F4511E]'
-              : isDark
+          className={`pb-3 px-4 text-xs font-bold transition-all border-b-2 cursor-pointer flex items-center gap-2 ${activeTab === 'password'
+            ? 'border-[#F4511E] text-[#F4511E]'
+            : isDark
               ? 'border-transparent text-neutral-400 hover:text-white'
               : 'border-transparent text-slate-500 hover:text-slate-900'
-          }`}
+            }`}
         >
           <Lock className="w-4 h-4" />
           <span>Keamanan & Kata Sandi</span>
@@ -511,9 +503,8 @@ export default function ProfilePage() {
       {/* ── TAB 1: FORM DATA PROFIL ── */}
       {activeTab === 'profile' && (
         <div
-          className={`rounded-2xl border p-5 sm:p-6 transition-colors shadow-sm ${
-            isDark ? 'bg-[#14171A] border-[#22262A]' : 'bg-white border-slate-200'
-          }`}
+          className={`rounded-2xl border p-5 sm:p-6 transition-colors shadow-sm ${isDark ? 'bg-[#14171A] border-[#22262A]' : 'bg-white border-slate-200'
+            }`}
         >
           <div className="mb-5 pb-3 border-b border-inherit flex items-center justify-between">
             <div>
@@ -530,9 +521,8 @@ export default function ProfilePage() {
           <form onSubmit={handleSaveProfile} className="space-y-4">
             {/* Foto Profil Management Card */}
             <div
-              className={`p-4 rounded-xl border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 transition-colors ${
-                isDark ? 'bg-[#181B1E] border-[#22262A]' : 'bg-slate-50 border-slate-200'
-              }`}
+              className={`p-4 rounded-xl border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 transition-colors ${isDark ? 'bg-[#181B1E] border-[#22262A]' : 'bg-slate-50 border-slate-200'
+                }`}
             >
               <div className="flex items-center gap-3.5">
                 <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-[#F4511E] to-[#FF7043] text-white flex items-center justify-center font-bold text-base shrink-0 shadow-md overflow-hidden relative">
@@ -558,11 +548,10 @@ export default function ProfilePage() {
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
                   disabled={avatarUploading}
-                  className={`px-3 py-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition-colors cursor-pointer flex-1 sm:flex-initial ${
-                    isDark
-                      ? 'bg-[#22262A] text-white hover:bg-[#2B3037] border border-[#333940]'
-                      : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-300 shadow-xs'
-                  }`}
+                  className={`px-3 py-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition-colors cursor-pointer flex-1 sm:flex-initial ${isDark
+                    ? 'bg-[#22262A] text-white hover:bg-[#2B3037] border border-[#333940]'
+                    : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-300 shadow-xs'
+                    }`}
                 >
                   {avatarUploading ? (
                     <Loader2 className="w-3.5 h-3.5 animate-spin text-[#F4511E]" />
@@ -591,9 +580,8 @@ export default function ProfilePage() {
               {/* 1. Nama Lengkap */}
               <div>
                 <label
-                  className={`block text-xs font-bold uppercase tracking-wider mb-1.5 font-mono ${
-                    isDark ? 'text-neutral-300' : 'text-slate-700'
-                  }`}
+                  className={`block text-xs font-bold uppercase tracking-wider mb-1.5 font-mono ${isDark ? 'text-neutral-300' : 'text-slate-700'
+                    }`}
                 >
                   Nama Lengkap <span className="text-[#F4511E]">*</span>
                 </label>
@@ -605,11 +593,10 @@ export default function ProfilePage() {
                     value={profileForm.name}
                     onChange={(e) => setProfileForm({ ...profileForm, name: e.target.value })}
                     placeholder="Masukkan nama lengkap"
-                    className={`w-full text-xs pl-9 pr-3 py-2.5 rounded-xl border transition-colors outline-none focus:ring-1 focus:ring-[#F4511E] ${
-                      isDark
-                        ? 'bg-[#181B1E] border-[#2B3037] text-white placeholder-neutral-500 focus:border-[#F4511E]'
-                        : 'bg-slate-50 border-slate-300 text-slate-900 placeholder-slate-400 focus:border-[#F4511E]'
-                    }`}
+                    className={`w-full text-xs pl-9 pr-3 py-2.5 rounded-xl border transition-colors outline-none focus:ring-1 focus:ring-[#F4511E] ${isDark
+                      ? 'bg-[#181B1E] border-[#2B3037] text-white placeholder-neutral-500 focus:border-[#F4511E]'
+                      : 'bg-slate-50 border-slate-300 text-slate-900 placeholder-slate-400 focus:border-[#F4511E]'
+                      }`}
                   />
                 </div>
               </div>
@@ -618,9 +605,8 @@ export default function ProfilePage() {
               <div>
                 <div className="flex items-center justify-between mb-1.5">
                   <label
-                    className={`block text-xs font-bold uppercase tracking-wider font-mono ${
-                      isDark ? 'text-neutral-300' : 'text-slate-700'
-                    }`}
+                    className={`block text-xs font-bold uppercase tracking-wider font-mono ${isDark ? 'text-neutral-300' : 'text-slate-700'
+                      }`}
                   >
                     Email Gmail Terdaftar
                   </label>
@@ -632,9 +618,8 @@ export default function ProfilePage() {
                     type="email"
                     disabled
                     value={profileForm.email}
-                    className={`w-full text-xs pl-9 pr-3 py-2.5 rounded-xl border font-mono cursor-not-allowed opacity-90 ${
-                      isDark ? 'bg-[#111315] border-[#22262A] text-neutral-300' : 'bg-slate-100 border-slate-300 text-slate-600'
-                    }`}
+                    className={`w-full text-xs pl-9 pr-3 py-2.5 rounded-xl border font-mono cursor-not-allowed opacity-90 ${isDark ? 'bg-[#111315] border-[#22262A] text-neutral-300' : 'bg-slate-100 border-slate-300 text-slate-600'
+                      }`}
                   />
                 </div>
               </div>
@@ -642,9 +627,8 @@ export default function ProfilePage() {
               {/* 3. Tanggal Lahir */}
               <div>
                 <label
-                  className={`block text-xs font-bold uppercase tracking-wider mb-1.5 font-mono ${
-                    isDark ? 'text-neutral-300' : 'text-slate-700'
-                  }`}
+                  className={`block text-xs font-bold uppercase tracking-wider mb-1.5 font-mono ${isDark ? 'text-neutral-300' : 'text-slate-700'
+                    }`}
                 >
                   Tanggal Lahir
                 </label>
@@ -654,11 +638,10 @@ export default function ProfilePage() {
                     type="date"
                     value={profileForm.birth_date}
                     onChange={(e) => setProfileForm({ ...profileForm, birth_date: e.target.value })}
-                    className={`w-full text-xs pl-9 pr-3 py-2.5 rounded-xl border transition-colors outline-none focus:ring-1 focus:ring-[#F4511E] ${
-                      isDark
-                        ? 'bg-[#181B1E] border-[#2B3037] text-white placeholder-neutral-500 focus:border-[#F4511E] [color-scheme:dark]'
-                        : 'bg-slate-50 border-slate-300 text-slate-900 placeholder-slate-400 focus:border-[#F4511E] [color-scheme:light]'
-                    }`}
+                    className={`w-full text-xs pl-9 pr-3 py-2.5 rounded-xl border transition-colors outline-none focus:ring-1 focus:ring-[#F4511E] ${isDark
+                      ? 'bg-[#181B1E] border-[#2B3037] text-white placeholder-neutral-500 focus:border-[#F4511E] [color-scheme:dark]'
+                      : 'bg-slate-50 border-slate-300 text-slate-900 placeholder-slate-400 focus:border-[#F4511E] [color-scheme:light]'
+                      }`}
                   />
                 </div>
               </div>
@@ -666,20 +649,18 @@ export default function ProfilePage() {
               {/* 4. Jenis Kelamin */}
               <div>
                 <label
-                  className={`block text-xs font-bold uppercase tracking-wider mb-1.5 font-mono ${
-                    isDark ? 'text-neutral-300' : 'text-slate-700'
-                  }`}
+                  className={`block text-xs font-bold uppercase tracking-wider mb-1.5 font-mono ${isDark ? 'text-neutral-300' : 'text-slate-700'
+                    }`}
                 >
                   Jenis Kelamin
                 </label>
                 <select
                   value={profileForm.gender}
                   onChange={(e) => setProfileForm({ ...profileForm, gender: e.target.value })}
-                  className={`w-full text-xs px-3 py-2.5 rounded-xl border transition-colors outline-none focus:ring-1 focus:ring-[#F4511E] cursor-pointer ${
-                    isDark
-                      ? 'bg-[#181B1E] border-[#2B3037] text-white focus:border-[#F4511E]'
-                      : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-[#F4511E]'
-                  }`}
+                  className={`w-full text-xs px-3 py-2.5 rounded-xl border transition-colors outline-none focus:ring-1 focus:ring-[#F4511E] cursor-pointer ${isDark
+                    ? 'bg-[#181B1E] border-[#2B3037] text-white focus:border-[#F4511E]'
+                    : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-[#F4511E]'
+                    }`}
                 >
                   <option value="Laki-laki">Laki-laki</option>
                   <option value="Perempuan">Perempuan</option>
@@ -689,9 +670,8 @@ export default function ProfilePage() {
               {/* 5. Nomor Telepon */}
               <div className="sm:col-span-2">
                 <label
-                  className={`block text-xs font-bold uppercase tracking-wider mb-1.5 font-mono ${
-                    isDark ? 'text-neutral-300' : 'text-slate-700'
-                  }`}
+                  className={`block text-xs font-bold uppercase tracking-wider mb-1.5 font-mono ${isDark ? 'text-neutral-300' : 'text-slate-700'
+                    }`}
                 >
                   Nomor Telepon / WhatsApp Operasional
                 </label>
@@ -702,20 +682,18 @@ export default function ProfilePage() {
                     value={profileForm.phone}
                     onChange={(e) => setProfileForm({ ...profileForm, phone: e.target.value })}
                     placeholder="Contoh: 0811-3001-992"
-                    className={`w-full text-xs pl-9 pr-3 py-2.5 rounded-xl border transition-colors outline-none focus:ring-1 focus:ring-[#F4511E] ${
-                      isDark
-                        ? 'bg-[#181B1E] border-[#2B3037] text-white placeholder-neutral-500 focus:border-[#F4511E]'
-                        : 'bg-slate-50 border-slate-300 text-slate-900 placeholder-slate-400 focus:border-[#F4511E]'
-                    }`}
+                    className={`w-full text-xs pl-9 pr-3 py-2.5 rounded-xl border transition-colors outline-none focus:ring-1 focus:ring-[#F4511E] ${isDark
+                      ? 'bg-[#181B1E] border-[#2B3037] text-white placeholder-neutral-500 focus:border-[#F4511E]'
+                      : 'bg-slate-50 border-slate-300 text-slate-900 placeholder-slate-400 focus:border-[#F4511E]'
+                      }`}
                   />
                 </div>
               </div>
             </div>
 
             {/* Note & Actions */}
-            <div className={`pt-4 border-t flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 ${
-              isDark ? 'border-[#22262A]' : 'border-slate-200'
-            }`}>
+            <div className={`pt-4 border-t flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 ${isDark ? 'border-[#22262A]' : 'border-slate-200'
+              }`}>
               <div className="text-xs text-neutral-400 flex items-center gap-1.5">
                 <AlertCircle className="w-4 h-4 text-amber-500 shrink-0" />
                 <span>Perubahan profil langsung disinkronkan ke seluruh modul operasional.</span>
@@ -725,11 +703,10 @@ export default function ProfilePage() {
                 <button
                   type="button"
                   onClick={handleResetProfileForm}
-                  className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 border ${
-                    isDark
-                      ? 'bg-[#181B1E] hover:bg-[#22262A] text-neutral-300 hover:text-white border-[#2B3037]'
-                      : 'bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900 border-slate-200'
-                  }`}
+                  className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 border ${isDark
+                    ? 'bg-[#181B1E] hover:bg-[#22262A] text-neutral-300 hover:text-white border-[#2B3037]'
+                    : 'bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900 border-slate-200'
+                    }`}
                 >
                   <RotateCcw className="w-3.5 h-3.5" />
                   <span>Reset</span>
@@ -754,9 +731,8 @@ export default function ProfilePage() {
         <div className="space-y-5">
           {/* Subcard 1: Ubah Kata Sandi */}
           <div
-            className={`rounded-2xl border p-5 sm:p-6 transition-colors shadow-sm ${
-              isDark ? 'bg-[#14171A] border-[#22262A]' : 'bg-white border-slate-200'
-            }`}
+            className={`rounded-2xl border p-5 sm:p-6 transition-colors shadow-sm ${isDark ? 'bg-[#14171A] border-[#22262A]' : 'bg-white border-slate-200'
+              }`}
           >
             <div className="flex items-center gap-2.5 mb-4 pb-3 border-b border-inherit">
               <KeyRound className="w-5 h-5 text-amber-500" />
@@ -785,11 +761,10 @@ export default function ProfilePage() {
                       value={passwordForm.oldPassword}
                       onChange={(e) => setPasswordForm({ ...passwordForm, oldPassword: e.target.value })}
                       placeholder="••••••••"
-                      className={`w-full text-xs pl-8 pr-8 py-2.5 rounded-xl border outline-none focus:ring-1 focus:ring-amber-500 ${
-                        isDark
-                          ? 'bg-[#181B1E] border-[#2B3037] text-white focus:border-amber-500'
-                          : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-amber-500'
-                      }`}
+                      className={`w-full text-xs pl-8 pr-8 py-2.5 rounded-xl border outline-none focus:ring-1 focus:ring-amber-500 ${isDark
+                        ? 'bg-[#181B1E] border-[#2B3037] text-white focus:border-amber-500'
+                        : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-amber-500'
+                        }`}
                     />
                     <button
                       type="button"
@@ -814,11 +789,10 @@ export default function ProfilePage() {
                       value={passwordForm.newPassword}
                       onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
                       placeholder="Min. 6 karakter"
-                      className={`w-full text-xs pl-8 pr-8 py-2.5 rounded-xl border outline-none focus:ring-1 focus:ring-amber-500 ${
-                        isDark
-                          ? 'bg-[#181B1E] border-[#2B3037] text-white focus:border-amber-500'
-                          : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-amber-500'
-                      }`}
+                      className={`w-full text-xs pl-8 pr-8 py-2.5 rounded-xl border outline-none focus:ring-1 focus:ring-amber-500 ${isDark
+                        ? 'bg-[#181B1E] border-[#2B3037] text-white focus:border-amber-500'
+                        : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-amber-500'
+                        }`}
                     />
                     <button
                       type="button"
@@ -843,11 +817,10 @@ export default function ProfilePage() {
                       value={passwordForm.confirmPassword}
                       onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
                       placeholder="Ulangi sandi baru"
-                      className={`w-full text-xs pl-8 pr-8 py-2.5 rounded-xl border outline-none focus:ring-1 focus:ring-amber-500 ${
-                        isDark
-                          ? 'bg-[#181B1E] border-[#2B3037] text-white focus:border-amber-500'
-                          : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-amber-500'
-                      }`}
+                      className={`w-full text-xs pl-8 pr-8 py-2.5 rounded-xl border outline-none focus:ring-1 focus:ring-amber-500 ${isDark
+                        ? 'bg-[#181B1E] border-[#2B3037] text-white focus:border-amber-500'
+                        : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-amber-500'
+                        }`}
                     />
                     <button
                       type="button"
@@ -880,9 +853,8 @@ export default function ProfilePage() {
 
           {/* Subcard 2: Fitur Reset Password Gmail (Opsi B) */}
           <div
-            className={`rounded-2xl border p-5 sm:p-6 transition-colors shadow-sm ${
-              isDark ? 'bg-[#14171A] border-[#22262A]' : 'bg-orange-50/70 border-orange-200'
-            }`}
+            className={`rounded-2xl border p-5 sm:p-6 transition-colors shadow-sm ${isDark ? 'bg-[#14171A] border-[#22262A]' : 'bg-orange-50/70 border-orange-200'
+              }`}
           >
             <div className="flex flex-col sm:flex-row items-start justify-between gap-4">
               <div className="space-y-1.5">
@@ -912,9 +884,8 @@ export default function ProfilePage() {
             {/* Generated Reset Link preview if requested */}
             {latestResetUrl && (
               <div
-                className={`mt-4 p-3 rounded-xl border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs font-mono transition-colors ${
-                  isDark ? 'bg-[#111315] border-[#22262A] text-neutral-300' : 'bg-white border-orange-200 text-slate-800'
-                }`}
+                className={`mt-4 p-3 rounded-xl border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs font-mono transition-colors ${isDark ? 'bg-[#111315] border-[#22262A] text-neutral-300' : 'bg-white border-orange-200 text-slate-800'
+                  }`}
               >
                 <div className="truncate max-w-md">
                   <span className="text-[#F4511E] font-bold">Link Reset (15 Menit):</span>{' '}
@@ -924,13 +895,12 @@ export default function ProfilePage() {
                   <button
                     type="button"
                     onClick={handleCopyResetUrl}
-                    className={`px-3 py-1.5 rounded-lg border flex items-center gap-1.5 text-xs font-sans font-semibold transition-colors cursor-pointer ${
-                      copiedLink
-                        ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40'
-                        : isDark
+                    className={`px-3 py-1.5 rounded-lg border flex items-center gap-1.5 text-xs font-sans font-semibold transition-colors cursor-pointer ${copiedLink
+                      ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40'
+                      : isDark
                         ? 'bg-[#181B1E] hover:bg-[#22262A] text-neutral-200 border-[#2B3037]'
                         : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300'
-                    }`}
+                      }`}
                     title="Salin Tautan"
                   >
                     {copiedLink ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}

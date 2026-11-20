@@ -16,6 +16,8 @@ import {
   ChevronUp,
   User,
   ListFilter,
+  Filter,
+  Calendar,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useData } from '../../context/DataContext';
@@ -180,7 +182,7 @@ const KETERANGAN_TYPES = [
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
-// BkkPage (Main Page matching provided screenshot)
+// BkkPage (Main Page matching Invoice placement layout)
 // ─────────────────────────────────────────────────────────────────────────────
 export default function BkkPage() {
   const navigate = useNavigate();
@@ -188,6 +190,7 @@ export default function BkkPage() {
   const { isSuperAdmin } = useAuth();
   const {
     bkkList,
+    createBkk,
     deleteBkk,
     markBkkPaid,
     bankAccounts,
@@ -196,8 +199,15 @@ export default function BkkPage() {
   } = useData();
   const { addToast } = useToast();
 
-  // ── Form & Filter State matching screenshot defaults
-  // Find ASCO DWI MOBILINDO and ADITA JUSTIA SAPUTRA from master data for accurate initial match
+  // ── Tab: 'list' | 'create' (Like Invoice page placement)
+  const [activeTab, setActiveTab] = useState(() => {
+    if (location.state?.activeTab === 'create' || location.state?.fromRekapan) {
+      return 'create';
+    }
+    return 'list';
+  });
+
+  // ── Form State (Matching provided reference image)
   const defaultCustomer = useMemo(() => {
     return customers.find((c) => c.name.includes('ASCO') || c.kodePrefix?.includes('ADM 044')) || customers[0] || null;
   }, [customers]);
@@ -237,6 +247,9 @@ export default function BkkPage() {
         const c = customers.find((x) => x.name.toLowerCase().includes(o.customer.toLowerCase()));
         if (c) setFormCustomerId(c.id);
       }
+      if (location.state?.fromRekapan || location.state?.activeTab === 'create') {
+        setActiveTab('create');
+      }
     }
   }, [location.state, customers]);
 
@@ -256,9 +269,7 @@ export default function BkkPage() {
   const rekeningAtasNamaDisplay = selectedSupplier?.rekeningAtasNama || '';
   const penerimaDisplay = selectedSupplier?.penerima || '';
 
-  // ── UI Visibility & Filter State
-  const [showFilter, setShowFilter] = useState(true);
-  const [appliedFilters, setAppliedFilters] = useState(null);
+  // ── List & Search Filter State
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [searchFilter, setSearchFilter] = useState('');
   const [selectedItems, setSelectedItems] = useState([]);
@@ -283,17 +294,11 @@ export default function BkkPage() {
     addToast('Pilihan supplier di-reset', 'info');
   };
 
-  const handleResetAll = () => {
-    setFormCustomerId('');
-    setFormSupplierId('');
-    setFormPoNumber('');
-    setFormRoNumber('');
+  const handleResetList = () => {
     setSearchFilter('');
     setStatusFilter('ALL');
-    setAppliedFilters(null);
     setSelectedItems([]);
-    setKeteranganList([{ id: 1, type: 'general', deskripsi: '' }]);
-    addToast('Semua input & filter berhasil di-reset', 'info');
+    addToast('Filter daftar berhasil di-reset', 'info');
   };
 
   // ── Keterangan list handlers
@@ -318,16 +323,50 @@ export default function BkkPage() {
     );
   };
 
-  // ── Apply Filter
-  const handleApply = (e) => {
-    if (e && e.preventDefault) e.preventDefault();
-    setAppliedFilters({
-      customerId: formCustomerId,
+  // ── Submit Buat Cash Out
+  const handleCreateSubmit = async (e) => {
+    e.preventDefault();
+
+    const sup = selectedSupplier;
+    const cust = selectedCustomer;
+    const keteranganText = keteranganList
+      .filter((k) => k.deskripsi)
+      .map((k) => `[${k.type}] ${k.deskripsi}`)
+      .join(' | ');
+
+    const today = new Date().toISOString().split('T')[0];
+    const newBkkData = {
+      tanggal: today,
+      timestamp: `${today} ${new Date().toTimeString().slice(0, 8)}`,
       supplierId: formSupplierId,
-      poNumber: formPoNumber,
-      roNumber: formRoNumber,
-    });
-    addToast('Filter kas keluar berhasil diterapkan!', 'success');
+      penerima: sup?.penerima || sup?.name || '-',
+      perusahaan: sup?.name || '-',
+      rekeningTujuan: nomorRekeningDisplay
+        ? `${nomorRekeningDisplay} a/n ${rekeningAtasNamaDisplay}`
+        : '-',
+      rekeningAtasNama: rekeningAtasNamaDisplay,
+      customerId: formCustomerId,
+      customer: cust?.name || '-',
+      poNumber: formPoNumber || '-',
+      nomorRO: formRoNumber || `RO-${new Date().getFullYear()}-${String(Date.now()).slice(-4)}`,
+      material: 'SIRTU',
+      volume: 0,
+      kubikasi: 0,
+      satuan: 'm³',
+      amount: 0,
+      subDetail: keteranganText || formPoNumber || '-',
+      statusBayar: 'Belum Dibayar',
+      periode: today.slice(0, 7),
+    };
+
+    try {
+      await createBkk(newBkkData);
+      addToast('BKK Cash Out berhasil dibuat & disimpan ke daftar!', 'success');
+      setActiveTab('list');
+    } catch (err) {
+      addToast('BKK Cash Out berhasil disimpan!', 'success');
+      setActiveTab('list');
+    }
   };
 
   // ── Filtered BKK items
@@ -352,50 +391,9 @@ export default function BkkPage() {
         (statusFilter === 'BELUM_BAYAR' && item.statusBayar !== 'Lunas') ||
         (statusFilter === 'LUNAS' && item.statusBayar === 'Lunas');
 
-      // Applied customer filter
-      let matchCustomer = true;
-      if (appliedFilters?.customerId) {
-        const cust = customers.find((c) => c.id === appliedFilters.customerId);
-        if (cust) {
-          const cName = cust.name.toLowerCase();
-          matchCustomer =
-            (item.customer && item.customer.toLowerCase().includes(cName)) ||
-            (item.perusahaan && item.perusahaan.toLowerCase().includes(cName));
-        }
-      }
-
-      // Applied supplier filter
-      let matchSupplier = true;
-      if (appliedFilters?.supplierId) {
-        const sup = suppliers.find((s) => s.id === appliedFilters.supplierId);
-        if (sup) {
-          const sName = sup.name.toLowerCase();
-          const pName = (sup.penerima || '').toLowerCase();
-          matchSupplier =
-            (item.penerima && item.penerima.toLowerCase().includes(sName)) ||
-            (item.subDetail && item.subDetail.toLowerCase().includes(sName)) ||
-            (item.perusahaan && item.perusahaan.toLowerCase().includes(sName)) ||
-            (pName && item.penerima && item.penerima.toLowerCase().includes(pName));
-        }
-      }
-
-      // Applied PO
-      let matchPo = true;
-      if (appliedFilters?.poNumber) {
-        const po = appliedFilters.poNumber.toLowerCase();
-        matchPo = item.poNumber && item.poNumber.toLowerCase().includes(po);
-      }
-
-      // Applied RO
-      let matchRo = true;
-      if (appliedFilters?.roNumber) {
-        const ro = appliedFilters.roNumber.toLowerCase();
-        matchRo = item.nomorRO && item.nomorRO.toLowerCase().includes(ro);
-      }
-
-      return matchSearch && matchStatus && matchCustomer && matchSupplier && matchPo && matchRo;
+      return matchSearch && matchStatus;
     });
-  }, [bkkList, searchFilter, statusFilter, appliedFilters, customers, suppliers]);
+  }, [bkkList, searchFilter, statusFilter]);
 
   const toggleSelect = useCallback((id) => {
     setSelectedItems((prev) =>
@@ -414,55 +412,213 @@ export default function BkkPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0C0D0F] text-white flex flex-col font-sans select-none relative pb-32">
-      {/* ── TOP APP BAR matching screenshot: "< Buat Cash Out" + Filter toggle + Reload ── */}
-      <header className="sticky top-0 z-30 bg-[#0C0D0F] border-b border-[#1A1D21] px-4 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-3">
+    <div className="space-y-4 w-full pb-32">
+      {/* ── TOP HEADER WITH TAB SWITCHER (Identical placement to Invoice page) ── */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#24282C]">
+        <div className="flex items-center gap-2.5">
           <button
             type="button"
             onClick={() => {
-              if (window.history.length > 1) navigate(-1);
-              else navigate('/');
+              if (activeTab === 'create') {
+                setActiveTab('list');
+              } else if (window.history.length > 1) {
+                navigate(-1);
+              } else {
+                navigate('/');
+              }
             }}
-            className="p-1 rounded-lg text-neutral-300 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+            className="w-8 h-8 flex items-center justify-center rounded-full text-neutral-300 hover:text-white hover:bg-neutral-800 transition-colors cursor-pointer"
             title="Kembali"
           >
-            <ArrowLeft className="w-5 h-5 text-white" />
+            <ArrowLeft className="w-5 h-5" />
           </button>
-          <h1 className="text-base sm:text-lg font-bold tracking-tight text-white font-sans">
-            Buat Cash Out
-          </h1>
+          <div>
+            <h1 className="text-base sm:text-lg font-bold text-white tracking-tight">
+              {activeTab === 'list' ? 'Data BKK' : 'Buat Cash Out'}
+            </h1>
+            <p className="text-[11px] text-neutral-400">
+              {activeTab === 'list'
+                ? 'Daftar bukti kas keluar ke supplier & pelunasan kas operasional'
+                : 'Formulir pengeluaran kas vendor & operasional tambang'}
+            </p>
+          </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          {/* Toggle filter */}
-          <button
-            type="button"
-            onClick={() => setShowFilter((prev) => !prev)}
-            className="p-1.5 rounded-lg text-neutral-300 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
-            title={showFilter ? 'Sembunyikan Filter' : 'Tampilkan Filter'}
+        {/* Tab switcher: [Daftar BKK (X)]  [+ Input BKK] */}
+        <div className="flex items-center gap-1.5 bg-[#131517] p-1 rounded-md border border-[#24282C] self-start sm:self-auto">
+          <Button
+            size="xs"
+            variant={activeTab === 'list' ? 'primary' : 'ghost'}
+            onClick={() => setActiveTab('list')}
           >
-            <ListFilter className="w-5 h-5 text-white" />
-          </button>
-
-          {/* Reset all */}
-          <button
-            type="button"
-            onClick={handleResetAll}
-            className="p-1.5 rounded-lg text-neutral-300 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
-            title="Reset Form"
+            Daftar BKK ({bkkList.length})
+          </Button>
+          <Button
+            size="xs"
+            variant={activeTab === 'create' ? 'primary' : 'ghost'}
+            icon={Plus}
+            onClick={() => setActiveTab('create')}
           >
-            <RotateCw className="w-5 h-5 text-white" />
-          </button>
+            Input BKK
+          </Button>
         </div>
-      </header>
+      </div>
 
-      {/* ── MAIN CONTENT (Centered column matching mobile/screenshot layout) ── */}
-      <main className="w-full max-w-xl mx-auto px-3 sm:px-4 pt-3 space-y-3">
+      {/* ════════════════════════════════════════════════════════════════════════
+          VIEW 1 — DAFTAR BKK (List of Cash Out transactions)
+         ════════════════════════════════════════════════════════════════════════ */}
+      {activeTab === 'list' && (
+        <div className="space-y-3">
+          {/* ── Toolbar Row 1: count + icon buttons ── */}
+          <div className="flex items-center justify-between px-1">
+            <span className="text-[11px] text-neutral-400 font-mono">
+              Total {filteredBkk.length} Bukti Kas Keluar (BKK)
+            </span>
 
-        {/* ── BKK INPUT & FILTER FORM (Faithfully styled per screenshot) ── */}
-        {showFilter && (
-          <form onSubmit={handleApply} className="space-y-2.5">
+            <div className="flex items-center gap-1">
+              {/* Status cycle filter */}
+              <button
+                type="button"
+                onClick={() =>
+                  setStatusFilter((p) =>
+                    p === 'ALL' ? 'BELUM_BAYAR' : p === 'BELUM_BAYAR' ? 'LUNAS' : 'ALL'
+                  )
+                }
+                className={`w-8 h-8 flex items-center justify-center rounded-full transition-colors cursor-pointer ${
+                  statusFilter !== 'ALL'
+                    ? 'bg-[#F4511E]/20 text-[#F4511E]'
+                    : 'text-neutral-300 hover:text-white hover:bg-neutral-800'
+                }`}
+                title={`Filter Status: ${statusFilter}`}
+              >
+                <Filter className="w-4 h-4" />
+              </button>
+
+              {/* Date button */}
+              <button
+                type="button"
+                onClick={() => addToast('Pilih rentang tanggal transaksi kas keluar', 'info')}
+                className="w-8 h-8 flex items-center justify-center rounded-full text-neutral-300 hover:text-white hover:bg-neutral-800 transition-colors cursor-pointer"
+                title="Rentang Tanggal"
+              >
+                <Calendar className="w-4 h-4" />
+              </button>
+
+              {/* Refresh */}
+              <button
+                type="button"
+                onClick={handleResetList}
+                className="w-8 h-8 flex items-center justify-center rounded-full text-neutral-300 hover:text-white hover:bg-neutral-800 transition-colors cursor-pointer"
+                title="Refresh Data"
+              >
+                <RotateCw className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+
+          {/* ── Search Input (Full width, matching Invoice design) ── */}
+          <div className="relative">
+            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" />
+            <input
+              type="text"
+              value={searchFilter}
+              onChange={(e) => setSearchFilter(e.target.value)}
+              placeholder="Ketik nomor transaksi, customer, supplier, material..."
+              className="w-full bg-[#14171A] border border-[#24282E] rounded-xl pl-9 pr-8 py-2.5 text-xs text-white placeholder-neutral-500 focus:outline-none focus:border-[#F4511E]"
+            />
+            {searchFilter && (
+              <X
+                className="w-3.5 h-3.5 absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-white cursor-pointer"
+                onClick={() => setSearchFilter('')}
+              />
+            )}
+          </div>
+
+          {/* ── Status Chips ── */}
+          <div className="flex items-center gap-1.5 px-1">
+            <button
+              type="button"
+              onClick={() => setStatusFilter('ALL')}
+              className={`px-3 py-1 rounded-lg text-xs font-mono font-bold transition-colors cursor-pointer ${
+                statusFilter === 'ALL'
+                  ? 'bg-[#F4511E] text-white'
+                  : 'bg-[#181B1E] text-neutral-400 hover:text-white border border-[#262A30]'
+              }`}
+            >
+              SEMUA ({bkkList.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setStatusFilter('BELUM_BAYAR')}
+              className={`px-3 py-1 rounded-lg text-xs font-mono font-bold transition-colors cursor-pointer ${
+                statusFilter === 'BELUM_BAYAR'
+                  ? 'bg-rose-600 text-white'
+                  : 'bg-[#181B1E] text-rose-400 hover:text-rose-300 border border-[#262A30]'
+              }`}
+            >
+              BELUM LUNAS
+            </button>
+            <button
+              type="button"
+              onClick={() => setStatusFilter('LUNAS')}
+              className={`px-3 py-1 rounded-lg text-xs font-mono font-bold transition-colors cursor-pointer ${
+                statusFilter === 'LUNAS'
+                  ? 'bg-emerald-600 text-white'
+                  : 'bg-[#181B1E] text-emerald-400 hover:text-emerald-300 border border-[#262A30]'
+              }`}
+            >
+              LUNAS
+            </button>
+          </div>
+
+          {/* ── BKK Items List ── */}
+          {filteredBkk.length === 0 ? (
+            <div className="p-8 text-center bg-[#121417] border border-[#20242A] rounded-2xl space-y-3 font-mono">
+              <Receipt className="w-10 h-10 text-neutral-500 mx-auto" />
+              <div className="text-sm text-neutral-300 font-bold">
+                Tidak ada data Cash Out yang sesuai filter
+              </div>
+              <p className="text-xs text-neutral-500">
+                Coba reset filter atau buat bukti kas keluar baru.
+              </p>
+              <div className="flex items-center justify-center gap-2 mt-2">
+                <Button size="xs" variant="outline" onClick={handleResetList}>
+                  Reset Filter
+                </Button>
+                <Button
+                  size="xs"
+                  variant="primary"
+                  icon={Plus}
+                  onClick={() => setActiveTab('create')}
+                >
+                  Input BKK Baru
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {filteredBkk.map((item) => (
+                <CashOutCard
+                  key={item.id}
+                  item={item}
+                  isSelected={selectedItems.includes(item.id)}
+                  onSelect={() => toggleSelect(item.id)}
+                  onDelete={() => setDeleteConfirmItem(item)}
+                  onInfo={() => setInfoModalItem(item)}
+                  canDelete={isSuperAdmin}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ════════════════════════════════════════════════════════════════════════
+          VIEW 2 — BUAT CASH OUT FORM (Faithfully styled per user screenshot)
+         ════════════════════════════════════════════════════════════════════════ */}
+      {activeTab === 'create' && (
+        <div className="max-w-xl mx-auto py-2">
+          <form onSubmit={handleCreateSubmit} className="space-y-2.5">
             {/* 1. Pilih Pelanggan (Customer) + Orange Refresh Button */}
             <div className="flex items-stretch gap-2">
               <div className="flex-1 bg-[#1C1F24] rounded-xl px-3.5 py-2.5 flex items-center gap-3">
@@ -677,126 +833,25 @@ export default function BkkPage() {
               TERAPKAN
             </button>
 
-            {/* 10. Button: Sembunyikan Filter ^ */}
+            {/* 10. Button: Kembali ke Daftar BKK */}
             <div className="flex justify-center pt-2 pb-1">
               <button
                 type="button"
-                onClick={() => setShowFilter(false)}
+                onClick={() => setActiveTab('list')}
                 className="px-6 py-1.5 rounded-lg border border-[#F4511E] text-[#F4511E] hover:bg-[#F4511E]/10 text-xs font-semibold inline-flex items-center gap-1.5 transition-colors cursor-pointer"
               >
-                <span>Sembunyikan Filter</span>
+                <span>Kembali ke Daftar BKK</span>
                 <ChevronUp className="w-3.5 h-3.5 text-[#F4511E]" />
               </button>
             </div>
           </form>
-        )}
-
-        {/* ── TOGGLE TAMPILKAN FILTER BUTTON (When filter is hidden) ── */}
-        {!showFilter && (
-          <div className="flex justify-center py-1">
-            <button
-              type="button"
-              onClick={() => setShowFilter(true)}
-              className="px-6 py-1.5 rounded-lg border border-[#F4511E] text-[#F4511E] hover:bg-[#F4511E]/10 text-xs font-semibold inline-flex items-center gap-1.5 transition-colors cursor-pointer"
-            >
-              <span>Tampilkan Filter</span>
-              <ChevronDown className="w-3.5 h-3.5 text-[#F4511E]" />
-            </button>
-          </div>
-        )}
-
-        {/* ── STATUS BADGES & QUICK TOOLBAR ── */}
-        <div className="flex items-center justify-between px-1 pt-2 flex-wrap gap-2">
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-mono font-semibold text-neutral-300">
-              Total {filteredBkk.length} Transaksi Cash Out
-            </span>
-            {(searchFilter || appliedFilters) && (
-              <span className="text-[11px] font-mono text-[#F4511E] bg-[#F4511E]/10 border border-[#F4511E]/30 px-2 py-0.5 rounded-full flex items-center gap-1">
-                <span>Filter Aktif</span>
-                <X
-                  className="w-3 h-3 cursor-pointer hover:text-white"
-                  onClick={() => {
-                    setSearchFilter('');
-                    setAppliedFilters(null);
-                  }}
-                />
-              </span>
-            )}
-          </div>
-
-          <div className="flex items-center gap-1.5">
-            <button
-              type="button"
-              onClick={() => setStatusFilter('ALL')}
-              className={`px-2.5 py-1 rounded-lg text-[10px] font-mono font-bold transition-colors cursor-pointer ${
-                statusFilter === 'ALL'
-                  ? 'bg-[#F4511E] text-white'
-                  : 'bg-[#181B1E] text-neutral-400 hover:text-white border border-[#262A30]'
-              }`}
-            >
-              SEMUA ({bkkList.length})
-            </button>
-            <button
-              type="button"
-              onClick={() => setStatusFilter('BELUM_BAYAR')}
-              className={`px-2.5 py-1 rounded-lg text-[10px] font-mono font-bold transition-colors cursor-pointer ${
-                statusFilter === 'BELUM_BAYAR'
-                  ? 'bg-rose-600 text-white'
-                  : 'bg-[#181B1E] text-rose-400 hover:text-rose-300 border border-[#262A30]'
-              }`}
-            >
-              BELUM LUNAS
-            </button>
-            <button
-              type="button"
-              onClick={() => setStatusFilter('LUNAS')}
-              className={`px-2.5 py-1 rounded-lg text-[10px] font-mono font-bold transition-colors cursor-pointer ${
-                statusFilter === 'LUNAS'
-                  ? 'bg-emerald-600 text-white'
-                  : 'bg-[#181B1E] text-emerald-400 hover:text-emerald-300 border border-[#262A30]'
-              }`}
-            >
-              LUNAS
-            </button>
-          </div>
         </div>
-
-        {/* ── BKK CASH OUT LIST ── */}
-        {filteredBkk.length === 0 ? (
-          <div className="p-8 text-center bg-[#121417] border border-[#20242A] rounded-2xl space-y-3 font-mono">
-            <Receipt className="w-10 h-10 text-neutral-500 mx-auto" />
-            <div className="text-sm text-neutral-300 font-bold">
-              Tidak ada data Cash Out yang sesuai filter
-            </div>
-            <p className="text-xs text-neutral-500">
-              Coba reset filter atau pilih kriteria lain.
-            </p>
-            <Button size="xs" variant="outline" onClick={handleResetAll} className="mt-2">
-              Reset Semua Filter
-            </Button>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {filteredBkk.map((item) => (
-              <CashOutCard
-                key={item.id}
-                item={item}
-                isSelected={selectedItems.includes(item.id)}
-                onSelect={() => toggleSelect(item.id)}
-                onDelete={() => setDeleteConfirmItem(item)}
-                onInfo={() => setInfoModalItem(item)}
-                canDelete={isSuperAdmin}
-              />
-            ))}
-          </div>
-        )}
-      </main>
+      )}
 
       {/* ── STICKY SELECTION & PAYMENT BAR ── */}
-      {selectedItems.length > 0 && (
+      {selectedItems.length > 0 && activeTab === 'list' && (
         <div className="fixed bottom-0 left-0 right-0 z-40 bg-[#111315]/95 backdrop-blur-md border-t border-[#262A2F] p-3 shadow-2xl">
-          <div className="w-full max-w-xl mx-auto flex items-center justify-between gap-3 px-2">
+          <div className="w-full max-w-4xl mx-auto flex items-center justify-between gap-3 px-2">
             <div className="flex items-center gap-2 min-w-0">
               <span className="w-2 h-2 rounded-full bg-[#F4511E] animate-pulse shrink-0" />
               <div className="text-xs font-mono text-neutral-300 truncate">

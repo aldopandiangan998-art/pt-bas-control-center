@@ -132,7 +132,7 @@ app.post('/api/auth/login', (req, res) => {
 
   const cleanEmail = email.trim().toLowerCase();
   const user = db
-    .prepare('SELECT id, name, email, password, role, roleLabel, branch, phone, birth_date, gender, aktif FROM users WHERE LOWER(email) = ?')
+    .prepare('SELECT id, name, email, password, role, roleLabel, branch, phone, birth_date, gender, avatar, aktif FROM users WHERE LOWER(email) = ?')
     .get(cleanEmail);
 
   if (!user || user.password !== password) {
@@ -417,7 +417,7 @@ app.post('/api/auth/reset-password', (req, res) => {
 // Update user profile (Super Admin / Admin self-profile)
 app.put('/api/users/profile/:id', (req, res) => {
   const { id } = req.params;
-  const { name, phone, birth_date, gender } = req.body;
+  const { name, phone, birth_date, gender, avatar } = req.body;
 
   if (!name || !name.trim()) {
     return res.status(400).json({ success: false, message: 'Nama lengkap wajib diisi.' });
@@ -428,19 +428,50 @@ app.put('/api/users/profile/:id', (req, res) => {
     return res.status(404).json({ success: false, message: 'Pengguna tidak ditemukan.' });
   }
 
-  db.prepare(`
-    UPDATE users
-    SET name = ?, phone = ?, birth_date = ?, gender = ?
-    WHERE id = ?
-  `).run(name.trim(), phone || '-', birth_date || null, gender || 'Laki-laki', id);
+  if (avatar !== undefined) {
+    db.prepare(`
+      UPDATE users
+      SET name = ?, phone = ?, birth_date = ?, gender = ?, avatar = ?
+      WHERE id = ?
+    `).run(name.trim(), phone || '-', birth_date || null, gender || 'Laki-laki', avatar || null, id);
+  } else {
+    db.prepare(`
+      UPDATE users
+      SET name = ?, phone = ?, birth_date = ?, gender = ?
+      WHERE id = ?
+    `).run(name.trim(), phone || '-', birth_date || null, gender || 'Laki-laki', id);
+  }
 
   const updatedUser = db
-    .prepare('SELECT id, name, email, role, roleLabel, branch, phone, birth_date, gender, aktif, created_at FROM users WHERE id = ?')
+    .prepare('SELECT id, name, email, role, roleLabel, branch, phone, birth_date, gender, avatar, aktif, created_at FROM users WHERE id = ?')
     .get(id);
 
   res.json({
     success: true,
     message: 'Profil akun berhasil diperbarui.',
+    user: updatedUser,
+  });
+});
+
+// Update user avatar (Profile Photo)
+app.put('/api/users/avatar/:id', (req, res) => {
+  const { id } = req.params;
+  const { avatar } = req.body;
+
+  const user = db.prepare('SELECT id FROM users WHERE id = ?').get(id);
+  if (!user) {
+    return res.status(404).json({ success: false, message: 'Pengguna tidak ditemukan.' });
+  }
+
+  db.prepare('UPDATE users SET avatar = ? WHERE id = ?').run(avatar || null, id);
+
+  const updatedUser = db
+    .prepare('SELECT id, name, email, role, roleLabel, branch, phone, birth_date, gender, avatar, aktif, created_at FROM users WHERE id = ?')
+    .get(id);
+
+  res.json({
+    success: true,
+    message: avatar ? 'Foto profil akun berhasil diperbarui.' : 'Foto profil akun berhasil dihapus.',
     user: updatedUser,
   });
 });
@@ -477,7 +508,7 @@ app.put('/api/users/change-password/:id', (req, res) => {
 
 // Get all users
 app.get('/api/users', (req, res) => {
-  const users = db.prepare('SELECT id, name, email, role, roleLabel, branch, phone, birth_date, gender, aktif, created_at FROM users ORDER BY created_at DESC').all();
+  const users = db.prepare('SELECT id, name, email, role, roleLabel, branch, phone, birth_date, gender, avatar, aktif, created_at FROM users ORDER BY created_at DESC').all();
   res.json(users);
 });
 

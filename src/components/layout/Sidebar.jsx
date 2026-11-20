@@ -464,14 +464,22 @@ export default function Sidebar() {
                   title="Klik untuk membuka Halaman Profil Akun"
                 >
                   <div className="flex items-center gap-2.5">
-                    <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-[#F4511E] to-[#FF7043] text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-md">
-                      {currentUser?.name
-                        ? currentUser.name
-                            .split(' ')
-                            .map((n) => n[0])
-                            .join('')
-                            .slice(0, 2)
-                        : 'U'}
+                    <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-[#F4511E] to-[#FF7043] text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-md overflow-hidden">
+                      {currentUser?.avatar ? (
+                        <img
+                          src={currentUser.avatar}
+                          alt={currentUser.name}
+                          className="w-full h-full object-cover rounded-xl"
+                        />
+                      ) : currentUser?.name ? (
+                        currentUser.name
+                          .split(' ')
+                          .map((n) => n[0])
+                          .join('')
+                          .slice(0, 2)
+                      ) : (
+                        'U'
+                      )}
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="font-bold text-xs truncate flex items-center justify-between">
@@ -622,20 +630,28 @@ export default function Sidebar() {
                   className="flex items-center gap-2.5 min-w-0 cursor-pointer group flex-1"
                   title="Klik untuk membuka Halaman Profil Akun"
                 >
-                  <div className={`w-7 h-7 rounded-full border flex items-center justify-center text-[10px] font-bold shrink-0 shadow-xs transition-colors ${
+                  <div className={`w-7 h-7 rounded-full border flex items-center justify-center text-[10px] font-bold shrink-0 shadow-xs transition-colors overflow-hidden ${
                     isProfileActive
                       ? 'border-[#F4511E] bg-[#F4511E] text-white'
                       : isDark
                       ? 'border-[#333940] bg-[#16181B] text-neutral-200'
                       : 'border-slate-300 bg-slate-100 text-slate-700'
                   }`}>
-                    {currentUser?.name
-                      ? currentUser.name
-                          .split(' ')
-                          .map((n) => n[0])
-                          .join('')
-                          .slice(0, 2)
-                      : 'U'}
+                    {currentUser?.avatar ? (
+                      <img
+                        src={currentUser.avatar}
+                        alt={currentUser.name}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : currentUser?.name ? (
+                      currentUser.name
+                        .split(' ')
+                        .map((n) => n[0])
+                        .join('')
+                        .slice(0, 2)
+                    ) : (
+                      'U'
+                    )}
                   </div>
                   <div className="min-w-0">
                     <div className={`text-xs font-semibold truncate leading-tight transition-colors ${
@@ -709,7 +725,7 @@ export default function Sidebar() {
                   navigate('/profile');
                   closeMobileSidebar();
                 }}
-                className={`w-8 h-8 rounded-full border flex items-center justify-center text-[11px] font-bold shrink-0 shadow-xs cursor-pointer transition-all ${
+                className={`w-8 h-8 rounded-full border flex items-center justify-center text-[11px] font-bold shrink-0 shadow-xs cursor-pointer transition-all overflow-hidden ${
                   isProfileActive
                     ? 'border-[#F4511E] bg-[#F4511E] text-white scale-105'
                     : isDark
@@ -722,13 +738,21 @@ export default function Sidebar() {
                 }`}
                 title={`Profil Akun: ${currentUser?.name || 'Pengguna'} (Klik untuk buka halaman profil)`}
               >
-                {currentUser?.name
-                  ? currentUser.name
-                      .split(' ')
-                      .map((n) => n[0])
-                      .join('')
-                      .slice(0, 2)
-                  : 'U'}
+                {currentUser?.avatar ? (
+                  <img
+                    src={currentUser.avatar}
+                    alt={currentUser.name}
+                    className="w-full h-full object-cover"
+                  />
+                ) : currentUser?.name ? (
+                  currentUser.name
+                    .split(' ')
+                    .map((n) => n[0])
+                    .join('')
+                    .slice(0, 2)
+                ) : (
+                  'U'
+                )}
               </div>
 
               <div className={`w-6 border-t my-0.5 ${isDark ? 'border-[#22262A]' : 'border-slate-200'}`} />

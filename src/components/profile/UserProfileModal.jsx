@@ -254,8 +254,16 @@ export default function UserProfileModal({ isOpen, onClose, initialTab = 'profil
             }`}
           >
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-[#F4511E] to-[#FF7043] text-white flex items-center justify-center font-extrabold text-base shadow-md shrink-0">
-                {userInitials}
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-[#F4511E] to-[#FF7043] text-white flex items-center justify-center font-extrabold text-base shadow-md shrink-0 overflow-hidden">
+                {currentUser?.avatar ? (
+                  <img
+                    src={currentUser.avatar}
+                    alt={currentUser.name}
+                    className="w-full h-full object-cover rounded-xl"
+                  />
+                ) : (
+                  userInitials
+                )}
               </div>
               <div>
                 <div className="flex items-center gap-2">

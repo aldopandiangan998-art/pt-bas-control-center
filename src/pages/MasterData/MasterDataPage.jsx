@@ -4112,53 +4112,6 @@ export default function MasterDataPage() {
               animate="visible"
               className="space-y-4"
             >
-              {/* Top Quick Stat Banners */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                <div className="master-stat-card p-3.5 rounded-xl bg-[#121822]/90 border border-[#1E2938] shadow-xs">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-mono text-neutral-400 uppercase tracking-wider">Basis Akuntansi</span>
-                    <div className="w-6 h-6 rounded-lg bg-[#F4511E]/15 border border-[#F4511E]/30 text-[#F4511E] flex items-center justify-center">
-                      <Coins className="w-3.5 h-3.5" />
-                    </div>
-                  </div>
-                  <div className="text-xl font-bold font-mono text-white mt-1">IDR (Rp)</div>
-                  <div className="text-[11px] text-neutral-400 mt-0.5">Indonesian Rupiah • ISO 360</div>
-                </div>
-
-                <div className="master-stat-card stat-amber p-3.5 rounded-xl bg-[#121822]/90 border border-[#1E2938] shadow-xs">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-mono text-neutral-400 uppercase tracking-wider">Format Angka</span>
-                    <div className="w-6 h-6 rounded-lg bg-amber-500/15 border border-amber-500/30 text-amber-400 flex items-center justify-center">
-                      <Calculator className="w-3.5 h-3.5" />
-                    </div>
-                  </div>
-                  <div className="text-xl font-bold font-mono text-amber-400 mt-1">Titik (.)</div>
-                  <div className="text-[11px] text-neutral-400 mt-0.5">Format: Rp 18.712.800,00</div>
-                </div>
-
-                <div className="master-stat-card stat-emerald p-3.5 rounded-xl bg-[#121822]/90 border border-[#1E2938] shadow-xs">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-mono text-neutral-400 uppercase tracking-wider">Presisi Kubikasi</span>
-                    <div className="w-6 h-6 rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 flex items-center justify-center">
-                      <Layers className="w-3.5 h-3.5" />
-                    </div>
-                  </div>
-                  <div className="text-xl font-bold font-mono text-emerald-400 mt-1">2 Digit Koma</div>
-                  <div className="text-[11px] text-neutral-400 mt-0.5">Standar Dump Truck: 155,94 m³</div>
-                </div>
-
-                <div className="master-stat-card p-3.5 rounded-xl bg-[#121822]/90 border border-[#1E2938] shadow-xs">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-mono text-neutral-400 uppercase tracking-wider">Regulasi Pajak</span>
-                    <div className="w-6 h-6 rounded-lg bg-sky-500/15 border border-sky-500/30 text-sky-400 flex items-center justify-center">
-                      <Receipt className="w-3.5 h-3.5" />
-                    </div>
-                  </div>
-                  <div className="text-xl font-bold font-mono text-sky-400 mt-1">PPN 11% + PPh 22</div>
-                  <div className="text-[11px] text-neutral-400 mt-0.5">Tarif: 0,25% (Industri) - 1,5%</div>
-                </div>
-              </div>
-
               {filteredCurrencies.length === 0 ? (
                 <MasterEmptyState
                   icon={Coins}

@@ -1132,7 +1132,7 @@ export function DataProvider({ children }) {
       if (exists) return prev;
 
       const targetVol = Number(po.totalOrder) || 0;
-      const targetTrips = po.satuan === 'rit' ? Math.max(1, targetVol) : Math.max(1, Math.ceil(targetVol / 30));
+      const targetTrips = po.satuan === 'rit' ? Math.max(1, targetVol) : 0;
       const hBeli = Number(po.hargaBeli) || 0;
       const hJual = Number(po.hargaJual) || 0;
       const isPpn = po.jenisWajibPajak === 'PKP';
@@ -1406,11 +1406,9 @@ export function DataProvider({ children }) {
           const updatedTotalVol = Number(filteredDetails.reduce((sum, d) => sum + (Number(d.volumeAkhir) || 0), 0).toFixed(2));
           const updatedNominalBeli = Math.round(updatedTotalVol * (Number(jrn.hargaBeli) || 0));
           const updatedNominalJual = Math.round(updatedTotalVol * (Number(jrn.hargaJual) || 0));
-          const targetTrips = Number(jrn.targetRitase) || 0;
           const targetVol = Number(jrn.targetVolume) || 0;
-          const isTripsMet = targetTrips > 0 && updatedTotalSj >= targetTrips;
           const isVolumeMet = targetVol > 0 && updatedTotalVol >= targetVol;
-          const newStatus = (isTripsMet || isVolumeMet) ? 'Selesai Kirim' : 'Dalam Pengiriman';
+          const newStatus = isVolumeMet ? 'Selesai Kirim' : 'Dalam Pengiriman';
 
           return {
             ...jrn,
@@ -1430,7 +1428,7 @@ export function DataProvider({ children }) {
       if (!matched) {
         // Jika belum ada rekapan sebelumnya, otomatis generate dan tempelkan surat jalan ini
         const targetVol = Number(targetPo?.totalOrder) || calc.volumeAkhir;
-        const targetTrips = targetPo?.satuan === 'rit' ? Math.max(1, targetVol) : Math.max(1, Math.ceil(targetVol / 30));
+        const targetTrips = targetPo?.satuan === 'rit' ? Math.max(1, targetVol) : 0;
         const hBeli = Number(targetPo?.hargaBeli) || 40000;
         const hJual = Number(targetPo?.hargaJual) || 50000;
         const newRekId = `REK-${new Date().toISOString().slice(0, 7).replace('-', '')}-${String(Date.now()).slice(-4)}`;
@@ -1456,9 +1454,8 @@ export function DataProvider({ children }) {
           status: 'Selesai',
         };
 
-        const isTripsMet = targetTrips <= 1;
-        const isVolumeMet = calc.volumeAkhir >= targetVol;
-        const initialStatus = (isTripsMet || isVolumeMet) ? 'Selesai Kirim' : 'Dalam Pengiriman';
+        const isVolumeMet = targetVol > 0 && calc.volumeAkhir >= targetVol;
+        const initialStatus = isVolumeMet ? 'Selesai Kirim' : 'Dalam Pengiriman';
 
         const newRek = {
           id: newRekId,

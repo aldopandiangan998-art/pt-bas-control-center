@@ -1344,7 +1344,7 @@ app.patch('/api/pre-orders/:id/approve', (req, res) => {
     const hBeli = Number(po.hargaBeli || firstItem.hargaBeli || 0);
     const hJual = Number(po.hargaJual || firstItem.hargaJual || 0);
     const isPpn = po.jenisWajibPajak === 'PKP' ? 1 : 0;
-    const targetTrips = po.satuan === 'rit' ? Math.max(1, targetVol) : Math.max(1, Math.ceil(targetVol / 30));
+    const targetTrips = po.satuan === 'rit' ? Math.max(1, targetVol) : 0;
     const nowIso = new Date().toISOString();
 
     db.prepare(`
@@ -1579,7 +1579,7 @@ app.post('/api/surat-jalan', (req, res) => {
     const hBeli = targetPo ? Number(targetPo.hargaBeli || 0) : 40000;
     const hJual = targetPo ? Number(targetPo.hargaJual || 0) : 50000;
     const isPpnFlag = targetPo ? (targetPo.jenisWajibPajak === 'PKP' ? 1 : 0) : (isPpn ? 1 : 0);
-    const targetTrips = targetPo?.satuan === 'rit' ? Math.max(1, targetVol) : Math.max(1, Math.ceil(targetVol / 30));
+    const targetTrips = targetPo?.satuan === 'rit' ? Math.max(1, targetVol) : 0;
     const nowIso = new Date().toISOString();
 
     db.prepare(`
@@ -1682,11 +1682,9 @@ app.post('/api/surat-jalan', (req, res) => {
   const updatedTotalVolume = Number(filteredDetails.reduce((sum, d) => sum + (Number(d.volumeAkhir) || 0), 0).toFixed(2));
   const updatedNominalBeli = Math.round(updatedTotalVolume * (Number(jurnal.hargaBeli) || 0));
   const updatedNominalJual = Math.round(updatedTotalVolume * (Number(jurnal.hargaJual) || 0));
-  const targetTrips = Number(jurnal.targetRitase) || 0;
   const targetVol = Number(jurnal.targetVolume) || 0;
-  const isTripsMet = targetTrips > 0 && updatedTotalSj >= targetTrips;
   const isVolumeMet = targetVol > 0 && updatedTotalVolume >= targetVol;
-  const newJurnalStatus = (isTripsMet || isVolumeMet) ? 'Selesai Kirim' : 'Dalam Pengiriman';
+  const newJurnalStatus = isVolumeMet ? 'Selesai Kirim' : 'Dalam Pengiriman';
   const nowIso = new Date().toISOString();
 
   db.prepare(`

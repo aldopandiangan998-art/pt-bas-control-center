@@ -358,7 +358,7 @@ export default function BuatLaporanPajakPage() {
       isDark ? 'bg-black text-white' : 'bg-slate-50 text-slate-900'
     }`}>
       {/* ── TOP APP BAR MATCHING SCREENSHOT ── */}
-      <div className={`sticky top-0 z-40 flex items-center justify-between px-4 h-14 border-b transition-colors ${
+      <div className={`flex items-center justify-between px-4 h-14 border-b transition-colors ${
         isDark ? 'bg-[#111315] border-[#22262A]' : 'bg-white border-slate-200 shadow-xs'
       }`}>
         <div className="flex items-center gap-3 min-w-0">

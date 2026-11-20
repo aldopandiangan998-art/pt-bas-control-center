@@ -1199,7 +1199,7 @@ export default function PreOrderPage() {
     <div className="w-full space-y-4 pb-28 min-h-screen bg-[#0A0C0E] text-white font-sans select-none relative">
 
       {/* ── TOP APP BAR matching user screenshot ── */}
-      <header className="sticky top-0 z-30 bg-[#0A0C0E] border-b border-[#1A1D21] px-4 py-3 flex items-center justify-between">
+      <header className="bg-[#0A0C0E] border-b border-[#1A1D21] px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <button
             type="button"

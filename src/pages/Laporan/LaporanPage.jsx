@@ -257,7 +257,7 @@ export default function LaporanPage() {
   return (
     <div className="min-h-screen bg-[#0A0C0E] text-white flex flex-col font-sans select-none relative pb-28">
       {/* ── TOP APP BAR (matching screenshot) ── */}
-      <header className="sticky top-0 z-30 bg-[#0A0C0E] border-b border-[#1A1D21] px-4 py-3.5 flex items-center justify-between">
+      <header className="bg-[#0A0C0E] border-b border-[#1A1D21] px-4 py-3.5 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <button
             type="button"

@@ -531,57 +531,56 @@ export default function RekapanPage() {
                       </div>
                     </div>
 
-                    {/* Delivery Progress & Information Metrics */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-[#111315] p-3 rounded-lg border border-[#1F2327]">
-                      {/* Surat Jalan Terbit (Informational Data: Actual Good Issues) */}
-                      <div className="space-y-1.5 font-mono text-xs">
-                        <div className="flex justify-between items-center text-neutral-300">
-                          <span className="flex items-center gap-1.5">
-                            <FileText className="w-3.5 h-3.5 text-[#F4511E]" />
-                            <span>Surat Jalan Terbit:</span>
-                          </span>
-                          <span className="font-bold text-white">
-                            {ro.totalSj} Good Issue (GI)
-                          </span>
+                    {/* Primary Delivery Volume Progress (m³) & Secondary Good Issue (GI) Info */}
+                    <div className="bg-[#111315] p-3.5 rounded-lg border border-[#1F2327] space-y-2.5 font-mono">
+                      {/* Row 1: Volume Progress Header */}
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 text-xs">
+                        <div className="flex items-center gap-2 text-neutral-300 font-medium">
+                          <TrendingUp className="w-4 h-4 text-amber-400 shrink-0" />
+                          <span className="text-white font-semibold">Progress Kubikasi Terkirim:</span>
                         </div>
-                        <div className="text-[11px] text-neutral-400 bg-[#171A1D] px-2.5 py-1.5 rounded border border-[#22262B]">
-                          {ro.totalSj > 0 ? (
-                            <span>
-                              Tercatat <strong className="text-white">{ro.totalSj} Good Issue (GI)</strong> riil pengiriman armada
-                            </span>
-                          ) : (
-                            <span className="text-neutral-500">Belum ada Good Issue yang diterbitkan</span>
-                          )}
-                        </div>
-                        <div className="flex justify-between text-[11px] text-neutral-500">
-                          <span>Data riil Good Issue tercatat</span>
-                          <span>{ro.isPpn ? 'PKP (PPN 11%)' : 'Non-PPN'}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-amber-400 text-sm sm:text-base">
+                            {formatVolume(ro.totalVolume, ro.satuan)}
+                          </span>
+                          <span className="text-neutral-500 font-normal">/</span>
+                          <span className="text-neutral-300 font-medium">
+                            {formatVolume(ro.targetVolume, ro.satuan)}
+                          </span>
+                          <span className="px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20 text-[11px] font-bold">
+                            {fulfillmentVolPct}%
+                          </span>
                         </div>
                       </div>
 
-                      {/* Primary Delivery Progress Measurement: Total Kubikasi Terkirim (m³) */}
-                      <div className="space-y-1.5 font-mono text-xs">
-                        <div className="flex justify-between items-center text-neutral-300">
-                          <span className="flex items-center gap-1.5">
-                            <TrendingUp className="w-3.5 h-3.5 text-amber-400" />
-                            <span>Progress Kubikasi Terkirim:</span>
-                          </span>
-                          <span className="font-bold text-amber-400">
-                            {formatVolume(ro.totalVolume, ro.satuan)} / {formatVolume(ro.targetVolume, ro.satuan)} ({fulfillmentVolPct}%)
-                          </span>
+                      {/* Row 2: Prominent Volume Progress Bar */}
+                      <div className="w-full h-2 rounded-full bg-[#1C1F23] overflow-hidden">
+                        <div
+                          className="h-full bg-linear-to-r from-amber-500 to-[#F4511E] transition-all duration-300"
+                          style={{ width: `${fulfillmentVolPct}%` }}
+                        />
+                      </div>
+
+                      {/* Row 3: Subline Volume Detail */}
+                      <div className="flex items-center justify-between text-[11px] text-neutral-400">
+                        <span>
+                          Sisa volume: <strong className="text-neutral-200">{formatVolume(ro.sisaVolume, ro.satuan)}</strong>
+                        </span>
+                        <span className={ro.status === 'Selesai Kirim' ? 'text-emerald-400 font-semibold' : 'text-neutral-400'}>
+                          {ro.status === 'Selesai Kirim' ? '✓ Kuota Volume Terpenuhi' : `${fulfillmentVolPct}% terealisasi`}
+                        </span>
+                      </div>
+
+                      {/* Row 4: Secondary Informational Element — Total Good Issues (GI) */}
+                      <div className="flex items-center justify-between text-[11px] text-neutral-400 pt-2 border-t border-[#1C2024]">
+                        <div className="flex items-center gap-1.5">
+                          <FileText className="w-3.5 h-3.5 text-neutral-500 shrink-0" />
+                          <span className="text-neutral-400">Total Good Issue (GI):</span>
+                          <strong className="text-neutral-200 font-semibold">{ro.totalSj} dokumen terbit</strong>
                         </div>
-                        <div className="w-full h-2 rounded-full bg-[#1C1F23] overflow-hidden">
-                          <div
-                            className="h-full bg-amber-500 transition-all duration-300"
-                            style={{ width: `${fulfillmentVolPct}%` }}
-                          />
-                        </div>
-                        <div className="flex justify-between text-[11px] text-neutral-500">
-                          <span>Sisa volume: {formatVolume(ro.sisaVolume, ro.satuan)}</span>
-                          <span className={ro.status === 'Selesai Kirim' ? 'text-emerald-400 font-semibold' : 'text-neutral-400'}>
-                            {ro.status === 'Selesai Kirim' ? '✓ Kuota Volume Terpenuhi' : `${fulfillmentVolPct}% terealisasi`}
-                          </span>
-                        </div>
+                        <span className="text-[10px] text-neutral-500">
+                          {ro.totalSj > 0 ? 'Berdasarkan catatan riil pengiriman' : 'Belum ada pengiriman'}
+                        </span>
                       </div>
                     </div>
 
@@ -1085,20 +1084,25 @@ export default function RekapanPage() {
               </div>
             )}
 
-            {/* Footer Actions inside Modal */}
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-3 border-t border-[#22262A]">
-              <div className="text-xs text-neutral-400 font-mono">
-                Total: <strong className="text-white">{selectedOrderForModal.suratJalanDetails.length} Good Issue (Surat Jalan)</strong> terbit &bull; Volume Terkirim: <strong className="text-amber-400">{formatVolume(selectedOrderForModal.totalVolume, selectedOrderForModal.satuan)}</strong>
-              </div>
-
-              <div className="flex items-center gap-2 self-end sm:self-auto flex-wrap">
+            {/* Footer Actions inside Modal — Clean, Symmetrical & Aligned */}
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-3.5 border-t border-[#22262A]">
+              {/* Left Side: Close button & summary count */}
+              <div className="flex items-center gap-3 order-2 sm:order-1">
                 <Button
                   size="sm"
                   variant="outline"
                   onClick={() => setSelectedOrderForModal(null)}
+                  className="h-9 px-4 text-xs font-medium border-[#2A2E33] hover:border-neutral-500 text-neutral-300 hover:text-white cursor-pointer"
                 >
                   Tutup
                 </Button>
+                <div className="text-xs text-neutral-400 font-mono hidden md:block">
+                  Total: <strong className="text-white">{selectedOrderForModal.suratJalanDetails.length} Good Issue</strong> &bull; Terkirim: <strong className="text-amber-400">{formatVolume(selectedOrderForModal.totalVolume, selectedOrderForModal.satuan)}</strong>
+                </div>
+              </div>
+
+              {/* Right Side: Symmetrical 3 Action Buttons (Input, Invoice, Buat Surat Jalan Baru) */}
+              <div className="flex items-center gap-2 order-1 sm:order-2 flex-wrap sm:flex-nowrap justify-end">
                 <Button
                   size="sm"
                   variant="outline"
@@ -1115,10 +1119,34 @@ export default function RekapanPage() {
                     });
                     addToast(`Membuka form Input Invoice untuk ${ro.nomorRO}`, 'info');
                   }}
-                  className="border-[#2D3339] hover:border-[#F4511E] text-white cursor-pointer"
+                  className="h-9 px-3.5 text-xs border-[#2D3339] hover:border-[#F4511E] text-neutral-200 hover:text-white font-medium cursor-pointer flex-1 sm:flex-none justify-center whitespace-nowrap"
+                  title="Form Input Invoice untuk order ini"
                 >
-                  Input Invoice
+                  Input
                 </Button>
+
+                <Button
+                  size="sm"
+                  variant="outline"
+                  icon={ExternalLink}
+                  onClick={() => {
+                    const ro = selectedOrderForModal;
+                    setSelectedOrderForModal(null);
+                    navigate('/invoices', {
+                      state: {
+                        order: ro,
+                        fromRekapan: true,
+                        activeTab: 'list',
+                      },
+                    });
+                    addToast(`Membuka daftar Invoice untuk ${ro.nomorRO}`, 'info');
+                  }}
+                  className="h-9 px-3.5 text-xs border-[#2D3339] hover:border-[#F4511E] text-neutral-200 hover:text-white font-medium cursor-pointer flex-1 sm:flex-none justify-center whitespace-nowrap"
+                  title="Lihat modul Invoice terkait order ini"
+                >
+                  Invoice
+                </Button>
+
                 <Button
                   size="sm"
                   variant="primary"
@@ -1137,9 +1165,10 @@ export default function RekapanPage() {
                     });
                     addToast(`Membuka form Surat Jalan untuk ${ro.nomorRO}`, 'info');
                   }}
-                  className="bg-[#F4511E] hover:bg-[#ff6b3d] text-white font-semibold cursor-pointer"
+                  className="h-9 px-4 text-xs bg-[#F4511E] hover:bg-[#D84315] text-white font-semibold cursor-pointer shadow-sm flex-1 sm:flex-none justify-center whitespace-nowrap"
+                  title="Terbitkan Surat Jalan (Good Issue) baru"
                 >
-                  + Buat Surat Jalan Baru
+                  Buat Surat Jalan Baru
                 </Button>
               </div>
             </div>

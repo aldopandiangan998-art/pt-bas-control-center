@@ -1772,7 +1772,7 @@ export default function MasterDataPage() {
               >
                 <input
                   type="checkbox"
-                  className="checkbox checkbox-xs rounded border-neutral-600 checked:border-[#F4511E] checked:bg-[#F4511E] cursor-pointer"
+                  className="cursor-pointer"
                   checked={(() => {
                     let list = [];
                     if (currentTab === 'supplier') list = filteredSuppliers;
@@ -1950,7 +1950,7 @@ export default function MasterDataPage() {
                             <th className="p-3 w-10 text-center">
                               <input
                                 type="checkbox"
-                                className="checkbox checkbox-xs rounded border-neutral-600 checked:border-[#F4511E] checked:bg-[#F4511E] cursor-pointer"
+                                className="cursor-pointer"
                                 checked={filtered.length > 0 && filtered.every((it) => selectedIds.includes(it.id))}
                                 onChange={() => handleToggleSelectAll(filtered)}
                                 title="Pilih semua supplier"
@@ -1970,7 +1970,7 @@ export default function MasterDataPage() {
                               <td className="p-3 text-center">
                                 <input
                                   type="checkbox"
-                                  className="checkbox checkbox-xs rounded border-neutral-600 checked:border-[#F4511E] checked:bg-[#F4511E] cursor-pointer"
+                                  className="cursor-pointer"
                                   checked={selectedIds.includes(sup.id)}
                                   onChange={() => handleToggleSelectItem(sup.id)}
                                 />
@@ -2084,7 +2084,7 @@ export default function MasterDataPage() {
                               <div className="flex items-center gap-2">
                                 <input
                                   type="checkbox"
-                                  className="checkbox checkbox-xs rounded border-neutral-600 checked:border-[#F4511E] checked:bg-[#F4511E] cursor-pointer"
+                                  className="cursor-pointer"
                                   checked={selectedIds.includes(sup.id)}
                                   onChange={() => handleToggleSelectItem(sup.id)}
                                   title="Pilih supplier"
@@ -2280,7 +2280,7 @@ export default function MasterDataPage() {
                             <th className="p-3 w-10 text-center">
                               <input
                                 type="checkbox"
-                                className="checkbox checkbox-xs rounded border-neutral-600 checked:border-[#F4511E] checked:bg-[#F4511E] cursor-pointer"
+                                className="cursor-pointer"
                                 checked={filtered.length > 0 && filtered.every((it) => selectedIds.includes(it.id))}
                                 onChange={() => handleToggleSelectAll(filtered)}
                                 title="Pilih semua material"
@@ -2301,7 +2301,7 @@ export default function MasterDataPage() {
                               <td className="p-3 text-center">
                                 <input
                                   type="checkbox"
-                                  className="checkbox checkbox-xs rounded border-neutral-600 checked:border-[#F4511E] checked:bg-[#F4511E] cursor-pointer"
+                                  className="cursor-pointer"
                                   checked={selectedIds.includes(mat.id)}
                                   onChange={() => handleToggleSelectItem(mat.id)}
                                 />
@@ -2403,7 +2403,7 @@ export default function MasterDataPage() {
                               <div className="flex items-center gap-2">
                                 <input
                                   type="checkbox"
-                                  className="checkbox checkbox-xs rounded border-neutral-600 checked:border-[#F4511E] checked:bg-[#F4511E] cursor-pointer"
+                                  className="cursor-pointer"
                                   checked={selectedIds.includes(mat.id)}
                                   onChange={() => handleToggleSelectItem(mat.id)}
                                   title="Pilih material"
@@ -2584,7 +2584,7 @@ export default function MasterDataPage() {
                             <th className="p-3 w-10 text-center">
                               <input
                                 type="checkbox"
-                                className="checkbox checkbox-xs rounded border-neutral-600 checked:border-[#F4511E] checked:bg-[#F4511E] cursor-pointer"
+                                className="cursor-pointer"
                                 checked={filtered.length > 0 && filtered.every((it) => selectedIds.includes(it.id))}
                                 onChange={() => handleToggleSelectAll(filtered)}
                                 title="Pilih semua armada"
@@ -2604,7 +2604,7 @@ export default function MasterDataPage() {
                               <td className="p-3 text-center">
                                 <input
                                   type="checkbox"
-                                  className="checkbox checkbox-xs rounded border-neutral-600 checked:border-[#F4511E] checked:bg-[#F4511E] cursor-pointer"
+                                  className="cursor-pointer"
                                   checked={selectedIds.includes(arm.id)}
                                   onChange={() => handleToggleSelectItem(arm.id)}
                                 />
@@ -2701,7 +2701,7 @@ export default function MasterDataPage() {
                               <div className="flex items-center gap-2">
                                 <input
                                   type="checkbox"
-                                  className="checkbox checkbox-xs rounded border-neutral-600 checked:border-[#F4511E] checked:bg-[#F4511E] cursor-pointer"
+                                  className="cursor-pointer"
                                   checked={selectedIds.includes(arm.id)}
                                   onChange={() => handleToggleSelectItem(arm.id)}
                                   title="Pilih armada"
@@ -2899,7 +2899,7 @@ export default function MasterDataPage() {
                               <td className="p-3 text-center">
                                 <input
                                   type="checkbox"
-                                  className="checkbox checkbox-xs rounded border-neutral-600 checked:border-[#F4511E] checked:bg-[#F4511E] cursor-pointer"
+                                  className="cursor-pointer"
                                   checked={selectedIds.includes(cust.id)}
                                   onChange={() => handleToggleSelectItem(cust.id)}
                                 />
@@ -2996,7 +2996,7 @@ export default function MasterDataPage() {
                               <div className="flex items-center gap-2">
                                 <input
                                   type="checkbox"
-                                  className="checkbox checkbox-xs rounded border-neutral-600 checked:border-[#F4511E] checked:bg-[#F4511E] cursor-pointer"
+                                  className="cursor-pointer"
                                   checked={selectedIds.includes(cust.id)}
                                   onChange={() => handleToggleSelectItem(cust.id)}
                                   title="Pilih customer"
@@ -3161,7 +3161,7 @@ export default function MasterDataPage() {
                             <th className="p-3 w-10 text-center">
                               <input
                                 type="checkbox"
-                                className="checkbox checkbox-xs rounded border-neutral-600 checked:border-[#F4511E] checked:bg-[#F4511E] cursor-pointer"
+                                className="cursor-pointer"
                                 checked={filtered.length > 0 && filtered.every((it) => selectedIds.includes(it.id))}
                                 onChange={() => handleToggleSelectAll(filtered)}
                                 title="Pilih semua bank"
@@ -3181,7 +3181,7 @@ export default function MasterDataPage() {
                               <td className="p-3 text-center">
                                 <input
                                   type="checkbox"
-                                  className="checkbox checkbox-xs rounded border-neutral-600 checked:border-[#F4511E] checked:bg-[#F4511E] cursor-pointer"
+                                  className="cursor-pointer"
                                   checked={selectedIds.includes(bank.id)}
                                   onChange={() => handleToggleSelectItem(bank.id)}
                                 />
@@ -3275,7 +3275,7 @@ export default function MasterDataPage() {
                               <div className="flex items-center gap-2">
                                 <input
                                   type="checkbox"
-                                  className="checkbox checkbox-xs rounded border-neutral-600 checked:border-[#F4511E] checked:bg-[#F4511E] cursor-pointer"
+                                  className="cursor-pointer"
                                   checked={selectedIds.includes(bank.id)}
                                   onChange={() => handleToggleSelectItem(bank.id)}
                                   title="Pilih bank"
@@ -3442,7 +3442,7 @@ export default function MasterDataPage() {
                             <th className="p-3 w-10 text-center">
                               <input
                                 type="checkbox"
-                                className="checkbox checkbox-xs rounded border-neutral-600 checked:border-[#F4511E] checked:bg-[#F4511E] cursor-pointer"
+                                className="cursor-pointer"
                                 checked={filtered.length > 0 && filtered.every((it) => selectedIds.includes(it.id))}
                                 onChange={() => handleToggleSelectAll(filtered)}
                                 title="Pilih semua rekening"
@@ -3462,7 +3462,7 @@ export default function MasterDataPage() {
                               <td className="p-3 text-center">
                                 <input
                                   type="checkbox"
-                                  className="checkbox checkbox-xs rounded border-neutral-600 checked:border-[#F4511E] checked:bg-[#F4511E] cursor-pointer"
+                                  className="cursor-pointer"
                                   checked={selectedIds.includes(acc.id)}
                                   onChange={() => handleToggleSelectItem(acc.id)}
                                 />
@@ -3563,7 +3563,7 @@ export default function MasterDataPage() {
                               <div className="flex items-center gap-2">
                                 <input
                                   type="checkbox"
-                                  className="checkbox checkbox-xs rounded border-neutral-600 checked:border-[#F4511E] checked:bg-[#F4511E] cursor-pointer"
+                                  className="cursor-pointer"
                                   checked={selectedIds.includes(acc.id)}
                                   onChange={() => handleToggleSelectItem(acc.id)}
                                   title="Pilih rekening"
@@ -3689,7 +3689,7 @@ export default function MasterDataPage() {
                             <th className="p-3 w-10 text-center">
                               <input
                                 type="checkbox"
-                                className="checkbox checkbox-xs rounded border-neutral-600 checked:border-[#F4511E] checked:bg-[#F4511E] cursor-pointer"
+                                className="cursor-pointer"
                                 checked={filtered.length > 0 && filtered.every((it) => selectedIds.includes(it.id))}
                                 onChange={() => handleToggleSelectAll(filtered)}
                                 title="Pilih semua pengguna"
@@ -3714,7 +3714,7 @@ export default function MasterDataPage() {
                                 <td className="p-3 text-center">
                                   <input
                                     type="checkbox"
-                                    className="checkbox checkbox-xs rounded border-neutral-600 checked:border-[#F4511E] checked:bg-[#F4511E] cursor-pointer"
+                                    className="cursor-pointer"
                                     checked={selectedIds.includes(user.id)}
                                     onChange={() => handleToggleSelectItem(user.id)}
                                   />
@@ -3887,7 +3887,7 @@ export default function MasterDataPage() {
                                 <div className="flex items-center gap-2">
                                   <input
                                     type="checkbox"
-                                    className="checkbox checkbox-xs rounded border-neutral-600 checked:border-[#F4511E] checked:bg-[#F4511E] cursor-pointer"
+                                    className="cursor-pointer"
                                     checked={selectedIds.includes(user.id)}
                                     onChange={() => handleToggleSelectItem(user.id)}
                                     title="Pilih pengguna"
@@ -4086,7 +4086,7 @@ export default function MasterDataPage() {
                           <th className="p-3 w-10 text-center">
                             <input
                               type="checkbox"
-                              className="checkbox checkbox-xs rounded border-neutral-600 checked:border-[#F4511E] checked:bg-[#F4511E] cursor-pointer"
+                              className="cursor-pointer"
                               checked={filteredCurrencies.length > 0 && filteredCurrencies.every((it) => selectedIds.includes(it.id))}
                               onChange={() => handleToggleSelectAll(filteredCurrencies)}
                               title="Pilih semua mata uang"
@@ -4110,7 +4110,7 @@ export default function MasterDataPage() {
                             <td className="p-3 text-center">
                               <input
                                 type="checkbox"
-                                className="checkbox checkbox-xs rounded border-neutral-600 checked:border-[#F4511E] checked:bg-[#F4511E] cursor-pointer"
+                                className="cursor-pointer"
                                 checked={selectedIds.includes(curr.id)}
                                 onChange={() => handleToggleSelectItem(curr.id)}
                               />

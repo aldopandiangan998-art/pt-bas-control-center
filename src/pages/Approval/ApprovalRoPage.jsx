@@ -683,22 +683,20 @@ export default function ApprovalRoPage() {
         {activeTab === 'pending' && filteredList.length > 0 && (
           <div className="px-3 sm:px-4 py-2.5 bg-[#14171A] flex flex-wrap items-center justify-between gap-3 text-xs font-mono">
             <div className="flex items-center gap-2.5">
-              <button
-                type="button"
-                onClick={handleSelectAllPending}
-                className="flex items-center gap-2 text-neutral-300 hover:text-white px-2.5 py-1.5 rounded-lg bg-[#1C1F23] border border-[#2B3037] hover:border-neutral-500 transition-colors cursor-pointer"
+              <label
+                className="flex items-center gap-2 text-neutral-300 hover:text-white px-2.5 py-1.5 rounded-lg bg-[#1C1F23] border border-[#2B3037] hover:border-neutral-500 transition-colors cursor-pointer select-none"
               >
-                {selectedIds.size === filteredList.length && filteredList.length > 0 ? (
-                  <CheckSquare className="w-4 h-4 text-[#F4511E]" />
-                ) : (
-                  <Square className="w-4 h-4 text-neutral-400" />
-                )}
+                <input
+                  type="checkbox"
+                  checked={selectedIds.size === filteredList.length && filteredList.length > 0}
+                  onChange={handleSelectAllPending}
+                />
                 <span>
                   {selectedIds.size === filteredList.length
-                    ? 'Batal Pilih Semua'
-                    : `Pilih Semua Pending (${filteredList.length})`}
+                    ? (language === 'en' ? 'Deselect All' : 'Batal Pilih Semua')
+                    : (language === 'en' ? `Select All Pending (${filteredList.length})` : `Pilih Semua Pending (${filteredList.length})`)}
                 </span>
-              </button>
+              </label>
 
               {selectedIds.size > 0 && (
                 <span className="text-amber-400 font-bold bg-amber-950/40 px-2 py-0.5 rounded border border-amber-900/40">
@@ -815,18 +813,12 @@ export default function ApprovalRoPage() {
                   <div className="flex items-center gap-2.5">
                     {/* Checkbox for batch approval if pending */}
                     {isPending && (
-                      <button
-                        type="button"
-                        onClick={() => toggleSelect(po.id)}
-                        className="text-neutral-400 hover:text-white p-0.5 cursor-pointer"
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => toggleSelect(po.id)}
                         title={isSelected ? 'Batalkan pilihan' : 'Pilih pesanan ini'}
-                      >
-                        {isSelected ? (
-                          <CheckSquare className="w-4 h-4 text-[#F4511E]" />
-                        ) : (
-                          <Square className="w-4 h-4" />
-                        )}
-                      </button>
+                      />
                     )}
 
                     <div>

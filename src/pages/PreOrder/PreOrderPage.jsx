@@ -1536,7 +1536,20 @@ export default function PreOrderPage() {
                           <table className="w-full text-xs font-mono">
                             <thead>
                               <tr className="border-b border-[#1C2026] text-[10px] text-neutral-500 uppercase tracking-wider">
-                                <th className="w-8 px-3 py-2 text-left"></th>
+                                <th className="w-8 px-3 py-2 text-center">
+                                  <input
+                                    type="checkbox"
+                                    checked={orders.length > 0 && orders.every((po) => selectedIds.has(po.id))}
+                                    onChange={() => {
+                                      if (orders.every((po) => selectedIds.has(po.id))) {
+                                        setSelectedIds(new Set());
+                                      } else {
+                                        setSelectedIds(new Set(orders.map((po) => po.id)));
+                                      }
+                                    }}
+                                    title={language === 'en' ? 'Select all on this page' : 'Pilih semua'}
+                                  />
+                                </th>
                                 <th className="px-3 py-2 text-left min-w-[90px]">Tanggal</th>
                                 <th className="px-3 py-2 text-left min-w-[150px]">No. Dokumen</th>
                                 <th className="px-3 py-2 text-left min-w-[140px]">Material</th>
@@ -1573,18 +1586,13 @@ export default function PreOrderPage() {
                                     } hover:bg-white/[0.03]`}
                                   >
                                     {/* Checkbox */}
-                                    <td className="px-3 py-2.5">
-                                      <button
-                                        type="button"
-                                        onClick={() => toggleSelect(po.id)}
-                                        className={`w-4 h-4 rounded border flex items-center justify-center transition-colors cursor-pointer ${
-                                          isSelected
-                                            ? 'bg-[#F4511E] border-[#F4511E] text-white'
-                                            : 'border-neutral-600 hover:border-neutral-400 bg-transparent'
-                                        }`}
-                                      >
-                                        {isSelected && <Check className="w-2.5 h-2.5 stroke-[3]" />}
-                                      </button>
+                                    <td className="px-3 py-2.5 text-center">
+                                      <input
+                                        type="checkbox"
+                                        checked={isSelected}
+                                        onChange={() => toggleSelect(po.id)}
+                                        title={isSelected ? 'Batalkan pilihan' : 'Pilih pesanan ini'}
+                                      />
                                     </td>
 
                                     {/* Tanggal */}
@@ -1708,19 +1716,12 @@ export default function PreOrderPage() {
                                 {po.status === 'MENUNGGU_APPROVAL' ? (language === 'en' ? 'PENDING APPROVAL' : 'MENUNGGU PERSETUJUAN') : po.status}
                               </span>
                             )}
-                            <button
-                              type="button"
-                              onClick={() => toggleSelect(po.id)}
-                              className={`w-5 h-5 rounded border flex items-center justify-center transition-colors cursor-pointer ${
-                                isSelected
-                                  ? 'bg-[#F4511E] border-[#F4511E] text-white'
-                                  : 'border-neutral-500 hover:border-neutral-300 bg-transparent'
-                              }`}
-                              title="Pilih item"
-                              aria-label="Pilih item"
-                            >
-                              {isSelected && <Check className="w-3.5 h-3.5 stroke-[3]" />}
-                            </button>
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() => toggleSelect(po.id)}
+                              title={isSelected ? 'Batalkan pilihan' : 'Pilih pesanan ini'}
+                            />
                           </div>
                         </div>
 

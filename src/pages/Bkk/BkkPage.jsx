@@ -116,7 +116,7 @@ function CashOutCard({ item, isSelected, onSelect, onDelete, onInfo, canDelete =
               type="checkbox"
               checked={isSelected}
               onChange={onSelect}
-              className="w-4 h-4 rounded border-[#3A404A] bg-[#16191D] accent-[#F4511E] cursor-pointer shrink-0"
+              className="cursor-pointer shrink-0"
             />
           </div>
 

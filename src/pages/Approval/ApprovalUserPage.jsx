@@ -640,7 +640,7 @@ export default function ApprovalUserPage() {
                             type="checkbox"
                             checked={isSelected}
                             onChange={() => toggleSelect(user.id)}
-                            className="checkbox checkbox-xs rounded border-neutral-600 checked:border-[#F4511E] checked:bg-[#F4511E] cursor-pointer"
+                            className="cursor-pointer"
                           />
                           <span className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#F4511E]/20 to-orange-500/10 border border-[#F4511E]/30 text-[#F4511E] font-bold text-sm flex items-center justify-center font-mono shrink-0 shadow-2xs">
                             {user.name.split(' ').map((n) => n[0]).join('').slice(0, 2)}
@@ -770,7 +770,7 @@ export default function ApprovalUserPage() {
                           filteredUsers.every((u) => selectedIds.has(u.id))
                         }
                         onChange={handleSelectAllPending}
-                        className="checkbox checkbox-xs rounded border-neutral-600 checked:border-[#F4511E] checked:bg-[#F4511E] cursor-pointer"
+                        className="cursor-pointer"
                         title={language === 'en' ? 'Select all on this page' : 'Pilih semua di halaman ini'}
                       />
                     </th>
@@ -808,7 +808,7 @@ export default function ApprovalUserPage() {
                             type="checkbox"
                             checked={isSelected}
                             onChange={() => toggleSelect(user.id)}
-                            className="checkbox checkbox-xs rounded border-neutral-600 checked:border-[#F4511E] checked:bg-[#F4511E] cursor-pointer"
+                            className="cursor-pointer"
                           />
                         </td>
 

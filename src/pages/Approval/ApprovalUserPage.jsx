@@ -40,7 +40,6 @@ export default function ApprovalUserPage() {
   // Navigation & Filter Tabs: 'pending' | 'approved' | 'all'
   const [activeTab, setActiveTab] = useState('pending');
   const [searchQuery, setSearchQuery] = useState('');
-  const [branchFilter, setBranchFilter] = useState('ALL');
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   // View Mode: 'grid' | 'list'
@@ -106,15 +105,6 @@ export default function ApprovalUserPage() {
     };
   }, [nonSuperAdminUsers, users]);
 
-  // Unique branches for filter dropdown
-  const branchOptions = useMemo(() => {
-    const set = new Set();
-    nonSuperAdminUsers.forEach((u) => {
-      if (u.branch) set.add(u.branch);
-    });
-    return Array.from(set);
-  }, [nonSuperAdminUsers]);
-
   // Filtered List
   const filteredUsers = useMemo(() => {
     return nonSuperAdminUsers.filter((u) => {
@@ -124,24 +114,20 @@ export default function ApprovalUserPage() {
       if (activeTab === 'pending' && !isUserPending) return false;
       if (activeTab === 'approved' && isUserPending) return false;
 
-      // Branch filter
-      if (branchFilter !== 'ALL' && u.branch !== branchFilter) return false;
-
       // Search query
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
         const name = (u.name || '').toLowerCase();
         const email = (u.email || '').toLowerCase();
         const phone = (u.phone || '').toLowerCase();
-        const branch = (u.branch || '').toLowerCase();
-        if (!name.includes(q) && !email.includes(q) && !phone.includes(q) && !branch.includes(q)) {
+        if (!name.includes(q) && !email.includes(q) && !phone.includes(q)) {
           return false;
         }
       }
 
       return true;
     });
-  }, [nonSuperAdminUsers, activeTab, branchFilter, searchQuery]);
+  }, [nonSuperAdminUsers, activeTab, searchQuery]);
 
   // Batch selection handlers
   const toggleSelect = (id) => {
@@ -405,9 +391,7 @@ export default function ApprovalUserPage() {
               {metrics.total}
             </span>
             <span className="text-xs text-blue-300 font-medium">
-              {branchOptions.length > 0
-                ? (language === 'en' ? `${branchOptions.length} branches / hubs` : `${branchOptions.length} cabang / hub`)
-                : (language === 'en' ? 'total registrants' : 'total pendaftar')}
+              {language === 'en' ? 'total registrants' : 'total pendaftar'}
             </span>
           </div>
           <p className="text-xs text-neutral-400 mt-1">
@@ -495,7 +479,7 @@ export default function ApprovalUserPage() {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder={language === 'en' ? 'Search name, email, phone, or branch...' : 'Cari nama, email, telepon, atau cabang...'}
+              placeholder={language === 'en' ? 'Search name, email, or phone...' : 'Cari nama, email, atau telepon...'}
               className="w-full pl-9 pr-8 py-1.5 bg-[#181B1E] border border-[#2A2E33] rounded-lg text-xs text-white placeholder:text-neutral-500 outline-none focus:border-[#F4511E]"
             />
             {searchQuery && (
@@ -508,21 +492,6 @@ export default function ApprovalUserPage() {
               </button>
             )}
           </div>
-
-          {branchOptions.length > 0 && (
-            <select
-              value={branchFilter}
-              onChange={(e) => setBranchFilter(e.target.value)}
-              className="px-2.5 py-1.5 bg-[#181B1E] border border-[#2A2E33] rounded-lg text-xs text-neutral-300 outline-none focus:border-[#F4511E] cursor-pointer"
-            >
-              <option value="ALL">{language === 'en' ? 'All Branches' : 'Semua Cabang'}</option>
-              {branchOptions.map((b) => (
-                <option key={b} value={b}>
-                  {b}
-                </option>
-              ))}
-            </select>
-          )}
 
           {/* View Mode Toggle: Grid vs List */}
           <div className="flex items-center bg-[#1A1D20] border border-[#292D32] rounded-lg p-0.5 shrink-0 gap-0.5">

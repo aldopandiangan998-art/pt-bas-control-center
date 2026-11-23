@@ -48,7 +48,7 @@ import {
 
 export default function DashboardPage() {
   const navigate = useNavigate();
-  const { isDark } = useApp();
+  const { isDark, language } = useApp();
   const { preOrders, suratJalanList, bkkList } = useData();
   const { currentUser, isSuperAdmin } = useAuth();
 
@@ -76,28 +76,28 @@ export default function DashboardPage() {
   const operationalModules = [
     { title: 'Received Order', path: '/pre-orders', icon: ReceivedOrderIcon },
     { title: 'Good Issue', path: '/surat-jalan', icon: GoodIssueIcon },
-    { title: 'Jurnal Good Issue', path: '/rekapan', icon: JurnalGoodIssueIcon },
+    { title: language === 'en' ? 'GI Journal' : 'Jurnal Good Issue', path: '/rekapan', icon: JurnalGoodIssueIcon },
     { title: 'Cash Out', path: '/bkk', icon: CashOutIcon },
     { title: 'Invoice', path: '/invoices', icon: InvoiceIcon },
     ...(isSuperAdmin
       ? [
-        { title: 'Laporan Pajak', path: '/laporan', icon: LaporanPajakIcon },
-        { title: 'Laporan All-in-One', path: '/laporan', icon: LaporanAllInOneIcon },
-        { title: 'Laporan Supplier', path: '/laporan', icon: LaporanSupplierIcon },
+        { title: language === 'en' ? 'Tax Report' : 'Laporan Pajak', path: '/laporan', icon: LaporanPajakIcon },
+        { title: language === 'en' ? 'All-in-One Report' : 'Laporan All-in-One', path: '/laporan', icon: LaporanAllInOneIcon },
+        { title: language === 'en' ? 'Supplier Report' : 'Laporan Supplier', path: '/laporan', icon: LaporanSupplierIcon },
       ]
       : []),
   ];
 
   // 8 Master Data Modules
   const masterData = [
-    { title: 'Data Pengguna', tab: 'pengguna', icon: DataPenggunaIcon },
-    { title: 'Data Material', tab: 'material', icon: DataMaterialIcon },
-    { title: 'Data Supplier', tab: 'supplier', icon: DataSupplierIcon },
-    { title: 'Data Customer', tab: 'customer', icon: DataCustomerIcon },
-    { title: 'Data Armada', tab: 'armada', icon: DataArmadaIcon },
-    { title: 'Data Bank', tab: 'bank', icon: DataBankIcon },
-    { title: 'Data Rekening Bank', tab: 'rekening', icon: DataRekeningBankIcon },
-    { title: 'Data Mata Uang', tab: 'mata-uang', icon: DataMataUangIcon },
+    { title: language === 'en' ? 'User Data' : 'Data Pengguna', tab: 'pengguna', icon: DataPenggunaIcon },
+    { title: language === 'en' ? 'Material Data' : 'Data Material', tab: 'material', icon: DataMaterialIcon },
+    { title: language === 'en' ? 'Supplier Data' : 'Data Supplier', tab: 'supplier', icon: DataSupplierIcon },
+    { title: language === 'en' ? 'Customer Data' : 'Data Customer', tab: 'customer', icon: DataCustomerIcon },
+    { title: language === 'en' ? 'Fleet Data' : 'Data Armada', tab: 'armada', icon: DataArmadaIcon },
+    { title: language === 'en' ? 'Bank Data' : 'Data Bank', tab: 'bank', icon: DataBankIcon },
+    { title: language === 'en' ? 'Bank Account Data' : 'Data Rekening Bank', tab: 'rekening', icon: DataRekeningBankIcon },
+    { title: language === 'en' ? 'Currency Data' : 'Data Mata Uang', tab: 'mata-uang', icon: DataMataUangIcon },
   ];
 
   // 1. Chart Series Points (8 Days corresponding to the reference image)
@@ -172,13 +172,13 @@ export default function DashboardPage() {
         <div className="flex items-center gap-2.5 flex-wrap">
           <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_8px_rgba(52,211,153,0.6)]" />
           <span className="text-xs font-mono font-bold text-white uppercase tracking-wider">
-            Pusat Kendali Operasi PT BAS • Gresik Hub
+            {language === 'en' ? 'PT BAS Operations Control Center • Gresik Hub' : 'Pusat Kendali Operasi PT BAS • Gresik Hub'}
           </span>
           <span className="text-neutral-600 hidden sm:inline">•</span>
           <span className="text-xs text-neutral-300">
-            Sesi: <strong className="text-white font-medium">{currentUser?.name || 'Administrator'}</strong>{' '}
+            {language === 'en' ? 'Session:' : 'Sesi:'} <strong className="text-white font-medium">{currentUser?.name || (language === 'en' ? 'Administrator' : 'Administrator')}</strong>{' '}
             <span className="text-[#FF7043] font-mono text-[11px] font-semibold">
-              ({currentUser?.role === 'superadmin' ? 'Super Admin' : 'Admin Operasional'})
+              ({currentUser?.role === 'superadmin' ? 'Super Admin' : (language === 'en' ? 'Operational Admin' : 'Admin Operasional')})
             </span>
           </span>
         </div>
@@ -194,12 +194,14 @@ export default function DashboardPage() {
           <div className="flex items-start justify-between gap-2 mb-3">
             <div>
               <h2 className="text-base sm:text-lg font-bold text-white tracking-tight leading-snug">
-                {isExecView ? 'Analisis Arus Kas & Otorisasi Transaksi' : 'Analisis Ritase & Dispatch Armada'}
+                {isExecView
+                  ? (language === 'en' ? 'Cash Flow Analysis & Transaction Authorization' : 'Analisis Arus Kas & Otorisasi Transaksi')
+                  : (language === 'en' ? 'Fleet Dispatch & Volume Analysis' : 'Analisis Ritase & Dispatch Armada')}
               </h2>
               <p className="text-xs text-neutral-400 mt-0.5">
                 {isExecView
-                  ? 'Perbandingan nilai Invoice tagihan (Piutang) vs realisasi pencairan BKK kas keluar disetujui.'
-                  : 'Perbandingan Surat Jalan (GI) diterbitkan vs ritase armada tervalidasi timbangan Gresik.'}
+                  ? (language === 'en' ? 'Comparison of invoice receivables vs approved BKK cash disbursement.' : 'Perbandingan nilai Invoice tagihan (Piutang) vs realisasi pencairan BKK kas keluar disetujui.')
+                  : (language === 'en' ? 'Comparison of Delivery Orders (GI) issued vs fleet trips validated at Gresik scale.' : 'Perbandingan Surat Jalan (GI) diterbitkan vs ritase armada tervalidasi timbangan Gresik.')}
               </p>
             </div>
 
@@ -209,7 +211,7 @@ export default function DashboardPage() {
               onClick={() => setTimeRange(timeRange === '8 Hari Terakhir' ? '30 Hari' : '8 Hari Terakhir')}
               className="px-3 py-1 text-xs font-semibold rounded-md bg-[#F4511E] hover:bg-[#D84315] text-white transition-colors shrink-0 shadow-xs cursor-pointer"
             >
-              {timeRange}
+              {timeRange === '8 Hari Terakhir' ? (language === 'en' ? 'Last 8 Days' : '8 Hari Terakhir') : (language === 'en' ? '30 Days' : '30 Hari')}
             </button>
           </div>
 
@@ -341,15 +343,19 @@ export default function DashboardPage() {
                 <div className="flex items-center gap-1.5 text-[#F4511E] font-semibold">
                   <span className="w-1.5 h-1.5 rounded-full bg-[#F4511E]" />
                   <span>
-                    {isExecView ? 'Tagihan Diterbitkan' : 'Surat Jalan Dibuat'}:{' '}
-                    {activityData[hoveredPoint].created} {isExecView ? 'Jt' : 'rit'}
+                    {isExecView
+                      ? (language === 'en' ? 'Invoice Issued' : 'Tagihan Diterbitkan')
+                      : (language === 'en' ? 'Delivery Order Issued' : 'Surat Jalan Dibuat')}:{' '}
+                    {activityData[hoveredPoint].created} {isExecView ? (language === 'en' ? 'M' : 'Jt') : (language === 'en' ? 'trips' : 'rit')}
                   </span>
                 </div>
                 <div className="flex items-center gap-1.5 text-[#F59E0B] font-semibold">
                   <span className="w-1.5 h-1.5 rounded-full bg-[#F59E0B]" />
                   <span>
-                    {isExecView ? 'Kas Keluar Disetujui' : 'Ritase Tervalidasi'}:{' '}
-                    {activityData[hoveredPoint].approved} {isExecView ? 'Jt' : 'rit'}
+                    {isExecView
+                      ? (language === 'en' ? 'Cash Out Approved' : 'Kas Keluar Disetujui')
+                      : (language === 'en' ? 'Validated Trips' : 'Ritase Tervalidasi')}:{' '}
+                    {activityData[hoveredPoint].approved} {isExecView ? (language === 'en' ? 'M' : 'Jt') : (language === 'en' ? 'trips' : 'rit')}
                   </span>
                 </div>
               </div>
@@ -361,13 +367,17 @@ export default function DashboardPage() {
             <div className="flex items-center gap-2">
               <span className="w-2.5 h-2.5 rounded-full bg-[#F4511E]" />
               <span className="text-neutral-300">
-                {isExecView ? 'Invoice Diterbitkan (Piutang)' : 'Surat Jalan Diterbitkan (GI)'}
+                {isExecView
+                  ? (language === 'en' ? 'Invoice Issued (Receivables)' : 'Invoice Diterbitkan (Piutang)')
+                  : (language === 'en' ? 'Delivery Order Issued (GI)' : 'Surat Jalan Diterbitkan (GI)')}
               </span>
             </div>
             <div className="flex items-center gap-2">
               <span className="w-2.5 h-2.5 rounded-full bg-[#F59E0B]" />
               <span className="text-neutral-300">
-                {isExecView ? 'BKK Disetujui (Kas Keluar)' : 'Ritase Selesai & Tervalidasi'}
+                {isExecView
+                  ? (language === 'en' ? 'BKK Approved (Cash Out)' : 'BKK Disetujui (Kas Keluar)')
+                  : (language === 'en' ? 'Completed & Validated Trips' : 'Ritase Selesai & Tervalidasi')}
               </span>
             </div>
           </div>
@@ -381,12 +391,14 @@ export default function DashboardPage() {
           <div className="flex items-start justify-between gap-2 mb-3">
             <div>
               <h2 className="text-base sm:text-lg font-bold text-white tracking-tight leading-snug">
-                {isExecView ? 'Komposisi Kontrak & Piutang' : 'Distribusi Material Tambang'}
+                {isExecView
+                  ? (language === 'en' ? 'Contract Composition & Receivables' : 'Komposisi Kontrak & Piutang')
+                  : (language === 'en' ? 'Mining Material Distribution' : 'Distribusi Material Tambang')}
               </h2>
               <p className="text-xs text-neutral-400 mt-0.5">
                 {isExecView
-                  ? 'Distribusi nilai piutang per customer proyek utama PT BAS'
-                  : 'Komposisi pengiriman material tambang Gresik Hub'}
+                  ? (language === 'en' ? 'Distribution of receivables by PT BAS key project customers' : 'Distribusi nilai piutang per customer proyek utama PT BAS')
+                  : (language === 'en' ? 'Mining material shipment composition at Gresik Hub' : 'Komposisi pengiriman material tambang Gresik Hub')}
               </p>
             </div>
 
@@ -396,7 +408,7 @@ export default function DashboardPage() {
                 onClick={() => navigate(isExecView ? '/master-data?tab=customer' : '/master-data?tab=material')}
                 className="text-xs font-medium text-[#FF7043] hover:text-[#FFA726] flex items-center gap-1 transition-colors cursor-pointer shrink-0"
               >
-                <span>{isExecView ? 'Kelola Customer' : 'Kelola Material'}</span>
+                <span>{isExecView ? (language === 'en' ? 'Manage Customers' : 'Kelola Customer') : (language === 'en' ? 'Manage Materials' : 'Kelola Material')}</span>
                 <span className="text-sm">→</span>
               </button>
             )}
@@ -480,7 +492,7 @@ export default function DashboardPage() {
               {/* Center Total Count Label */}
               <div className="absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none">
                 <span className="text-[11px] text-neutral-400 font-medium">
-                  {isExecView ? 'Total Faktur' : 'Total Rit'}
+                  {isExecView ? (language === 'en' ? 'Total Invoices' : 'Total Faktur') : (language === 'en' ? 'Total Trips' : 'Total Rit')}
                 </span>
                 <span className="text-2xl font-bold font-mono text-white leading-none mt-0.5">30</span>
               </div>
@@ -517,9 +529,11 @@ export default function DashboardPage() {
           <div className="flex items-center justify-between mb-3">
             <div>
               <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-neutral-300">
-                Fitur Utama Operasional
+                {language === 'en' ? 'Core Operational Features' : 'Fitur Utama Operasional'}
               </h3>
-              <p className="text-[11px] text-neutral-500 mt-0.5">Akses langsung ke alur kerja inti PT BAS</p>
+              <p className="text-[11px] text-neutral-500 mt-0.5">
+                {language === 'en' ? 'Direct access to PT BAS core workflows' : 'Akses langsung ke alur kerja inti PT BAS'}
+              </p>
             </div>
             <span className="px-2 py-0.5 text-[10px] font-mono rounded bg-[#F4511E]/10 text-[#F4511E] border border-[#F4511E]/30 uppercase tracking-wider">
               Super Admin
@@ -541,15 +555,17 @@ export default function DashboardPage() {
               </div>
               <div className="text-sm font-bold text-white leading-tight mb-1">Received Order</div>
               <div className="text-[11px] text-neutral-400 leading-snug mb-3">
-                Kelola pesanan masuk & approval PO dari customer
+                {language === 'en' ? 'Manage incoming orders & customer PO approvals' : 'Kelola pesanan masuk & persetujuan PO dari customer'}
               </div>
               <div className="flex items-center justify-between pt-2 border-t border-[#22262A]">
-                <span className="text-[10px] font-mono text-neutral-500 uppercase tracking-wide">PO Aktif / Pending</span>
+                <span className="text-[10px] font-mono text-neutral-500 uppercase tracking-wide">
+                  {language === 'en' ? 'Active / Pending PO' : 'PO Aktif / Pending'}
+                </span>
                 <div className="flex items-center gap-1.5 font-mono text-xs">
                   <span className="font-bold text-[#F4511E]">{activePreOrders.length}</span>
                   {pendingPreOrders.length > 0 && (
                     <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30 font-semibold">
-                      +{pendingPreOrders.length} pending
+                      +{pendingPreOrders.length} {language === 'en' ? 'pending' : 'pending'}
                     </span>
                   )}
                 </div>
@@ -570,7 +586,7 @@ export default function DashboardPage() {
               </div>
               <div className="text-sm font-bold text-white leading-tight mb-1">Good Issue</div>
               <div className="text-[11px] text-neutral-400 leading-snug mb-3">
-                Penerbitan surat jalan & monitoring pengiriman armada
+                {language === 'en' ? 'Issue delivery orders & monitor fleet dispatch' : 'Penerbitan surat jalan & monitoring pengiriman armada'}
               </div>
               <div className="flex items-center justify-between pt-2 border-t border-[#22262A]">
                 <span className="text-[10px] font-mono text-neutral-500 uppercase tracking-wide">Total GI</span>
@@ -590,12 +606,16 @@ export default function DashboardPage() {
                 </div>
                 <ChevronRight className="w-4 h-4 text-neutral-600 group-hover:text-[#F59E0B] transition-colors mt-1" />
               </div>
-              <div className="text-sm font-bold text-white leading-tight mb-1">Jurnal GI Cash Out</div>
+              <div className="text-sm font-bold text-white leading-tight mb-1">
+                {language === 'en' ? 'GI Journal Cash Out' : 'Jurnal GI Cash Out'}
+              </div>
               <div className="text-[11px] text-neutral-400 leading-snug mb-3">
-                Pencatatan & otorisasi kas keluar BKK operasional
+                {language === 'en' ? 'Recording & authorization of BKK operational cash out' : 'Pencatatan & otorisasi kas keluar BKK operasional'}
               </div>
               <div className="flex items-center justify-between pt-2 border-t border-[#22262A]">
-                <span className="text-[10px] font-mono text-neutral-500 uppercase tracking-wide">Belum Bayar</span>
+                <span className="text-[10px] font-mono text-neutral-500 uppercase tracking-wide">
+                  {language === 'en' ? 'Unpaid' : 'Belum Bayar'}
+                </span>
                 <span className="text-sm font-bold font-mono text-[#F59E0B]">
                   {bkkList.filter((b) => b.statusBayar === 'Belum Dibayar').length}
                 </span>
@@ -616,10 +636,12 @@ export default function DashboardPage() {
               </div>
               <div className="text-sm font-bold text-white leading-tight mb-1">Invoice</div>
               <div className="text-[11px] text-neutral-400 leading-snug mb-3">
-                Penerbitan tagihan & monitoring piutang customer
+                {language === 'en' ? 'Invoice issuance & monitoring of customer receivables' : 'Penerbitan tagihan & monitoring piutang customer'}
               </div>
               <div className="flex items-center justify-between pt-2 border-t border-[#22262A]">
-                <span className="text-[10px] font-mono text-neutral-500 uppercase tracking-wide">Total Tagihan</span>
+                <span className="text-[10px] font-mono text-neutral-500 uppercase tracking-wide">
+                  {language === 'en' ? 'Total Invoices' : 'Total Tagihan'}
+                </span>
                 <span className="text-sm font-bold font-mono text-emerald-400">{suratJalanList.length}</span>
               </div>
             </button>
@@ -638,18 +660,20 @@ export default function DashboardPage() {
           <div className="flex items-start justify-between gap-2 mb-3">
             <div>
               <h2 className="text-base sm:text-lg font-bold text-white tracking-tight leading-snug">
-                {isExecView ? 'Kepatuhan Otorisasi & Likuiditas Finansial' : 'Kepatuhan SOP Timbangan & Ritase'}
+                {isExecView
+                  ? (language === 'en' ? 'Authorization Compliance & Financial Liquidity' : 'Kepatuhan Otorisasi & Likuiditas Finansial')
+                  : (language === 'en' ? 'Scale SOP & Dispatch Compliance' : 'Kepatuhan SOP Timbangan & Ritase')}
               </h2>
               <p className="text-xs text-neutral-400 mt-0.5">
                 {isExecView
-                  ? 'Rasio pencairan kas keluar & PO disetujui terhadap seluruh draf pengajuan biaya.'
-                  : 'Rasio Surat Jalan tervalidasi timbangan terhadap target ritase armada harian.'}
+                  ? (language === 'en' ? 'Ratio of approved cash disbursements & POs to total cost proposals.' : 'Rasio pencairan kas keluar & PO disetujui terhadap seluruh draf pengajuan biaya.')
+                  : (language === 'en' ? 'Ratio of scale-validated delivery orders to daily fleet targets.' : 'Rasio Surat Jalan tervalidasi timbangan terhadap target ritase armada harian.')}
               </p>
             </div>
 
             {/* Target SOP Pill */}
             <div className="px-2.5 py-1 text-[11px] font-mono text-neutral-300 bg-[#0E1012] border border-[#22262A] rounded-md shrink-0 shadow-xs">
-              {isExecView ? 'Target Otorisasi: 100%' : 'Target SOP: 100%'}
+              {isExecView ? (language === 'en' ? 'Auth Target: 100%' : 'Target Otorisasi: 100%') : (language === 'en' ? 'SOP Target: 100%' : 'Target SOP: 100%')}
             </div>
           </div>
 
@@ -694,7 +718,7 @@ export default function DashboardPage() {
               <div className="bg-[#0E1012] border border-[#22262A] rounded-lg p-3">
                 <div className="flex items-center gap-1.5 text-xs font-semibold text-[#FF7043] mb-1">
                   <span>{isExecView ? '💼' : '🚚'}</span>
-                  <span>{isExecView ? 'Likuiditas & Otorisasi Sehat!' : 'Ritase Lapangan Berjalan Tertib!'}</span>
+                  <span>{isExecView ? (language === 'en' ? 'Healthy Liquidity & Authorization!' : 'Likuiditas & Otorisasi Sehat!') : (language === 'en' ? 'Field Dispatch Running Smoothly!' : 'Ritase Lapangan Berjalan Tertib!')}</span>
                 </div>
                 <p className="text-xs text-neutral-300 leading-relaxed">
                   {complianceText}
@@ -705,7 +729,7 @@ export default function DashboardPage() {
               <div className="grid grid-cols-2 gap-2 text-center pt-1">
                 <div className="bg-[#0E1012]/70 border border-[#22262A]/60 rounded-lg p-2">
                   <div className="text-[10px] font-mono uppercase tracking-wider text-neutral-400">
-                    {isExecView ? 'DOKUMEN TERTIB' : 'TOTAL ARMADA SIAP'}
+                    {isExecView ? (language === 'en' ? 'ORDERLY DOCS' : 'DOKUMEN TERTIB') : (language === 'en' ? 'TOTAL FLEET READY' : 'TOTAL ARMADA SIAP')}
                   </div>
                   <div className="text-xl font-bold font-mono text-white mt-0.5">
                     {statUserCount}
@@ -714,7 +738,7 @@ export default function DashboardPage() {
 
                 <div className="bg-[#0E1012]/70 border border-[#22262A]/60 rounded-lg p-2">
                   <div className="text-[10px] font-mono uppercase tracking-wider text-neutral-400">
-                    {isExecView ? 'REKANAN KONTRAK AKTIF' : 'RUTE PROYEK AKTIF'}
+                    {isExecView ? (language === 'en' ? 'ACTIVE PARTNERS' : 'REKANAN KONTRAK AKTIF') : (language === 'en' ? 'ACTIVE PROJECT ROUTES' : 'RUTE PROYEK AKTIF')}
                   </div>
                   <div className="text-xl font-bold font-mono text-white mt-0.5">
                     {statActiveUnits}
@@ -733,17 +757,19 @@ export default function DashboardPage() {
           <div className="flex items-start justify-between gap-2 mb-3">
             <div>
               <h2 className="text-base sm:text-lg font-bold text-white tracking-tight leading-snug">
-                {isExecView ? 'Rekanan Nilai Transaksi Terbesar' : 'Proyek & Rute Tujuan Teraktif'}
+                {isExecView
+                  ? (language === 'en' ? 'Top Partners by Transaction Value' : 'Rekanan Nilai Transaksi Terbesar')
+                  : (language === 'en' ? 'Most Active Projects & Routes' : 'Proyek & Rute Tujuan Teraktif')}
               </h2>
               <p className="text-xs text-neutral-400 mt-0.5">
                 {isExecView
-                  ? 'Top 4 kontributor omzet pengiriman bulan berjalan'
-                  : 'Berdasarkan frekuensi ritase armada dump truck'}
+                  ? (language === 'en' ? 'Top 4 revenue contributors this month' : 'Top 4 kontributor omzet pengiriman bulan berjalan')
+                  : (language === 'en' ? 'Based on dump truck dispatch frequency' : 'Berdasarkan frekuensi ritase armada dump truck')}
               </p>
             </div>
 
             <div className="px-2 py-0.5 text-[11px] font-mono text-neutral-300 bg-[#0E1012] border border-[#22262A] rounded shrink-0">
-              {isExecView ? 'Top 4 Rekanan' : 'Top 4 Proyek'}
+              {isExecView ? (language === 'en' ? 'Top 4 Partners' : 'Top 4 Rekanan') : (language === 'en' ? 'Top 4 Projects' : 'Top 4 Proyek')}
             </div>
           </div>
 
@@ -775,10 +801,10 @@ export default function DashboardPage() {
       <div className="pt-2">
         <div className="flex items-center justify-between mb-2.5">
           <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-neutral-300">
-            Akses Cepat Modul Operasional
+            {language === 'en' ? 'Quick Access Operational Modules' : 'Akses Cepat Modul Operasional'}
           </h3>
           <span className="text-[11px] text-neutral-500 font-mono">
-            {operationalModules.length} Alur Kerja Terintegrasi
+            {language === 'en' ? `${operationalModules.length} Integrated Workflows` : `${operationalModules.length} Alur Kerja Terintegrasi`}
           </span>
         </div>
 
@@ -790,7 +816,7 @@ export default function DashboardPage() {
                 key={item.title}
                 type="button"
                 onClick={() => {
-                  if (item.title === 'Laporan Pajak') {
+                  if (item.title === 'Laporan Pajak' || item.title === 'Tax Report') {
                     setTaxModalOpen(true);
                   } else {
                     navigate(item.path);
@@ -821,10 +847,10 @@ export default function DashboardPage() {
           <div className="flex items-center justify-between mb-2.5">
             <h3 className={`text-xs font-mono font-bold uppercase tracking-wider ${isDark ? 'text-neutral-300' : 'text-slate-600'
               }`}>
-              Pusat Repositori Data Master
+              {language === 'en' ? 'Master Data Repository Center' : 'Pusat Repositori Data Master'}
             </h3>
             <span className={`text-[11px] font-mono ${isDark ? 'text-neutral-500' : 'text-slate-500'}`}>
-              8 Entitas Tambang & Logistik
+              {language === 'en' ? '8 Mining & Logistics Entities' : '8 Entitas Tambang & Logistik'}
             </span>
           </div>
 

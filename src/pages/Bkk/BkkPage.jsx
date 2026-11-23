@@ -174,8 +174,7 @@ function CashOutCard({ item, isSelected, onSelect, onDelete, onInfo, canDelete =
                 checked={isSelected}
                 disabled={item.status !== 'paid' && item.statusBayar !== 'Lunas'}
                 onChange={(item.status === 'paid' || item.statusBayar === 'Lunas') ? onSelect : undefined}
-                className={`w-4 h-4 rounded border-[#3A404A] bg-[#16191D] accent-[#F4511E] ${(item.status === 'paid' || item.statusBayar === 'Lunas') ? 'cursor-pointer' : 'cursor-not-allowed opacity-40'
-                  } shrink-0`}
+                className="cursor-pointer shrink-0"
                 title={
                   (item.status === 'paid' || item.statusBayar === 'Lunas')
                     ? 'Pilih BKK yang sudah Lunas'
@@ -234,16 +233,8 @@ function CashOutCard({ item, isSelected, onSelect, onDelete, onInfo, canDelete =
 // ─────────────────────────────────────────────────────────────────────────────
 const KETERANGAN_TYPES = [
   'general',
-  'Material',
-  'Jasa Angkut',
-  'Kasbon',
-  'Potongan',
-  'Penyesuaian',
-  'Solar',
-  'Biaya Tambahan',
-  'Operasional',
-  'Administrasi',
-  'Lainnya',
+  'deduction',
+  'addition',
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────

@@ -547,7 +547,7 @@ export default function LoginPage({ defaultMode = null }) {
                         type="checkbox"
                         checked={rememberSession}
                         onChange={(e) => setRememberSession(e.target.checked)}
-                        className="w-4 h-4 rounded border-[#1E2D44] bg-[#060A12] text-[#F4511E] accent-[#F4511E] cursor-pointer"
+                        className="cursor-pointer"
                       />
                       <span className={`text-xs font-medium ${isDark ? 'text-neutral-300' : 'text-slate-700'}`}>
                         Ingat sesi perangkat ini
@@ -758,7 +758,7 @@ export default function LoginPage({ defaultMode = null }) {
                       required
                       checked={regData.agreeTerms}
                       onChange={(e) => setRegData({ ...regData, agreeTerms: e.target.checked })}
-                      className="w-4 h-4 mt-0.5 rounded border-[#262F40] bg-[#060A12] text-[#F4511E] accent-[#F4511E] cursor-pointer shrink-0"
+                      className="cursor-pointer shrink-0 mt-0.5"
                     />
                     <span className={`text-xs leading-relaxed ${isDark ? 'text-neutral-300' : 'text-slate-700'}`}>
                       Saya setuju dengan Ketentuan Layanan dan Kebijakan Privasi

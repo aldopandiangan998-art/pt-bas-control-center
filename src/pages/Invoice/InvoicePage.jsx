@@ -69,7 +69,7 @@ function IndeterminateCheckbox({ checked, indeterminate, onChange, className = '
       type="checkbox"
       checked={checked}
       onChange={onChange}
-      className={`w-4 h-4 rounded accent-[#F4511E] cursor-pointer ${className}`}
+      className={`cursor-pointer ${className}`}
     />
   );
 }
@@ -174,7 +174,7 @@ function InvoiceRow({ item, isSelected, onSelect, onInfo, onDelete, isEven, canD
           type="checkbox"
           checked={isSelected}
           onChange={onSelect}
-          className="w-4 h-4 rounded accent-[#F4511E] cursor-pointer"
+          className="cursor-pointer"
         />
       </td>
 
@@ -261,7 +261,7 @@ function InvoiceGridCard({ item, isSelected, onSelect, onInfo, onDelete, canDele
             type="checkbox"
             checked={isSelected}
             onChange={onSelect}
-            className="w-4 h-4 rounded accent-[#F4511E] cursor-pointer shrink-0"
+            className="cursor-pointer shrink-0"
           />
           <span className="text-[11px] font-mono font-bold text-neutral-200 truncate" title={item.kodeTransaksi}>
             {item.kodeTransaksi}

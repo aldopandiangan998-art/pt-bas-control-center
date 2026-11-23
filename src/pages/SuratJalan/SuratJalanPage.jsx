@@ -29,7 +29,7 @@ import { Button, Badge, Card, Input, Select } from '../../components/ui';
 export default function SuratJalanPage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { isDark } = useApp();
+  const { isDark, language } = useApp();
   const { preOrders, createSuratJalan, materials, armadaList, customers } = useData();
   const { addToast } = useToast();
 
@@ -669,7 +669,11 @@ export default function SuratJalanPage() {
           <div className="flex items-center gap-2">
             <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
             <span>
-              Pre Order <strong>{navPo?.customer || formData.customer}</strong> ({navPo?.nomorRO || navPo?.id || 'DRAFT'}) masih berstatus <strong>MENUNGGU APPROVAL</strong> Super Admin. Surat Jalan tidak dapat diterbitkan!
+              {language === 'en' ? (
+                <>Pre Order <strong>{navPo?.customer || formData.customer}</strong> ({navPo?.nomorRO || navPo?.id || 'DRAFT'}) is still in <strong>PENDING APPROVAL</strong> status from Super Admin. Delivery Order cannot be issued!</>
+              ) : (
+                <>Pre Order <strong>{navPo?.customer || formData.customer}</strong> ({navPo?.nomorRO || navPo?.id || 'DRAFT'}) masih berstatus <strong>MENUNGGU PERSETUJUAN</strong> Super Admin. Surat Jalan tidak dapat diterbitkan!</>
+              )}
             </span>
           </div>
           <Button
@@ -678,7 +682,7 @@ export default function SuratJalanPage() {
             onClick={() => navigate('/pre-orders')}
             className="text-rose-200 hover:text-white border border-rose-500/40 shrink-0"
           >
-            Lihat Pre Order
+            {language === 'en' ? 'View Pre Order' : 'Lihat Pre Order'}
           </Button>
         </div>
       )}

@@ -29,7 +29,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useData } from '../../context/DataContext';
 import { useToast } from '../../context/ToastContext';
 import { formatCurrency } from '../../utils/formatters';
-import { Modal, Button, Card, Badge } from '../../components/ui';
+import { Modal, Button, Card, Badge, IndeterminateCheckbox } from '../../components/ui';
 import BkkPrintModal from '../../components/bkk/BkkPrintModal';
 import BkkDetailWorkflowModal from '../../components/bkk/BkkDetailWorkflowModal';
 
@@ -253,8 +253,10 @@ export default function BkkPage() {
     bankAccounts,
     suppliers,
     customers,
-    rekapanList,
     preOrders,
+    suratJalanList,
+    generateNomorRO,
+    rekapanList,
     fetchAvailableOrdersForBkk,
   } = useData();
   const { addToast } = useToast();

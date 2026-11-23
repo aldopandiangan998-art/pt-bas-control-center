@@ -55,6 +55,105 @@ function getAuthHeaders() {
   };
 }
 
+export function getCustomerPrefix(custNameOrObj, customersList = []) {
+  if (!custNameOrObj) return 'GEN';
+  if (typeof custNameOrObj === 'object') {
+    if (custNameOrObj.kodePrefix) return custNameOrObj.kodePrefix.replace(/\s+/g, '').toUpperCase();
+    if (custNameOrObj.name) custNameOrObj = custNameOrObj.name;
+    else return 'GEN';
+  }
+  const custName = String(custNameOrObj).trim();
+  
+  const normalize = (s) => s.toLowerCase().replace(/\b(pt|cv|tbk|persero)\b/gi, '').replace(/[^a-z0-9]/g, '').trim();
+  const targetNorm = normalize(custName);
+
+  const customers = customersList || [];
+
+  // 1. Exact match on name or alias (case-insensitive)
+  let found = customers.find((c) => c.name?.toLowerCase() === custName.toLowerCase() || c.alias?.toLowerCase() === custName.toLowerCase());
+
+  // 2. Normalized match (ignoring PT, CV, punctuation)
+  if (!found) {
+    found = customers.find((c) => normalize(c.name || '') === targetNorm || (c.alias && normalize(c.alias) === targetNorm));
+  }
+
+  // 3. Exact match with kodePrefix
+  if (!found) {
+    found = customers.find((c) => c.kodePrefix && c.kodePrefix.toLowerCase() === custName.toLowerCase());
+  }
+
+  // 4. Word boundary match on kodePrefix (avoid false substring matches like 'si' in 'solusi')
+  if (!found) {
+    found = customers.find((c) => {
+      if (!c.kodePrefix) return false;
+      const cleanPrefix = c.kodePrefix.replace(/\s+/g, '');
+      const regex = new RegExp('(\\b|[^a-zA-Z0-9])' + cleanPrefix + '(\\b|[^a-zA-Z0-9])', 'i');
+      return regex.test(custName);
+    });
+  }
+
+  if (found && found.kodePrefix) {
+    return found.kodePrefix.replace(/\s+/g, '').toUpperCase();
+  }
+  const clean = custName
+    .replace(/\b(PT|CV|TBK|PERSERO)\b/gi, '')
+    .replace(/[^A-Za-z0-9]/g, '')
+    .toUpperCase();
+  return clean.slice(0, 4) || 'GEN';
+}
+
+export function generateNomorRO(custNameOrObj, existingRos = [], date = new Date(), customersList = []) {
+  const d = date instanceof Date ? date : new Date(date || Date.now());
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const yyyy = String(d.getFullYear());
+  const monthYear = `${mm}${yyyy}`;
+  const prefix = getCustomerPrefix(custNameOrObj, customersList);
+
+  let maxSeq = 0;
+  const roList = Array.isArray(existingRos) ? existingRos : [];
+  for (const item of roList) {
+    const str = typeof item === 'string' ? item : (item?.nomorRO || item?.nomorRo || '');
+    if (!str) continue;
+    const match = str.match(new RegExp(`-${monthYear}-(\\d+)`));
+    if (match) {
+      const num = parseInt(match[1], 10);
+      if (!isNaN(num) && num > maxSeq) {
+        maxSeq = num;
+      }
+    }
+  }
+
+  const nextSeq = String(maxSeq + 1).padStart(3, '0');
+  return `RO-${prefix}-${monthYear}-${nextSeq}`;
+}
+
+export function generatePoNumber(custNameOrObj, existingPos = [], date = new Date(), customersList = []) {
+  const d = date instanceof Date ? date : new Date(date || Date.now());
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const yyyy = String(d.getFullYear());
+  const monthYear = `${mm}${yyyy}`;
+  const prefix = getCustomerPrefix(custNameOrObj, customersList);
+
+  let maxSeq = 0;
+  const poList = Array.isArray(existingPos) ? existingPos : [];
+  for (const item of poList) {
+    const str = typeof item === 'string'
+      ? item
+      : (item?.nomorPo || item?.poNumber || item?.nomorPoCustomer || '');
+    if (!str || str === 'MENUNGGU SURAT JALAN PERTAMA' || str.startsWith('PO-DRAFT-')) continue;
+    const match = str.match(new RegExp(`-${monthYear}-(\\d+)`));
+    if (match) {
+      const num = parseInt(match[1], 10);
+      if (!isNaN(num) && num > maxSeq) {
+        maxSeq = num;
+      }
+    }
+  }
+
+  const nextSeq = String(maxSeq + 1).padStart(3, '0');
+  return `PO-${prefix}-${monthYear}-${nextSeq}`;
+}
+
 function isUserSuperAdmin(user) {
   if (!user) return false;
   const email = (user.email || '').toLowerCase().trim();
@@ -1056,9 +1155,9 @@ export function DataProvider({ children }) {
 
   // Pre Order Actions
   const createPreOrder = async (data) => {
-    const timestamp = Date.now();
-    const id = data.id || `PO-DRAFT-${timestamp}`;
-    const nomorRO = data.nomorRO || `RO-${new Date().getFullYear()}-${String(timestamp).slice(-4)}`;
+    const id = (data.id && !isNaN(Number(data.id))) ? Number(data.id) : Date.now();
+    const allRos = [...preOrders, ...suratJalanList, ...rekapanList];
+    const nomorRO = data.nomorRO || generateNomorRO(data.customer, allRos, new Date(), customers);
     const newPo = {
       ...data,
       id,
@@ -1131,9 +1230,10 @@ export function DataProvider({ children }) {
 
     // Optimistic update Pre Orders
     setPreOrders((prev) => {
+      const allRos = [...prev, ...suratJalanList, ...rekapanList];
       const updated = prev.map((po) => {
         if (po.id === id) {
-          const finalRo = po.nomorRO || `RO-${new Date().getFullYear()}-${String(po.id).slice(-4)}`;
+          const finalRo = po.nomorRO || generateNomorRO(po.customer, allRos, new Date(), customers);
           approvedPo = {
             ...po,
             nomorRO: finalRo,
@@ -1156,7 +1256,8 @@ export function DataProvider({ children }) {
     setRekapanList((prev) => {
       const po = approvedPo || preOrders.find((p) => p.id === id);
       if (!po) return prev;
-      const finalRo = po.nomorRO || `RO-${new Date().getFullYear()}-${String(po.id).slice(-4)}`;
+      const allRos = [...preOrders, ...suratJalanList, ...prev];
+      const finalRo = po.nomorRO || generateNomorRO(po.customer, allRos, new Date(), customers);
       const exists = prev.some((r) => r.preOrderId === id || r.nomorRO === finalRo);
       if (exists) return prev;
 
@@ -1278,6 +1379,102 @@ export function DataProvider({ children }) {
     addToast('Pre Order ditolak dan dikembalikan untuk revisi.', 'error');
   };
 
+  const updatePreOrderCustomerPo = async (id, poNumber, syncWaybills = true) => {
+    const cleanPo = (poNumber && String(poNumber).trim() !== '') ? String(poNumber).trim().slice(0, 50) : null;
+    const now = new Date().toISOString().replace('T', ' ').substring(0, 16);
+    const user = getAuthUser();
+    const updaterName = user?.name || 'Admin';
+
+    let targetRoNum = '';
+
+    // 1. Optimistic update in preOrders
+    setPreOrders((prev) => {
+      const updated = prev.map((po) => {
+        if (po.id === id) {
+          targetRoNum = po.nomorRO || '';
+          return {
+            ...po,
+            nomorPo: cleanPo,
+            nomorPoCustomer: cleanPo,
+            poUpdatedBy: updaterName,
+            poUpdatedAt: now,
+          };
+        }
+        return po;
+      });
+      try {
+        localStorage.setItem(STORAGE_KEYS.preOrders, JSON.stringify(updated));
+      } catch (e) {}
+      return updated;
+    });
+
+    // 2. Optimistic update in suratJalanList & rekapanList if syncWaybills
+    if (syncWaybills) {
+      setSuratJalanList((prev) => {
+        const updated = prev.map((sj) => {
+          if (sj.preOrderId === id || (targetRoNum && sj.nomorRO === targetRoNum)) {
+            return { ...sj, poNumber: cleanPo };
+          }
+          return sj;
+        });
+        try {
+          localStorage.setItem(STORAGE_KEYS.suratJalan, JSON.stringify(updated));
+        } catch (e) {}
+        return updated;
+      });
+
+      setRekapanList((prev) => {
+        const updated = prev.map((j) => {
+          if (j.preOrderId === id || (targetRoNum && j.nomorRO === targetRoNum)) {
+            return { ...j, poNumber: cleanPo };
+          }
+          return j;
+        });
+        try {
+          localStorage.setItem(STORAGE_KEYS.rekapan, JSON.stringify(updated));
+        } catch (e) {}
+        return updated;
+      });
+    }
+
+    // 3. Broadcast to other tabs
+    try {
+      const ch = new BroadcastChannel('ptbas_sync_channel');
+      ch.postMessage({ type: 'SYNC_PREORDERS', action: 'update_po', id, poNumber: cleanPo });
+      ch.close();
+    } catch (e) {}
+
+    // 4. Send PATCH to backend
+    try {
+      const res = await fetch(`/api/pre-orders/${encodeURIComponent(id)}/customer-po`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          poNumber: cleanPo,
+          syncWaybills,
+          updatedBy: updaterName,
+        }),
+      });
+
+      if (res.ok) {
+        const result = await res.json().catch(() => null);
+        addToast(
+          result?.message || (cleanPo ? `Nomor PO ${cleanPo} berhasil disimpan!` : 'Nomor PO berhasil dikosongkan.'),
+          'success'
+        );
+        return result?.data;
+      } else {
+        const errJson = await res.json().catch(() => ({}));
+        console.warn('Backend update customer PO failed:', res.status, errJson);
+        addToast(errJson.message || 'Gagal menyimpan Nomor PO ke database', 'error');
+        throw new Error(errJson.message || 'Gagal menyimpan Nomor PO ke database');
+      }
+    } catch (err) {
+      console.warn('Backend update customer PO error:', err);
+      throw err;
+    }
+  };
+
   const deletePreOrder = async (id) => {
     const user = getAuthUser();
     if (!isUserSuperAdmin(user)) {
@@ -1333,9 +1530,8 @@ export function DataProvider({ children }) {
       throw new Error('Pre Order belum disetujui');
     }
 
-    const sjId = `SJ-${new Date().toISOString().slice(0, 7).replace('-', '')}-${String(
-      suratJalanList.length + 1
-    ).padStart(4, '0')}`;
+    const nextId = (suratJalanList.length > 0 ? Math.max(...suratJalanList.map((s) => Number(s.id) || 0)) : 0) + 1;
+    const sjId = sjData.id ? Number(sjData.id) : nextId;
 
     const calc = calculateKubikasi(
       sjData.panjangCm,
@@ -1344,11 +1540,35 @@ export function DataProvider({ children }) {
       sjData.koreksiTinggiCm || 0
     );
 
-    const finalNomorRo = targetPo?.nomorRO || sjData.nomorRO || sjData.nomorRo || (targetPo ? `RO-${targetPo.id}` : '');
+    const allRos = [...preOrders, ...suratJalanList, ...rekapanList];
+    const finalNomorRo = targetPo?.nomorRO || sjData.nomorRO || sjData.nomorRo || generateNomorRO(sjData.customer, allRos, sjData.tanggal ? new Date(sjData.tanggal) : new Date(), customers);
+
+    const allPos = [
+      ...preOrders.map((p) => p.nomorPo || p.nomorPoCustomer),
+      ...suratJalanList.map((s) => s.poNumber),
+      ...rekapanList.map((r) => r.poNumber),
+      ...invoiceList.map((i) => i.poNumber),
+    ];
+
+    const isNumericOrDraft = (str) => {
+      if (!str) return true;
+      const s = String(str).trim();
+      return s === '' || s === 'MENUNGGU SURAT JALAN PERTAMA' || s.startsWith('PO-DRAFT-') || /^\d{10,}$/.test(s);
+    };
+
+    let assignedPoNum = null;
+    if (sjData.poNumber && String(sjData.poNumber).trim() !== '' && !isNumericOrDraft(sjData.poNumber) && String(sjData.poNumber) !== String(targetPo?.id)) {
+      assignedPoNum = String(sjData.poNumber).trim().slice(0, 50);
+    } else if (targetPo?.nomorPo && !isNumericOrDraft(targetPo.nomorPo)) {
+      assignedPoNum = String(targetPo.nomorPo).trim().slice(0, 50);
+    } else if (sjData.autoGeneratePo) {
+      assignedPoNum = generatePoNumber(sjData.customer, allPos, sjData.tanggal ? new Date(sjData.tanggal) : new Date(), customers);
+    }
 
     const newSj = {
       ...sjData,
       id: sjId,
+      poNumber: assignedPoNum,
       nomorRO: finalNomorRo,
       preOrderId: targetPo?.id || sjData.preOrderId || null,
       volumeAkhir: calc.volumeAkhir,
@@ -1365,7 +1585,6 @@ export function DataProvider({ children }) {
     });
 
     // 2. Update Pre Orders terkirim & auto-assign PO number if first delivery
-    let assignedPoNum = sjData.poNumber;
     setPreOrders((prev) => {
       const updated = prev.map((po) => {
         const isMatch =
@@ -1375,11 +1594,6 @@ export function DataProvider({ children }) {
           (po.nomorRO && finalNomorRo && po.nomorRO === finalNomorRo);
 
         if (isMatch) {
-          assignedPoNum =
-            po.nomorPo ||
-            `PO-${sjData.customer.replace(/[^A-Z]/g, '').slice(0, 2)}-2026-${Math.floor(
-              100 + Math.random() * 900
-            )}`;
           return {
             ...po,
             nomorPo: assignedPoNum,
@@ -1409,7 +1623,6 @@ export function DataProvider({ children }) {
           const existingDetails = Array.isArray(jrn.suratJalanDetails) ? jrn.suratJalanDetails : [];
           const sjItemDesc = {
             id: sjId,
-            nomorSj: sjData.nomorSj,
             poNumber: assignedPoNum || jrn.poNumber,
             nomorRO: jrn.nomorRO || finalNomorRo,
             jurnalId: jrn.id,
@@ -1428,7 +1641,7 @@ export function DataProvider({ children }) {
             status: 'Selesai',
           };
 
-          const filteredDetails = existingDetails.filter((d) => d.id !== sjId && d.nomorSj !== sjData.nomorSj);
+          const filteredDetails = existingDetails.filter((d) => d.id !== sjId);
           filteredDetails.push(sjItemDesc);
 
           const updatedTotalSj = filteredDetails.length;
@@ -1464,7 +1677,6 @@ export function DataProvider({ children }) {
 
         const sjItemDesc = {
           id: sjId,
-          nomorSj: sjData.nomorSj,
           poNumber: assignedPoNum || sjData.poNumber,
           nomorRO: finalNomorRo,
           jurnalId: newRekId,
@@ -1562,7 +1774,7 @@ export function DataProvider({ children }) {
       console.warn('Backend Surat Jalan sync failed, saved in localStorage:', err);
     }
 
-    addToast(`Surat Jalan No. ${sjData.nomorSj} berhasil disimpan! (${calc.volumeAkhir} m³) & otomatis masuk ke Ringkasan Jurnal.`, 'success');
+    addToast(`Surat Jalan GI #${sjId} berhasil disimpan! (${calc.volumeAkhir} m³) & otomatis masuk ke Ringkasan Jurnal.`, 'success');
     return newSj;
   };
 
@@ -2702,6 +2914,7 @@ export function DataProvider({ children }) {
         createPreOrder,
         approvePreOrder,
         rejectPreOrder,
+        updatePreOrderCustomerPo,
         deletePreOrder,
         createSuratJalan,
         createBkk,
@@ -2761,6 +2974,11 @@ export function DataProvider({ children }) {
         addCurrency,
         updateCurrency,
         deleteCurrency,
+
+        // RO & PO Helper Utilities
+        getCustomerPrefix: (c) => getCustomerPrefix(c, customers),
+        generateNomorRO: (c, d) => generateNomorRO(c, [...preOrders, ...suratJalanList, ...rekapanList], d, customers),
+        generatePoNumber: (c, d) => generatePoNumber(c, [...preOrders, ...suratJalanList, ...rekapanList, ...invoiceList], d, customers),
       }}
     >
       {children}

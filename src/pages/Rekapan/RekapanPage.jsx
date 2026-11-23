@@ -22,6 +22,8 @@ import {
   PackageCheck,
   Search,
   Eye,
+  X,
+  Filter,
 } from 'lucide-react';
 import { formatCurrency, formatVolume } from '../../utils/formatters';
 import { Button, Badge, Card, Input, Select, Modal } from '../../components/ui';
@@ -31,27 +33,23 @@ import { useData } from '../../context/DataContext';
 export default function RekapanPage() {
   const navigate = useNavigate();
   const { addToast } = useToast();
-  const { rekapanList, preOrders, customers } = useData();
+  const { rekapanList, preOrders, customers, generateNomorRO, materials } = useData();
 
   // Active view tab: 'orders' (Detail Received Order & Realisasi SJ) | 'ledger' (Buku Besar Jurnal GI)
   const [activeTab, setActiveTab] = useState('orders');
 
-  // Search filter for Received Order tab
-  const [roSearchQuery, setRoSearchQuery] = useState('');
+  // Unified Filter & Search States across both tabs
+  const [searchQuery, setSearchQuery] = useState('');
+  const [customerFilter, setCustomerFilter] = useState('ALL');
+  const [materialFilter, setMaterialFilter] = useState('ALL');
+  const [statusFilter, setStatusFilter] = useState('ALL');
+  const [taxFilter, setTaxFilter] = useState('all'); // 'all' | 'non-ppn' | 'ppn'
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [filterPanelOpen, setFilterPanelOpen] = useState(false);
 
   // Selected Order for Waybills Modal Dialog (Popup Window)
   const [selectedOrderForModal, setSelectedOrderForModal] = useState(null);
-
-  // Filter state replicating PT BAS Jurnal GI / Rekapan format
-  const [filterData, setFilterData] = useState({
-    pelanggan: 'ALL',
-    mulai: '',
-    akhir: '',
-    taxFilter: 'all', // 'all' | 'non-ppn' | 'ppn'
-  });
-
-  const [filterCollapsed, setFilterCollapsed] = useState(false);
-  const [isApplying, setIsApplying] = useState(false);
   const [expandedCardIds, setExpandedCardIds] = useState(new Set());
 
   const toggleExpand = (id) => {
@@ -66,16 +64,91 @@ export default function RekapanPage() {
   // 1. FILTERED DATA UNTUK BUKU BESAR JURNAL GI
   const filteredData = useMemo(() => {
     return (rekapanList || []).filter((item) => {
-      if (filterData.pelanggan && filterData.pelanggan !== 'ALL' && item.customer !== filterData.pelanggan) {
+      // Customer Filter
+      if (customerFilter !== 'ALL' && item.customer !== customerFilter) {
         return false;
       }
-      if (filterData.taxFilter === 'ppn' && !item.isPpn) return false;
-      if (filterData.taxFilter === 'non-ppn' && item.isPpn) return false;
-      if (filterData.mulai && item.tanggal && item.tanggal < filterData.mulai) return false;
-      if (filterData.akhir && item.tanggal && item.tanggal > filterData.akhir) return false;
+
+      // Material Filter
+      if (materialFilter !== 'ALL' && item.material !== materialFilter) {
+        return false;
+      }
+
+      // Tax Filter
+      if (taxFilter === 'ppn' && !item.isPpn) return false;
+      if (taxFilter === 'non-ppn' && item.isPpn) return false;
+
+      // Status Filter
+      if (statusFilter === 'SIAP_KIRIM' && item.status !== 'Siap Kirim') return false;
+      if (statusFilter === 'DALAM_PENGIRIMAN' && item.status !== 'Dalam Pengiriman') return false;
+      if (statusFilter === 'SELESAI' && item.status !== 'Selesai Kirim') return false;
+      if (statusFilter === 'OVER' && Number(item.totalVolume) <= Number(item.targetVolume)) return false;
+
+      // Date Range Filter
+      if (startDate && item.tanggal && item.tanggal < startDate) return false;
+      if (endDate && item.tanggal && item.tanggal > endDate) return false;
+
+      // Free-text Search (multi-term, deep waybill details)
+      const q = (searchQuery || '').toLowerCase().trim();
+      if (q) {
+        const terms = q.split(/\s+/).filter(Boolean);
+
+        const sjDetails = Array.isArray(item.suratJalanDetails) ? item.suratJalanDetails : [];
+        const sjText = sjDetails
+          .map((d) => [
+            String(d.nomorSuratJalan || d.noSJ || d.id || ''),
+            String(d.nomorPolisi || d.nopol || ''),
+            String(d.driver || d.sopir || ''),
+            String(d.supplier || d.quarry || ''),
+          ].join(' '))
+          .join(' ');
+
+        let dateAliases = String(item.tanggal || '');
+        if (item.tanggal && item.tanggal.includes('-')) {
+          const parts = item.tanggal.split('-');
+          if (parts.length === 3) {
+            const [y, m, d] = parts;
+            dateAliases += ` ${d}-${m}-${y} ${d}/${m}/${y}`;
+            const months = [
+              'januari', 'februari', 'maret', 'april', 'mei', 'juni',
+              'juli', 'agustus', 'september', 'oktober', 'november', 'desember'
+            ];
+            const mIdx = parseInt(m, 10) - 1;
+            if (months[mIdx]) dateAliases += ` ${months[mIdx]} ${months[mIdx].slice(0, 3)}`;
+          }
+        }
+
+        const isOver = Number(item.targetVolume) > 0 && Number(item.totalVolume) > Number(item.targetVolume);
+        const statusAliases = [
+          item.status || '',
+          item.status === 'Selesai Kirim' ? 'selesai completed finish tuntas lunas' : '',
+          item.status === 'Dalam Pengiriman' ? 'dalam pengiriman berjalan aktif proses shipping delivery' : '',
+          item.status === 'Siap Kirim' ? 'siap kirim ready antrian belum kirim' : '',
+          isOver ? 'over over-delivery kelebihan kuota' : '',
+        ].join(' ');
+
+        const searchableText = [
+          String(item.id || ''),
+          String(item.nomorRO || ''),
+          String(item.poNumber || ''),
+          String(item.customer || ''),
+          String(item.customerAddress || ''),
+          String(item.material || ''),
+          String(item.satuan || ''),
+          dateAliases,
+          statusAliases,
+          sjText,
+        ]
+          .join(' ')
+          .toLowerCase();
+
+        const matchAllTerms = terms.every((term) => searchableText.includes(term));
+        if (!matchAllTerms) return false;
+      }
+
       return true;
     });
-  }, [rekapanList, filterData]);
+  }, [rekapanList, customerFilter, materialFilter, taxFilter, statusFilter, startDate, endDate, searchQuery]);
 
   // Aggregated calculations for Jurnal GI
   const stats = useMemo(() => {
@@ -95,7 +168,7 @@ export default function RekapanPage() {
     // Prioritize approved preOrders and match with live journals
     const approvedPos = (preOrders || []).filter((p) => p.status === 'APPROVED');
     for (const po of approvedPos) {
-      const finalRo = po.nomorRO || `RO-${po.tanggal ? String(po.tanggal).slice(0, 4) : '2026'}-${String(po.id).slice(-4)}`;
+      const finalRo = po.nomorRO || (generateNomorRO ? generateNomorRO(po.customer, preOrders, po.tanggal, customers) : '');
       seenRos.add(finalRo);
 
       let parsedItems = [];
@@ -188,27 +261,116 @@ export default function RekapanPage() {
     return list;
   }, [rekapanList, preOrders]);
 
-  // Filtered RO list based on search query
-  const filteredReceivedOrders = useMemo(() => {
-    if (!roSearchQuery.trim()) return receivedOrders;
-    const q = roSearchQuery.toLowerCase();
-    return receivedOrders.filter(
-      (ro) =>
-        (ro.nomorRO || '').toLowerCase().includes(q) ||
-        (ro.customer || '').toLowerCase().includes(q) ||
-        (ro.material || '').toLowerCase().includes(q) ||
-        (ro.poNumber && String(ro.poNumber).toLowerCase().includes(q))
-    );
-  }, [receivedOrders, roSearchQuery]);
+  // Complete materials list from data
+  const availableMaterialOptions = useMemo(() => {
+    const set = new Set();
+    (receivedOrders || []).forEach((r) => { if (r.material) set.add(r.material); });
+    (rekapanList || []).forEach((r) => { if (r.material) set.add(r.material); });
+    if (materials && Array.isArray(materials)) {
+      materials.forEach((m) => { if (m.name) set.add(m.name); });
+    }
+    return Array.from(set).sort((a, b) => a.localeCompare(b, 'id'));
+  }, [receivedOrders, rekapanList, materials]);
 
-  // Overall RO Statistics
+  // Filtered RO list based on unified filters & search query
+  const filteredReceivedOrders = useMemo(() => {
+    return (receivedOrders || []).filter((ro) => {
+      // 1. Customer Filter
+      if (customerFilter !== 'ALL' && ro.customer !== customerFilter) {
+        return false;
+      }
+
+      // 2. Material Filter
+      if (materialFilter !== 'ALL' && ro.material !== materialFilter) {
+        return false;
+      }
+
+      // 3. Tax Filter
+      if (taxFilter === 'ppn' && !ro.isPpn) return false;
+      if (taxFilter === 'non-ppn' && ro.isPpn) return false;
+
+      // 4. Status Filter
+      if (statusFilter === 'SIAP_KIRIM' && ro.status !== 'Siap Kirim') return false;
+      if (statusFilter === 'DALAM_PENGIRIMAN' && ro.status !== 'Dalam Pengiriman') return false;
+      if (statusFilter === 'SELESAI' && ro.status !== 'Selesai Kirim') return false;
+      if (statusFilter === 'OVER' && ro.totalVolume <= ro.targetVolume) return false;
+
+      // 5. Date Filter
+      if (startDate && ro.tanggal && ro.tanggal < startDate) return false;
+      if (endDate && ro.tanggal && ro.tanggal > endDate) return false;
+
+      // 6. Free text Search (Multi-term, deep SJ details)
+      const q = (searchQuery || '').toLowerCase().trim();
+      if (q) {
+        const terms = q.split(/\s+/).filter(Boolean);
+
+        const sjDetails = Array.isArray(ro.suratJalanDetails) ? ro.suratJalanDetails : [];
+        const sjText = sjDetails
+          .map((d) => [
+            String(d.nomorSuratJalan || d.noSJ || d.id || ''),
+            String(d.nomorPolisi || d.nopol || ''),
+            String(d.driver || d.sopir || ''),
+            String(d.supplier || d.quarry || ''),
+          ].join(' '))
+          .join(' ');
+
+        let dateAliases = String(ro.tanggal || '');
+        if (ro.tanggal && ro.tanggal.includes('-')) {
+          const parts = ro.tanggal.split('-');
+          if (parts.length === 3) {
+            const [y, m, d] = parts;
+            dateAliases += ` ${d}-${m}-${y} ${d}/${m}/${y}`;
+            const months = [
+              'januari', 'februari', 'maret', 'april', 'mei', 'juni',
+              'juli', 'agustus', 'september', 'oktober', 'november', 'desember'
+            ];
+            const mIdx = parseInt(m, 10) - 1;
+            if (months[mIdx]) dateAliases += ` ${months[mIdx]} ${months[mIdx].slice(0, 3)}`;
+          }
+        }
+
+        const isOver = ro.targetVolume > 0 && ro.totalVolume > ro.targetVolume;
+        const statusAliases = [
+          ro.status || '',
+          ro.status === 'Selesai Kirim' ? 'selesai completed finish tuntas lunas' : '',
+          ro.status === 'Dalam Pengiriman' ? 'dalam pengiriman berjalan aktif proses shipping delivery' : '',
+          ro.status === 'Siap Kirim' ? 'siap kirim ready antrian belum kirim' : '',
+          isOver ? 'over over-delivery kelebihan kuota' : '',
+          !ro.poNumber || ro.poNumber === 'MENUNGGU SURAT JALAN PERTAMA' ? 'menunggu surat jalan pertama draft po' : '',
+        ].join(' ');
+
+        const searchableText = [
+          String(ro.id || ''),
+          String(ro.nomorRO || ''),
+          String(ro.poNumber || ''),
+          String(ro.nomorPoCustomer || ''),
+          String(ro.customer || ''),
+          String(ro.customerAddress || ''),
+          String(ro.material || ''),
+          String(ro.satuan || ''),
+          dateAliases,
+          statusAliases,
+          sjText,
+        ]
+          .join(' ')
+          .toLowerCase();
+
+        const matchAllTerms = terms.every((term) => searchableText.includes(term));
+        if (!matchAllTerms) return false;
+      }
+
+      return true;
+    });
+  }, [receivedOrders, customerFilter, materialFilter, taxFilter, statusFilter, startDate, endDate, searchQuery]);
+
+  // Overall RO Statistics based on filtered data
   const roStats = useMemo(() => {
-    const totalRo = receivedOrders.length;
-    const totalTargetVol = Number(receivedOrders.reduce((sum, r) => sum + (Number(r.targetVolume) || 0), 0).toFixed(2));
-    const totalDeliveredVol = Number(receivedOrders.reduce((sum, r) => sum + (Number(r.totalVolume) || 0), 0).toFixed(2));
-    const totalIssuedSj = receivedOrders.reduce((sum, r) => sum + (Number(r.totalSj) || 0), 0);
-    const totalSelesai = receivedOrders.filter((r) => r.status === 'Selesai Kirim').length;
-    const totalBerjalan = receivedOrders.filter((r) => r.status === 'Dalam Pengiriman').length;
+    const totalRo = filteredReceivedOrders.length;
+    const totalTargetVol = Number(filteredReceivedOrders.reduce((sum, r) => sum + (Number(r.targetVolume) || 0), 0).toFixed(2));
+    const totalDeliveredVol = Number(filteredReceivedOrders.reduce((sum, r) => sum + (Number(r.totalVolume) || 0), 0).toFixed(2));
+    const totalIssuedSj = filteredReceivedOrders.reduce((sum, r) => sum + (Number(r.totalSj) || 0), 0);
+    const totalSelesai = filteredReceivedOrders.filter((r) => r.status === 'Selesai Kirim').length;
+    const totalBerjalan = filteredReceivedOrders.filter((r) => r.status === 'Dalam Pengiriman').length;
     const progressPct = totalTargetVol > 0
       ? Math.min(100, Math.round((totalDeliveredVol / totalTargetVol) * 100))
       : 0;
@@ -221,48 +383,46 @@ export default function RekapanPage() {
       totalBerjalan,
       progressPct,
     };
-  }, [receivedOrders]);
+  }, [filteredReceivedOrders]);
 
   const handleMulaiChange = (val) => {
-    setFilterData((prev) => ({
-      ...prev,
-      mulai: val,
-      akhir: prev.akhir && val && val > prev.akhir ? val : prev.akhir,
-    }));
+    setStartDate(val);
+    if (endDate && val && val > endDate) {
+      setEndDate(val);
+    }
   };
 
   const handleAkhirChange = (val) => {
-    if (filterData.mulai && val && val < filterData.mulai) {
+    if (startDate && val && val < startDate) {
       addToast('Tanggal akhir tidak boleh sebelum tanggal mulai', 'warning');
       return;
     }
-    setFilterData((prev) => ({ ...prev, akhir: val }));
+    setEndDate(val);
   };
 
-  const handleApplyFilter = () => {
-    if (filterData.mulai && filterData.akhir && filterData.akhir < filterData.mulai) {
-      addToast('Tanggal akhir tidak boleh sebelum tanggal mulai', 'error');
-      return;
-    }
-    setIsApplying(true);
-    setTimeout(() => {
-      setIsApplying(false);
-      addToast(
-        `Filter diterapkan: ${filteredData.length} rekapan ditemukan untuk ${filterData.pelanggan === 'ALL' ? 'Semua Pelanggan' : filterData.pelanggan}`,
-        'success'
-      );
-    }, 250);
+  const hasActiveFilters = Boolean(
+    searchQuery.trim() ||
+    customerFilter !== 'ALL' ||
+    materialFilter !== 'ALL' ||
+    statusFilter !== 'ALL' ||
+    taxFilter !== 'all' ||
+    startDate ||
+    endDate
+  );
+
+  const handleResetFilters = () => {
+    setSearchQuery('');
+    setCustomerFilter('ALL');
+    setMaterialFilter('ALL');
+    setStatusFilter('ALL');
+    setTaxFilter('all');
+    setStartDate('');
+    setEndDate('');
+    addToast('Semua filter rekapan berhasil di-reset', 'info');
   };
 
-  const handleResetFilter = () => {
-    setFilterData({
-      pelanggan: 'ALL',
-      mulai: '',
-      akhir: '',
-      taxFilter: 'all',
-    });
-    addToast('Filter rekapan dikembalikan ke default', 'info');
-  };
+  const currentCount = activeTab === 'orders' ? filteredReceivedOrders.length : filteredData.length;
+  const totalCount = activeTab === 'orders' ? receivedOrders.length : (rekapanList || []).length;
 
   return (
     <div className="w-full space-y-6 pb-20 select-none">
@@ -328,6 +488,276 @@ export default function RekapanPage() {
         </div>
       </div>
 
+      {/* ── UNIFIED FILTER & SEARCH TOOLBAR ── */}
+      <div className="bg-[#14171A] border border-[#22262A] rounded-2xl p-3 sm:p-4 space-y-3 font-mono">
+        {/* Row 1: Search Bar (prominent) + Quick Dropdown Filters */}
+        <div className="flex flex-col lg:flex-row lg:items-center gap-2.5">
+          {/* Free Text Search Box */}
+          <div className="relative flex-1">
+            <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Escape') setSearchQuery('');
+              }}
+              placeholder="Cari nomor RO, PO, customer, material, no. surat jalan, nopol armada, status..."
+              className="w-full bg-[#1C1F24] border border-[#2B3037] focus:border-[#F4511E] focus:ring-1 focus:ring-[#F4511E]/30 rounded-xl pl-10 pr-28 py-2.5 text-xs text-white placeholder-neutral-500 focus:outline-none transition-all shadow-inner font-mono"
+            />
+            <div className="absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
+              {searchQuery.trim() && (
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-[#F4511E]/10 text-[#F4511E] border border-[#F4511E]/30 hidden sm:inline">
+                  {currentCount} ditemukan
+                </span>
+              )}
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  className="text-neutral-400 hover:text-white p-1 rounded-md hover:bg-white/10 transition-colors cursor-pointer"
+                  title="Hapus pencarian (Esc)"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Quick Dropdowns & Buttons */}
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* Customer Filter */}
+            <div className="relative">
+              <select
+                value={customerFilter}
+                onChange={(e) => setCustomerFilter(e.target.value)}
+                className="bg-[#1C1F24] border border-[#2B3037] rounded-xl pl-3 pr-7 py-2 text-xs font-mono text-neutral-200 focus:outline-none focus:border-[#F4511E] appearance-none cursor-pointer hover:border-neutral-500 transition-colors"
+              >
+                <option value="ALL">Semua Pelanggan</option>
+                {(customers || []).map((c) => (
+                  <option key={c.id} value={c.name}>
+                    {c.name} {c.alias ? `(${c.alias})` : ''}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown className="w-3.5 h-3.5 text-neutral-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+            </div>
+
+            {/* Material Filter */}
+            <div className="relative">
+              <select
+                value={materialFilter}
+                onChange={(e) => setMaterialFilter(e.target.value)}
+                className="bg-[#1C1F24] border border-[#2B3037] rounded-xl pl-3 pr-7 py-2 text-xs font-mono text-neutral-200 focus:outline-none focus:border-[#F4511E] appearance-none cursor-pointer hover:border-neutral-500 transition-colors"
+              >
+                <option value="ALL">Semua Material</option>
+                {availableMaterialOptions.map((m) => (
+                  <option key={m} value={m}>{m}</option>
+                ))}
+              </select>
+              <ChevronDown className="w-3.5 h-3.5 text-neutral-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+            </div>
+
+            {/* Filter Lanjutan Toggle (Status, PPN, Tanggal) */}
+            <button
+              type="button"
+              onClick={() => setFilterPanelOpen(!filterPanelOpen)}
+              className={`flex items-center gap-1.5 px-3 py-2 rounded-xl border text-xs font-mono transition-colors cursor-pointer ${
+                filterPanelOpen || (hasActiveFilters && (statusFilter !== 'ALL' || taxFilter !== 'all' || startDate || endDate))
+                  ? 'border-[#F4511E] text-[#F4511E] bg-[#F4511E]/10'
+                  : 'border-[#2B3037] text-neutral-300 hover:border-neutral-500 bg-[#1C1F24]'
+              }`}
+              title="Filter Status, PPN & Tanggal"
+            >
+              <Filter className="w-3.5 h-3.5" />
+              <span>Filter Detail</span>
+              {filterPanelOpen ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+            </button>
+
+            {/* Refresh Button */}
+            <button
+              type="button"
+              onClick={() => {
+                addToast('Data rekapan diperbarui', 'info');
+              }}
+              className="p-2 rounded-xl border border-[#2B3037] text-neutral-400 hover:text-white hover:border-neutral-500 bg-[#1C1F24] transition-colors cursor-pointer"
+              title="Perbarui Data"
+            >
+              <RotateCcw className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+
+        {/* Collapsible Panel for Status, PPN, and Date Range */}
+        {filterPanelOpen && (
+          <div className="bg-[#101214] border border-[#202429] rounded-xl p-3.5 space-y-3 font-mono text-xs">
+            {/* Status Pills */}
+            <div>
+              <div className="text-[11px] text-neutral-400 mb-1.5 flex items-center gap-1.5">
+                <Truck className="w-3.5 h-3.5 text-[#F4511E]" />
+                <span>Status Pengiriman:</span>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {[
+                  { id: 'ALL', label: 'Semua Status' },
+                  { id: 'SIAP_KIRIM', label: 'Siap Kirim (0%)' },
+                  { id: 'DALAM_PENGIRIMAN', label: 'Dalam Pengiriman (1-99%)' },
+                  { id: 'SELESAI', label: 'Selesai Kirim (100%)' },
+                  { id: 'OVER', label: 'Over-Delivery' },
+                ].map((s) => (
+                  <button
+                    key={s.id}
+                    type="button"
+                    onClick={() => setStatusFilter(s.id)}
+                    className={`px-3 py-1 rounded-lg text-xs transition-colors cursor-pointer ${
+                      statusFilter === s.id
+                        ? 'bg-[#F4511E] text-white font-bold'
+                        : 'bg-[#181B1E] text-neutral-400 hover:text-white border border-[#262B33]'
+                    }`}
+                  >
+                    {s.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* PPN & Date Range Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 border-t border-[#1C2025]">
+              {/* PPN Segment */}
+              <div>
+                <label className="block text-[11px] text-neutral-400 mb-1">
+                  Kategori Perpajakan
+                </label>
+                <div className="grid grid-cols-3 gap-1 bg-[#181B1E] p-1 rounded-lg border border-[#262B33]">
+                  {[
+                    { id: 'all', label: 'Semua' },
+                    { id: 'non-ppn', label: 'Non-PPN' },
+                    { id: 'ppn', label: 'PPN 11%' },
+                  ].map((t) => (
+                    <button
+                      key={t.id}
+                      type="button"
+                      onClick={() => setTaxFilter(t.id)}
+                      className={`py-1 text-[11px] rounded transition-all cursor-pointer ${
+                        taxFilter === t.id
+                          ? 'bg-[#F4511E] text-white font-semibold'
+                          : 'text-neutral-400 hover:text-white'
+                      }`}
+                    >
+                      {t.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Tanggal Mulai */}
+              <div>
+                <label className="block text-[11px] text-neutral-400 mb-1">
+                  Tanggal Mulai Kirim
+                </label>
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => handleMulaiChange(e.target.value)}
+                  className="w-full bg-[#181B1E] border border-[#262B33] rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-[#F4511E]"
+                />
+              </div>
+
+              {/* Tanggal Akhir */}
+              <div>
+                <label className="block text-[11px] text-neutral-400 mb-1">
+                  Tanggal Akhir Kirim
+                </label>
+                <input
+                  type="date"
+                  value={endDate}
+                  min={startDate || undefined}
+                  onChange={(e) => handleAkhirChange(e.target.value)}
+                  className="w-full bg-[#181B1E] border border-[#262B33] rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-[#F4511E]"
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Active Filter Chips */}
+        {hasActiveFilters && (
+          <div className="flex items-center gap-2 flex-wrap text-xs pt-1 border-t border-[#1F2329]">
+            <span className="text-[11px] text-neutral-500 font-mono">Filter aktif:</span>
+            {searchQuery.trim() && (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg bg-[#F4511E]/10 border border-[#F4511E]/30 text-[#F4511E] text-[11px] font-mono">
+                <span>Pencarian: &ldquo;{searchQuery}&rdquo;</span>
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  className="hover:text-white transition-colors cursor-pointer"
+                  title="Hapus filter pencarian"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </span>
+            )}
+            {customerFilter !== 'ALL' && (
+              <span
+                className="inline-flex items-center gap-1.5 text-[11px] font-mono px-2.5 py-0.5 rounded-lg border border-[#F4511E]/30 bg-[#F4511E]/10 text-[#F4511E] cursor-pointer"
+                onClick={() => setCustomerFilter('ALL')}
+                title="Hapus filter pelanggan"
+              >
+                <span>Pelanggan: {customerFilter}</span>
+                <X className="w-3 h-3" />
+              </span>
+            )}
+            {materialFilter !== 'ALL' && (
+              <span
+                className="inline-flex items-center gap-1.5 text-[11px] font-mono px-2.5 py-0.5 rounded-lg border border-neutral-700 bg-neutral-800 text-neutral-300 cursor-pointer"
+                onClick={() => setMaterialFilter('ALL')}
+                title="Hapus filter material"
+              >
+                <span>Material: {materialFilter}</span>
+                <X className="w-3 h-3" />
+              </span>
+            )}
+            {statusFilter !== 'ALL' && (
+              <span
+                className="inline-flex items-center gap-1.5 text-[11px] font-mono px-2.5 py-0.5 rounded-lg border border-neutral-700 bg-neutral-800 text-neutral-300 cursor-pointer"
+                onClick={() => setStatusFilter('ALL')}
+                title="Hapus filter status"
+              >
+                <span>Status: {statusFilter.replace('_', ' ')}</span>
+                <X className="w-3 h-3" />
+              </span>
+            )}
+            {taxFilter !== 'all' && (
+              <span
+                className="inline-flex items-center gap-1.5 text-[11px] font-mono px-2.5 py-0.5 rounded-lg border border-neutral-700 bg-neutral-800 text-neutral-300 cursor-pointer"
+                onClick={() => setTaxFilter('all')}
+                title="Hapus filter pajak"
+              >
+                <span>Pajak: {taxFilter === 'ppn' ? 'PPN 11%' : 'Non-PPN'}</span>
+                <X className="w-3 h-3" />
+              </span>
+            )}
+            {(startDate || endDate) && (
+              <span
+                className="inline-flex items-center gap-1.5 text-[11px] font-mono px-2.5 py-0.5 rounded-lg border border-neutral-700 bg-neutral-800 text-neutral-300 cursor-pointer"
+                onClick={() => { setStartDate(''); setEndDate(''); }}
+                title="Hapus filter tanggal"
+              >
+                <span>Tanggal: {startDate || '...'} s/d {endDate || '...'}</span>
+                <X className="w-3 h-3" />
+              </span>
+            )}
+            <button
+              type="button"
+              onClick={handleResetFilters}
+              className="text-[10px] text-neutral-500 hover:text-neutral-300 underline font-mono ml-auto cursor-pointer"
+            >
+              Reset semua
+            </button>
+          </div>
+        )}
+      </div>
+
       {/* ============================================================== */}
       {/* TAB 1: DETAIL RECEIVED ORDER & REALISASI DOKUMEN PENGIRIMAN */}
       {/* ============================================================== */}
@@ -388,31 +818,34 @@ export default function RekapanPage() {
             </div>
           </div>
 
-          {/* Search Bar for RO */}
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-[#14171A] p-3 rounded-lg border border-[#24282C]">
-            <div className="relative w-full sm:w-80">
-              <Search className="w-4 h-4 text-neutral-500 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-              <input
-                type="text"
-                placeholder="Cari No. RO, Customer, PO, atau Material..."
-                value={roSearchQuery}
-                onChange={(e) => setRoSearchQuery(e.target.value)}
-                className="w-full bg-[#181B1E] border border-[#2D3339] rounded-md pl-9 pr-3 py-1.5 text-xs text-white placeholder-neutral-500 focus:outline-none focus:border-[#F4511E]"
-              />
-            </div>
-            <div className="text-xs text-neutral-400 font-mono self-end sm:self-auto">
-              Menampilkan {filteredReceivedOrders.length} dari {receivedOrders.length} Received Order
-            </div>
+          {/* Section Sub-Header */}
+          <div className="flex items-center justify-between text-xs font-mono text-neutral-400 px-1">
+            <span className="flex items-center gap-1.5">
+              <Truck className="w-3.5 h-3.5 text-[#F4511E]" />
+              <span>Daftar Received Order &amp; Realisasi Pengiriman:</span>
+            </span>
+            <span>Menampilkan <strong className="text-white">{filteredReceivedOrders.length}</strong> dari {receivedOrders.length} order</span>
           </div>
 
           {/* List of Received Orders (Compact, using Modal Dialog for Waybill list) */}
           {filteredReceivedOrders.length === 0 ? (
-            <Card className="p-8 text-center text-neutral-400 space-y-2 border-[#24282C]">
+            <Card className="p-8 text-center text-neutral-400 space-y-3 border-[#24282C] bg-[#14171A]">
               <PackageCheck className="w-10 h-10 text-neutral-600 mx-auto" />
-              <p className="text-sm font-semibold text-neutral-300">Tidak ada data Received Order yang cocok.</p>
-              <p className="text-xs text-neutral-500">
-                Pastikan Pre-Order telah disetujui (APPROVED) oleh Super Admin agar nomor RO dan ringkasan jurnal otomatis diterbitkan.
+              <p className="text-sm font-semibold text-neutral-300">
+                {hasActiveFilters
+                  ? 'Tidak ada data Received Order yang cocok dengan filter pencarian.'
+                  : 'Tidak ada data Received Order aktif.'}
               </p>
+              <p className="text-xs text-neutral-500 max-w-md mx-auto">
+                {hasActiveFilters
+                  ? 'Silakan coba ubah kata kunci atau hapus filter yang sedang aktif.'
+                  : 'Pastikan Pre-Order telah disetujui (APPROVED) agar nomor RO dan ringkasan jurnal otomatis diterbitkan.'}
+              </p>
+              {hasActiveFilters && (
+                <Button size="sm" variant="ghost" icon={RotateCcw} onClick={handleResetFilters} className="mx-auto">
+                  Reset Filter
+                </Button>
+              )}
             </Card>
           ) : (
             <div className="space-y-3.5">
@@ -618,126 +1051,6 @@ export default function RekapanPage() {
       {/* ============================================================== */}
       {activeTab === 'ledger' && (
         <div className="space-y-4">
-          {/* Filter Card */}
-          <Card className="p-3.5 sm:p-4 space-y-3.5 border-[#24282C]">
-            {/* Row 1: Pilih Pelanggan & Tax Segment */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div className="sm:col-span-2">
-                <Select
-                  label="Pilih Pelanggan"
-                  icon={User}
-                  value={filterData.pelanggan}
-                  onChange={(e) => setFilterData({ ...filterData, pelanggan: e.target.value })}
-                >
-                  <option value="ALL">-- SEMUA PELANGGAN AKTIF --</option>
-                  {(customers || []).map((c) => (
-                    <option key={c.id} value={c.name}>
-                      {c.name} {c.alias ? `(${c.alias})` : ''}
-                    </option>
-                  ))}
-                </Select>
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-medium text-neutral-400 mb-1">
-                  Kategori Perpajakan
-                </label>
-                <div className="grid grid-cols-3 gap-1 bg-[#181B1E] p-1 rounded-md border border-[#2D3339]">
-                  <button
-                    type="button"
-                    onClick={() => setFilterData({ ...filterData, taxFilter: 'all' })}
-                    className={`py-1 text-[11px] font-medium rounded transition-all cursor-pointer ${
-                      filterData.taxFilter === 'all'
-                        ? 'bg-[#F4511E] text-white font-semibold'
-                        : 'text-neutral-400 hover:text-white'
-                    }`}
-                  >
-                    Semua
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setFilterData({ ...filterData, taxFilter: 'non-ppn' })}
-                    className={`py-1 text-[11px] font-medium rounded transition-all cursor-pointer ${
-                      filterData.taxFilter === 'non-ppn'
-                        ? 'bg-[#F4511E] text-white font-semibold'
-                        : 'text-neutral-400 hover:text-white'
-                    }`}
-                  >
-                    Non-PPN
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setFilterData({ ...filterData, taxFilter: 'ppn' })}
-                    className={`py-1 text-[11px] font-medium rounded transition-all cursor-pointer ${
-                      filterData.taxFilter === 'ppn'
-                        ? 'bg-[#F4511E] text-white font-semibold'
-                        : 'text-neutral-400 hover:text-white'
-                    }`}
-                  >
-                    PPN 11%
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Row 2: Mulai & Akhir Date Range */}
-            <AnimatePresence>
-              {!filterCollapsed && (
-                <motion.div
-                  initial={{ height: 0, opacity: 0 }}
-                  animate={{ height: 'auto', opacity: 1 }}
-                  exit={{ height: 0, opacity: 0 }}
-                  transition={{ duration: 0.15 }}
-                  className="grid grid-cols-1 sm:grid-cols-2 gap-3 overflow-hidden"
-                >
-                  <Input
-                    label="Tanggal Mulai Kirim"
-                    type="date"
-                    icon={Calendar}
-                    value={filterData.mulai}
-                    onChange={(e) => handleMulaiChange(e.target.value)}
-                  />
-
-                  <Input
-                    label="Tanggal Akhir Kirim"
-                    type="date"
-                    icon={Calendar}
-                    value={filterData.akhir}
-                    min={filterData.mulai || undefined}
-                    onChange={(e) => handleAkhirChange(e.target.value)}
-                    error={
-                      filterData.mulai && filterData.akhir && filterData.akhir < filterData.mulai
-                        ? 'Tanggal akhir tidak boleh sebelum tanggal mulai'
-                        : undefined
-                    }
-                  />
-                </motion.div>
-              )}
-            </AnimatePresence>
-
-            {/* Orange Primary Action: TERAPKAN */}
-            <Button
-              variant="primary"
-              onClick={handleApplyFilter}
-              loading={isApplying}
-              className="w-full tracking-wider uppercase font-bold py-2.5 cursor-pointer"
-            >
-              TERAPKAN FILTER
-            </Button>
-
-            {/* Toggle Collapse */}
-            <div className="text-center pt-0.5">
-              <button
-                type="button"
-                onClick={() => setFilterCollapsed(!filterCollapsed)}
-                className="text-[11px] text-neutral-400 hover:text-white inline-flex items-center gap-1 transition-colors cursor-pointer"
-              >
-                {filterCollapsed ? 'Tampilkan Rentang Tanggal' : 'Sembunyikan Rentang Tanggal'}
-                {filterCollapsed ? <ChevronDown className="w-3 h-3" /> : <ChevronUp className="w-3 h-3" />}
-              </button>
-            </div>
-          </Card>
-
           {/* Aggregate KPI Summary Bar */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
             <div className="bg-[#131517] border border-[#24282C] rounded-lg p-3">
@@ -777,16 +1090,36 @@ export default function RekapanPage() {
             </div>
           </div>
 
-          {/* Rekapan Result List */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between text-xs font-mono text-neutral-400 px-1">
-              <span className="flex items-center gap-1.5">
-                <Layers className="w-3.5 h-3.5 text-[#F4511E]" />
-                Daftar Rekapan Siap Tagih / BKK:
-              </span>
-              <span>{filteredData.length} berkas</span>
-            </div>
+          {/* Section Sub-Header */}
+          <div className="flex items-center justify-between text-xs font-mono text-neutral-400 px-1">
+            <span className="flex items-center gap-1.5">
+              <Layers className="w-3.5 h-3.5 text-[#F4511E]" />
+              <span>Daftar Rekapan Siap Tagih / BKK:</span>
+            </span>
+            <span>Menampilkan <strong className="text-white">{filteredData.length}</strong> dari {(rekapanList || []).length} berkas</span>
+          </div>
 
+          {/* Rekapan Result List */}
+          {filteredData.length === 0 ? (
+            <Card className="p-8 text-center text-neutral-400 space-y-3 border-[#24282C] bg-[#14171A]">
+              <Layers className="w-10 h-10 text-neutral-600 mx-auto" />
+              <p className="text-sm font-semibold text-neutral-300">
+                {hasActiveFilters
+                  ? 'Tidak ada berkas rekapan yang cocok dengan filter pencarian.'
+                  : 'Belum ada data Buku Besar Rekapan.'}
+              </p>
+              <p className="text-xs text-neutral-500 max-w-md mx-auto">
+                {hasActiveFilters
+                  ? 'Silakan coba ubah kata kunci pencarian atau sesuaikan filter pelanggan/tanggal.'
+                  : 'Data rekapan otomatis terbentuk saat surat jalan diterbitkan.'}
+              </p>
+              {hasActiveFilters && (
+                <Button size="sm" variant="ghost" icon={RotateCcw} onClick={handleResetFilters} className="mx-auto">
+                  Reset Filter
+                </Button>
+              )}
+            </Card>
+          ) : (
             <div className="space-y-2.5">
               {filteredData.map((rek) => {
                 const isExpanded = expandedCardIds.has(rek.id);
@@ -960,7 +1293,7 @@ export default function RekapanPage() {
                 );
               })}
             </div>
-          </div>
+          )}
         </div>
       )}
 
@@ -1050,7 +1383,7 @@ export default function RekapanPage() {
                   <thead>
                     <tr className="bg-[#181B1E] text-[11px] text-neutral-400 uppercase tracking-wider border-b border-[#22262A]">
                       <th className="py-2.5 px-3 text-center w-14">No. GI</th>
-                      <th className="py-2.5 px-3">No. Surat Jalan</th>
+                      <th className="py-2.5 px-3">ID GI (DO)</th>
                       <th className="py-2.5 px-3">Nopol Armada</th>
                       <th className="py-2.5 px-3">Sopir / Driver</th>
                       <th className="py-2.5 px-3">Tanggal &amp; Waktu</th>
@@ -1067,7 +1400,7 @@ export default function RekapanPage() {
                           GI #{idx + 1}
                         </td>
                         <td className="py-2.5 px-3 font-bold text-white">
-                          {sj.nomorSj}
+                          #{sj.id}
                         </td>
                         <td className="py-2.5 px-3 text-neutral-300 font-medium">
                           {sj.nopol}

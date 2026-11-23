@@ -12,9 +12,14 @@ import {
   Users,
   Briefcase,
   UserCheck,
+  List,
+  LayoutGrid,
+  Calendar,
+  X,
+  User,
 } from 'lucide-react';
 import { formatCurrency } from '../../utils/formatters';
-import { Badge, Button } from '../../components/ui';
+import { Badge, Button, IndeterminateCheckbox } from '../../components/ui';
 import { useToast } from '../../context/ToastContext';
 import { useAuth } from '../../context/AuthContext';
 import { useApp } from '../../context/AppContext';
@@ -124,6 +129,118 @@ export const getDefaultPph21Data = (yearInput, monthInput) => {
   ];
 };
 
+// Card view component for PPh 21 Grid Mode
+function Pph21GridCard({ row, idx, isDark, isSelected, onToggleSelect }) {
+  return (
+    <div
+      onClick={onToggleSelect}
+      className={`rounded-xl border p-4 transition-all duration-150 flex flex-col justify-between gap-3.5 hover:shadow-md cursor-pointer ${
+        isSelected
+          ? 'border-[#F4511E] ring-1 ring-[#F4511E] bg-[#F4511E]/5'
+          : isDark
+            ? 'bg-[#181B1E] border-[#22262A] hover:border-[#383E46]'
+            : 'bg-white border-slate-200 hover:border-slate-300'
+      }`}
+    >
+      {/* Top Header */}
+      <div>
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex items-center gap-2.5 min-w-0 flex-1">
+            <div onClick={(e) => e.stopPropagation()} className="shrink-0 pt-0.5">
+              <IndeterminateCheckbox
+                checked={isSelected}
+                onChange={onToggleSelect}
+                title={isSelected ? 'Batal pilih bukti potong' : 'Pilih bukti potong'}
+              />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-1.5 text-[10px] font-mono text-neutral-400 uppercase tracking-wider">
+                <span>#{idx + 1}</span>
+                <span>•</span>
+                <span>Bukti Potong PPh 21</span>
+              </div>
+              <div className="text-sm font-mono font-bold text-amber-400 truncate mt-0.5" title={row.noBuktiPotong}>
+                {row.noBuktiPotong || '-'}
+              </div>
+            </div>
+          </div>
+          <div className="flex flex-col items-end gap-1 shrink-0">
+            <Badge size="xs" variant="success" dot>
+              {row.statusBupot || 'TERBIT'}
+            </Badge>
+          </div>
+        </div>
+
+        {/* BKK & Date */}
+        <div className="flex items-center justify-between text-[11px] font-mono text-neutral-400 mt-2.5 pt-2 border-t border-dashed border-neutral-700/40">
+          <span className="truncate max-w-[170px]" title={row.noBkk}>
+            {row.noBkk || '-'}
+          </span>
+          <span className="flex items-center gap-1 shrink-0">
+            <Calendar className="w-3 h-3 text-[#F4511E]" />
+            {row.tanggal}
+          </span>
+        </div>
+      </div>
+
+      {/* Middle: Penerima / Driver & Objek */}
+      <div className="space-y-2 text-xs">
+        <div className="flex items-start gap-2">
+          <User className="w-3.5 h-3.5 text-neutral-400 shrink-0 mt-0.5" />
+          <div className="min-w-0 flex-1">
+            <div className={`font-semibold truncate ${isDark ? 'text-white' : 'text-slate-800'}`} title={row.vendor || row.penerima}>
+              {row.vendor || row.penerima}
+            </div>
+            <div className="text-[10px] font-mono text-neutral-400 mt-0.5 truncate">
+              NIK: {row.npwpNik || '-'}
+            </div>
+          </div>
+        </div>
+
+        <div className="flex items-start gap-2">
+          <Briefcase className="w-3.5 h-3.5 text-neutral-400 shrink-0 mt-0.5" />
+          <div className="min-w-0 flex-1">
+            <div className={`text-[11px] leading-relaxed line-clamp-1 ${isDark ? 'text-neutral-300' : 'text-slate-700'}`} title={row.objekPajak}>
+              {row.objekPajak || 'Upah Driver / Jasa Lepas'}
+            </div>
+            <div className="text-[10px] text-neutral-500 truncate">
+              {row.kategori || 'Pegawai Tidak Tetap'}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Financial Breakdown Box */}
+      <div
+        className={`p-3 rounded-lg border space-y-1.5 font-mono text-xs ${
+          isDark ? 'bg-[#141619] border-[#22262A]' : 'bg-slate-50 border-slate-200/80'
+        }`}
+      >
+        <div className="flex items-center justify-between text-[11px]">
+          <span className="text-neutral-400">DPP / Bruto:</span>
+          <span className="font-semibold">{formatCurrency(row.dpp || 0)}</span>
+        </div>
+        <div className="flex items-center justify-between text-[11px]">
+          <span className="text-neutral-400">Tarif PPh 21:</span>
+          <span className="px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 font-bold text-[10px]">
+            {row.tarif || 2.5}%
+          </span>
+        </div>
+        <div className="flex items-center justify-between text-[11px]">
+          <span className="text-amber-400 font-medium">Potongan PPh 21:</span>
+          <span className="font-bold text-amber-400">{formatCurrency(row.potonganPph || 0)}</span>
+        </div>
+        <div className="pt-1.5 border-t border-neutral-700/30 flex items-center justify-between text-xs font-bold">
+          <span className={isDark ? 'text-neutral-300' : 'text-slate-700'}>Netto BKK:</span>
+          <span className="text-emerald-400">
+            {formatCurrency(row.nettoBkk || ((Number(row.dpp) || 0) - (Number(row.potonganPph) || 0)))}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function LaporanPph21Page() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -131,6 +248,44 @@ export default function LaporanPph21Page() {
   const { addToast } = useToast();
   const { isSuperAdmin } = useAuth();
   const { isDark } = useApp();
+
+  // View mode state (List vs Grid), persisted in localStorage
+  const [viewMode, setViewMode] = useState(() => {
+    try {
+      return localStorage.getItem('ptbas_pph21_viewmode') || 'list';
+    } catch {
+      return 'list';
+    }
+  });
+
+  const handleSetViewMode = (mode) => {
+    setViewMode(mode);
+    try {
+      localStorage.setItem('ptbas_pph21_viewmode', mode);
+    } catch (e) {
+      console.warn('Failed to save view mode to localStorage', e);
+    }
+  };
+
+  // Checkbox multi-select state
+  const [selectedIds, setSelectedIds] = useState(new Set());
+
+  const toggleSelect = (id) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const handleSelectAll = () => {
+    if (filteredRows.length > 0 && selectedIds.size === filteredRows.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filteredRows.map((r, i) => r.id || r.noBuktiPotong || `row-${i}`)));
+    }
+  };
 
   // Filter state: auto-populates from URL query params or current month on initial open
   const [startDate, setStartDate] = useState(() => {
@@ -243,6 +398,7 @@ export default function LaporanPph21Page() {
     setStartDate(def.startDate);
     setEndDate(def.endDate);
     setSearchQuery('');
+    setSelectedIds(new Set());
     fetchReport(def.startDate, def.endDate);
     addToast('Filter berhasil direset ke bulan berjalan.', 'info');
   };
@@ -271,7 +427,11 @@ export default function LaporanPph21Page() {
   };
 
   const handleExportCsv = () => {
-    if (filteredRows.length === 0) {
+    const rowsToExport = selectedIds.size > 0
+      ? filteredRows.filter((r, i) => selectedIds.has(r.id || r.noBuktiPotong || `row-${i}`))
+      : filteredRows;
+
+    if (rowsToExport.length === 0) {
       addToast('Tidak ada data untuk diekspor.', 'info');
       return;
     }
@@ -290,7 +450,7 @@ export default function LaporanPph21Page() {
       'Netto Kas Keluar (Rp)',
       'Status Bupot',
     ];
-    const rows = filteredRows.map((r, i) => [
+    const rows = rowsToExport.map((r, i) => [
       i + 1,
       r.tanggal,
       r.noBuktiPotong,
@@ -313,7 +473,12 @@ export default function LaporanPph21Page() {
     link.setAttribute('download', `Laporan_PPh21_${startDate}_sd_${endDate}.csv`);
     document.body.appendChild(link);
     link.click();
-    addToast('File CSV Laporan PPh 21 berhasil diunduh.', 'success');
+    addToast(
+      selectedIds.size > 0
+        ? `${selectedIds.size} bukti potong PPh 21 terpilih berhasil diekspor.`
+        : 'File CSV Laporan PPh 21 berhasil diunduh.',
+      'success'
+    );
   };
 
   return (
@@ -473,30 +638,93 @@ export default function LaporanPph21Page() {
         <div className={`p-4 border-b flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
           isDark ? 'border-[#22262A] bg-[#181B1E]' : 'border-slate-100 bg-slate-50/70'
         }`}>
-          <div>
-            <h3 className={`text-xs font-bold uppercase tracking-wider font-mono ${
-              isDark ? 'text-neutral-200' : 'text-slate-800'
-            }`}>
-              Daftar Bukti Potong PPh 21 Driver & Pekerja Lepas
-            </h3>
-            <p className="text-[11px] text-neutral-400 mt-0.5">
-              Menampilkan {filteredRows.length} dari {reportData.length} bukti potong terdaftar
-            </p>
+          <div className="flex items-center gap-3">
+            {filteredRows.length > 0 && (
+              <div className="flex items-center gap-2 pr-2 border-r border-neutral-700/50">
+                <IndeterminateCheckbox
+                  checked={filteredRows.length > 0 && selectedIds.size === filteredRows.length}
+                  indeterminate={selectedIds.size > 0 && selectedIds.size < filteredRows.length}
+                  onChange={handleSelectAll}
+                  title={selectedIds.size === filteredRows.length ? 'Batal pilih semua' : 'Pilih semua'}
+                />
+              </div>
+            )}
+            <div>
+              <h3 className={`text-xs font-bold uppercase tracking-wider font-mono ${
+                isDark ? 'text-neutral-200' : 'text-slate-800'
+              }`}>
+                Daftar Bukti Potong PPh 21 Driver & Pekerja Lepas
+              </h3>
+              <p className="text-[11px] text-neutral-400 mt-0.5">
+                Menampilkan {filteredRows.length} dari {reportData.length} bukti potong terdaftar {selectedIds.size > 0 && `• ${selectedIds.size} dipilih`}
+              </p>
+            </div>
           </div>
 
-          <div className="relative w-full sm:w-72">
-            <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Cari driver, NIK, BKK, atau bupot..."
-              className={`w-full pl-9 pr-3 py-1.5 rounded-lg border text-xs focus:outline-none focus:border-[#F4511E] ${
-                isDark
-                  ? 'bg-[#101214] border-[#2B3037] text-white placeholder-neutral-500'
-                  : 'bg-white border-slate-200 text-slate-900 placeholder-slate-400'
+          <div className="flex items-center gap-2.5 flex-wrap sm:flex-nowrap">
+            {/* Search with clear button */}
+            <div className="relative w-full sm:w-64">
+              <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Cari driver, NIK, BKK, atau bupot..."
+                className={`w-full pl-9 pr-8 py-1.5 rounded-xl border text-xs focus:outline-none transition-colors ${
+                  isDark
+                    ? 'bg-[#101214] border-[#2B3037] text-white focus:border-[#F4511E] placeholder-neutral-500'
+                    : 'bg-white border-slate-200 text-slate-900 focus:border-[#F4511E] placeholder-slate-400'
+                }`}
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-white cursor-pointer"
+                  title="Hapus pencarian"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+
+            {/* View mode toggle (List / Grid) */}
+            <div
+              className={`flex items-center rounded-xl p-0.5 border shrink-0 ${
+                isDark ? 'bg-[#101214] border-[#2B3037]' : 'bg-slate-100 border-slate-200'
               }`}
-            />
+            >
+              <button
+                type="button"
+                onClick={() => handleSetViewMode('list')}
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-mono transition-all cursor-pointer ${
+                  viewMode === 'list'
+                    ? 'bg-[#F4511E] text-white shadow-xs font-bold'
+                    : isDark
+                      ? 'text-neutral-400 hover:text-white hover:bg-white/5'
+                      : 'text-slate-500 hover:text-slate-900 hover:bg-slate-200/60'
+                }`}
+                title="Tampilan List (Tabel)"
+              >
+                <List className="w-3.5 h-3.5" />
+                <span className="text-[11px]">List</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSetViewMode('grid')}
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-mono transition-all cursor-pointer ${
+                  viewMode === 'grid'
+                    ? 'bg-[#F4511E] text-white shadow-xs font-bold'
+                    : isDark
+                      ? 'text-neutral-400 hover:text-white hover:bg-white/5'
+                      : 'text-slate-500 hover:text-slate-900 hover:bg-slate-200/60'
+                }`}
+                title="Tampilan Grid (Kartu)"
+              >
+                <LayoutGrid className="w-3.5 h-3.5" />
+                <span className="text-[11px]">Grid</span>
+              </button>
+            </div>
           </div>
         </div>
 
@@ -506,13 +734,21 @@ export default function LaporanPph21Page() {
             description={`Tidak ada transaksi bukti potong PPh 21 pada periode ${startDate} s/d ${endDate}. Silakan ubah rentang tanggal.`}
             onReset={handleReset}
           />
-        ) : (
+        ) : viewMode === 'list' ? (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs" data-testid="pph21-table">
               <thead className={`font-mono text-[11px] uppercase border-b ${
                 isDark ? 'bg-[#101214] border-[#22262A] text-neutral-400' : 'bg-slate-50 border-slate-200 text-slate-500'
               }`}>
                 <tr>
+                  <th className="py-3 px-3.5 w-10 text-center">
+                    <IndeterminateCheckbox
+                      checked={filteredRows.length > 0 && selectedIds.size === filteredRows.length}
+                      indeterminate={selectedIds.size > 0 && selectedIds.size < filteredRows.length}
+                      onChange={handleSelectAll}
+                      title={selectedIds.size === filteredRows.length ? 'Batal pilih semua' : 'Pilih semua'}
+                    />
+                  </th>
                   <th className="py-3 px-3.5 text-center">No</th>
                   <th className="py-3 px-3.5">Tanggal</th>
                   <th className="py-3 px-3.5">No. Bupot & BKK</th>
@@ -528,65 +764,79 @@ export default function LaporanPph21Page() {
               <tbody className={`divide-y font-mono ${
                 isDark ? 'divide-[#20242A] text-neutral-200' : 'divide-slate-100 text-slate-800'
               }`}>
-                {filteredRows.map((row, idx) => (
-                  <tr
-                    key={row.id || idx}
-                    data-testid="pph21-row"
-                    className={`transition-colors ${
-                      isDark ? 'hover:bg-white/5' : 'hover:bg-slate-50'
-                    }`}
-                  >
-                    <td className="py-3 px-3.5 text-center text-neutral-500">
-                      {idx + 1}
-                    </td>
-                    <td className="py-3 px-3.5 whitespace-nowrap">
-                      <div className="font-semibold">{row.tanggal}</div>
-                    </td>
-                    <td className="py-3 px-3.5 whitespace-nowrap">
-                      <div className="text-amber-400 font-semibold">{row.noBuktiPotong}</div>
-                      <div className="text-[10px] text-neutral-500">{row.noBkk || '-'}</div>
-                    </td>
-                    <td className="py-3 px-3.5">
-                      <div className={`font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                        {row.vendor || row.penerima}
-                      </div>
-                      <div className="text-[10px] text-neutral-500">
-                        NIK: {row.npwpNik || '-'}
-                      </div>
-                    </td>
-                    <td className="py-3 px-3.5">
-                      <div>{row.objekPajak || 'Upah Pengemudi / Jasa Lepas'}</div>
-                      <div className="text-[10px] text-neutral-500">{row.kategori || 'Pegawai Tidak Tetap'}</div>
-                    </td>
-                    <td className="py-3 px-3.5 text-center">
-                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                        isDark ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30' : 'bg-amber-50 text-amber-700 border border-amber-200'
-                      }`}>
-                        {row.tarif || 2.5}%
-                      </span>
-                    </td>
-                    <td className="py-3 px-3.5 text-right font-medium">
-                      {formatCurrency(row.dpp)}
-                    </td>
-                    <td className="py-3 px-3.5 text-right font-bold text-amber-400">
-                      {formatCurrency(row.potonganPph)}
-                    </td>
-                    <td className="py-3 px-3.5 text-right font-bold text-emerald-400">
-                      {formatCurrency(row.nettoBkk)}
-                    </td>
-                    <td className="py-3 px-3.5 text-center">
-                      <Badge size="xs" variant="success" dot>
-                        {row.statusBupot || 'TERBIT'}
-                      </Badge>
-                    </td>
-                  </tr>
-                ))}
+                {filteredRows.map((row, idx) => {
+                  const rowId = row.id || row.noBuktiPotong || `row-${idx}`;
+                  const isSelected = selectedIds.has(rowId);
+                  return (
+                    <tr
+                      key={rowId}
+                      data-testid="pph21-row"
+                      onClick={() => toggleSelect(rowId)}
+                      className={`transition-colors cursor-pointer ${
+                        isSelected
+                          ? isDark ? 'bg-[#F4511E]/10 hover:bg-[#F4511E]/15' : 'bg-orange-50 hover:bg-orange-100/80'
+                          : isDark ? 'hover:bg-white/5' : 'hover:bg-slate-50'
+                      }`}
+                    >
+                      <td className="py-3 px-3.5 text-center" onClick={(e) => e.stopPropagation()}>
+                        <IndeterminateCheckbox
+                          checked={isSelected}
+                          onChange={() => toggleSelect(rowId)}
+                          title={isSelected ? 'Batal pilih' : 'Pilih'}
+                        />
+                      </td>
+                      <td className="py-3 px-3.5 text-center text-neutral-500">
+                        {idx + 1}
+                      </td>
+                      <td className="py-3 px-3.5 whitespace-nowrap">
+                        <div className="font-semibold">{row.tanggal}</div>
+                      </td>
+                      <td className="py-3 px-3.5 whitespace-nowrap">
+                        <div className="text-amber-400 font-semibold">{row.noBuktiPotong}</div>
+                        <div className="text-[10px] text-neutral-500">{row.noBkk || '-'}</div>
+                      </td>
+                      <td className="py-3 px-3.5">
+                        <div className={`font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                          {row.vendor || row.penerima}
+                        </div>
+                        <div className="text-[10px] text-neutral-500">
+                          NIK: {row.npwpNik || '-'}
+                        </div>
+                      </td>
+                      <td className="py-3 px-3.5">
+                        <div>{row.objekPajak || 'Upah Pengemudi / Jasa Lepas'}</div>
+                        <div className="text-[10px] text-neutral-500">{row.kategori || 'Pegawai Tidak Tetap'}</div>
+                      </td>
+                      <td className="py-3 px-3.5 text-center">
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                          isDark ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30' : 'bg-amber-50 text-amber-700 border border-amber-200'
+                        }`}>
+                          {row.tarif || 2.5}%
+                        </span>
+                      </td>
+                      <td className="py-3 px-3.5 text-right font-medium">
+                        {formatCurrency(row.dpp)}
+                      </td>
+                      <td className="py-3 px-3.5 text-right font-bold text-amber-400">
+                        {formatCurrency(row.potonganPph)}
+                      </td>
+                      <td className="py-3 px-3.5 text-right font-bold text-emerald-400">
+                        {formatCurrency(row.nettoBkk)}
+                      </td>
+                      <td className="py-3 px-3.5 text-center">
+                        <Badge size="xs" variant="success" dot>
+                          {row.statusBupot || 'TERBIT'}
+                        </Badge>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
               <tfoot className={`font-mono text-xs border-t font-bold ${
                 isDark ? 'bg-[#101214] border-[#22262A] text-white' : 'bg-slate-50 border-slate-200 text-slate-900'
               }`}>
                 <tr>
-                  <td colSpan={6} className="py-3 px-3.5 uppercase tracking-wider text-right">
+                  <td colSpan={7} className="py-3 px-3.5 uppercase tracking-wider text-right">
                     Total Periode ({startDate} s/d {endDate}):
                   </td>
                   <td className="py-3 px-3.5 text-right">
@@ -603,8 +853,81 @@ export default function LaporanPph21Page() {
               </tfoot>
             </table>
           </div>
+        ) : (
+          /* Grid View */
+          <div className="p-4 space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3.5">
+              {filteredRows.map((row, idx) => {
+                const rowId = row.id || row.noBuktiPotong || `row-${idx}`;
+                return (
+                  <Pph21GridCard
+                    key={rowId}
+                    row={row}
+                    idx={idx}
+                    isDark={isDark}
+                    isSelected={selectedIds.has(rowId)}
+                    onToggleSelect={() => toggleSelect(rowId)}
+                  />
+                );
+              })}
+            </div>
+
+            {/* Grid Summary Footer Banner */}
+            <div
+              className={`p-4 rounded-xl border flex flex-col md:flex-row md:items-center justify-between gap-4 font-mono ${
+                isDark ? 'bg-[#181B1E] border-[#262A30] text-neutral-200' : 'bg-slate-50 border-slate-200 text-slate-800'
+              }`}
+            >
+              <div className="flex items-center gap-2 text-xs">
+                <span className="w-2 h-2 rounded-full bg-amber-400" />
+                <span className="font-bold">Total Periode:</span>
+                <span className="text-neutral-400">({filteredRows.length} Bukti Potong PPh 21)</span>
+              </div>
+              <div className="flex flex-wrap items-center gap-4 sm:gap-6 text-xs">
+                <div>
+                  <span className="text-neutral-400 block text-[10px] uppercase">Total DPP / Bruto</span>
+                  <span className="font-bold">{formatCurrency(totalDpp)}</span>
+                </div>
+                <div>
+                  <span className="text-amber-400 block text-[10px] uppercase font-bold">Total PPh 21</span>
+                  <span className="font-bold text-amber-400">{formatCurrency(totalPotonganPph)}</span>
+                </div>
+                <div>
+                  <span className="text-emerald-400 block text-[10px] uppercase font-bold">Total Netto BKK</span>
+                  <span className="font-bold text-sm text-emerald-400">{formatCurrency(totalNettoBkk)}</span>
+                </div>
+              </div>
+            </div>
+          </div>
         )}
       </div>
+
+      {/* Floating Multi-Select Action Bar */}
+      {selectedIds.size > 0 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 bg-[#16191D] border border-[#2B313C] rounded-full px-5 py-2.5 shadow-2xl flex items-center gap-4 font-mono text-xs text-white">
+          <div className="flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+            <span><strong className="text-amber-400">{selectedIds.size}</strong> bukti potong dipilih</span>
+          </div>
+          <div className="h-4 w-px bg-neutral-700" />
+          <button
+            type="button"
+            onClick={handleExportCsv}
+            className="flex items-center gap-1.5 text-emerald-400 hover:text-emerald-300 font-bold cursor-pointer"
+            title="Ekspor bukti potong terpilih ke CSV"
+          >
+            <FileSpreadsheet className="w-3.5 h-3.5" />
+            <span>Ekspor Terpilih</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setSelectedIds(new Set())}
+            className="text-neutral-400 hover:text-white text-[11px] cursor-pointer"
+          >
+            Batal
+          </button>
+        </div>
+      )}
     </div>
   );
 }

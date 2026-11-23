@@ -4,5 +4,6 @@ export { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter }
 export { default as Input } from './Input';
 export { default as Select } from './Select';
 export { default as Modal } from './Modal';
+export { default as IndeterminateCheckbox } from './IndeterminateCheckbox';
 export { default as Checkbox } from './Checkbox';
 

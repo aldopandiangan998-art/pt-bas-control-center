@@ -38,7 +38,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useData } from '../../context/DataContext';
 import { useToast } from '../../context/ToastContext';
 import { groupInvoices, groupCheckState } from '../../utils/cashOutGrouping';
-import { Button, Modal, Card, Input, Select, Badge } from '../../components/ui';
+import { Button, Modal, Card, Input, Select, Badge, IndeterminateCheckbox } from '../../components/ui';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // LocalStorage helpers
@@ -53,25 +53,6 @@ function lsGet(key, fallback) {
 }
 function lsSet(key, value) {
   try { localStorage.setItem(key, JSON.stringify(value)); } catch { /* noop */ }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// IndeterminateCheckbox
-// ─────────────────────────────────────────────────────────────────────────────
-function IndeterminateCheckbox({ checked, indeterminate, onChange, className = '' }) {
-  const ref = useRef(null);
-  useEffect(() => {
-    if (ref.current) ref.current.indeterminate = indeterminate;
-  }, [indeterminate]);
-  return (
-    <input
-      ref={ref}
-      type="checkbox"
-      checked={checked}
-      onChange={onChange}
-      className={`cursor-pointer ${className}`}
-    />
-  );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -338,8 +319,14 @@ function InvoiceGroupedTable({
 }) {
   if (groups.length === 0) {
     return (
-      <div className="text-center py-16 text-neutral-500 text-xs">
-        Tidak ada data Invoice yang ditemukan.
+      <div className="bg-[#14171A] border border-[#22262A] rounded-2xl p-8 sm:p-12 text-center space-y-3 font-mono my-3">
+        <div className="w-12 h-12 rounded-full bg-[#1C1F24] border border-[#2B3037] flex items-center justify-center mx-auto text-neutral-400">
+          <Receipt className="w-6 h-6 text-[#F4511E]" />
+        </div>
+        <p className="text-sm font-semibold text-white">Tidak ada Faktur Tagihan</p>
+        <p className="text-xs text-neutral-400 max-w-sm mx-auto">
+          Tidak ada data invoice yang sesuai dengan kata kunci pencarian atau filter status yang dipilih.
+        </p>
       </div>
     );
   }
@@ -367,7 +354,14 @@ function InvoiceGroupedTable({
                   <table className="w-full text-left border-collapse">
                     <thead>
                       <tr className="bg-[#1A1D22] border-b border-[#2A2E33]">
-                        <th className="pl-3 pr-1 py-2 w-8" />
+                        <th className="pl-3 pr-1 py-2 w-8">
+                          <IndeterminateCheckbox
+                            checked={checkState === 'all'}
+                            indeterminate={checkState === 'some'}
+                            onChange={() => onToggleGroupSelect(group)}
+                            title={checkState === 'all' ? 'Batal pilih grup' : 'Pilih semua di grup ini'}
+                          />
+                        </th>
                         <th className="px-3 py-2 text-[10px] font-semibold text-neutral-400 uppercase tracking-wide whitespace-nowrap">Tanggal</th>
                         <th className="px-3 py-2 text-[10px] font-semibold text-neutral-400 uppercase tracking-wide whitespace-nowrap">No. Invoice</th>
                         <th className="px-3 py-2 text-[10px] font-semibold text-neutral-400 uppercase tracking-wide">Material</th>
@@ -732,20 +726,46 @@ export default function InvoicePage() {
   // Filtered Invoices for List View
   const filteredInvoices = useMemo(() => {
     return invoiceList.filter((item) => {
-      const q = searchFilter.toLowerCase();
-      const matchSearch =
-        !q ||
-        item.kodeTransaksi.toLowerCase().includes(q) ||
-        item.perusahaan.toLowerCase().includes(q) ||
-        item.material.toLowerCase().includes(q) ||
-        (item.periode && item.periode.toLowerCase().includes(q));
+      const q = (searchFilter || '').toLowerCase().trim();
+      if (q) {
+        const terms = q.split(/\s+/).filter(Boolean);
+        const searchableText = [
+          String(item.id || ''),
+          String(item.nomorInvoice || ''),
+          String(item.nomorFakturPajak || ''),
+          String(item.kodeTransaksi || ''),
+          String(item.nomorRO || ''),
+          String(item.idReceivedOrder || ''),
+          String(item.poNumber || ''),
+          String(item.nomorPoCustomer || ''),
+          String(item.perusahaan || ''),
+          String(item.pelanggan || ''),
+          String(item.customer || ''),
+          String(item.customerAddress || ''),
+          String(item.material || ''),
+          String(item.materialName || ''),
+          String(item.materialType || ''),
+          String(item.jenis || ''),
+          String(item.statusBayar || ''),
+          String(item.statusFaktur || ''),
+          String(item.tanggal || ''),
+          String(item.created_at || ''),
+          String(item.periode || ''),
+          String(item.rekeningAtasNama || ''),
+        ]
+          .join(' ')
+          .toLowerCase();
+
+        const matchAllTerms = terms.every((term) => searchableText.includes(term));
+        if (!matchAllTerms) return false;
+      }
 
       const matchStatus =
         statusFilter === 'ALL' ||
         (statusFilter === 'BELUM_BAYAR' && item.statusBayar !== 'Lunas') ||
         (statusFilter === 'LUNAS' && item.statusBayar === 'Lunas');
 
-      return matchSearch && matchStatus;
+      return matchStatus;
     });
   }, [invoiceList, searchFilter, statusFilter]);
 
@@ -878,9 +898,25 @@ export default function InvoicePage() {
 
           {/* ── Toolbar Row 1: count + icon buttons ── */}
           <div className="flex items-center justify-between px-1">
-            <span className="text-[11px] text-neutral-400 font-mono">
-              Total {filteredInvoices.length} Faktur Tagihan
-            </span>
+            <div className="flex items-center gap-2">
+              {filteredInvoices.length > 0 && (
+                <IndeterminateCheckbox
+                  checked={filteredInvoices.length > 0 && selectedItems.length === filteredInvoices.length}
+                  indeterminate={selectedItems.length > 0 && selectedItems.length < filteredInvoices.length}
+                  onChange={() => {
+                    if (selectedItems.length === filteredInvoices.length) {
+                      setSelectedItems([]);
+                    } else {
+                      setSelectedItems(filteredInvoices.map((i) => i.id));
+                    }
+                  }}
+                  title={selectedItems.length === filteredInvoices.length ? 'Batal pilih semua' : 'Pilih semua invoice'}
+                />
+              )}
+              <span className="text-[11px] text-neutral-400 font-mono">
+                Total {filteredInvoices.length} Faktur Tagihan
+              </span>
+            </div>
 
             <div className="flex items-center gap-1">
               {/* Status filter cycle */}
@@ -1013,36 +1049,74 @@ export default function InvoicePage() {
               type="text"
               value={searchFilter}
               onChange={(e) => setSearchFilter(e.target.value)}
-              placeholder="Ketik nomor invoice, customer, material..."
-              className="w-full bg-[#1C1F24] border border-[#2A2E33] focus:border-[#F4511E] rounded-xl pl-10 pr-9 py-2.5 text-xs text-white placeholder-neutral-500 focus:outline-none transition-colors"
+              onKeyDown={(e) => {
+                if (e.key === 'Escape') setSearchFilter('');
+              }}
+              placeholder="Cari nomor invoice, faktur pajak, RO, PO customer, nama customer, material, status..."
+              className="w-full bg-[#1C1F24] border border-[#2A2E33] focus:border-[#F4511E] focus:ring-1 focus:ring-[#F4511E]/30 rounded-xl pl-10 pr-28 py-2.5 text-xs text-white placeholder-neutral-500 focus:outline-none font-mono transition-all shadow-inner"
             />
-            {searchFilter && (
-              <button
-                type="button"
-                onClick={() => setSearchFilter('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-white p-1"
-                title="Hapus pencarian"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
-            )}
+            <div className="absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
+              {searchFilter.trim() && (
+                <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[#F4511E]/10 text-[#F4511E] border border-[#F4511E]/30 hidden sm:inline">
+                  {filteredInvoices.length} ditemukan
+                </span>
+              )}
+              {searchFilter && (
+                <button
+                  type="button"
+                  onClick={() => setSearchFilter('')}
+                  className="text-neutral-400 hover:text-white p-1 rounded-md hover:bg-white/10 transition-colors cursor-pointer"
+                  title="Hapus pencarian (Esc)"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
           </div>
 
-          {/* Status filter chip */}
-          {statusFilter !== 'ALL' && (
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] text-neutral-500">Filter aktif:</span>
-              <span
-                className={`text-[10px] font-mono px-2 py-0.5 rounded-full border cursor-pointer ${
-                  statusFilter === 'LUNAS'
-                    ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30'
-                    : 'text-[#F4511E] bg-[#F4511E]/10 border-[#F4511E]/30'
-                }`}
-                onClick={() => setStatusFilter('ALL')}
-                title="Klik untuk hapus filter"
-              >
-                {statusFilter === 'LUNAS' ? 'LUNAS' : 'BELUM LUNAS'} ✕
-              </span>
+          {/* Active filter chips */}
+          {(searchFilter.trim() || statusFilter !== 'ALL') && (
+            <div className="flex items-center gap-2 flex-wrap text-xs pt-0.5">
+              <span className="text-[11px] text-neutral-500 font-mono">Filter aktif:</span>
+              {searchFilter.trim() && (
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg bg-[#F4511E]/10 border border-[#F4511E]/30 text-[#F4511E] text-[11px] font-mono">
+                  <span>Pencarian: &ldquo;{searchFilter}&rdquo;</span>
+                  <button
+                    type="button"
+                    onClick={() => setSearchFilter('')}
+                    className="hover:text-white transition-colors cursor-pointer"
+                    title="Hapus filter pencarian"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </span>
+              )}
+              {statusFilter !== 'ALL' && (
+                <span
+                  className={`inline-flex items-center gap-1.5 text-[11px] font-mono px-2.5 py-0.5 rounded-lg border cursor-pointer ${
+                    statusFilter === 'LUNAS'
+                      ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30'
+                      : 'text-[#F4511E] bg-[#F4511E]/10 border-[#F4511E]/30'
+                  }`}
+                  onClick={() => setStatusFilter('ALL')}
+                  title="Klik untuk hapus filter status"
+                >
+                  <span>Status: {statusFilter === 'LUNAS' ? 'LUNAS' : 'BELUM LUNAS'}</span>
+                  <X className="w-3.5 h-3.5" />
+                </span>
+              )}
+              {(searchFilter.trim() || statusFilter !== 'ALL') && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchFilter('');
+                    setStatusFilter('ALL');
+                  }}
+                  className="text-[10px] text-neutral-500 hover:text-neutral-300 underline font-mono ml-auto cursor-pointer"
+                >
+                  Reset semua
+                </button>
+              )}
             </div>
           )}
 
@@ -1200,7 +1274,7 @@ export default function InvoicePage() {
                       icon={Ticket}
                       value={formNomorRo}
                       onChange={(e) => setFormNomorRo(e.target.value)}
-                      placeholder="RO-202611-0001"
+                      placeholder="RO-LW-112026-001"
                       className="font-mono text-white"
                     />
 
@@ -1209,7 +1283,7 @@ export default function InvoicePage() {
                       icon={Ticket}
                       value={formPoNumber}
                       onChange={(e) => setFormPoNumber(e.target.value)}
-                      placeholder="PO-LW-2026-089"
+                      placeholder="PO-LW-112026-001"
                       className="font-mono text-white"
                     />
 

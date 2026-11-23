@@ -58,7 +58,7 @@ import { useData } from '../../context/DataContext';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { formatCurrency, formatVolume } from '../../utils/formatters';
-import { Button, Badge, Card, Input, Select, Modal } from '../../components/ui';
+import { Button, Badge, Card, Input, Select, Modal, IndeterminateCheckbox } from '../../components/ui';
 
 const staggerContainerVariants = {
   hidden: { opacity: 0 },
@@ -1763,42 +1763,35 @@ export default function MasterDataPage() {
             </div>
 
             {/* Quick Select All Toggle in Toolbar */}
-            {currentListCount.filtered > 0 && (
-              <label
-                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-[#0E1012] border border-[#22262A] text-neutral-300 text-xs cursor-pointer hover:border-[#F4511E]/40 transition-colors select-none shrink-0"
-                title="Pilih Semua / Batal Pilih"
-              >
-                <input
-                  type="checkbox"
-                  className="checkbox checkbox-xs rounded border-neutral-600 checked:border-[#F4511E] checked:bg-[#F4511E] cursor-pointer"
-                  checked={(() => {
-                    let list = [];
-                    if (currentTab === 'supplier') list = filteredSuppliers;
-                    else if (currentTab === 'material') list = filteredMaterials;
-                    else if (currentTab === 'armada') list = filteredArmada;
-                    else if (currentTab === 'customer') list = filteredCustomers;
-                    else if (currentTab === 'bank') list = filteredBanks;
-                    else if (currentTab === 'rekening') list = filteredAccounts;
-                    else if (currentTab === 'pengguna') list = filteredUsers;
-                    else if (currentTab === 'mata-uang') list = filteredCurrencies;
-                    return list.length > 0 && list.every((it) => selectedIds.includes(it.id));
-                  })()}
-                  onChange={() => {
-                    let list = [];
-                    if (currentTab === 'supplier') list = filteredSuppliers;
-                    else if (currentTab === 'material') list = filteredMaterials;
-                    else if (currentTab === 'armada') list = filteredArmada;
-                    else if (currentTab === 'customer') list = filteredCustomers;
-                    else if (currentTab === 'bank') list = filteredBanks;
-                    else if (currentTab === 'rekening') list = filteredAccounts;
-                    else if (currentTab === 'pengguna') list = filteredUsers;
-                    else if (currentTab === 'mata-uang') list = filteredCurrencies;
-                    handleToggleSelectAll(list);
-                  }}
-                />
-                <span className="text-[11px] font-mono hidden sm:inline">Pilih Semua</span>
-              </label>
-            )}
+            {currentListCount.filtered > 0 && (() => {
+              let list = [];
+              if (currentTab === 'supplier') list = filteredSuppliers;
+              else if (currentTab === 'material') list = filteredMaterials;
+              else if (currentTab === 'armada') list = filteredArmada;
+              else if (currentTab === 'customer') list = filteredCustomers;
+              else if (currentTab === 'bank') list = filteredBanks;
+              else if (currentTab === 'rekening') list = filteredAccounts;
+              else if (currentTab === 'pengguna') list = filteredUsers;
+              else if (currentTab === 'mata-uang') list = filteredCurrencies;
+
+              const isAll = list.length > 0 && list.every((it) => selectedIds.includes(it.id));
+              const isSome = list.some((it) => selectedIds.includes(it.id)) && !isAll;
+
+              return (
+                <label
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-[#0E1012] border border-[#22262A] text-neutral-300 text-xs cursor-pointer hover:border-[#F4511E]/40 transition-colors select-none shrink-0"
+                  title="Pilih Semua / Batal Pilih"
+                >
+                  <IndeterminateCheckbox
+                    size="xs"
+                    checked={isAll}
+                    indeterminate={isSome}
+                    onChange={() => handleToggleSelectAll(list)}
+                  />
+                  <span className="text-[11px] font-mono hidden sm:inline">Pilih Semua</span>
+                </label>
+              );
+            })()}
           </div>
         </div>
 
@@ -1946,13 +1939,15 @@ export default function MasterDataPage() {
                         <thead className="bg-[#181B1E] text-neutral-400 font-semibold border-b border-[#24282C] font-mono text-[11px]">
                           <tr>
                             <th className="p-3 w-10 text-center">
-                              <input
-                                type="checkbox"
-                                className="checkbox checkbox-xs rounded border-neutral-600 checked:border-[#F4511E] checked:bg-[#F4511E] cursor-pointer"
-                                checked={filtered.length > 0 && filtered.every((it) => selectedIds.includes(it.id))}
-                                onChange={() => handleToggleSelectAll(filtered)}
-                                title="Pilih semua supplier"
-                              />
+                              <div className="flex items-center justify-center">
+                                <IndeterminateCheckbox
+                                  size="xs"
+                                  checked={filtered.length > 0 && filtered.every((it) => selectedIds.includes(it.id))}
+                                  indeterminate={filtered.some((it) => selectedIds.includes(it.id)) && !filtered.every((it) => selectedIds.includes(it.id))}
+                                  onChange={() => handleToggleSelectAll(filtered)}
+                                  title="Pilih semua supplier"
+                                />
+                              </div>
                             </th>
                             <SortHeader field="status" label="Status" currentField={sortField} currentOrder={sortOrder} onSort={handleToggleSort} className="w-28" />
                             <SortHeader field="name" label="Nama Supplier" currentField={sortField} currentOrder={sortOrder} onSort={handleToggleSort} />
@@ -2276,13 +2271,15 @@ export default function MasterDataPage() {
                         <thead className="bg-[#181B1E] text-neutral-400 font-semibold border-b border-[#24282C] font-mono text-[11px]">
                           <tr>
                             <th className="p-3 w-10 text-center">
-                              <input
-                                type="checkbox"
-                                className="checkbox checkbox-xs rounded border-neutral-600 checked:border-[#F4511E] checked:bg-[#F4511E] cursor-pointer"
-                                checked={filtered.length > 0 && filtered.every((it) => selectedIds.includes(it.id))}
-                                onChange={() => handleToggleSelectAll(filtered)}
-                                title="Pilih semua material"
-                              />
+                              <div className="flex items-center justify-center">
+                                <IndeterminateCheckbox
+                                  size="xs"
+                                  checked={filtered.length > 0 && filtered.every((it) => selectedIds.includes(it.id))}
+                                  indeterminate={filtered.some((it) => selectedIds.includes(it.id)) && !filtered.every((it) => selectedIds.includes(it.id))}
+                                  onChange={() => handleToggleSelectAll(filtered)}
+                                  title="Pilih semua material"
+                                />
+                              </div>
                             </th>
                             <SortHeader field="status" label="Status" currentField={sortField} currentOrder={sortOrder} onSort={handleToggleSort} className="w-28" />
                             <SortHeader field="name" label="Nama Material" currentField={sortField} currentOrder={sortOrder} onSort={handleToggleSort} />
@@ -2580,13 +2577,15 @@ export default function MasterDataPage() {
                         <thead className="bg-[#181B1E] text-neutral-400 font-semibold border-b border-[#24282C] font-mono text-[11px]">
                           <tr>
                             <th className="p-3 w-10 text-center">
-                              <input
-                                type="checkbox"
-                                className="checkbox checkbox-xs rounded border-neutral-600 checked:border-[#F4511E] checked:bg-[#F4511E] cursor-pointer"
-                                checked={filtered.length > 0 && filtered.every((it) => selectedIds.includes(it.id))}
-                                onChange={() => handleToggleSelectAll(filtered)}
-                                title="Pilih semua armada"
-                              />
+                              <div className="flex items-center justify-center">
+                                <IndeterminateCheckbox
+                                  size="xs"
+                                  checked={filtered.length > 0 && filtered.every((it) => selectedIds.includes(it.id))}
+                                  indeterminate={filtered.some((it) => selectedIds.includes(it.id)) && !filtered.every((it) => selectedIds.includes(it.id))}
+                                  onChange={() => handleToggleSelectAll(filtered)}
+                                  title="Pilih semua armada"
+                                />
+                              </div>
                             </th>
                             <SortHeader field="status" label="Status" currentField={sortField} currentOrder={sortOrder} onSort={handleToggleSort} className="w-28" />
                             <SortHeader field="nopol" label="No. Polisi" currentField={sortField} currentOrder={sortOrder} onSort={handleToggleSort} />
@@ -2882,13 +2881,15 @@ export default function MasterDataPage() {
                         <thead className="bg-[#181B1E] text-neutral-400 font-semibold border-b border-[#24282C] font-mono text-[11px]">
                           <tr>
                             <th className="p-3 w-10 text-center">
-                              <input
-                                type="checkbox"
-                                className="checkbox checkbox-xs rounded border-neutral-600 checked:border-[#F4511E] checked:bg-[#F4511E] cursor-pointer"
-                                checked={filtered.length > 0 && filtered.every((it) => selectedIds.includes(it.id))}
-                                onChange={() => handleToggleSelectAll(filtered)}
-                                title="Pilih semua customer"
-                              />
+                              <div className="flex items-center justify-center">
+                                <IndeterminateCheckbox
+                                  size="xs"
+                                  checked={filtered.length > 0 && filtered.every((it) => selectedIds.includes(it.id))}
+                                  indeterminate={filtered.some((it) => selectedIds.includes(it.id)) && !filtered.every((it) => selectedIds.includes(it.id))}
+                                  onChange={() => handleToggleSelectAll(filtered)}
+                                  title="Pilih semua customer"
+                                />
+                              </div>
                             </th>
                             <SortHeader field="status" label="Status" currentField={sortField} currentOrder={sortOrder} onSort={handleToggleSort} className="w-28" />
                             <SortHeader field="kodePrefix" label="Kode Prefix" currentField={sortField} currentOrder={sortOrder} onSort={handleToggleSort} />
@@ -3165,13 +3166,15 @@ export default function MasterDataPage() {
                         <thead className="bg-[#181B1E] text-neutral-400 font-semibold border-b border-[#24282C] font-mono text-[11px]">
                           <tr>
                             <th className="p-3 w-10 text-center">
-                              <input
-                                type="checkbox"
-                                className="checkbox checkbox-xs rounded border-neutral-600 checked:border-[#F4511E] checked:bg-[#F4511E] cursor-pointer"
-                                checked={filtered.length > 0 && filtered.every((it) => selectedIds.includes(it.id))}
-                                onChange={() => handleToggleSelectAll(filtered)}
-                                title="Pilih semua bank"
-                              />
+                              <div className="flex items-center justify-center">
+                                <IndeterminateCheckbox
+                                  size="xs"
+                                  checked={filtered.length > 0 && filtered.every((it) => selectedIds.includes(it.id))}
+                                  indeterminate={filtered.some((it) => selectedIds.includes(it.id)) && !filtered.every((it) => selectedIds.includes(it.id))}
+                                  onChange={() => handleToggleSelectAll(filtered)}
+                                  title="Pilih semua bank"
+                                />
+                              </div>
                             </th>
                             <SortHeader field="status" label="Status" currentField={sortField} currentOrder={sortOrder} onSort={handleToggleSort} className="w-28" />
                             <SortHeader field="namaAlias" label="Nama Alias" currentField={sortField} currentOrder={sortOrder} onSort={handleToggleSort} />
@@ -3446,13 +3449,15 @@ export default function MasterDataPage() {
                         <thead className="bg-[#181B1E] text-neutral-400 font-semibold border-b border-[#24282C] font-mono text-[11px]">
                           <tr>
                             <th className="p-3 w-10 text-center">
-                              <input
-                                type="checkbox"
-                                className="checkbox checkbox-xs rounded border-neutral-600 checked:border-[#F4511E] checked:bg-[#F4511E] cursor-pointer"
-                                checked={filtered.length > 0 && filtered.every((it) => selectedIds.includes(it.id))}
-                                onChange={() => handleToggleSelectAll(filtered)}
-                                title="Pilih semua rekening"
-                              />
+                              <div className="flex items-center justify-center">
+                                <IndeterminateCheckbox
+                                  size="xs"
+                                  checked={filtered.length > 0 && filtered.every((it) => selectedIds.includes(it.id))}
+                                  indeterminate={filtered.some((it) => selectedIds.includes(it.id)) && !filtered.every((it) => selectedIds.includes(it.id))}
+                                  onChange={() => handleToggleSelectAll(filtered)}
+                                  title="Pilih semua rekening"
+                                />
+                              </div>
                             </th>
                             <SortHeader field="status" label="Status" currentField={sortField} currentOrder={sortOrder} onSort={handleToggleSort} className="w-28" />
                             <SortHeader field="nomorRekening" label="Nomor Rekening" currentField={sortField} currentOrder={sortOrder} onSort={handleToggleSort} />
@@ -3693,13 +3698,15 @@ export default function MasterDataPage() {
                         <thead className="bg-[#181B1E] text-neutral-400 font-semibold border-b border-[#24282C] font-mono text-[11px]">
                           <tr>
                             <th className="p-3 w-10 text-center">
-                              <input
-                                type="checkbox"
-                                className="checkbox checkbox-xs rounded border-neutral-600 checked:border-[#F4511E] checked:bg-[#F4511E] cursor-pointer"
-                                checked={filtered.length > 0 && filtered.every((it) => selectedIds.includes(it.id))}
-                                onChange={() => handleToggleSelectAll(filtered)}
-                                title="Pilih semua pengguna"
-                              />
+                              <div className="flex items-center justify-center">
+                                <IndeterminateCheckbox
+                                  size="xs"
+                                  checked={filtered.length > 0 && filtered.every((it) => selectedIds.includes(it.id))}
+                                  indeterminate={filtered.some((it) => selectedIds.includes(it.id)) && !filtered.every((it) => selectedIds.includes(it.id))}
+                                  onChange={() => handleToggleSelectAll(filtered)}
+                                  title="Pilih semua pengguna"
+                                />
+                              </div>
                             </th>
                             <SortHeader field="name" label="Pengguna" currentField={sortField} currentOrder={sortOrder} onSort={handleToggleSort} />
                             <SortHeader field="role" label="Role" currentField={sortField} currentOrder={sortOrder} onSort={handleToggleSort} />
@@ -4090,13 +4097,15 @@ export default function MasterDataPage() {
                       <thead className="bg-[#181B1E] text-neutral-400 font-semibold border-b border-[#24282C] font-mono text-[11px]">
                         <tr>
                           <th className="p-3 w-10 text-center">
-                            <input
-                              type="checkbox"
-                              className="checkbox checkbox-xs rounded border-neutral-600 checked:border-[#F4511E] checked:bg-[#F4511E] cursor-pointer"
-                              checked={filteredCurrencies.length > 0 && filteredCurrencies.every((it) => selectedIds.includes(it.id))}
-                              onChange={() => handleToggleSelectAll(filteredCurrencies)}
-                              title="Pilih semua mata uang"
-                            />
+                            <div className="flex items-center justify-center">
+                              <IndeterminateCheckbox
+                                size="xs"
+                                checked={filteredCurrencies.length > 0 && filteredCurrencies.every((it) => selectedIds.includes(it.id))}
+                                indeterminate={filteredCurrencies.some((it) => selectedIds.includes(it.id)) && !filteredCurrencies.every((it) => selectedIds.includes(it.id))}
+                                onChange={() => handleToggleSelectAll(filteredCurrencies)}
+                                title="Pilih semua mata uang"
+                              />
+                            </div>
                           </th>
                           <SortHeader field="status" label="Status" currentField={sortField} currentOrder={sortOrder} onSort={handleToggleSort} className="w-28" />
                           <SortHeader field="code" label="Mata Uang & Simbol" currentField={sortField} currentOrder={sortOrder} onSort={handleToggleSort} />

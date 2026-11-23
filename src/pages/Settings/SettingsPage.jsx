@@ -83,9 +83,6 @@ export default function SettingsPage() {
                 }`}
             >
               <span>Pengaturan Sistem</span>
-              <Badge size="xs" variant="primary">
-                v1.1.12
-              </Badge>
             </h1>
             <Badge size="xs" variant="danger">
               Super Admin
@@ -462,9 +459,6 @@ export default function SettingsPage() {
                 <div className="text-xs font-mono text-amber-500 font-bold">1.1.12.rc220</div>
               </div>
             </div>
-            <Badge size="xs" variant="success" dot>
-              Build Resmi
-            </Badge>
           </div>
 
           {/* Atribusi Data */}

@@ -22,6 +22,7 @@ import {
   X,
   CheckSquare,
   Square,
+  MinusSquare,
   Mail,
   LayoutGrid,
   List,
@@ -29,7 +30,7 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { useApp } from '../../context/AppContext';
-import { Button, Badge, Card, Modal } from '../../components/ui';
+import { Button, Badge, Card, Modal, IndeterminateCheckbox } from '../../components/ui';
 
 export default function ApprovalUserPage() {
   const navigate = useNavigate();
@@ -56,7 +57,7 @@ export default function ApprovalUserPage() {
     setViewMode(mode);
     try {
       localStorage.setItem('ptbas_approval_user_viewmode', mode);
-    } catch (e) {}
+    } catch (e) { }
   };
 
   // Batch Selection
@@ -195,18 +196,19 @@ export default function ApprovalUserPage() {
   };
 
   const handleConfirmReject = async () => {
-    if (!rejectModalData) return;
+    if (!rejectModalData || !rejectionReason.trim()) return;
     setIsSubmittingReject(true);
     try {
       const res = await deleteUser(rejectModalData.id);
       if (res?.success) {
-        addToast(`Permohonan pendaftaran akun ${rejectModalData.name} resmi ditolak.`, 'info');
+        addToast(`Permohonan pendaftaran akun ${rejectModalData.name} resmi ditolak. Alasan: "${rejectionReason.trim()}"`, 'info');
         setSelectedIds((prev) => {
           const next = new Set(prev);
           next.delete(rejectModalData.id);
           return next;
         });
         setRejectModalData(null);
+        setRejectionReason('');
       } else {
         addToast(res?.message || 'Gagal menolak akun.', 'error');
       }
@@ -235,7 +237,7 @@ export default function ApprovalUserPage() {
   // Handle batch reject
   const handleConfirmBatchReject = async () => {
     const ids = Array.from(selectedIds);
-    if (ids.length === 0 || isBatchSubmitting) return;
+    if (ids.length === 0 || isBatchSubmitting || !batchRejectionReason.trim()) return;
 
     setIsBatchSubmitting(true);
     try {
@@ -246,7 +248,8 @@ export default function ApprovalUserPage() {
       }
       setSelectedIds(new Set());
       setBatchRejectModalOpen(false);
-      addToast(`${count} permohonan pendaftaran Admin berhasil ditolak.`, 'info');
+      setBatchRejectionReason('');
+      addToast(`${count} permohonan pendaftaran Admin berhasil ditolak. Alasan: "${batchRejectionReason.trim()}"`, 'info');
     } catch (err) {
       addToast('Gagal memproses penolakan massal.', 'error');
     } finally {
@@ -265,14 +268,6 @@ export default function ApprovalUserPage() {
       addToast('Data permohonan registrasi berhasil diperbarui.', 'info');
     }, 400);
   };
-
-  // Quick rejection reasons chips
-  const quickReasons = [
-    'Data identitas atau kontak karyawan tidak valid',
-    'Bukan personil operasional resmi PT Berkah Alam Semesta',
-    'Alamat email tidak terdaftar dalam database HRD site',
-    'Permohonan duplikat dengan akun yang sudah ada',
-  ];
 
   return (
     <div className="w-full space-y-6 pb-20 font-sans">
@@ -436,11 +431,10 @@ export default function ApprovalUserPage() {
           <button
             type="button"
             onClick={() => setActiveTab('pending')}
-            className={`px-3 py-1.5 rounded-md text-xs font-mono font-bold transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
-              activeTab === 'pending'
-                ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-xs'
-                : 'text-neutral-400 hover:text-white'
-            }`}
+            className={`px-3 py-1.5 rounded-md text-xs font-mono font-bold transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${activeTab === 'pending'
+              ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-xs'
+              : 'text-neutral-400 hover:text-white'
+              }`}
           >
             <Clock className="w-3.5 h-3.5" />
             <span>Menunggu Approval ({metrics.pending})</span>
@@ -448,11 +442,10 @@ export default function ApprovalUserPage() {
           <button
             type="button"
             onClick={() => setActiveTab('approved')}
-            className={`px-3 py-1.5 rounded-md text-xs font-mono font-bold transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
-              activeTab === 'approved'
-                ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-xs'
-                : 'text-neutral-400 hover:text-white'
-            }`}
+            className={`px-3 py-1.5 rounded-md text-xs font-mono font-bold transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${activeTab === 'approved'
+              ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-xs'
+              : 'text-neutral-400 hover:text-white'
+              }`}
           >
             <CheckCircle2 className="w-3.5 h-3.5" />
             <span>Sudah Disetujui ({metrics.approved})</span>
@@ -460,11 +453,10 @@ export default function ApprovalUserPage() {
           <button
             type="button"
             onClick={() => setActiveTab('all')}
-            className={`px-3 py-1.5 rounded-md text-xs font-mono font-bold transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
-              activeTab === 'all'
-                ? 'bg-[#F4511E]/20 text-[#FF7043] border border-[#F4511E]/40 shadow-xs'
-                : 'text-neutral-400 hover:text-white'
-            }`}
+            className={`px-3 py-1.5 rounded-md text-xs font-mono font-bold transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${activeTab === 'all'
+              ? 'bg-[#F4511E]/20 text-[#FF7043] border border-[#F4511E]/40 shadow-xs'
+              : 'text-neutral-400 hover:text-white'
+              }`}
           >
             <Users className="w-3.5 h-3.5" />
             <span>Semua Registrasi ({metrics.total})</span>
@@ -513,11 +505,10 @@ export default function ApprovalUserPage() {
             <button
               type="button"
               onClick={() => handleSetViewMode('grid')}
-              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-mono font-bold transition-all cursor-pointer ${
-                viewMode === 'grid'
-                  ? 'bg-[#F4511E] text-white shadow-xs'
-                  : 'text-neutral-400 hover:text-white hover:bg-white/5'
-              }`}
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-mono font-bold transition-all cursor-pointer ${viewMode === 'grid'
+                ? 'bg-[#F4511E] text-white shadow-xs'
+                : 'text-neutral-400 hover:text-white hover:bg-white/5'
+                }`}
               title="Tampilan Grid / Kartu"
             >
               <LayoutGrid className="w-3.5 h-3.5" />
@@ -526,11 +517,10 @@ export default function ApprovalUserPage() {
             <button
               type="button"
               onClick={() => handleSetViewMode('list')}
-              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-mono font-bold transition-all cursor-pointer ${
-                viewMode === 'list'
-                  ? 'bg-[#F4511E] text-white shadow-xs'
-                  : 'text-neutral-400 hover:text-white hover:bg-white/5'
-              }`}
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-mono font-bold transition-all cursor-pointer ${viewMode === 'list'
+                ? 'bg-[#F4511E] text-white shadow-xs'
+                : 'text-neutral-400 hover:text-white hover:bg-white/5'
+                }`}
               title="Tampilan Tabel / List"
             >
               <List className="w-3.5 h-3.5" />
@@ -615,8 +605,10 @@ export default function ApprovalUserPage() {
                 className="flex items-center gap-1.5 hover:text-white cursor-pointer select-none"
               >
                 {filteredUsers.length > 0 &&
-                filteredUsers.every((u) => selectedIds.has(u.id)) ? (
+                  filteredUsers.every((u) => selectedIds.has(u.id)) ? (
                   <CheckSquare className="w-4 h-4 text-[#F4511E]" />
+                ) : filteredUsers.some((u) => selectedIds.has(u.id)) ? (
+                  <MinusSquare className="w-4 h-4 text-[#F4511E]" />
                 ) : (
                   <Square className="w-4 h-4 text-neutral-500" />
                 )}
@@ -637,11 +629,10 @@ export default function ApprovalUserPage() {
                 return (
                   <Card
                     key={user.id}
-                    className={`p-4 transition-all relative overflow-hidden flex flex-col justify-between ${
-                      isPending
-                        ? 'bg-amber-950/10 border-amber-500/40 hover:border-amber-500/60'
-                        : 'bg-[#14171A] border-[#22262A] hover:border-neutral-600'
-                    } ${isSelected ? 'ring-2 ring-[#F4511E]' : ''}`}
+                    className={`p-4 transition-all relative overflow-hidden flex flex-col justify-between ${isPending
+                      ? 'bg-amber-950/10 border-amber-500/40 hover:border-amber-500/60'
+                      : 'bg-[#14171A] border-[#22262A] hover:border-neutral-600'
+                      } ${isSelected ? 'ring-2 ring-[#F4511E]' : ''}`}
                   >
                     {/* Card Top: Checkbox, Avatar, Status */}
                     <div>
@@ -710,9 +701,9 @@ export default function ApprovalUserPage() {
                           <span>
                             {user.created_at
                               ? new Date(user.created_at).toLocaleString('id-ID', {
-                                  dateStyle: 'medium',
-                                  timeStyle: 'short',
-                                })
+                                dateStyle: 'medium',
+                                timeStyle: 'short',
+                              })
                               : 'Gresik Hub'}
                           </span>
                         </div>
@@ -774,16 +765,20 @@ export default function ApprovalUserPage() {
                 <thead>
                   <tr className="bg-[#181B1E] text-[11px] font-semibold text-neutral-400 uppercase tracking-wider border-b border-[#22262A]">
                     <th className="py-3 px-3 text-center w-10">
-                      <input
-                        type="checkbox"
-                        checked={
-                          filteredUsers.length > 0 &&
-                          filteredUsers.every((u) => selectedIds.has(u.id))
-                        }
-                        onChange={handleSelectAllPending}
-                        className="checkbox checkbox-xs rounded border-neutral-600 checked:border-[#F4511E] checked:bg-[#F4511E] cursor-pointer"
-                        title="Pilih semua di halaman ini"
-                      />
+                      <div className="flex items-center justify-center">
+                        <IndeterminateCheckbox
+                          checked={
+                            filteredUsers.length > 0 &&
+                            filteredUsers.every((u) => selectedIds.has(u.id))
+                          }
+                          indeterminate={
+                            filteredUsers.some((u) => selectedIds.has(u.id)) &&
+                            !filteredUsers.every((u) => selectedIds.has(u.id))
+                          }
+                          onChange={handleSelectAllPending}
+                          title="Pilih semua di halaman ini"
+                        />
+                      </div>
                     </th>
                     <th className="py-3 px-4 min-w-[200px]">Nama & Email</th>
                     <th className="py-3 px-3 min-w-[130px]">Role / Jabatan</th>
@@ -803,15 +798,14 @@ export default function ApprovalUserPage() {
                     return (
                       <tr
                         key={user.id}
-                        className={`transition-colors ${
-                          isSelected
-                            ? 'bg-[#F4511E]/10'
-                            : isPending
+                        className={`transition-colors ${isSelected
+                          ? 'bg-[#F4511E]/10'
+                          : isPending
                             ? 'bg-amber-950/5 hover:bg-amber-950/15'
                             : idx % 2 === 0
-                            ? 'bg-transparent hover:bg-white/[0.02]'
-                            : 'bg-[#111315]/50 hover:bg-white/[0.03]'
-                        }`}
+                              ? 'bg-transparent hover:bg-white/[0.02]'
+                              : 'bg-[#111315]/50 hover:bg-white/[0.03]'
+                          }`}
                       >
                         {/* Checkbox */}
                         <td className="py-3 px-3 text-center">
@@ -878,9 +872,9 @@ export default function ApprovalUserPage() {
                         <td className="py-3 px-3 font-mono text-[11px] text-neutral-400">
                           {user.created_at
                             ? new Date(user.created_at).toLocaleString('id-ID', {
-                                dateStyle: 'medium',
-                                timeStyle: 'short',
-                              })
+                              dateStyle: 'medium',
+                              timeStyle: 'short',
+                            })
                             : 'Gresik Hub'}
                         </td>
 
@@ -971,25 +965,21 @@ export default function ApprovalUserPage() {
                 ini akan dihapus dari antrean registrasi.
               </p>
 
-              {/* Quick reasons */}
+              {/* Alasan Penolakan (Wajib Ditulis Manual - Tanpa Pilihan Opsi) */}
               <div className="space-y-1.5 mb-4">
-                <span className="text-[11px] font-mono text-neutral-400">Pilih alasan penolakan (opsional):</span>
-                <div className="flex flex-wrap gap-1.5">
-                  {quickReasons.map((reason) => (
-                    <button
-                      key={reason}
-                      type="button"
-                      onClick={() => setRejectionReason(reason)}
-                      className={`text-[10px] px-2 py-1 rounded-lg border transition-all cursor-pointer ${
-                        rejectionReason === reason
-                          ? 'bg-rose-500/20 text-rose-300 border-rose-500/50'
-                          : 'bg-[#1C2025] text-neutral-400 border-neutral-700 hover:text-white'
-                      }`}
-                    >
-                      {reason}
-                    </button>
-                  ))}
-                </div>
+                <label className="block text-xs font-semibold text-neutral-300">
+                  Alasan Penolakan <span className="text-rose-400 font-bold">*</span>
+                </label>
+                <textarea
+                  rows={3}
+                  value={rejectionReason}
+                  onChange={(e) => setRejectionReason(e.target.value)}
+                  placeholder="Tuliskan alasan penolakan pendaftaran akun di sini..."
+                  className="w-full text-xs font-mono p-3 rounded-xl bg-[#181B1E] border border-[#2B3138] text-white placeholder-neutral-500 focus:outline-none focus:border-rose-500 focus:ring-1 focus:ring-rose-500 resize-none transition-colors"
+                />
+                <p className="text-[10px] text-neutral-400 font-mono">
+                  Wajib menuliskan alasan penolakan akun ini secara manual.
+                </p>
               </div>
 
               <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#23272D]">
@@ -1007,7 +997,8 @@ export default function ApprovalUserPage() {
                   icon={XCircle}
                   onClick={handleConfirmReject}
                   loading={isSubmittingReject}
-                  className="bg-rose-600 hover:bg-rose-500 text-white font-bold"
+                  disabled={isSubmittingReject || !rejectionReason.trim()}
+                  className="bg-rose-600 hover:bg-rose-500 text-white font-bold disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Konfirmasi Tolak
                 </Button>
@@ -1045,6 +1036,23 @@ export default function ApprovalUserPage() {
                 Tindakan ini tidak dapat dibatalkan.
               </p>
 
+              {/* Alasan Penolakan Massal (Wajib Ditulis Manual - Tanpa Pilihan Opsi) */}
+              <div className="space-y-1.5 mb-4">
+                <label className="block text-xs font-semibold text-neutral-300">
+                  Alasan Penolakan Massal <span className="text-rose-400 font-bold">*</span>
+                </label>
+                <textarea
+                  rows={3}
+                  value={batchRejectionReason}
+                  onChange={(e) => setBatchRejectionReason(e.target.value)}
+                  placeholder="Tuliskan alasan penolakan seluruh pendaftaran terpilih di sini..."
+                  className="w-full text-xs font-mono p-3 rounded-xl bg-[#181B1E] border border-[#2B3138] text-white placeholder-neutral-500 focus:outline-none focus:border-rose-500 focus:ring-1 focus:ring-rose-500 resize-none transition-colors"
+                />
+                <p className="text-[10px] text-neutral-400 font-mono">
+                  Wajib menuliskan alasan penolakan untuk seluruh akun terpilih.
+                </p>
+              </div>
+
               <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#23272D]">
                 <Button
                   size="sm"
@@ -1060,7 +1068,8 @@ export default function ApprovalUserPage() {
                   icon={XCircle}
                   onClick={handleConfirmBatchReject}
                   loading={isBatchSubmitting}
-                  className="bg-rose-600 hover:bg-rose-500 text-white font-bold"
+                  disabled={isBatchSubmitting || !batchRejectionReason.trim()}
+                  className="bg-rose-600 hover:bg-rose-500 text-white font-bold disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Tolak {selectedIds.size} Akun
                 </Button>

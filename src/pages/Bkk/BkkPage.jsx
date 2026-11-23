@@ -23,7 +23,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useData } from '../../context/DataContext';
 import { useToast } from '../../context/ToastContext';
 import { formatCurrency } from '../../utils/formatters';
-import { Modal, Button } from '../../components/ui';
+import { Modal, Button, IndeterminateCheckbox } from '../../components/ui';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Binary Icon (1011 / 001) matching reference screenshot
@@ -188,6 +188,9 @@ export default function BkkPage() {
     bankAccounts,
     suppliers,
     customers,
+    preOrders,
+    suratJalanList,
+    generateNomorRO,
   } = useData();
   const { addToast } = useToast();
 
@@ -340,7 +343,7 @@ export default function BkkPage() {
       customerId: formCustomerId,
       customer: cust?.name || '-',
       poNumber: formPoNumber || '-',
-      nomorRO: formRoNumber || `RO-${new Date().getFullYear()}-${String(Date.now()).slice(-4)}`,
+      nomorRO: formRoNumber || (generateNomorRO ? generateNomorRO(cust?.name || 'GEN', [...(preOrders || []), ...(suratJalanList || [])], new Date(), customers) : `RO-GEN-${String(new Date().getMonth() + 1).padStart(2, '0')}${new Date().getFullYear()}-001`),
       material: 'SIRTU',
       volume: 0,
       kubikasi: 0,
@@ -526,41 +529,61 @@ export default function BkkPage() {
             )}
           </div>
 
-          {/* ── Status Chips ── */}
-          <div className="flex items-center gap-1.5 px-1">
-            <button
-              type="button"
-              onClick={() => setStatusFilter('ALL')}
-              className={`px-3 py-1 rounded-lg text-xs font-mono font-bold transition-colors cursor-pointer ${
-                statusFilter === 'ALL'
-                  ? 'bg-[#F4511E] text-white'
-                  : 'bg-[#181B1E] text-neutral-400 hover:text-white border border-[#262A30]'
-              }`}
-            >
-              SEMUA ({bkkList.length})
-            </button>
-            <button
-              type="button"
-              onClick={() => setStatusFilter('BELUM_BAYAR')}
-              className={`px-3 py-1 rounded-lg text-xs font-mono font-bold transition-colors cursor-pointer ${
-                statusFilter === 'BELUM_BAYAR'
-                  ? 'bg-rose-600 text-white'
-                  : 'bg-[#181B1E] text-rose-400 hover:text-rose-300 border border-[#262A30]'
-              }`}
-            >
-              BELUM LUNAS
-            </button>
-            <button
-              type="button"
-              onClick={() => setStatusFilter('LUNAS')}
-              className={`px-3 py-1 rounded-lg text-xs font-mono font-bold transition-colors cursor-pointer ${
-                statusFilter === 'LUNAS'
-                  ? 'bg-emerald-600 text-white'
-                  : 'bg-[#181B1E] text-emerald-400 hover:text-emerald-300 border border-[#262A30]'
-              }`}
-            >
-              LUNAS
-            </button>
+          {/* ── Status Chips & Select All ── */}
+          <div className="flex items-center justify-between gap-1.5 px-1 flex-wrap">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <button
+                type="button"
+                onClick={() => setStatusFilter('ALL')}
+                className={`px-3 py-1 rounded-lg text-xs font-mono font-bold transition-colors cursor-pointer ${
+                  statusFilter === 'ALL'
+                    ? 'bg-[#F4511E] text-white'
+                    : 'bg-[#181B1E] text-neutral-400 hover:text-white border border-[#262A30]'
+                }`}
+              >
+                SEMUA ({bkkList.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setStatusFilter('BELUM_BAYAR')}
+                className={`px-3 py-1 rounded-lg text-xs font-mono font-bold transition-colors cursor-pointer ${
+                  statusFilter === 'BELUM_BAYAR'
+                    ? 'bg-rose-600 text-white'
+                    : 'bg-[#181B1E] text-rose-400 hover:text-rose-300 border border-[#262A30]'
+                }`}
+              >
+                BELUM LUNAS
+              </button>
+              <button
+                type="button"
+                onClick={() => setStatusFilter('LUNAS')}
+                className={`px-3 py-1 rounded-lg text-xs font-mono font-bold transition-colors cursor-pointer ${
+                  statusFilter === 'LUNAS'
+                    ? 'bg-emerald-600 text-white'
+                    : 'bg-[#181B1E] text-emerald-400 hover:text-emerald-300 border border-[#262A30]'
+                }`}
+              >
+                LUNAS
+              </button>
+            </div>
+
+            {filteredBkk.length > 0 && (
+              <div className="flex items-center gap-2 text-xs font-mono text-neutral-400 select-none">
+                <IndeterminateCheckbox
+                  checked={filteredBkk.length > 0 && selectedItems.length === filteredBkk.length}
+                  indeterminate={selectedItems.length > 0 && selectedItems.length < filteredBkk.length}
+                  onChange={() => {
+                    if (selectedItems.length === filteredBkk.length) {
+                      setSelectedItems([]);
+                    } else {
+                      setSelectedItems(filteredBkk.map((i) => i.id));
+                    }
+                  }}
+                  title={selectedItems.length === filteredBkk.length ? 'Batal pilih semua' : 'Pilih semua Cash Out'}
+                />
+                <span className="text-[11px] text-neutral-300">Pilih Semua</span>
+              </div>
+            )}
           </div>
 
           {/* ── BKK Items List ── */}

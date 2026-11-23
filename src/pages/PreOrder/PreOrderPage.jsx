@@ -16,7 +16,6 @@ import {
   Layers,
   Trash2,
   Lock,
-  Unlock,
   Package,
   Building2,
   HelpCircle,
@@ -33,10 +32,12 @@ import {
   Filter,
   Info,
   Check,
+  Minus,
   Sparkles,
+  Edit3,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-import { useData } from '../../context/DataContext';
+import { useData, generateNomorRO } from '../../context/DataContext';
 import { useToast } from '../../context/ToastContext';
 import { DEFAULT_MATERIALS } from '../../utils/constants';
 import { formatCurrency, formatVolume } from '../../utils/formatters';
@@ -95,8 +96,8 @@ export const SATUAN_OPTIONS = [
 ];
 
 /* ─────────────────────────── helpers ─────────────────────────── */
-function mkNomorRO() {
-  return `RO-${new Date().getFullYear()}-${String(Date.now()).slice(-4)}`;
+function mkNomorRO(customer, existingRos = [], customers = []) {
+  return generateNomorRO(customer, existingRos, new Date(), customers);
 }
 
 function createItemFromMaterial(mat, existingId = null, defaultSatuan = 'm³') {
@@ -180,7 +181,7 @@ function mkDefaultForm() {
     customer: '',
     jenisWajibPajak: 'PKP',
     nomorPoCustomer: '',
-    nomorRO: mkNomorRO(),
+    nomorRO: '',
     jenisRO: 'JASA ANGKUT + MATERIAL',
     satuanJasaAngkut: 'm³',
     satuan: 'm³',
@@ -190,71 +191,71 @@ function mkDefaultForm() {
 
 const REFERENCE_PREORDERS = [
   {
-    id: 'RO-LW-655-4590011130',
-    nomorRO: 'LW 655 - CUR - 4590011130',
-    nomorPo: '4590011130',
-    customer: 'LION WINGS, PT',
-    tanggal: '2026-10-12',
+    id: 1795062000001,
+    nomorRO: 'RO-LW-112026-001',
+    nomorPo: 'PO-LW-112026-001',
+    customer: 'PT LION WINGS',
+    tanggal: '2026-11-19',
     materialName: 'SIRTU',
     satuan: 'm³',
     totalOrder: 2278.00,
-    terkirim: 0,
+    terkirim: 69.88,
     jenisRO: 'JASA ANGKUT + MATERIAL',
     jenisPajak: 'PKP',
     top: '14 hari',
-    hargaBeli: 120000,
-    hargaJual: 78000,
+    hargaBeli: 50765,
+    hargaJual: 85000,
     status: 'APPROVED',
   },
   {
-    id: 'RO-WS-576-4510010537',
-    nomorRO: 'WS 576 - CUR - 4510010537',
-    nomorPo: '4510010537',
-    customer: 'WINGS SURYA, PT',
-    tanggal: '2026-10-09',
-    materialName: 'SIRTU',
+    id: 1795062166339,
+    nomorRO: 'RO-WS-112026-002',
+    nomorPo: 'PO-WS-112026-002',
+    customer: 'PT WINGS SURYA',
+    tanggal: '2026-11-19',
+    materialName: 'BASE COURSE',
     satuan: 'm³',
-    totalOrder: 450.00,
-    terkirim: 0,
+    totalOrder: 485.00,
+    terkirim: 32.5,
     jenisRO: 'JASA ANGKUT + MATERIAL',
     jenisPajak: 'PKP',
     top: '14 hari',
-    hargaBeli: 101000,
-    hargaJual: 78000,
+    hargaBeli: 40000,
+    hargaJual: 54500,
     status: 'APPROVED',
   },
   {
-    id: 'RO-KIAS-004-POS-2608-000224',
-    nomorRO: 'KIAS 004 - CUR - POS-2608-000224',
-    nomorPo: 'POS-2608-000224',
-    customer: 'KARYA INDAH ALAM SEJAHTERA, PT',
-    tanggal: '2026-08-19',
-    materialName: 'SIRTU',
+    id: 1795062530575,
+    nomorRO: 'RO-WS-112026-003',
+    nomorPo: 'PO-WS-112026-003',
+    customer: 'PT WINGS SURYA',
+    tanggal: '2026-11-19',
+    materialName: 'BASE COURSE',
     satuan: 'm³',
-    totalOrder: 11045.00,
-    terkirim: 0,
+    totalOrder: 100.00,
+    terkirim: 32.5,
     jenisRO: 'JASA ANGKUT + MATERIAL',
     jenisPajak: 'PKP',
     top: '14 hari',
-    hargaBeli: 120000,
-    hargaJual: 78000,
+    hargaBeli: 25000,
+    hargaJual: 40330,
     status: 'APPROVED',
   },
   {
-    id: 'RO-SAS-965-4500005548',
-    nomorRO: 'SAS 965 - CUR - 4500005548',
-    nomorPo: '4500005548',
-    customer: 'SEHAT ALAM SEGAR, PT',
-    tanggal: '2026-08-04',
-    materialName: 'SIRTU',
+    id: 1795073959896,
+    nomorRO: 'RO-WS-112026-004',
+    nomorPo: 'PO-WS-112026-004',
+    customer: 'PT WINGS SURYA',
+    tanggal: '2026-11-19',
+    materialName: 'LIMESTONE',
     satuan: 'm³',
-    totalOrder: 1137.00,
-    terkirim: 0,
+    totalOrder: 200.00,
+    terkirim: 97.5,
     jenisRO: 'JASA ANGKUT + MATERIAL',
     jenisPajak: 'PKP',
     top: '14 hari',
-    hargaBeli: 120000,
-    hargaJual: 78000,
+    hargaBeli: 39000,
+    hargaJual: 41999.87,
     status: 'APPROVED',
   },
 ];
@@ -265,7 +266,7 @@ const formatNumber = (num) => {
 };
 
 function formatPoNumber(poNum) {
-  if (!poNum) return 'PO: -';
+  if (!poNum || poNum === 'MENUNGGU SURAT JALAN PERTAMA') return 'PO: - (Opsional)';
   const clean = String(poNum).replace(/^PO:\s*/i, '').trim();
   return `PO: ${clean}`;
 }
@@ -396,15 +397,13 @@ function CompactSearchableSelect({
           }
         }}
         onKeyDown={handleKeyDown}
-        className={`w-full bg-[#181B1E] border border-[#2B3037] text-white rounded-md px-2.5 py-1.5 text-xs font-semibold focus:outline-none focus:border-[#F4511E] flex items-center justify-between gap-1.5 transition-colors cursor-pointer text-left ${
-          disabled ? 'opacity-60 cursor-not-allowed' : 'hover:border-[#3E454F]'
-        }`}
+        className={`w-full bg-[#181B1E] border border-[#2B3037] text-white rounded-md px-2.5 py-1.5 text-xs font-semibold focus:outline-none focus:border-[#F4511E] flex items-center justify-between gap-1.5 transition-colors cursor-pointer text-left ${disabled ? 'opacity-60 cursor-not-allowed' : 'hover:border-[#3E454F]'
+          }`}
       >
         <span className="truncate block flex-1">{displayText}</span>
         <ChevronDown
-          className={`w-3.5 h-3.5 text-neutral-400 shrink-0 transition-transform duration-150 ${
-            open ? 'rotate-180 text-[#F4511E]' : ''
-          }`}
+          className={`w-3.5 h-3.5 text-neutral-400 shrink-0 transition-transform duration-150 ${open ? 'rotate-180 text-[#F4511E]' : ''
+            }`}
         />
       </button>
 
@@ -462,13 +461,12 @@ function CompactSearchableSelect({
                     key={opt.value}
                     onClick={() => handleSelect(opt.value)}
                     onMouseEnter={() => setHighlightIdx(optIdx)}
-                    className={`px-3 py-2 cursor-pointer flex items-center justify-between text-xs transition-colors ${
-                      isSelected
-                        ? 'bg-[#F4511E]/15 text-[#F4511E] font-bold'
-                        : isHighlighted
+                    className={`px-3 py-2 cursor-pointer flex items-center justify-between text-xs transition-colors ${isSelected
+                      ? 'bg-[#F4511E]/15 text-[#F4511E] font-bold'
+                      : isHighlighted
                         ? 'bg-[#262A30] text-white'
                         : 'text-neutral-200 hover:bg-[#202327]'
-                    }`}
+                      }`}
                   >
                     <span className="truncate">{opt.label}</span>
                     {isSelected && (
@@ -489,7 +487,7 @@ function CompactSearchableSelect({
 export default function PreOrderPage() {
   const navigate = useNavigate();
   const { currentUser, isSuperAdmin, roleLabel, permissions } = useAuth();
-  const { preOrders, createPreOrder, approvePreOrder, rejectPreOrder, deletePreOrder, materials, customers, currencies } = useData();
+  const { preOrders, createPreOrder, approvePreOrder, rejectPreOrder, updatePreOrderCustomerPo, deletePreOrder, materials, customers, currencies, generateNomorRO } = useData();
   const { addToast } = useToast();
 
   const safePreOrders = useMemo(() => {
@@ -502,7 +500,6 @@ export default function PreOrderPage() {
   const [activeTab, setActiveTab] = useState('list');
   const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState({});
-  const [itemsLocked, setItemsLocked] = useState(false);
 
   const [formData, setFormData] = useState(mkDefaultForm());
   const [items, setItems] = useState([]);
@@ -522,7 +519,7 @@ export default function PreOrderPage() {
     setViewMode(mode);
     try {
       localStorage.setItem('ptbas_ro_viewmode', mode);
-    } catch (e) {}
+    } catch (e) { }
   };
 
   // ── Header Action Controls ──
@@ -536,6 +533,13 @@ export default function PreOrderPage() {
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [poToDelete, setPoToDelete] = useState(null);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+
+  // ── Customer PO Modal State ──
+  const [poModalOpen, setPoModalOpen] = useState(false);
+  const [targetPoToEdit, setTargetPoToEdit] = useState(null);
+  const [inputPoNumber, setInputPoNumber] = useState('');
+  const [syncWaybills, setSyncWaybills] = useState(true);
+  const [isUpdatingPo, setIsUpdatingPo] = useState(false);
 
   // ── Search & Filter State (Superadmin & Admin) ──
   const [searchQuery, setSearchQuery] = useState('');
@@ -691,50 +695,121 @@ export default function PreOrderPage() {
 
   const filteredPreOrders = useMemo(() => {
     return safePreOrders.filter((po) => {
-      // 1. Search query
+      // 1. Fulfillment & status calculations
+      const totalOrderVal = Number(po.totalOrder) || 1;
+      const terkirimVal = Number(po.terkirim) || 0;
+      const fulfillmentPct = Math.round((terkirimVal / totalOrderVal) * 100);
+      const isCompleted = terkirimVal >= totalOrderVal;
+      const isOver = fulfillmentPct > 100;
+      const isPending =
+        po.status === 'MENUNGGU_APPROVAL' ||
+        po.status === 'PENDING' ||
+        po.status === 'MENUNGGU APPROVAL';
+      const isApproved = po.status === 'APPROVED' || po.status === 'AKTIF';
+      const isSelesai = po.status === 'SELESAI' || isCompleted;
+
+      // 2. Search query (comprehensive, multi-term, alias-aware)
       const q = (searchQuery || '').toLowerCase().trim();
       if (q) {
-        const matchPo = (po.nomorPo || '').toLowerCase().includes(q);
-        const matchPoCust = (po.nomorPoCustomer || '').toLowerCase().includes(q);
-        const matchId = (po.id || '').toLowerCase().includes(q);
-        const matchRo = (po.nomorRO || po.nomorRo || '').toLowerCase().includes(q);
-        const matchCust = (po.customer || '').toLowerCase().includes(q);
-        const matchMat = (po.materialName || '').toLowerCase().includes(q);
-        const matchCreated = (po.createdBy || '').toLowerCase().includes(q);
-        const matchTanggal = (po.tanggal || '').toLowerCase().includes(q);
-        const matchJenisRo = (po.jenisRO || po.jenis || '').toLowerCase().includes(q);
-        const matchItems = Array.isArray(po.items) && po.items.some(
-          (it) => (it.nama || it.materialName || '').toLowerCase().includes(q)
-        );
-        if (!matchPo && !matchPoCust && !matchId && !matchRo && !matchCust && !matchMat && !matchCreated && !matchTanggal && !matchJenisRo && !matchItems) {
-          return false;
+        const terms = q.split(/\s+/).filter(Boolean);
+        let itemsList = [];
+        if (Array.isArray(po.items)) {
+          itemsList = po.items;
+        } else if (typeof po.items === 'string') {
+          try {
+            itemsList = JSON.parse(po.items || '[]');
+          } catch {
+            itemsList = [];
+          }
         }
+        const itemNames = itemsList.map((it) => String(it?.nama || it?.materialName || '')).join(' ');
+
+        // Generated nomor RO if not explicitly stored
+        const genNomorRO =
+          !po.nomorRO && !po.nomorRo && generateNomorRO
+            ? generateNomorRO(po.customer, safePreOrders, po.tanggal, customers)
+            : '';
+
+        // Status aliases in Indonesian and English
+        const statusAliases = [
+          isPending ? 'menunggu approval pending antrian verifikasi belum disetujui' : '',
+          isApproved ? 'approved disetujui aktif aktifkan berjalan' : '',
+          isSelesai ? 'selesai completed finish terpenuhi tuntas' : '',
+          isOver ? 'over over-delivery kelebihan kirim lebih' : '',
+          !po.nomorPo ? 'menunggu sj pertama belum ada surat jalan draft po' : '',
+        ].join(' ');
+
+        // Date aliases (e.g. 2026-11-19 -> "19-11-2026", "19/11/2026", "november", "nov")
+        let dateAliases = String(po.tanggal || '');
+        if (po.tanggal && po.tanggal.includes('-')) {
+          const parts = po.tanggal.split('-');
+          if (parts.length === 3) {
+            const [y, m, d] = parts;
+            dateAliases += ` ${d}-${m}-${y} ${d}/${m}/${y}`;
+            const months = [
+              'januari', 'februari', 'maret', 'april', 'mei', 'juni',
+              'juli', 'agustus', 'september', 'oktober', 'november', 'desember'
+            ];
+            const mIdx = parseInt(m, 10) - 1;
+            if (months[mIdx]) {
+              dateAliases += ` ${months[mIdx]} ${months[mIdx].slice(0, 3)} ${y}`;
+            }
+          }
+        }
+
+        const searchableText = [
+          String(po.id || ''),
+          String(po.nomorRO || po.nomorRo || ''),
+          genNomorRO,
+          String(po.nomorPo || ''),
+          String(po.nomorPoCustomer || ''),
+          String(po.hubungkanNomorPoMaterial || ''),
+          String(po.customer || ''),
+          String(po.customerId || ''),
+          String(po.customerAddress || ''),
+          String(po.supplierId || ''),
+          String(po.materialName || ''),
+          String(po.materialCategory || ''),
+          String(po.jenisRO || po.jenis || ''),
+          String(po.status || ''),
+          statusAliases,
+          String(po.top || ''),
+          String(po.jenisPajak || po.jenisWajibPajak || ''),
+          String(po.satuan || ''),
+          String(po.totalOrder || ''),
+          String(po.hargaJual || ''),
+          String(po.hargaBeli || ''),
+          dateAliases,
+          String(po.createdBy || ''),
+          String(po.approvedBy || ''),
+          itemNames,
+        ]
+          .join(' ')
+          .toLowerCase();
+
+        const matchAllTerms = terms.every((term) => searchableText.includes(term));
+        if (!matchAllTerms) return false;
       }
 
-      // 2. Status filter
-      const fulfillmentPct = Math.round(((Number(po.terkirim) || 0) / (Number(po.totalOrder) || 1)) * 100);
-      const isCompleted = (Number(po.terkirim) || 0) >= (Number(po.totalOrder) || 1);
-      const isOver = fulfillmentPct > 100;
-      const isPending = po.status === 'MENUNGGU_APPROVAL' || po.status === 'PENDING' || po.status === 'MENUNGGU APPROVAL';
-
+      // 3. Status filter
       if (statusFilter === 'AKTIF' && (isCompleted || isPending)) return false;
       if (statusFilter === 'SELESAI' && !isCompleted) return false;
       if (statusFilter === 'OVER' && !isOver) return false;
       if (statusFilter === 'PENDING' && !isPending) return false;
 
-      // 3. Customer filter
+      // 4. Customer filter
       if (customerFilter !== 'ALL' && po.customer !== customerFilter) {
         return false;
       }
 
-      // 4. Material filter
+      // 5. Material filter
       if (materialFilter !== 'ALL') {
         const directMatch = po.materialName === materialFilter;
         const itemMatch = Array.isArray(po.items) && po.items.some((it) => it.materialName === materialFilter);
         if (!directMatch && !itemMatch) return false;
       }
 
-      // 5. Date range filter
+      // 6. Date range filter
       if (startDate && po.tanggal && po.tanggal < startDate) {
         return false;
       }
@@ -763,7 +838,7 @@ export default function PreOrderPage() {
       // Default: NEWEST
       return (b.tanggal || '').localeCompare(a.tanggal || '') || String(b.id).localeCompare(String(a.id));
     });
-  }, [safePreOrders, searchQuery, statusFilter, customerFilter, materialFilter, startDate, endDate, sortBy]);
+  }, [safePreOrders, searchQuery, statusFilter, customerFilter, materialFilter, startDate, endDate, sortBy, customers]);
 
   // ── Grouped orders by customer/perusahaan ──
   const groupedOrders = useMemo(() => {
@@ -935,12 +1010,10 @@ export default function PreOrderPage() {
     } else {
       setItems([]);
     }
-    setItemsLocked(false);
   };
 
   /* ── material selection change in item row ── */
   const handleMaterialChange = (idx, selectedName) => {
-    if (itemsLocked) return;
     const targetItem = items[idx];
     if (!targetItem || targetItem.isAutoGenerated) return;
 
@@ -1005,7 +1078,6 @@ export default function PreOrderPage() {
 
   /* ── item management ── */
   const addItem = () => {
-    if (itemsLocked) return;
     if (!formData.jenisRO) {
       addToast('Pilih Jenis RO terlebih dahulu sebelum menambah item', 'warning');
       return;
@@ -1032,7 +1104,6 @@ export default function PreOrderPage() {
   };
 
   const removeItem = (idx) => {
-    if (itemsLocked) return;
     const targetItem = items[idx];
     if (!targetItem) return;
 
@@ -1052,7 +1123,6 @@ export default function PreOrderPage() {
   };
 
   const updateItem = (idx, field, val) => {
-    if (itemsLocked) return;
     const targetItem = items[idx];
     if (!targetItem) return;
 
@@ -1121,9 +1191,12 @@ export default function PreOrderPage() {
       const custObj = (customers || []).find((c) => c.name === formData.customer || c.alias === formData.customer);
       const customerAddress = custObj?.alamat || custObj?.customerAddress || '';
 
+      const cleanPoCust = formData.nomorPoCustomer?.trim() ? formData.nomorPoCustomer.trim().slice(0, 50) : null;
+
       await createPreOrder({
         ...formData,
-        nomorPo: formData.nomorPoCustomer || formData.nomorPo || null,
+        nomorPo: cleanPoCust,
+        nomorPoCustomer: cleanPoCust,
         createdBy: currentUser?.name || 'Admin Gresik',
         customerAddress,
         items,
@@ -1168,7 +1241,6 @@ export default function PreOrderPage() {
       setItems([]);
     }
     setErrors({});
-    setItemsLocked(false);
   };
 
   const handleCancel = () => {
@@ -1182,14 +1254,45 @@ export default function PreOrderPage() {
         fromPreOrder: true,
         preOrderId: po.id,
         customer: po.customer,
-        nomorPo: po.nomorPo || po.nomorPoCustomer || po.id,
+        nomorPo: po.nomorPo || po.nomorPoCustomer || '',
         materialId: po.materialId,
         materialName: po.materialName,
         jenis: po.jenisRO || po.jenis || 'Jasa Angkut + Material',
-        nomorRo: po.nomorRO || po.nomorRo || `RO-${po.id}`,
+        nomorRo: po.nomorRO || po.nomorRo || (generateNomorRO ? generateNomorRO(po.customer, preOrders, po.tanggal, customers) : ''),
         isPpn: po.jenisWajibPajak === 'PKP',
       },
     });
+  };
+
+  const handleOpenPoModal = (po) => {
+    setTargetPoToEdit(po);
+    setInputPoNumber(po.nomorPo || po.nomorPoCustomer || '');
+    setSyncWaybills(true);
+    setPoModalOpen(true);
+  };
+
+  const handleSavePoNumber = async (e) => {
+    e.preventDefault();
+    if (!targetPoToEdit) return;
+    setIsUpdatingPo(true);
+    try {
+      await updatePreOrderCustomerPo(targetPoToEdit.id, inputPoNumber, syncWaybills);
+      setPoModalOpen(false);
+      if (selectedDetailPo && selectedDetailPo.id === targetPoToEdit.id) {
+        setSelectedDetailPo((prev) => ({
+          ...prev,
+          nomorPo: inputPoNumber.trim() ? inputPoNumber.trim().slice(0, 50) : null,
+          nomorPoCustomer: inputPoNumber.trim() ? inputPoNumber.trim().slice(0, 50) : null,
+          poUpdatedBy: currentUser?.name || 'Admin',
+          poUpdatedAt: new Date().toISOString().replace('T', ' ').substring(0, 16),
+        }));
+      }
+      setTargetPoToEdit(null);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsUpdatingPo(false);
+    }
   };
 
   /* ══════════════════════════════════════════════════════════════════
@@ -1233,11 +1336,10 @@ export default function PreOrderPage() {
           <button
             type="button"
             onClick={() => setActiveTab('list')}
-            className={`px-4 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-              activeTab === 'list'
-                ? 'bg-[#F4511E] text-white shadow-sm'
-                : 'text-neutral-400 hover:text-white hover:bg-white/5'
-            }`}
+            className={`px-4 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer ${activeTab === 'list'
+              ? 'bg-[#F4511E] text-white shadow-sm'
+              : 'text-neutral-400 hover:text-white hover:bg-white/5'
+              }`}
           >
             Daftar RO ({safePreOrders.length})
           </button>
@@ -1247,11 +1349,10 @@ export default function PreOrderPage() {
               handleResetForm();
               setActiveTab('create');
             }}
-            className={`px-4 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
-              activeTab === 'create'
-                ? 'bg-[#F4511E] text-white shadow-sm'
-                : 'text-neutral-400 hover:text-white hover:bg-white/5'
-            }`}
+            className={`px-4 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${activeTab === 'create'
+              ? 'bg-[#F4511E] text-white shadow-sm'
+              : 'text-neutral-400 hover:text-white hover:bg-white/5'
+              }`}
           >
             <Plus className="w-4 h-4" />
             <span>Input Received Order</span>
@@ -1263,99 +1364,232 @@ export default function PreOrderPage() {
       {activeTab === 'list' && (
         <>
           <main className="px-4 space-y-3 mx-auto max-w-6xl">
-            {/* ── TOP TOOLBAR: SEARCH BAR & GRID / LIST TOGGLE ── */}
-            <div className="pt-1 space-y-2">
-              {/* Row 1: Total count kiri, icons kanan */}
-              <div className="flex items-center justify-between text-xs font-mono text-neutral-400 px-0.5">
-                <span>
-                  Total <span className="text-white font-bold">{filteredPreOrders.length}</span> Received Order
-                </span>
-                <div className="flex items-center gap-1">
+            {/* ── TOP TOOLBAR: SEARCH BAR & CONTROLS ── */}
+            <div className="bg-[#14171A] border border-[#22262A] rounded-2xl p-3 sm:p-4 space-y-3 font-mono">
+              {/* Row 1: Search bar (prominent & primary) + Actions */}
+              <div className="flex flex-col md:flex-row md:items-center gap-2.5">
+                {/* Search input — Dominant */}
+                <div className="relative flex-1">
+                  <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none" />
+                  <input
+                    ref={searchInputRef}
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Escape') setSearchQuery('');
+                    }}
+                    placeholder="Cari nomor RO, PO customer, nama customer, material, status, tanggal..."
+                    className="w-full bg-[#1C1F24] border border-[#2B3037] focus:border-[#F4511E] focus:ring-1 focus:ring-[#F4511E]/30 rounded-xl pl-10 pr-28 py-2.5 text-xs text-white placeholder-neutral-500 focus:outline-none transition-all shadow-inner font-mono"
+                  />
+                  <div className="absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
+                    {searchQuery.trim() && (
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-[#F4511E]/10 text-[#F4511E] border border-[#F4511E]/30 hidden sm:inline">
+                        {filteredPreOrders.length} ditemukan
+                      </span>
+                    )}
+                    {searchQuery && (
+                      <button
+                        type="button"
+                        onClick={() => setSearchQuery('')}
+                        className="text-neutral-400 hover:text-white p-1 rounded-md hover:bg-white/10 transition-colors cursor-pointer"
+                        title="Hapus pencarian (Esc)"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Quick Controls: Customer dropdown, Filter toggle, Date toggle, Refresh, View toggle */}
+                <div className="flex items-center gap-2 flex-wrap">
+                  {/* Customer Dropdown */}
+                  <div className="relative">
+                    <select
+                      value={customerFilter}
+                      onChange={(e) => setCustomerFilter(e.target.value)}
+                      className="bg-[#1C1F24] border border-[#2B3037] rounded-xl pl-3 pr-7 py-2 text-xs font-mono text-neutral-200 focus:outline-none focus:border-[#F4511E] appearance-none cursor-pointer hover:border-neutral-500 transition-colors"
+                    >
+                      <option value="ALL">Semua Perusahaan</option>
+                      {availableCustomerOptions.map((c) => (
+                        <option key={c} value={c}>{c}</option>
+                      ))}
+                    </select>
+                    <ChevronDown className="w-3.5 h-3.5 text-neutral-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  </div>
+
+                  {/* Filter Lanjutan Button */}
                   <button
                     type="button"
                     onClick={() => setFilterOpen(!filterOpen)}
-                    className={`p-1.5 rounded-lg transition-colors cursor-pointer ${filterOpen || hasActiveFilters ? 'text-[#F4511E]' : 'text-neutral-400 hover:text-white hover:bg-white/5'}`}
-                    title="Filter Status & Customer"
-                  ><Filter className="w-4 h-4" /></button>
-                  <button type="button" onClick={handleToggleCalendar}
-                    className={`p-1.5 rounded-lg transition-colors cursor-pointer ${calendarOpen || startDate || endDate ? 'text-[#F4511E]' : 'text-neutral-400 hover:text-white hover:bg-white/5'}`}
-                    title="Rentang Tanggal"
-                  ><Calendar className="w-4 h-4" /></button>
-                  <button type="button" onClick={handleRefresh}
-                    className="p-1.5 rounded-lg text-neutral-400 hover:text-white hover:bg-white/5 transition-colors cursor-pointer"
-                    title="Refresh"
-                  ><RotateCcw className="w-4 h-4" /></button>
+                    className={`flex items-center gap-1.5 px-3 py-2 rounded-xl border text-xs font-mono transition-colors cursor-pointer ${
+                      filterOpen || (hasActiveFilters && statusFilter !== 'ALL')
+                        ? 'border-[#F4511E] text-[#F4511E] bg-[#F4511E]/10'
+                        : 'border-[#2B3037] text-neutral-300 hover:border-neutral-500 bg-[#1C1F24]'
+                    }`}
+                    title="Filter Status & Detail"
+                  >
+                    <Filter className="w-3.5 h-3.5" />
+                    <span>Filter</span>
+                  </button>
+
+                  {/* Calendar Filter Button */}
+                  <button
+                    type="button"
+                    onClick={handleToggleCalendar}
+                    className={`p-2 rounded-xl border transition-colors cursor-pointer ${
+                      calendarOpen || startDate || endDate
+                        ? 'border-[#F4511E] text-[#F4511E] bg-[#F4511E]/10'
+                        : 'border-[#2B3037] text-neutral-400 hover:text-white hover:border-neutral-500 bg-[#1C1F24]'
+                    }`}
+                    title="Filter Rentang Tanggal"
+                  >
+                    <Calendar className="w-4 h-4" />
+                  </button>
+
+                  {/* Refresh Button */}
+                  <button
+                    type="button"
+                    onClick={handleRefresh}
+                    className="p-2 rounded-xl border border-[#2B3037] text-neutral-400 hover:text-white hover:border-neutral-500 bg-[#1C1F24] transition-colors cursor-pointer"
+                    title="Refresh Data"
+                  >
+                    <RotateCcw className="w-4 h-4" />
+                  </button>
+
+                  {/* View Mode: List vs Grid */}
+                  <div className="flex items-center bg-[#1C1F24] border border-[#2B3037] rounded-xl p-0.5 gap-0.5">
+                    <button
+                      type="button"
+                      onClick={() => handleSetViewMode('list')}
+                      className={`p-1.5 rounded-lg text-xs transition-all cursor-pointer ${
+                        viewMode === 'list'
+                          ? 'bg-[#F4511E] text-white shadow-xs'
+                          : 'text-neutral-400 hover:text-white'
+                      }`}
+                      title="Tampilan Tabel / List"
+                    >
+                      <List className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleSetViewMode('grid')}
+                      className={`p-1.5 rounded-lg text-xs transition-all cursor-pointer ${
+                        viewMode === 'grid'
+                          ? 'bg-[#F4511E] text-white shadow-xs'
+                          : 'text-neutral-400 hover:text-white'
+                      }`}
+                      title="Tampilan Kartu / Grid"
+                    >
+                      <LayoutGrid className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
                 </div>
               </div>
 
-              {/* Row 2: List/Grid toggle, Group dropdown, Prioritas, Buka/Tutup semua */}
-              <div className="flex items-center gap-2 flex-wrap">
-                {/* View toggle */}
-                <div className="flex items-center bg-[#14171A] border border-[#24282F] rounded-lg p-0.5 shrink-0 gap-0.5">
-                  <button type="button" onClick={() => handleSetViewMode('list')}
-                    className={`flex items-center gap-1 px-2.5 py-1.5 rounded-md text-xs font-mono transition-all cursor-pointer ${viewMode === 'list' ? 'bg-[#F4511E] text-white font-bold' : 'text-neutral-400 hover:text-white hover:bg-white/5'}`}
-                    title="Tampilan List"
-                  ><List className="w-3.5 h-3.5" /></button>
-                  <button type="button" onClick={() => handleSetViewMode('grid')}
-                    className={`flex items-center gap-1 px-2.5 py-1.5 rounded-md text-xs font-mono transition-all cursor-pointer ${viewMode === 'grid' ? 'bg-[#F4511E] text-white font-bold' : 'text-neutral-400 hover:text-white hover:bg-white/5'}`}
-                    title="Tampilan Grid"
-                  ><LayoutGrid className="w-3.5 h-3.5" /></button>
+              {/* Row 2: Sub-toolbar summary & group controls */}
+              <div className="flex items-center justify-between text-xs text-neutral-400 pt-1 border-t border-[#1F2329] flex-wrap gap-2">
+                <div className="flex items-center gap-2">
+                  {filteredPreOrders.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={handleSelectAll}
+                      className={`w-4 h-4 rounded border flex items-center justify-center transition-colors cursor-pointer shrink-0 ${
+                        selectedIds.size > 0
+                          ? 'bg-[#F4511E] border-[#F4511E] text-white shadow-xs'
+                          : 'border-neutral-500 hover:border-neutral-300 bg-transparent'
+                      }`}
+                      title={selectedIds.size === filteredPreOrders.length ? 'Batal pilih semua' : 'Pilih semua'}
+                    >
+                      {selectedIds.size === filteredPreOrders.length && filteredPreOrders.length > 0 && (
+                        <Check className="w-2.5 h-2.5 stroke-[3]" />
+                      )}
+                      {selectedIds.size > 0 && selectedIds.size < filteredPreOrders.length && (
+                        <Minus className="w-2.5 h-2.5 stroke-[3]" />
+                      )}
+                    </button>
+                  )}
+                  <span>
+                    Menampilkan <strong className="text-white">{filteredPreOrders.length}</strong> dari {safePreOrders.length} Received Order
+                  </span>
                 </div>
-
-                {/* Group by: Perusahaan dropdown */}
-                <div className="relative">
-                  <select
-                    value={customerFilter}
-                    onChange={(e) => setCustomerFilter(e.target.value)}
-                    className="bg-[#14171A] border border-[#24282F] rounded-lg pl-3 pr-7 py-1.5 text-xs font-mono text-neutral-200 focus:outline-none focus:border-[#F4511E] appearance-none cursor-pointer"
-                  >
-                    <option value="ALL">Perusahaan</option>
-                    {availableCustomerOptions.map((c) => (
-                      <option key={c} value={c}>{c}</option>
-                    ))}
-                  </select>
-                  <ChevronDown className="w-3 h-3 text-neutral-400 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
-                </div>
-
-                {/* Filter status (Prioritas) */}
-                <button type="button" onClick={() => setFilterOpen(!filterOpen)}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-mono transition-colors cursor-pointer ${filterOpen || hasActiveFilters ? 'border-[#F4511E] text-[#F4511E] bg-[#F4511E]/10' : 'border-[#24282F] text-neutral-300 hover:border-neutral-500 bg-[#14171A]'}`}
-                >
-                  <ArrowUpDown className="w-3.5 h-3.5" />
-                  <span>Prioritas</span>
-                </button>
 
                 {/* Buka / Tutup semua (hanya di list mode) */}
                 {viewMode === 'list' && filteredPreOrders.length > 0 && (
-                  <div className="ml-auto flex items-center gap-2 text-[11px] font-mono">
+                  <div className="flex items-center gap-2 text-[11px]">
                     <button type="button" onClick={expandAllGroups} className="text-neutral-400 hover:text-white transition-colors cursor-pointer">Buka semua</button>
+                    <span className="text-neutral-700">|</span>
                     <button type="button" onClick={collapseAllGroups} className="text-neutral-400 hover:text-white transition-colors cursor-pointer">Tutup semua</button>
                   </div>
                 )}
               </div>
 
-              {/* Row 3: Search bar */}
-              <div className="relative">
-                <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none" />
-                <input
-                  ref={searchInputRef}
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Ketik nomor RO, nomor PO, nama customer, material..."
-                  className="w-full bg-[#14171A] border border-[#24282F] rounded-xl pl-10 pr-9 py-2.5 text-xs text-white placeholder-neutral-500 focus:outline-none focus:border-[#F4511E] font-mono transition-colors"
-                />
-                {searchQuery && (
+              {/* Row 3: Active Filters / Search feedback tags */}
+              {hasActiveFilters && (
+                <div className="flex items-center gap-2 flex-wrap text-xs pt-1 border-t border-[#1F2329]">
+                  <span className="text-[11px] text-neutral-500 font-mono">Filter aktif:</span>
+                  {searchQuery.trim() && (
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg bg-[#F4511E]/10 border border-[#F4511E]/30 text-[#F4511E] text-[11px] font-mono">
+                      <span>Pencarian: &ldquo;{searchQuery}&rdquo;</span>
+                      <button
+                        type="button"
+                        onClick={() => setSearchQuery('')}
+                        className="hover:text-white transition-colors cursor-pointer"
+                        title="Hapus filter pencarian"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </span>
+                  )}
+                  {statusFilter !== 'ALL' && (
+                    <span
+                      className="inline-flex items-center gap-1.5 text-[11px] font-mono px-2.5 py-0.5 rounded-lg border border-[#F4511E]/30 bg-[#F4511E]/10 text-[#F4511E] cursor-pointer"
+                      onClick={() => setStatusFilter('ALL')}
+                      title="Klik untuk hapus filter status"
+                    >
+                      <span>Status: {statusFilter}</span>
+                      <X className="w-3 h-3" />
+                    </span>
+                  )}
+                  {customerFilter !== 'ALL' && (
+                    <span
+                      className="inline-flex items-center gap-1.5 text-[11px] font-mono px-2.5 py-0.5 rounded-lg border border-neutral-700 bg-neutral-800 text-neutral-300 cursor-pointer"
+                      onClick={() => setCustomerFilter('ALL')}
+                      title="Klik untuk hapus filter customer"
+                    >
+                      <span>Customer: {customerFilter}</span>
+                      <X className="w-3 h-3" />
+                    </span>
+                  )}
+                  {materialFilter !== 'ALL' && (
+                    <span
+                      className="inline-flex items-center gap-1.5 text-[11px] font-mono px-2.5 py-0.5 rounded-lg border border-neutral-700 bg-neutral-800 text-neutral-300 cursor-pointer"
+                      onClick={() => setMaterialFilter('ALL')}
+                      title="Klik untuk hapus filter material"
+                    >
+                      <span>Material: {materialFilter}</span>
+                      <X className="w-3 h-3" />
+                    </span>
+                  )}
+                  {(startDate || endDate) && (
+                    <span
+                      className="inline-flex items-center gap-1.5 text-[11px] font-mono px-2.5 py-0.5 rounded-lg border border-neutral-700 bg-neutral-800 text-neutral-300 cursor-pointer"
+                      onClick={() => { setStartDate(''); setEndDate(''); }}
+                      title="Klik untuk hapus filter tanggal"
+                    >
+                      <span>Tanggal: {startDate || '...'} s/d {endDate || '...'}</span>
+                      <X className="w-3 h-3" />
+                    </span>
+                  )}
                   <button
                     type="button"
-                    onClick={() => setSearchQuery('')}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-white p-0.5"
-                    title="Hapus pencarian"
+                    onClick={handleResetFilters}
+                    className="text-[10px] text-neutral-500 hover:text-neutral-300 underline font-mono ml-auto cursor-pointer"
                   >
-                    <X className="w-3.5 h-3.5" />
+                    Reset semua
                   </button>
-                )}
-              </div>
+                </div>
+              )}
             </div>
 
             {/* ── COLLAPSIBLE FILTER PANEL ── */}
@@ -1374,11 +1608,10 @@ export default function PreOrderPage() {
                       key={tab.id}
                       type="button"
                       onClick={() => setStatusFilter(tab.id)}
-                      className={`px-3 py-1 rounded-lg text-xs transition-colors cursor-pointer ${
-                        statusFilter === tab.id
-                          ? 'bg-[#F4511E] text-white font-bold'
-                          : 'bg-[#1A1D22] text-neutral-400 hover:text-white'
-                      }`}
+                      className={`px-3 py-1 rounded-lg text-xs transition-colors cursor-pointer ${statusFilter === tab.id
+                        ? 'bg-[#F4511E] text-white font-bold'
+                        : 'bg-[#1A1D22] text-neutral-400 hover:text-white'
+                        }`}
                     >
                       {tab.label}
                     </button>
@@ -1470,9 +1703,19 @@ export default function PreOrderPage() {
               /* ── LIST VIEW: GROUPED TABLE (seperti referensi gambar) ── */
               <div className="space-y-3">
                 {groupedOrders.map(({ customer, orders, totalVolume, totalNilai, approvedCount, satuan }) => {
-                  const isCollapsed = collapsedGroups.has(customer);
-                  const allGroupSelected = orders.every((o) => selectedIds.has(o.id));
+                  const isCollapsed = searchQuery.trim() ? false : collapsedGroups.has(customer);
+                  const allGroupSelected = orders.length > 0 && orders.every((o) => selectedIds.has(o.id));
                   const someGroupSelected = orders.some((o) => selectedIds.has(o.id));
+
+                  const handleToggleGroup = () => {
+                    const allIds = orders.map((o) => o.id);
+                    setSelectedIds((prev) => {
+                      const next = new Set(prev);
+                      if (allGroupSelected) allIds.forEach((id) => next.delete(id));
+                      else allIds.forEach((id) => next.add(id));
+                      return next;
+                    });
+                  };
 
                   return (
                     <div key={customer} className="bg-[#121417] border border-[#20242A] rounded-xl overflow-hidden shadow-md">
@@ -1481,24 +1724,15 @@ export default function PreOrderPage() {
                         {/* Group select checkbox */}
                         <button
                           type="button"
-                          onClick={() => {
-                            const allIds = orders.map((o) => o.id);
-                            setSelectedIds((prev) => {
-                              const next = new Set(prev);
-                              if (allGroupSelected) allIds.forEach((id) => next.delete(id));
-                              else allIds.forEach((id) => next.add(id));
-                              return next;
-                            });
-                          }}
-                          className={`w-4 h-4 rounded border flex items-center justify-center transition-colors cursor-pointer shrink-0 ${
-                            allGroupSelected
-                              ? 'bg-[#F4511E] border-[#F4511E] text-white'
-                              : someGroupSelected
-                              ? 'bg-[#F4511E]/40 border-[#F4511E] text-white'
-                              : 'border-neutral-500 hover:border-neutral-300 bg-transparent'
-                          }`}
+                          onClick={handleToggleGroup}
+                          className={`w-4 h-4 rounded border flex items-center justify-center transition-colors cursor-pointer shrink-0 ${allGroupSelected || someGroupSelected
+                            ? 'bg-[#F4511E] border-[#F4511E] text-white shadow-xs'
+                            : 'border-neutral-500 hover:border-neutral-300 bg-transparent'
+                            }`}
+                          title={allGroupSelected ? 'Batal pilih grup' : someGroupSelected ? 'Pilih semua di grup ini' : 'Pilih semua'}
                         >
-                          {(allGroupSelected || someGroupSelected) && <Check className="w-2.5 h-2.5 stroke-[3]" />}
+                          {allGroupSelected && <Check className="w-2.5 h-2.5 stroke-[3]" />}
+                          {!allGroupSelected && someGroupSelected && <Minus className="w-2.5 h-2.5 stroke-[3]" />}
                         </button>
 
                         {/* Collapse toggle */}
@@ -1534,7 +1768,20 @@ export default function PreOrderPage() {
                           <table className="w-full text-xs font-mono">
                             <thead>
                               <tr className="border-b border-[#1C2026] text-[10px] text-neutral-500 uppercase tracking-wider">
-                                <th className="w-8 px-3 py-2 text-left"></th>
+                                <th className="w-8 px-3 py-2 text-left">
+                                  <button
+                                    type="button"
+                                    onClick={handleToggleGroup}
+                                    className={`w-4 h-4 rounded border flex items-center justify-center transition-colors cursor-pointer shrink-0 ${allGroupSelected || someGroupSelected
+                                      ? 'bg-[#F4511E] border-[#F4511E] text-white shadow-xs'
+                                      : 'border-neutral-500 hover:border-neutral-300 bg-transparent'
+                                      }`}
+                                    title={allGroupSelected ? 'Batal pilih grup' : someGroupSelected ? 'Pilih semua di grup ini' : 'Pilih semua'}
+                                  >
+                                    {allGroupSelected && <Check className="w-2.5 h-2.5 stroke-[3]" />}
+                                    {!allGroupSelected && someGroupSelected && <Minus className="w-2.5 h-2.5 stroke-[3]" />}
+                                  </button>
+                                </th>
                                 <th className="px-3 py-2 text-left min-w-[90px]">Tanggal</th>
                                 <th className="px-3 py-2 text-left min-w-[150px]">No. Dokumen</th>
                                 <th className="px-3 py-2 text-left min-w-[140px]">Material</th>
@@ -1559,27 +1806,25 @@ export default function PreOrderPage() {
                                   isApproved
                                     ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/25'
                                     : isPending
-                                    ? 'bg-amber-500/15 text-amber-400 border-amber-500/25'
-                                    : isSelesai
-                                    ? 'bg-blue-500/15 text-blue-400 border-blue-500/25'
-                                    : 'bg-neutral-700/40 text-neutral-400 border-neutral-600/30';
+                                      ? 'bg-amber-500/15 text-amber-400 border-amber-500/25'
+                                      : isSelesai
+                                        ? 'bg-blue-500/15 text-blue-400 border-blue-500/25'
+                                        : 'bg-neutral-700/40 text-neutral-400 border-neutral-600/30';
                                 return (
                                   <tr
                                     key={po.id}
-                                    className={`border-b border-[#1A1D22] transition-colors ${
-                                      isSelected ? 'bg-[#F4511E]/5' : idx % 2 === 0 ? 'bg-transparent' : 'bg-[#0E1012]/40'
-                                    } hover:bg-white/[0.03]`}
+                                    className={`border-b border-[#1A1D22] transition-colors ${isSelected ? 'bg-[#F4511E]/5' : idx % 2 === 0 ? 'bg-transparent' : 'bg-[#0E1012]/40'
+                                      } hover:bg-white/[0.03]`}
                                   >
                                     {/* Checkbox */}
                                     <td className="px-3 py-2.5">
                                       <button
                                         type="button"
                                         onClick={() => toggleSelect(po.id)}
-                                        className={`w-4 h-4 rounded border flex items-center justify-center transition-colors cursor-pointer ${
-                                          isSelected
-                                            ? 'bg-[#F4511E] border-[#F4511E] text-white'
-                                            : 'border-neutral-600 hover:border-neutral-400 bg-transparent'
-                                        }`}
+                                        className={`w-4 h-4 rounded border flex items-center justify-center transition-colors cursor-pointer ${isSelected
+                                          ? 'bg-[#F4511E] border-[#F4511E] text-white'
+                                          : 'border-neutral-600 hover:border-neutral-400 bg-transparent'
+                                          }`}
                                       >
                                         {isSelected && <Check className="w-2.5 h-2.5 stroke-[3]" />}
                                       </button>
@@ -1590,9 +1835,41 @@ export default function PreOrderPage() {
 
                                     {/* No. Dokumen */}
                                     <td className="px-3 py-2.5">
-                                      <div className="text-white font-semibold">{po.nomorRO || po.nomorRo || `RO-${po.id}`}</div>
-                                      {po.nomorPo && (
-                                        <div className="text-neutral-500 text-[10px]">Po: {po.nomorPo}</div>
+                                      <div className="text-white font-semibold">{po.nomorRO || po.nomorRo || (generateNomorRO ? generateNomorRO(po.customer, preOrders, po.tanggal, customers) : '')}</div>
+                                      {po.nomorPo ? (
+                                        <div className="flex items-center gap-1.5 text-[10px]">
+                                          <span className="text-neutral-400 font-mono">Po: {po.nomorPo}</span>
+                                          <button
+                                            type="button"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              handleOpenPoModal(po);
+                                            }}
+                                            className="text-neutral-500 hover:text-[#D4AF37] transition-colors p-0.5 cursor-pointer"
+                                            title="Ubah Nomor PO Customer"
+                                          >
+                                            <Edit3 className="w-2.5 h-2.5" />
+                                          </button>
+                                        </div>
+                                      ) : (
+                                        <div className="flex items-center gap-1.5 pt-0.5">
+                                          <span className="text-amber-400 text-[9px] font-mono flex items-center gap-1">
+                                            <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span>
+                                            Tanpa PO
+                                          </span>
+                                          <button
+                                            type="button"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              handleOpenPoModal(po);
+                                            }}
+                                            className="text-[9px] font-mono text-[#D4AF37] hover:text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 px-1.5 py-0.5 rounded border border-amber-500/30 transition-colors flex items-center gap-0.5 cursor-pointer"
+                                            title="Input Nomor PO Customer"
+                                          >
+                                            <Plus className="w-2.5 h-2.5" />
+                                            <span>Input PO</span>
+                                          </button>
+                                        </div>
                                       )}
                                     </td>
 
@@ -1676,11 +1953,10 @@ export default function PreOrderPage() {
                   return (
                     <div
                       key={po.id}
-                      className={`bg-[#121417] border rounded-xl overflow-hidden shadow-md transition-all flex flex-col justify-between ${
-                        isSelected
-                          ? 'border-[#F4511E] ring-1 ring-[#F4511E]'
-                          : 'border-[#20242A] hover:border-[#2C323B]'
-                      }`}
+                      className={`bg-[#121417] border rounded-xl overflow-hidden shadow-md transition-all flex flex-col justify-between ${isSelected
+                        ? 'border-[#F4511E] ring-1 ring-[#F4511E]'
+                        : 'border-[#20242A] hover:border-[#2C323B]'
+                        }`}
                     >
                       {/* Grid Card Body */}
                       <div className="p-4 space-y-3 font-mono flex-1">
@@ -1694,26 +1970,24 @@ export default function PreOrderPage() {
                           </div>
                           <div className="flex items-center gap-2">
                             {po.status && (
-                              <span className={`text-[10px] px-2 py-0.5 rounded font-bold uppercase tracking-wider ${
-                                po.status === 'SELESAI'
-                                  ? 'bg-blue-500/15 text-blue-400 border border-blue-500/30'
-                                  : (po.status === 'MENUNGGU_APPROVAL' || po.status === 'PENDING' || po.status === 'MENUNGGU APPROVAL')
+                              <span className={`text-[10px] px-2 py-0.5 rounded font-bold uppercase tracking-wider ${po.status === 'SELESAI'
+                                ? 'bg-blue-500/15 text-blue-400 border border-blue-500/30'
+                                : (po.status === 'MENUNGGU_APPROVAL' || po.status === 'PENDING' || po.status === 'MENUNGGU APPROVAL')
                                   ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30'
                                   : po.status === 'OVER'
-                                  ? 'bg-purple-500/15 text-purple-400 border border-purple-500/30'
-                                  : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                              }`}>
+                                    ? 'bg-purple-500/15 text-purple-400 border border-purple-500/30'
+                                    : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                                }`}>
                                 {po.status === 'MENUNGGU_APPROVAL' ? 'MENUNGGU APPROVAL' : po.status}
                               </span>
                             )}
                             <button
                               type="button"
                               onClick={() => toggleSelect(po.id)}
-                              className={`w-5 h-5 rounded border flex items-center justify-center transition-colors cursor-pointer ${
-                                isSelected
-                                  ? 'bg-[#F4511E] border-[#F4511E] text-white'
-                                  : 'border-neutral-500 hover:border-neutral-300 bg-transparent'
-                              }`}
+                              className={`w-5 h-5 rounded border flex items-center justify-center transition-colors cursor-pointer ${isSelected
+                                ? 'bg-[#F4511E] border-[#F4511E] text-white'
+                                : 'border-neutral-500 hover:border-neutral-300 bg-transparent'
+                                }`}
                               title="Pilih item"
                               aria-label="Pilih item"
                             >
@@ -1758,10 +2032,21 @@ export default function PreOrderPage() {
                         {/* RO & PO Numbers & Customer */}
                         <div className="space-y-1 text-xs pt-2 border-t border-[#1C2026]">
                           <div className="text-white font-semibold truncate text-[11px]">
-                            RO: {po.nomorRO || po.nomorRo || `RO-${po.id}`}
+                            RO: {po.nomorRO || po.nomorRo || (generateNomorRO ? generateNomorRO(po.customer, preOrders, po.tanggal, customers) : '')}
                           </div>
-                          <div className="text-neutral-300 truncate text-[11px]">
-                            {formatPoNumber(po.nomorPo)}
+                          <div className="text-neutral-300 truncate text-[11px] flex items-center justify-between">
+                            <span className="truncate">{formatPoNumber(po.nomorPo)}</span>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleOpenPoModal(po);
+                              }}
+                              className="text-neutral-400 hover:text-[#D4AF37] p-0.5 shrink-0 ml-1 cursor-pointer transition-colors"
+                              title={po.nomorPo ? "Ubah Nomor PO" : "Input Nomor PO"}
+                            >
+                              <Edit3 className="w-3 h-3" />
+                            </button>
                           </div>
                           <div
                             className="text-white font-bold uppercase truncate text-xs pt-0.5"
@@ -1901,7 +2186,22 @@ export default function PreOrderPage() {
                   <div className="grid grid-cols-2 gap-2 pt-2 border-t border-[#252A32] text-[11px]">
                     <div>
                       <span className="text-neutral-400 block">Nomor PO Customer:</span>
-                      <span className="text-white font-bold">{selectedDetailPo.nomorPo || '-'}</span>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <span className="text-white font-bold">{selectedDetailPo.nomorPo || 'Tanpa PO (Opsional)'}</span>
+                        <button
+                          type="button"
+                          onClick={() => handleOpenPoModal(selectedDetailPo)}
+                          className="text-[10px] text-[#D4AF37] hover:underline flex items-center gap-0.5 cursor-pointer font-sans"
+                        >
+                          <Edit3 className="w-2.5 h-2.5" />
+                          <span>{selectedDetailPo.nomorPo ? 'Ubah' : 'Input PO'}</span>
+                        </button>
+                      </div>
+                      {selectedDetailPo.poUpdatedBy && (
+                        <span className="text-[9px] text-neutral-500 block mt-0.5">
+                          Diperbarui: {selectedDetailPo.poUpdatedBy} ({selectedDetailPo.poUpdatedAt || '-'})
+                        </span>
+                      )}
                     </div>
                     <div>
                       <span className="text-neutral-400 block">Tanggal Kontrak:</span>
@@ -1979,6 +2279,110 @@ export default function PreOrderPage() {
                   </Button>
                 </div>
               </div>
+            )}
+          </Modal>
+
+          {/* ── MODAL INPUT / UBAH NOMOR PO CUSTOMER ── */}
+          <Modal
+            isOpen={poModalOpen}
+            onClose={() => {
+              if (!isUpdatingPo) {
+                setPoModalOpen(false);
+                setTargetPoToEdit(null);
+              }
+            }}
+            title={targetPoToEdit?.nomorPo ? "Ubah Nomor PO Customer" : "Input Nomor PO Customer"}
+            subtitle={targetPoToEdit ? `Received Order: ${targetPoToEdit.nomorRO || targetPoToEdit.id} • ${targetPoToEdit.customer}` : ''}
+          >
+            {targetPoToEdit && (
+              <form onSubmit={handleSavePoNumber} className="p-4 space-y-4 text-xs font-mono">
+                <div className="bg-[#14171A] p-3 rounded-lg border border-[#22262E] space-y-2">
+                  <div className="flex justify-between items-center text-[11px]">
+                    <span className="text-neutral-400">Customer:</span>
+                    <span className="text-white font-bold">{targetPoToEdit.customer}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-[11px]">
+                    <span className="text-neutral-400">Nomor RO:</span>
+                    <span className="text-[#D4AF37] font-bold">{targetPoToEdit.nomorRO || targetPoToEdit.id}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-[11px]">
+                    <span className="text-neutral-400">Material & Volume:</span>
+                    <span className="text-neutral-300">
+                      {targetPoToEdit.materialName || targetPoToEdit.items?.[0]?.nama || 'Material'} ({formatNumber(targetPoToEdit.totalOrder)} {targetPoToEdit.satuan || 'm³'})
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center text-[11px] pt-1 border-t border-[#1F2328]">
+                    <span className="text-neutral-400">Status Pengiriman:</span>
+                    <span className="text-emerald-400 font-bold">
+                      Terkirim: {formatNumber(targetPoToEdit.terkirim || 0)} / {formatNumber(targetPoToEdit.totalOrder)} {targetPoToEdit.satuan || 'm³'}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-gray-200 block">
+                    Nomor PO Customer <span className="text-neutral-400 font-normal">(Opsional)</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={inputPoNumber}
+                    onChange={(e) => setInputPoNumber(e.target.value.slice(0, 50))}
+                    placeholder="Contoh: PO-LW-2026-001 atau 045/PO/X/2026"
+                    className="w-full bg-[#1A1D20] border border-[#2A2E33] rounded px-3 py-2 text-sm text-gray-200 font-mono tracking-wider focus:outline-hidden focus:border-[#D4AF37] transition-colors"
+                    autoFocus
+                  />
+                  <p className="text-[11px] text-neutral-400">
+                    Masukkan nomor Purchase Order resmi dari customer. Kosongkan jika ingin menghapus nomor PO.
+                  </p>
+                </div>
+
+                <div className="bg-[#181B20] p-3 rounded-lg border border-[#282D36] space-y-2">
+                  <label className="flex items-start gap-2.5 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={syncWaybills}
+                      onChange={(e) => setSyncWaybills(e.target.checked)}
+                      className="mt-0.5 rounded border-[#3A404D] text-[#D4AF37] focus:ring-0 bg-[#121417]"
+                    />
+                    <div className="space-y-0.5">
+                      <span className="text-xs text-white font-medium block">
+                        Sinkronkan Otomatis ke Surat Jalan & Dokumen Terkait
+                      </span>
+                      <span className="text-[10px] text-neutral-400 block leading-relaxed">
+                        Nomor PO ini akan otomatis diterapkan ke seluruh Surat Jalan, Ringkasan Jurnal (Jurnal GI), dan Invoice penagihan yang telah terbit untuk RO ini.
+                      </span>
+                    </div>
+                  </label>
+                </div>
+
+                <div className="p-2.5 rounded bg-amber-500/10 border border-amber-500/20 text-amber-300 text-[11px] leading-relaxed flex items-start gap-2">
+                  <Info className="w-4 h-4 shrink-0 mt-0.5 text-amber-400" />
+                  <span>
+                    <strong>Pembaruan Tanpa Hambatan:</strong> Penambahan nomor PO tidak akan me-reset status persetujuan (tetap APPROVED) sehingga operasional pengiriman di lapangan tidak terganggu.
+                  </span>
+                </div>
+
+                <div className="pt-2 flex items-center justify-end gap-2 border-t border-[#24282C]">
+                  <Button
+                    variant="outline"
+                    type="button"
+                    onClick={() => {
+                      setPoModalOpen(false);
+                      setTargetPoToEdit(null);
+                    }}
+                    disabled={isUpdatingPo}
+                  >
+                    Batal
+                  </Button>
+                  <Button
+                    variant="primary"
+                    type="submit"
+                    disabled={isUpdatingPo}
+                  >
+                    {isUpdatingPo ? 'Menyimpan...' : 'Simpan Nomor PO'}
+                  </Button>
+                </div>
+              </form>
             )}
           </Modal>
 
@@ -2126,10 +2530,10 @@ export default function PreOrderPage() {
                 {/* Nomor PO Customer */}
                 <TextField
                   icon={FileText}
-                  label="Nomor PO Customer"
+                  label="Nomor PO Customer (Opsional)"
                   value={formData.nomorPoCustomer}
-                  onChange={(e) => setField('nomorPoCustomer', e.target.value)}
-                  helper="Opsional (biarkan kosong jika belum terbit)"
+                  onChange={(e) => setField('nomorPoCustomer', e.target.value.slice(0, 50))}
+                  helper="Opsional - biarkan kosong jika belum terbit"
                   autoComplete="off"
                 />
 
@@ -2148,7 +2552,7 @@ export default function PreOrderPage() {
                   />
                 </div>
 
-                
+
 
                 {/* Conditional: Hubungkan Nomor PO Material (jika JASA ANGKUT SAJA) */}
                 {showHubungkanPo && (
@@ -2215,28 +2619,15 @@ export default function PreOrderPage() {
                   </div>
 
                   <div className="flex items-center gap-2">
-                    {items.length > 0 && (
-                      <Button
-                        type="button"
-                        size="xs"
-                        variant={itemsLocked ? 'secondary' : 'ghost'}
-                        icon={itemsLocked ? Lock : Unlock}
-                        onClick={() => setItemsLocked((v) => !v)}
-                      >
-                        {itemsLocked ? 'Buka Kunci' : 'Kunci Item'}
-                      </Button>
-                    )}
-                    {!itemsLocked && (
-                      <Button
-                        type="button"
-                        size="xs"
-                        variant="primary"
-                        icon={Plus}
-                        onClick={addItem}
-                      >
-                        Tambah Item
-                      </Button>
-                    )}
+                    <Button
+                      type="button"
+                      size="xs"
+                      variant="primary"
+                      icon={Plus}
+                      onClick={addItem}
+                    >
+                      Tambah Item
+                    </Button>
                   </div>
                 </div>
 
@@ -2274,9 +2665,9 @@ export default function PreOrderPage() {
                         return (
                           <tr
                             key={item.id}
-                            // className={`transition-colors ${
-                            //   isAuto ? 'bg-emerald-950/15 border-l-2 border-emerald-500' : 'hover:bg-[#16181B]'
-                            // }`}
+                          // className={`transition-colors ${
+                          //   isAuto ? 'bg-emerald-950/15 border-l-2 border-emerald-500' : 'hover:bg-[#16181B]'
+                          // }`}
                           >
                             {/* Index */}
                             <td className="py-2.5 px-3 text-center font-mono text-neutral-400 text-xs">
@@ -2301,7 +2692,6 @@ export default function PreOrderPage() {
                                     value={item.nama}
                                     onChange={(val) => handleMaterialChange(idx, val)}
                                     options={materialDropdownOptions}
-                                    disabled={itemsLocked}
                                     placeholder="Pilih Material..."
                                   />
                                 </div>
@@ -2317,12 +2707,11 @@ export default function PreOrderPage() {
                                 placeholder={isAuto ? 'Mengikuti material' : 'Isi kuantitas'}
                                 value={item.kuantitas}
                                 onChange={(e) => updateItem(idx, 'kuantitas', e.target.value)}
-                                disabled={itemsLocked || isAuto}
-                                className={`w-full rounded-md px-2.5 py-1.5 text-xs font-mono font-bold focus:outline-none disabled:opacity-60 ${
-                                  isAuto
-                                    ? 'bg-[#111315]/80 border border-[#22262A] text-neutral-300 cursor-not-allowed shadow-inner'
-                                    : 'bg-[#181B1E] border-2 border-amber-500/60 focus:border-[#F4511E] text-white focus:ring-1 focus:ring-[#F4511E]'
-                                }`}
+                                disabled={isAuto}
+                                className={`w-full rounded-md px-2.5 py-1.5 text-xs font-mono font-bold focus:outline-none disabled:opacity-60 ${isAuto
+                                  ? 'bg-[#111315]/80 border border-[#22262A] text-neutral-300 cursor-not-allowed shadow-inner'
+                                  : 'bg-[#181B1E] border-2 border-amber-500/60 focus:border-[#F4511E] text-white focus:ring-1 focus:ring-[#F4511E]'
+                                  }`}
                                 title={isAuto ? 'Kuantitas jasa angkut disable dan mengikuti kuantitas material' : 'Masukkan kuantitas material'}
                               />
                             </td>
@@ -2345,8 +2734,7 @@ export default function PreOrderPage() {
                                 min="0"
                                 value={item.hargaBeli}
                                 onChange={(e) => updateItem(idx, 'hargaBeli', e.target.value)}
-                                disabled={itemsLocked}
-                                className="w-full bg-[#181B1E] border border-[#2B3037] text-neutral-300 rounded-md px-2.5 py-1.5 text-xs font-mono focus:outline-none focus:border-[#F4511E] disabled:opacity-60"
+                                className="w-full bg-[#181B1E] border border-[#2B3037] text-neutral-300 rounded-md px-2.5 py-1.5 text-xs font-mono focus:outline-none focus:border-[#F4511E]"
                                 title="Harga beli otomatis terisi dari Database Master (dapat disesuaikan jika perlu)"
                               />
                             </td>
@@ -2358,8 +2746,7 @@ export default function PreOrderPage() {
                                 min="0"
                                 value={item.hargaJual}
                                 onChange={(e) => updateItem(idx, 'hargaJual', e.target.value)}
-                                disabled={itemsLocked}
-                                className="w-full bg-[#181B1E] border border-[#2B3037] text-white rounded-md px-2.5 py-1.5 text-xs font-mono font-semibold focus:outline-none focus:border-[#F4511E] disabled:opacity-60"
+                                className="w-full bg-[#181B1E] border border-[#2B3037] text-white rounded-md px-2.5 py-1.5 text-xs font-mono font-semibold focus:outline-none focus:border-[#F4511E]"
                                 title="Harga jual otomatis terisi dari Database Master (dapat disesuaikan jika perlu)"
                               />
                             </td>
@@ -2387,7 +2774,7 @@ export default function PreOrderPage() {
                                 <button
                                   type="button"
                                   onClick={() => removeItem(idx)}
-                                  disabled={itemsLocked || items.filter((it) => !it.isAutoGenerated).length <= 1}
+                                  disabled={items.filter((it) => !it.isAutoGenerated).length <= 1}
                                   className="p-1.5 rounded text-neutral-500 hover:text-rose-400 hover:bg-rose-500/10 transition-colors disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
                                   title="Hapus baris item"
                                 >
@@ -2411,9 +2798,8 @@ export default function PreOrderPage() {
                     return (
                       <div
                         key={item.id}
-                        className={`border rounded-lg p-3.5 space-y-3 ${
-                          isAuto ? 'bg-orange-950/10 border-orange-500/30' : 'bg-[#181B1E] border-[#24282C]'
-                        }`}
+                        className={`border rounded-lg p-3.5 space-y-3 ${isAuto ? 'bg-orange-950/10 border-orange-500/30' : 'bg-[#181B1E] border-[#24282C]'
+                          }`}
                       >
                         <div className="flex items-center justify-between pb-2 border-b border-[#22262A]">
                           <div className="flex items-center gap-2">
@@ -2438,7 +2824,7 @@ export default function PreOrderPage() {
                             <button
                               type="button"
                               onClick={() => removeItem(idx)}
-                              disabled={itemsLocked || items.filter((it) => !it.isAutoGenerated).length <= 1}
+                              disabled={items.filter((it) => !it.isAutoGenerated).length <= 1}
                               className="text-neutral-500 hover:text-rose-400 disabled:opacity-30 p-1 cursor-pointer"
                             >
                               <Trash2 className="w-4 h-4" />
@@ -2463,7 +2849,6 @@ export default function PreOrderPage() {
                               value={item.nama}
                               onChange={(val) => handleMaterialChange(idx, val)}
                               options={materialDropdownOptions}
-                              disabled={itemsLocked}
                               placeholder="Pilih Material..."
                             />
                           )}
@@ -2480,12 +2865,11 @@ export default function PreOrderPage() {
                               placeholder={isAuto ? 'Mengikuti material' : '0'}
                               value={item.kuantitas}
                               onChange={(e) => updateItem(idx, 'kuantitas', e.target.value)}
-                              disabled={itemsLocked || isAuto}
-                              className={`w-full rounded-md px-3 py-2 text-xs font-mono font-bold focus:outline-none ${
-                                isAuto
-                                  ? 'bg-[#111315]/80 border border-[#2B3037] text-neutral-300 cursor-not-allowed shadow-inner'
-                                  : 'bg-[#111315] border-2 border-amber-500/60 focus:border-[#F4511E] text-white'
-                              }`}
+                              disabled={isAuto}
+                              className={`w-full rounded-md px-3 py-2 text-xs font-mono font-bold focus:outline-none ${isAuto
+                                ? 'bg-[#111315]/80 border border-[#2B3037] text-neutral-300 cursor-not-allowed shadow-inner'
+                                : 'bg-[#111315] border-2 border-amber-500/60 focus:border-[#F4511E] text-white'
+                                }`}
                               title={isAuto ? 'Kuantitas jasa angkut disable dan mengikuti kuantitas material' : 'Masukkan kuantitas material'}
                             />
                           </div>
@@ -2513,7 +2897,6 @@ export default function PreOrderPage() {
                               min="0"
                               value={item.hargaBeli}
                               onChange={(e) => updateItem(idx, 'hargaBeli', e.target.value)}
-                              disabled={itemsLocked}
                               className="w-full bg-[#111315] border border-[#2B3037] text-neutral-300 rounded-md px-3 py-2 text-xs font-mono focus:outline-none focus:border-[#F4511E]"
                             />
                           </div>
@@ -2526,7 +2909,6 @@ export default function PreOrderPage() {
                               min="0"
                               value={item.hargaJual}
                               onChange={(e) => updateItem(idx, 'hargaJual', e.target.value)}
-                              disabled={itemsLocked}
                               className="w-full bg-[#111315] border border-[#2B3037] text-white rounded-md px-3 py-2 text-xs font-mono font-bold focus:outline-none focus:border-[#F4511E]"
                             />
                           </div>

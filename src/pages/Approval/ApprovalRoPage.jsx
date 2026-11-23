@@ -18,6 +18,7 @@ import {
   ChevronUp,
   CheckSquare,
   Square,
+  MinusSquare,
   Eye,
   Sparkles,
   ExternalLink,
@@ -40,7 +41,7 @@ export default function ApprovalRoPage() {
   const navigate = useNavigate();
   const { isDark } = useApp();
   const { currentUser, isSuperAdmin, roleLabel } = useAuth();
-  const { preOrders, approvePreOrder, rejectPreOrder } = useData();
+  const { preOrders, approvePreOrder, rejectPreOrder, generateNomorRO, customers } = useData();
   const { addToast } = useToast();
 
   // Navigation & Filter Tabs: 'pending' | 'approved' | 'rejected' | 'all'
@@ -688,6 +689,8 @@ export default function ApprovalRoPage() {
               >
                 {selectedIds.size === filteredList.length && filteredList.length > 0 ? (
                   <CheckSquare className="w-4 h-4 text-[#F4511E]" />
+                ) : selectedIds.size > 0 ? (
+                  <MinusSquare className="w-4 h-4 text-[#F4511E]" />
                 ) : (
                   <Square className="w-4 h-4 text-neutral-400" />
                 )}
@@ -832,9 +835,13 @@ export default function ApprovalRoPage() {
                         <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-[#1C1F23] text-neutral-200 border border-[#2B3037]">
                           {po.nomorRO || po.nomorRo || po.id}
                         </span>
-                        {po.nomorPo && (
+                        {po.nomorPo ? (
                           <span className="font-mono text-[11px] text-blue-400 px-2 py-0.5 rounded bg-blue-950/40 border border-blue-900/40">
                             PO: {po.nomorPo}
+                          </span>
+                        ) : (
+                          <span className="font-mono text-[10px] text-amber-400 px-2 py-0.5 rounded bg-amber-950/40 border border-amber-900/40">
+                            Menunggu SJ Pertama
                           </span>
                         )}
                         <h3 className="text-sm font-bold text-white tracking-tight">
@@ -1147,11 +1154,11 @@ export default function ApprovalRoPage() {
                               fromPreOrder: true,
                               preOrderId: po.id,
                               customer: po.customer,
-                              nomorPo: po.nomorPo || po.nomorPoCustomer || po.id,
+                              nomorPo: po.nomorPo || po.nomorPoCustomer || '',
                               materialId: po.materialId,
                               materialName: po.materialName,
                               jenis: po.jenisRO || po.jenis || 'Jasa Angkut + Material',
-                              nomorRo: po.nomorRo || po.nomorRO || `RO-${po.id}`,
+                              nomorRo: po.nomorRo || po.nomorRO || (generateNomorRO ? generateNomorRO(po.customer, preOrders, po.tanggal, customers) : ''),
                               isPpn: po.jenisWajibPajak === 'PKP',
                             },
                           })
@@ -1243,11 +1250,10 @@ export default function ApprovalRoPage() {
                       key={reason}
                       type="button"
                       onClick={() => setRejectionReason(isSelected ? '' : reason)}
-                      className={`text-[10px] px-2 py-0.5 rounded border text-left transition-colors cursor-pointer ${
-                        isSelected
-                          ? 'bg-rose-500/20 text-rose-300 border-rose-500/50 font-semibold'
-                          : 'bg-[#14171A] hover:bg-neutral-800 text-neutral-400 hover:text-white border-[#22262A]'
-                      }`}
+                      className={`text-[10px] px-2 py-0.5 rounded border text-left transition-colors cursor-pointer ${isSelected
+                        ? 'bg-rose-500/20 text-rose-300 border-rose-500/50 font-semibold'
+                        : 'bg-[#14171A] hover:bg-neutral-800 text-neutral-400 hover:text-white border-[#22262A]'
+                        }`}
                     >
                       {isSelected ? '✓ ' : '+ '} {reason}
                     </button>
@@ -1448,11 +1454,10 @@ export default function ApprovalRoPage() {
                     key={reason}
                     type="button"
                     onClick={() => setBatchRejectionReason(isSelected ? '' : reason)}
-                    className={`text-[10px] px-2 py-0.5 rounded border text-left transition-colors cursor-pointer ${
-                      isSelected
-                        ? 'bg-rose-500/20 text-rose-300 border-rose-500/50 font-semibold'
-                        : 'bg-[#14171A] hover:bg-neutral-800 text-neutral-400 hover:text-white border-[#22262A]'
-                    }`}
+                    className={`text-[10px] px-2 py-0.5 rounded border text-left transition-colors cursor-pointer ${isSelected
+                      ? 'bg-rose-500/20 text-rose-300 border-rose-500/50 font-semibold'
+                      : 'bg-[#14171A] hover:bg-neutral-800 text-neutral-400 hover:text-white border-[#22262A]'
+                      }`}
                   >
                     {isSelected ? '✓ ' : '+ '} {reason}
                   </button>

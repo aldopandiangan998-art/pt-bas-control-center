@@ -40,7 +40,7 @@ export default function LaporanAllInOnePage() {
   const { addToast } = useToast();
   const { isDark } = useApp();
   const { isSuperAdmin } = useAuth();
-  const { customers, preOrders, suratJalanList, invoiceList, bkkList } = useData();
+  const { customers, preOrders, suratJalanList, invoiceList, bkkList, generateNomorRO } = useData();
 
   // Filters state
   const [selectedCustomerId, setSelectedCustomerId] = useState('');
@@ -94,7 +94,7 @@ export default function LaporanAllInOnePage() {
         const custName = selectedCustomer.name.toLowerCase();
         if (!po.customer || !po.customer.toLowerCase().includes(custName)) return;
       }
-      const roLabel = po.nomorRO || `RO-${po.id}`;
+      const roLabel = po.nomorRO || (generateNomorRO ? generateNomorRO(po.customer, preOrders, po.tanggal, customers) : '');
       if (!seen.has(roLabel)) {
         seen.add(roLabel);
         list.push({

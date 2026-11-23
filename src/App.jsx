@@ -14,6 +14,7 @@ import ResetPasswordPage from './pages/Auth/ResetPasswordPage';
 import DashboardPage from './pages/Dashboard/DashboardPage';
 import PreOrderPage from './pages/PreOrder/PreOrderPage';
 import ApprovalRoPage from './pages/Approval/ApprovalRoPage';
+import ApprovalBkkPage from './pages/Approval/ApprovalBkkPage';
 import ApprovalUserPage from './pages/Approval/ApprovalUserPage';
 import SuratJalanPage from './pages/SuratJalan/SuratJalanPage';
 import RekapanPage from './pages/Rekapan/RekapanPage';
@@ -117,6 +118,14 @@ export default function App() {
                     element={
                       <SuperAdminOnlyRoute>
                         <ApprovalRoPage />
+                      </SuperAdminOnlyRoute>
+                    }
+                  />
+                  <Route
+                    path="approval-bkk"
+                    element={
+                      <SuperAdminOnlyRoute>
+                        <ApprovalBkkPage />
                       </SuperAdminOnlyRoute>
                     }
                   />

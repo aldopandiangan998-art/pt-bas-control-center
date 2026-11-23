@@ -65,3 +65,67 @@ export function calculateKubikasi(panjangCm, lebarCm, tinggiCm, koreksiCm = 0) {
   };
 }
 
+/**
+ * Convert number into Indonesian spoken words (Terbilang)
+ * Example: 5611200 -> "Lima Juta Enam Ratus Sebelas Ribu Dua Ratus"
+ */
+export function terbilang(n) {
+  n = Math.floor(Math.abs(Number(n) || 0));
+  if (n === 0) return 'Nol';
+  const satuan = ['', 'Satu', 'Dua', 'Tiga', 'Empat', 'Lima', 'Enam', 'Tujuh', 'Delapan', 'Sembilan', 'Sepuluh', 'Sebelas'];
+
+  if (n < 12) return satuan[n];
+  if (n < 20) return terbilang(n - 10) + ' Belas';
+  if (n < 100) return terbilang(Math.floor(n / 10)) + ' Puluh' + (n % 10 !== 0 ? ' ' + terbilang(n % 10) : '');
+  if (n < 200) return 'Seratus' + (n - 100 !== 0 ? ' ' + terbilang(n - 100) : '');
+  if (n < 1000) return terbilang(Math.floor(n / 100)) + ' Ratus' + (n % 100 !== 0 ? ' ' + terbilang(n % 100) : '');
+  if (n < 2000) return 'Seribu' + (n - 1000 !== 0 ? ' ' + terbilang(n - 1000) : '');
+  if (n < 1000000) return terbilang(Math.floor(n / 1000)) + ' Ribu' + (n % 1000 !== 0 ? ' ' + terbilang(n % 1000) : '');
+  if (n < 1000000000) return terbilang(Math.floor(n / 1000000)) + ' Juta' + (n % 1000000 !== 0 ? ' ' + terbilang(n % 1000000) : '');
+  if (n < 1000000000000) return terbilang(Math.floor(n / 1000000000)) + ' Miliar' + (n % 1000000000 !== 0 ? ' ' + terbilang(n % 1000000000) : '');
+  return terbilang(Math.floor(n / 1000000000000)) + ' Triliun' + (n % 1000000000000 !== 0 ? ' ' + terbilang(n % 1000000000000) : '');
+}
+
+/**
+ * Format total currency into Indonesian words with "Rupiah"
+ * Example: 5611200 -> "Lima Juta Enam Ratus Sebelas Ribu Dua Ratus Rupiah"
+ */
+export function terbilangRupiah(amount) {
+  const num = Math.round(Number(amount) || 0);
+  if (num === 0) return 'Nol Rupiah';
+  return `${terbilang(num)} Rupiah`;
+}
+
+/**
+ * Format date to standard Indonesian DD/MM/YYYY
+ * Example: "2026-11-17" -> "17/11/2026"
+ */
+export function formatDateIndo(dateStr) {
+  if (!dateStr) return '-';
+  const parts = String(dateStr).slice(0, 10).split('-');
+  if (parts.length === 3) {
+    return `${parts[2]}/${parts[1]}/${parts[0]}`;
+  }
+  return dateStr;
+}
+
+/**
+ * Format timestamp to audit print format: DD/MM/YYYY HH:mm:ss WIB
+ * Example: "21/11/2026 09:45:12 WIB"
+ */
+export function formatDateTimeWib(dateObj = new Date()) {
+  const d = dateObj instanceof Date ? dateObj : new Date(dateObj);
+  if (isNaN(d.getTime())) return '-';
+  
+  const pad = (n) => String(n).padStart(2, '0');
+  const day = pad(d.getDate());
+  const month = pad(d.getMonth() + 1);
+  const year = d.getFullYear();
+  const hours = pad(d.getHours());
+  const minutes = pad(d.getMinutes());
+  const seconds = pad(d.getSeconds());
+
+  return `${day}/${month}/${year} ${hours}:${minutes}:${seconds} WIB`;
+}
+
+

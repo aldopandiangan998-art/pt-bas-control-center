@@ -796,6 +796,7 @@ export default function RekapanPage() {
                 const fulfillmentPct = targetVol > 0
                   ? Math.min(100, Math.round((currentVol / targetVol) * 100))
                   : (currentVol > 0 ? 100 : 0);
+                const isCompleted = targetVol > 0 && currentVol >= targetVol;
 
                 return (
                   <motion.div
@@ -907,13 +908,30 @@ export default function RekapanPage() {
                             <Button
                               size="xs"
                               variant="outline"
+                              disabled={!isCompleted}
                               onClick={() => {
-                                navigate('/bkk', { state: { order: rek, fromRekapan: true } });
+                                if (!isCompleted) {
+                                  addToast(
+                                    `Order ${rek.nomorRO || rek.id} belum selesai kirim (${currentVol}/${targetVol} m³). BKK hanya dapat dibuat setelah pesanan 100% selesai dikirim.`,
+                                    'error'
+                                  );
+                                  return;
+                                }
+                                navigate('/bkk', { state: { order: rek, fromRekapan: true, activeTab: 'create' } });
                                 addToast(`Beralih ke kas keluar BKK untuk ${rek.nomorRO || rek.id}`, 'info');
                               }}
-                              title="Proses ke Bukti Kas Keluar"
+                              className={
+                                !isCompleted
+                                  ? 'opacity-40 cursor-not-allowed border-neutral-800 text-neutral-500 hover:border-neutral-800 hover:text-neutral-500'
+                                  : 'cursor-pointer'
+                              }
+                              title={
+                                !isCompleted
+                                  ? `Pengiriman belum selesai (${currentVol}/${targetVol} m³). BKK dikunci.`
+                                  : 'Proses ke Bukti Kas Keluar'
+                              }
                             >
-                              Ke BKK
+                              Ke BKK {!isCompleted && '(Terkunci)'}
                             </Button>
                             <Button
                               size="xs"

@@ -70,13 +70,19 @@ export default function Sidebar() {
   const navigate = useNavigate();
   const { sidebarOpen, closeMobileSidebar, sidebarCollapsed, toggleCollapseSidebar, isDark } = useApp();
   const { currentUser, isSuperAdmin, logout, users } = useAuth();
-  const { preOrders } = useData();
+  const { preOrders, bkkList } = useData();
   const { addToast } = useToast();
 
   // Pending RO counter for notification badge
   const pendingRoCount = useMemo(() => {
     return preOrders ? preOrders.filter((po) => po.status === 'MENUNGGU_APPROVAL').length : 0;
   }, [preOrders]);
+
+  // Pending BKK counter for notification badge
+  const pendingBkkCount = useMemo(() => {
+    if (!isSuperAdmin || !bkkList) return 0;
+    return bkkList.filter((b) => b.status === 'MENUNGGU_APPROVAL').length;
+  }, [bkkList, isSuperAdmin]);
 
   // Pending Admin Registration counter for Super Admin badge
   const pendingAdminCount = useMemo(() => {
@@ -370,7 +376,10 @@ export default function Sidebar() {
                   // 2. Normal Single NavLink
                   const isRoApproval = link.path === '/approval-ro';
                   const isAdminApproval = link.path === '/approval-admin';
-                  const badgeCount = isRoApproval ? pendingRoCount : (isAdminApproval ? pendingAdminCount : 0);
+                  const isBkkApproval = link.path === '/approval-bkk';
+                  const badgeCount = isRoApproval
+                    ? pendingRoCount
+                    : (isAdminApproval ? pendingAdminCount : (isBkkApproval ? pendingBkkCount : 0));
                   const showBadge = badgeCount > 0;
 
                   return (

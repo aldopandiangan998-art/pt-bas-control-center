@@ -6,10 +6,14 @@ import { fileURLToPath } from 'node:url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Ensure server/data directory exists
+// Ensure server/data and server/data/uploads/bkk directory exists
 const dataDir = path.join(__dirname, 'data');
 if (!fs.existsSync(dataDir)) {
   fs.mkdirSync(dataDir, { recursive: true });
+}
+export const bkkUploadsDir = path.join(dataDir, 'uploads', 'bkk');
+if (!fs.existsSync(bkkUploadsDir)) {
+  fs.mkdirSync(bkkUploadsDir, { recursive: true });
 }
 
 const dbPath = path.join(dataDir, 'ptbas.db');
@@ -196,6 +200,11 @@ export function initDb() {
       hargaSatuan REAL DEFAULT 0,
       amount REAL DEFAULT 0,
       statusBayar TEXT DEFAULT 'Belum Dibayar',
+      status TEXT DEFAULT 'MENUNGGU_APPROVAL',
+      createdBy TEXT,
+      approvedBy TEXT,
+      approvedAt TEXT,
+      rejectionReason TEXT,
       tanggal TEXT,
       timestamp TEXT,
       periode TEXT,
@@ -325,6 +334,38 @@ export function initDb() {
       statusBupot TEXT DEFAULT 'TERBIT',
       created_at TEXT
     );
+
+    CREATE TABLE IF NOT EXISTS bkk_documents (
+      id TEXT PRIMARY KEY,
+      bkkId TEXT NOT NULL,
+      version INTEGER NOT NULL DEFAULT 1,
+      fileName TEXT NOT NULL,
+      originalName TEXT NOT NULL,
+      filePath TEXT NOT NULL,
+      fileSize INTEGER DEFAULT 0,
+      fileType TEXT,
+      notes TEXT,
+      status TEXT NOT NULL DEFAULT 'DRAFT',
+      uploadedBy TEXT NOT NULL,
+      uploadedAt TEXT NOT NULL,
+      verifiedBy TEXT,
+      verifiedAt TEXT,
+      rejectionReason TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS bkk_audit_logs (
+      id TEXT PRIMARY KEY,
+      bkkId TEXT NOT NULL,
+      action TEXT NOT NULL,
+      actorId TEXT,
+      actorName TEXT NOT NULL,
+      actorRole TEXT NOT NULL,
+      details TEXT,
+      timestamp TEXT NOT NULL,
+      created_at TEXT NOT NULL
+    );
   `);
 
   // Safe migration for user profile & password reset fields
@@ -436,6 +477,11 @@ export function initDb() {
       ['timestamp', 'TEXT'],
       ['periode', 'TEXT'],
       ['rekeningSumber', 'TEXT'],
+      ['status', "TEXT DEFAULT 'APPROVED'"],
+      ['createdBy', "TEXT DEFAULT 'Admin'"],
+      ['approvedBy', 'TEXT'],
+      ['approvedAt', 'TEXT'],
+      ['rejectionReason', 'TEXT'],
       ['created_at', 'TEXT'],
       ['updated_at', 'TEXT'],
     ];
@@ -508,6 +554,9 @@ export function initDb() {
       CREATE INDEX IF NOT EXISTS idx_pph23_tanggal ON pph23_records(tanggal);
       CREATE INDEX IF NOT EXISTS idx_bkk_tanggal ON bkk(tanggal);
       CREATE INDEX IF NOT EXISTS idx_bkk_perusahaan ON bkk(perusahaan);
+      CREATE INDEX IF NOT EXISTS idx_bkk_docs_bkkId ON bkk_documents(bkkId);
+      CREATE INDEX IF NOT EXISTS idx_bkk_audit_bkkId ON bkk_audit_logs(bkkId);
+      CREATE INDEX IF NOT EXISTS idx_bkk_audit_timestamp ON bkk_audit_logs(timestamp);
       CREATE INDEX IF NOT EXISTS idx_preorders_customer ON pre_orders(customer);
       CREATE INDEX IF NOT EXISTS idx_preorders_ro ON pre_orders(nomorRO);
       CREATE INDEX IF NOT EXISTS idx_suratjalan_customer ON surat_jalan(customer);
@@ -870,68 +919,20 @@ export function syncBkkAndInvoices() {
       }
 
       // ── B. BKK (CASH OUT VENDOR / HPP) ──
-      const coCode = `${jrn.poNumber || 'PO'} - CO - ${String(jrn.nomorRO).slice(-4).replace('-', '')}`;
+      // Catatan Bisnis PT BAS: BKK dibuat secara manual oleh Admin setelah Order komplit 100%.
+      // Sistem TIDAK membuat BKK secara otomatis.
       let existingBkk = db.prepare('SELECT * FROM bkk WHERE jurnalId = ? OR (nomorRO IS NOT NULL AND nomorRO = ?)').get(jrn.id, jrn.nomorRO);
-
-      const bkkVolume = Number(jrn.totalVolume) || 0;
-      const bkkAmount = Number(jrn.nominalBeli) || 0;
-      const ritCount = Number(jrn.totalSj) || details.length || 0;
-      const subDetailStr = `${jrn.customer} (${jrn.nomorRO})`;
-
-      if (!existingBkk) {
-        const bkkId = `BKK-${jrn.id.replace('REK-', '')}`;
-        db.prepare(`
-          INSERT INTO bkk (
-            id, kodeTransaksi, nomorRO, preOrderId, jurnalId, poNumber,
-            supplierId, customerId, perusahaan, subDetail, penerima, material, jenis, ritaseCount,
-            kubikasi, volume, satuan, hargaSatuan, amount, statusBayar,
-            tanggal, timestamp, periode, rekeningTujuan, created_at, updated_at
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `).run(
-          bkkId,
-          coCode,
-          jrn.nomorRO,
-          jrn.preOrderId,
-          jrn.id,
-          jrn.poNumber,
-          supId,
-          custId,
-          defaultSupplier.name,
-          subDetailStr,
-          defaultSupplier.penerima || defaultSupplier.name,
-          `${jrn.material} (Curah)`,
-          'CURAH | JASA ANGKUT + MATERIAL',
-          ritCount,
-          bkkVolume,
-          bkkVolume,
-          jrn.satuan || 'm3',
-          Number(jrn.hargaBeli) || 0,
-          bkkAmount,
-          'Belum Dibayar',
-          maxDate,
-          timestampStr,
-          periodeStr,
-          `${defaultSupplier.bank || 'BCA'} - ${defaultSupplier.noRekening || ''}`,
-          nowIso,
-          nowIso
-        );
-      } else {
+      if (existingBkk) {
         db.prepare(`
           UPDATE bkk
-          SET volume = ?, kubikasi = ?, amount = ?, ritaseCount = ?,
-              supplierId = COALESCE(supplierId, ?), customerId = COALESCE(customerId, ?),
-              subDetail = ?, periode = ?, updated_at = ?
+          SET supplierId = COALESCE(supplierId, ?),
+              customerId = COALESCE(customerId, ?),
+              poNumber = COALESCE(poNumber, ?)
           WHERE id = ?
         `).run(
-          bkkVolume,
-          bkkVolume,
-          bkkAmount,
-          ritCount,
           supId,
           custId,
-          subDetailStr,
-          periodeStr,
-          nowIso,
+          jrn.poNumber || null,
           existingBkk.id
         );
       }
@@ -964,6 +965,8 @@ function seedInitialData() {
   try {
     db.prepare("DELETE FROM users WHERE id IN ('usr-2', 'usr-3') OR LOWER(email) IN ('admin@ptbas.co.id', 'admin.dummy@ptbas.co.id')").run();
     db.prepare("UPDATE users SET branch = 'Hub Gresik' WHERE branch LIKE '%Site [%' OR branch LIKE '%// Tgl:%'").run();
+    // Ensure rainorchesta@gmail.com has the Admin role
+    db.prepare("UPDATE users SET role = 'admin', roleLabel = 'Admin' WHERE LOWER(email) = 'rainorchesta@gmail.com'").run();
   } catch (e) { }
 
   const insertUser = db.prepare(`

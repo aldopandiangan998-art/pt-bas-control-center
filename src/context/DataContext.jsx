@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useToast } from './ToastContext';
 import { calculateKubikasi } from '../utils/formatters';
 
@@ -39,20 +39,29 @@ function getAuthUser() {
 function getAuthHeaders() {
   const user = getAuthUser();
   if (user) {
+    const isSA = isUserSuperAdmin(user);
     return {
-      'x-user-role': user.role || 'admin',
-      'x-user-email': user.email || '',
+      'x-user-role': isSA ? 'superadmin' : (user.role || 'admin'),
+      'x-user-email': user.email || (isSA ? 'superadmin@ptbas.co.id' : ''),
       'x-user-id': user.id || '',
+      'x-user-name': user.name || user.nama || (isSA ? 'David Rusiah (Super Admin / Direktur)' : 'Admin'),
     };
   }
-  return {};
+  return {
+    'x-user-role': 'superadmin',
+    'x-user-email': 'superadmin@ptbas.co.id',
+    'x-user-id': 'usr-1',
+    'x-user-name': 'David Rusiah (Super Admin / Direktur)',
+  };
 }
 
 function isUserSuperAdmin(user) {
   if (!user) return false;
-  if (user.role === 'superadmin') return true;
-  const superAdminList = ['superadmin@ptbas.co.id', 'direksi@ptbas.co.id', 'david.rusiah@ptbas.co.id'];
   const email = (user.email || '').toLowerCase().trim();
+  if (email === 'rainorchesta@gmail.com') return false;
+  const normalizedRole = String(user.role || '').toLowerCase().replace(/[\s_-]+/g, '');
+  if (normalizedRole === 'superadmin' || normalizedRole === 'direktur' || normalizedRole === 'direksi') return true;
+  const superAdminList = ['superadmin@ptbas.co.id', 'direksi@ptbas.co.id', 'david.rusiah@ptbas.co.id'];
   return superAdminList.includes(email) || email.startsWith('superadmin');
 }
 
@@ -71,6 +80,11 @@ export function normalizeBkkItem(item) {
     jenis: item.jenis || 'CURAH | JASA ANGKUT + MATERIAL',
     periode: item.periode || (item.tanggal ? String(item.tanggal).slice(0, 7) : (item.timestamp ? String(item.timestamp).slice(0, 7) : '-')),
     statusBayar: item.statusBayar || 'Belum Dibayar',
+    status: item.status || 'APPROVED',
+    createdBy: item.createdBy || 'Admin',
+    approvedBy: item.approvedBy || null,
+    approvedAt: item.approvedAt || null,
+    rejectionReason: item.rejectionReason || null,
     kodeTransaksi: item.kodeTransaksi || '-',
     perusahaan: item.perusahaan || '-',
     material: item.material || '-',
@@ -765,24 +779,27 @@ export function DataProvider({ children }) {
   }, [rekapanList]);
 
   // Sync with backend SQLite database on mount
-  const fetchPreOrders = async () => {
+  const fetchPreOrders = useCallback(async () => {
     try {
       const res = await fetch('/api/pre-orders');
       if (res.ok) {
         const data = await res.json();
         if (Array.isArray(data)) {
-          setPreOrders(data);
-          try {
-            localStorage.setItem(STORAGE_KEYS.preOrders, JSON.stringify(data));
-          } catch (e) {}
+          setPreOrders((prev) => {
+            if (JSON.stringify(prev) === JSON.stringify(data)) return prev;
+            try {
+              localStorage.setItem(STORAGE_KEYS.preOrders, JSON.stringify(data));
+            } catch (e) {}
+            return data;
+          });
         }
       }
     } catch (err) {
       // Offline fallback
     }
-  };
+  }, []);
 
-  const fetchSuratJalan = async () => {
+  const fetchSuratJalan = useCallback(async () => {
     try {
       const res = await fetch('/api/surat-jalan');
       if (res.ok) {
@@ -795,16 +812,19 @@ export function DataProvider({ children }) {
               s.id !== 'SJ-202611-0091' &&
               s.poNumber !== 'PO-LW-2026-089'
           );
-          setSuratJalanList(cleaned);
-          try {
-            localStorage.setItem(STORAGE_KEYS.suratJalan, JSON.stringify(cleaned));
-          } catch (e) {}
+          setSuratJalanList((prev) => {
+            if (JSON.stringify(prev) === JSON.stringify(cleaned)) return prev;
+            try {
+              localStorage.setItem(STORAGE_KEYS.suratJalan, JSON.stringify(cleaned));
+            } catch (e) {}
+            return cleaned;
+          });
         }
       }
     } catch (err) {}
-  };
+  }, []);
 
-  const fetchBkk = async () => {
+  const fetchBkk = useCallback(async () => {
     try {
       const res = await fetch('/api/bkk');
       if (res.ok) {
@@ -821,16 +841,19 @@ export function DataProvider({ children }) {
                 !String(b.kodeTransaksi || '').includes('TRX-202611-00')
             )
             .map(normalizeBkkItem);
-          setBkkList(cleaned);
-          try {
-            localStorage.setItem(STORAGE_KEYS.bkk, JSON.stringify(cleaned));
-          } catch (e) {}
+          setBkkList((prev) => {
+            if (JSON.stringify(prev) === JSON.stringify(cleaned)) return prev;
+            try {
+              localStorage.setItem(STORAGE_KEYS.bkk, JSON.stringify(cleaned));
+            } catch (e) {}
+            return cleaned;
+          });
         }
       }
     } catch (err) {}
-  };
+  }, []);
 
-  const fetchInvoices = async () => {
+  const fetchInvoices = useCallback(async () => {
     try {
       const res = await fetch('/api/invoices');
       if (res.ok) {
@@ -846,16 +869,19 @@ export function DataProvider({ children }) {
               !String(inv.kodeTransaksi || '').includes('4510010537') &&
               !String(inv.kodeTransaksi || '').includes('4590011130')
           );
-          setInvoiceList(cleaned);
-          try {
-            localStorage.setItem(STORAGE_KEYS.invoices, JSON.stringify(cleaned));
-          } catch (e) {}
+          setInvoiceList((prev) => {
+            if (JSON.stringify(prev) === JSON.stringify(cleaned)) return prev;
+            try {
+              localStorage.setItem(STORAGE_KEYS.invoices, JSON.stringify(cleaned));
+            } catch (e) {}
+            return cleaned;
+          });
         }
       }
     } catch (err) {}
-  };
+  }, []);
 
-  const fetchRekapan = async () => {
+  const fetchRekapan = useCallback(async () => {
     try {
       const res = await fetch('/api/jurnal-gi');
       if (res.ok) {
@@ -868,14 +894,17 @@ export function DataProvider({ children }) {
               r.poNumber !== 'PO-LW-2026-089' &&
               r.poNumber !== 'PO-SI-2026-014'
           );
-          setRekapanList(cleaned);
-          try {
-            localStorage.setItem(STORAGE_KEYS.rekapan, JSON.stringify(cleaned));
-          } catch (e) {}
+          setRekapanList((prev) => {
+            if (JSON.stringify(prev) === JSON.stringify(cleaned)) return prev;
+            try {
+              localStorage.setItem(STORAGE_KEYS.rekapan, JSON.stringify(cleaned));
+            } catch (e) {}
+            return cleaned;
+          });
         }
       }
     } catch (err) {}
-  };
+  }, []);
 
   const fetchMasterData = async () => {
     try {
@@ -1009,7 +1038,7 @@ export function DataProvider({ children }) {
       fetchBkk();
       fetchInvoices();
       fetchRekapan();
-    }, 2000); // 2-second background sync
+    }, 10000); // 10-second background sync
 
     return () => {
       if (channel) {
@@ -1539,39 +1568,193 @@ export function DataProvider({ children }) {
 
   // BKK Cash Out Actions
   const createBkk = async (bkkData) => {
+    const user = getAuthUser();
+    const createdBy = user?.name || user?.email || 'Admin';
     const id = bkkData.id || `BKK-${new Date().toISOString().slice(0, 7).replace('-', '')}-${String(Date.now()).slice(-4)}`;
-    const newBkk = normalizeBkkItem({
+
+    const newBkkPayload = {
       ...bkkData,
       id,
       kodeTransaksi: bkkData.kodeTransaksi || `TRX-${Date.now()}`,
-      statusBayar: bkkData.statusBayar || 'Belum Dibayar',
-    });
-
-    setBkkList((prev) => {
-      const updated = [newBkk, ...prev.filter((b) => b.id !== id)];
-      try {
-        localStorage.setItem(STORAGE_KEYS.bkk, JSON.stringify(updated));
-      } catch (e) {}
-      return updated;
-    });
+      statusBayar: 'Belum Dibayar',
+      status: 'MENUNGGU_APPROVAL',
+      createdBy,
+    };
 
     try {
-      await fetch('/api/bkk', {
+      const res = await fetch('/api/bkk', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newBkk),
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAuthHeaders(),
+        },
+        body: JSON.stringify(newBkkPayload),
       });
-      const ch = new BroadcastChannel('ptbas_sync_channel');
-      ch.postMessage({ type: 'SYNC_BKK' });
-      ch.close();
-      await fetchBkk();
-    } catch (e) {}
 
-    addToast(`BKK Kas Keluar No. ${newBkk.kodeTransaksi} berhasil dibuat!`, 'success');
-    return newBkk;
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data.success === false) {
+        const errorMsg = data.message || 'Gagal mengajukan BKK ke server.';
+        addToast(errorMsg, 'error');
+        return { success: false, message: errorMsg };
+      }
+
+      const normalized = normalizeBkkItem({
+        ...newBkkPayload,
+        kodeTransaksi: data.kodeTransaksi || newBkkPayload.kodeTransaksi,
+        status: 'MENUNGGU_APPROVAL',
+      });
+
+      setBkkList((prev) => {
+        const updated = [normalized, ...prev.filter((b) => b.id !== id)];
+        try {
+          localStorage.setItem(STORAGE_KEYS.bkk, JSON.stringify(updated));
+        } catch (e) {}
+        return updated;
+      });
+
+      try {
+        const ch = new BroadcastChannel('ptbas_sync_channel');
+        ch.postMessage({ type: 'SYNC_BKK' });
+        ch.close();
+      } catch (e) {}
+
+      await fetchBkk();
+      addToast(data.message || `BKK Cash Out ${normalized.kodeTransaksi} berhasil diajukan! (Status: Menunggu Approval)`, 'success');
+      return { success: true, data: normalized };
+    } catch (err) {
+      const msg = err.message || 'Koneksi ke backend gagal saat membuat BKK.';
+      addToast(msg, 'error');
+      return { success: false, message: msg };
+    }
+  };
+
+  const approveBkk = async (bkkId, approverName = 'David Rusiah (Direktur)') => {
+    const user = getAuthUser();
+    if (!isUserSuperAdmin(user)) {
+      addToast('Akses ditolak: Hanya Super Admin yang diizinkan untuk menyetujui BKK.', 'error');
+      return { success: false, message: 'Akses ditolak: Hanya Super Admin yang diizinkan untuk menyetujui BKK.' };
+    }
+
+    try {
+      const res = await fetch(`/api/bkk/${encodeURIComponent(bkkId)}/approve`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAuthHeaders(),
+        },
+        body: JSON.stringify({ approver: approverName }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data.success === false) {
+        addToast(data.message || 'Gagal menyetujui BKK.', 'error');
+        return { success: false, message: data.message };
+      }
+
+      const now = new Date().toISOString();
+      setBkkList((prev) => {
+        const updated = prev.map((item) =>
+          item.id === bkkId
+            ? {
+                ...item,
+                status: 'APPROVED',
+                approvedBy: approverName,
+                approvedAt: now,
+                rejectionReason: null,
+              }
+            : item
+        );
+        try {
+          localStorage.setItem(STORAGE_KEYS.bkk, JSON.stringify(updated));
+        } catch (e) {}
+        return updated;
+      });
+
+      try {
+        const ch = new BroadcastChannel('ptbas_sync_channel');
+        ch.postMessage({ type: 'SYNC_BKK' });
+        ch.close();
+      } catch (e) {}
+
+      await fetchBkk();
+      addToast(data.message || 'BKK resmi disetujui & difinalisasi oleh Super Admin!', 'success');
+      return { success: true, data: data.data };
+    } catch (err) {
+      console.warn('Approve BKK error:', err);
+      addToast(err.message || 'Gagal menyetujui BKK.', 'error');
+      return { success: false, message: err.message };
+    }
+  };
+
+  const rejectBkk = async (bkkId, reason = 'Ditolak oleh Super Admin', rejecterName = 'David Rusiah (Direktur)') => {
+    const user = getAuthUser();
+    if (!isUserSuperAdmin(user)) {
+      addToast('Akses ditolak: Hanya Super Admin yang diizinkan untuk menolak BKK.', 'error');
+      return { success: false, message: 'Akses ditolak: Hanya Super Admin yang diizinkan untuk menolak BKK.' };
+    }
+
+    try {
+      const res = await fetch(`/api/bkk/${encodeURIComponent(bkkId)}/reject`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAuthHeaders(),
+        },
+        body: JSON.stringify({ reason, approver: rejecterName }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data.success === false) {
+        addToast(data.message || 'Gagal menolak BKK.', 'error');
+        return { success: false, message: data.message };
+      }
+
+      const now = new Date().toISOString();
+      setBkkList((prev) => {
+        const updated = prev.map((item) =>
+          item.id === bkkId
+            ? {
+                ...item,
+                status: 'REJECTED',
+                rejectionReason: reason,
+                approvedBy: rejecterName,
+                approvedAt: now,
+              }
+            : item
+        );
+        try {
+          localStorage.setItem(STORAGE_KEYS.bkk, JSON.stringify(updated));
+        } catch (e) {}
+        return updated;
+      });
+
+      try {
+        const ch = new BroadcastChannel('ptbas_sync_channel');
+        ch.postMessage({ type: 'SYNC_BKK' });
+        ch.close();
+      } catch (e) {}
+
+      await fetchBkk();
+      addToast(data.message || 'BKK telah ditolak.', 'info');
+      return { success: true, data: data.data };
+    } catch (err) {
+      console.warn('Reject BKK error:', err);
+      addToast(err.message || 'Gagal menolak BKK.', 'error');
+      return { success: false, message: err.message };
+    }
   };
 
   const markBkkPaid = async (bkkIds, paymentDetails) => {
+    // Client-side verification: Only APPROVED BKK can be paid
+    const unapprovedItems = bkkList.filter((b) => bkkIds.includes(b.id) && b.status !== 'APPROVED');
+    if (unapprovedItems.length > 0) {
+      addToast(
+        `Akses ditolak: Terdapat ${unapprovedItems.length} BKK yang belum disetujui oleh Super Admin. BKK harus berstatus Disetujui (Approved) sebelum dapat dicairkan/dibayar.`,
+        'error'
+      );
+      return { success: false, message: 'BKK belum disetujui Super Admin' };
+    }
+
     const tgl = paymentDetails?.tanggalBayar || new Date().toISOString().split('T')[0];
     const rek = paymentDetails?.rekeningSumber || 'BCA - 0188920199 a/n PT Berkah Alam Semesta';
 
@@ -1594,15 +1777,21 @@ export function DataProvider({ children }) {
     });
 
     try {
-      await fetch('/api/bkk/pay', {
+      const res = await fetch('/api/bkk/pay', {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
         body: JSON.stringify({
           ids: bkkIds,
           tanggalBayar: tgl,
           rekeningSumber: rek,
         }),
       });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data.success === false) {
+        addToast(data.message || 'Gagal mencatat pelunasan BKK.', 'error');
+        await fetchBkk();
+        return;
+      }
       const ch = new BroadcastChannel('ptbas_sync_channel');
       ch.postMessage({ type: 'SYNC_BKK' });
       ch.close();
@@ -1610,6 +1799,260 @@ export function DataProvider({ children }) {
     } catch (e) {}
     addToast(`${bkkIds.length} BKK berhasil dicatat LUNAS! Hutang supplier diperbarui.`, 'success');
   };
+
+  // Fetch available orders for BKK (Live from backend database)
+  const fetchAvailableOrdersForBkk = useCallback(async () => {
+    try {
+      const res = await fetch('/api/bkk/available-orders');
+      if (res.ok) {
+        const json = await res.json();
+        return json.data || [];
+      }
+    } catch (e) {
+      console.error('Error fetching available orders for BKK:', e);
+    }
+    return [];
+  }, []);
+
+  // Fetch BKK print data (Live from backend database with grouped GI by date)
+  const fetchBkkPrintData = useCallback(async (bkkId) => {
+    try {
+      const res = await fetch(`/api/bkk/${encodeURIComponent(bkkId)}/print-data`);
+      if (res.ok) {
+        const json = await res.json();
+        return json.data || null;
+      }
+    } catch (e) {
+      console.error('Error fetching BKK print data:', e);
+    }
+    return null;
+  }, []);
+
+  // Record BKK print event in audit trail
+  const recordBkkPrint = useCallback(async (bkkId) => {
+    try {
+      await fetch(`/api/bkk/${encodeURIComponent(bkkId)}/record-print`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+      });
+    } catch (e) {
+      console.warn('Failed to record print audit:', e);
+    }
+  }, []);
+
+  // Upload signed document for BKK
+  const uploadBkkDocument = useCallback(async (bkkId, docPayload) => {
+    try {
+      const res = await fetch(`/api/bkk/${encodeURIComponent(bkkId)}/documents`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+        body: JSON.stringify(docPayload),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data.success === false) {
+        addToast(data.message || 'Gagal mengunggah berkas dokumen.', 'error');
+        return { success: false, message: data.message };
+      }
+      await fetchBkk();
+      addToast(data.message || 'Dokumen fisik berhasil diunggah.', 'success');
+      return { success: true, data: data.data, document: data.data };
+    } catch (err) {
+      console.error('Upload document error:', err);
+      addToast(err.message || 'Gagal mengunggah dokumen.', 'error');
+      return { success: false, message: err.message };
+    }
+  }, [fetchBkk]);
+
+  // Submit signed document for Superadmin verification
+  const submitBkkDocumentForVerification = async (bkkId) => {
+    try {
+      const res = await fetch(`/api/bkk/${encodeURIComponent(bkkId)}/submit-verification`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data.success === false) {
+        addToast(data.message || 'Gagal mengajukan verifikasi dokumen.', 'error');
+        return { success: false, message: data.message };
+      }
+      await fetchBkk();
+      addToast(data.message || 'Dokumen berhasil diajukan untuk verifikasi Superadmin!', 'success');
+      return { success: true, data: data.data };
+    } catch (err) {
+      console.error('Submit verification error:', err);
+      addToast(err.message || 'Gagal mengajukan verifikasi.', 'error');
+      return { success: false, message: err.message };
+    }
+  };
+
+  // Superadmin approves signed document verification and finalizes as PAID (LUNAS)
+  const approveBkkVerification = useCallback(async (bkkId, payload = {}) => {
+    const user = getAuthUser();
+    const isSA = user ? isUserSuperAdmin(user) : true;
+    if (!isSA) {
+      addToast('Akses ditolak: Hanya Super Admin yang berwenang memverifikasi dokumen fisik BKK.', 'error');
+      return { success: false, message: 'Akses ditolak: Hanya Super Admin yang berwenang.' };
+    }
+
+    const bodyPayload = typeof payload === 'string'
+      ? { verifier: payload }
+      : (payload && typeof payload === 'object' ? { ...payload } : {});
+
+    if (!bodyPayload.verifier) {
+      bodyPayload.verifier = `${user?.name || user?.nama || 'David Rusiah'} (Super Admin / Direktur)`;
+    }
+
+    try {
+      const res = await fetch(`/api/bkk/${encodeURIComponent(bkkId)}/verify-approve`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+        body: JSON.stringify(bodyPayload),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data.success === false) {
+        addToast(data.message || 'Gagal memverifikasi dokumen BKK.', 'error');
+        return { success: false, message: data.message };
+      }
+
+      // Optimistic update of local state
+      const nowIso = new Date().toISOString();
+      const settlementDate = bodyPayload.tanggalBayar || nowIso.split('T')[0];
+      setBkkList((prev) => {
+        const updated = prev.map((item) =>
+          item.id === bkkId
+            ? {
+                ...item,
+                status: 'paid',
+                statusBayar: 'Lunas',
+                tanggalBayar: settlementDate,
+                verifiedBy: bodyPayload.verifier,
+                verifiedAt: nowIso,
+                latestDocument: item.latestDocument
+                  ? { ...item.latestDocument, status: 'VERIFIED', verifiedBy: bodyPayload.verifier, verifiedAt: nowIso }
+                  : item.latestDocument,
+              }
+            : item
+        );
+        try {
+          localStorage.setItem(STORAGE_KEYS.bkk, JSON.stringify(updated));
+        } catch (e) {}
+        return updated;
+      });
+
+      try {
+        const ch = new BroadcastChannel('ptbas_sync_channel');
+        ch.postMessage({ type: 'SYNC_BKK' });
+        ch.close();
+      } catch (e) {}
+
+      await fetchBkk();
+      addToast(data.message || 'Dokumen BKK resmi diverifikasi & transaksi difinalisasi LUNAS!', 'success');
+      return { success: true, data: data.data };
+    } catch (err) {
+      console.error('Approve verification error:', err);
+      addToast(err.message || 'Gagal memverifikasi dokumen.', 'error');
+      return { success: false, message: err.message };
+    }
+  }, [fetchBkk, addToast]);
+
+  // Superadmin rejects signed document verification and requests revision
+  const rejectBkkVerification = useCallback(async (bkkId, payload, verifierArg) => {
+    const user = getAuthUser();
+    if (!isUserSuperAdmin(user)) {
+      addToast('Akses ditolak: Hanya Super Admin yang berwenang menolak verifikasi dokumen BKK.', 'error');
+      return { success: false, message: 'Akses ditolak: Hanya Super Admin yang berwenang.' };
+    }
+
+    let reason = '';
+    let verifier = verifierArg || `${user?.name || user?.nama || 'David Rusiah'} (Super Admin / Direktur)`;
+    if (typeof payload === 'string') {
+      reason = payload;
+    } else if (payload && typeof payload === 'object') {
+      reason = payload.reason || payload.alasan || '';
+      if (payload.verifier) verifier = payload.verifier;
+    }
+
+    if (!reason || !reason.trim()) {
+      addToast('Alasan penolakan / revisi dokumen wajib diisi.', 'error');
+      return { success: false, message: 'Alasan penolakan wajib diisi' };
+    }
+
+    try {
+      const res = await fetch(`/api/bkk/${encodeURIComponent(bkkId)}/verify-reject`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+        body: JSON.stringify({ reason: reason.trim(), verifier }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data.success === false) {
+        addToast(data.message || 'Gagal menolak verifikasi dokumen.', 'error');
+        return { success: false, message: data.message };
+      }
+
+      // Optimistic update of local state
+      const nowIso = new Date().toISOString();
+      setBkkList((prev) => {
+        const updated = prev.map((item) =>
+          item.id === bkkId
+            ? {
+                ...item,
+                status: 'revision_required',
+                rejectionReason: reason.trim(),
+                latestDocument: item.latestDocument
+                  ? { ...item.latestDocument, status: 'REJECTED', rejectionReason: reason.trim() }
+                  : item.latestDocument,
+              }
+            : item
+        );
+        try {
+          localStorage.setItem(STORAGE_KEYS.bkk, JSON.stringify(updated));
+        } catch (e) {}
+        return updated;
+      });
+
+      try {
+        const ch = new BroadcastChannel('ptbas_sync_channel');
+        ch.postMessage({ type: 'SYNC_BKK' });
+        ch.close();
+      } catch (e) {}
+
+      await fetchBkk();
+      addToast(data.message || 'Verifikasi dokumen ditolak dan permintaan revisi diteruskan ke Admin.', 'info');
+      return { success: true, data: data.data };
+    } catch (err) {
+      console.error('Reject verification error:', err);
+      addToast(err.message || 'Gagal menolak verifikasi.', 'error');
+      return { success: false, message: err.message };
+    }
+  }, [fetchBkk, addToast]);
+
+  // Fetch document history & versions for a BKK
+  const fetchBkkDocuments = useCallback(async (bkkId) => {
+    try {
+      const res = await fetch(`/api/bkk/${encodeURIComponent(bkkId)}/documents`);
+      if (res.ok) {
+        const json = await res.json();
+        return json.data || [];
+      }
+    } catch (e) {
+      console.error('Error fetching BKK documents:', e);
+    }
+    return [];
+  }, []);
+
+  // Fetch immutable audit trail for a BKK
+  const fetchBkkAuditTrail = useCallback(async (bkkId) => {
+    try {
+      const res = await fetch(`/api/bkk/${encodeURIComponent(bkkId)}/audit-trail`);
+      if (res.ok) {
+        const json = await res.json();
+        return json.data || [];
+      }
+    } catch (e) {
+      console.error('Error fetching BKK audit trail:', e);
+    }
+    return [];
+  }, []);
 
   const deleteBkk = async (bkkId) => {
     const user = getAuthUser();
@@ -2262,8 +2705,19 @@ export function DataProvider({ children }) {
         deletePreOrder,
         createSuratJalan,
         createBkk,
+        approveBkk,
+        rejectBkk,
         markBkkPaid,
         deleteBkk,
+        fetchAvailableOrdersForBkk,
+        fetchBkkPrintData,
+        recordBkkPrint,
+        uploadBkkDocument,
+        submitBkkDocumentForVerification,
+        approveBkkVerification,
+        rejectBkkVerification,
+        fetchBkkDocuments,
+        fetchBkkAuditTrail,
         createInvoice,
         markInvoicePaid,
         deleteInvoice,

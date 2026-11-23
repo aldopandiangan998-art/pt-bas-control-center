@@ -68,15 +68,21 @@ const ICON_MAP = {
 export default function Sidebar() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { sidebarOpen, closeMobileSidebar, sidebarCollapsed, toggleCollapseSidebar, isDark } = useApp();
+  const { sidebarOpen, closeMobileSidebar, sidebarCollapsed, toggleCollapseSidebar, isDark, language } = useApp();
   const { currentUser, isSuperAdmin, logout, users } = useAuth();
-  const { preOrders } = useData();
+  const { preOrders, bkkList } = useData();
   const { addToast } = useToast();
 
   // Pending RO counter for notification badge
   const pendingRoCount = useMemo(() => {
     return preOrders ? preOrders.filter((po) => po.status === 'MENUNGGU_APPROVAL').length : 0;
   }, [preOrders]);
+
+  // Pending BKK counter for notification badge
+  const pendingBkkCount = useMemo(() => {
+    if (!isSuperAdmin || !bkkList) return 0;
+    return bkkList.filter((b) => b.status === 'MENUNGGU_APPROVAL').length;
+  }, [bkkList, isSuperAdmin]);
 
   // Pending Admin Registration counter for Super Admin badge
   const pendingAdminCount = useMemo(() => {
@@ -96,8 +102,54 @@ export default function Sidebar() {
 
   const handleLogout = () => {
     logout();
-    addToast('Sesi akun telah diakhiri. Silakan masuk kembali.', 'info');
+    addToast(language === 'en' ? 'Session ended. Please log in again.' : 'Sesi akun telah diakhiri. Silakan masuk kembali.', 'info');
     navigate('/login');
+  };
+
+  const navLabel = (label) => {
+    if (language !== 'en') {
+      // Bahasa Indonesia: ganti "Approval" menjadi "Persetujuan"
+      if (label === 'Approval Registrasi Admin') return 'Persetujuan Registrasi Admin';
+      if (label === 'Approval RO') return 'Persetujuan RO';
+      return label.replace(/\bApproval\b/g, 'Persetujuan');
+    }
+    const map = {
+      'Data Received Order': 'Received Order',
+      'Surat Jalan (GI)': 'Delivery Order (GI)',
+      'Rekapan (Jurnal GI)': 'GI Journal Recap',
+      'BKK (Cash Out)': 'BKK (Cash Out)',
+      'Laporan': 'Reports',
+      'Data Master': 'Master Data',
+      'Approval Registrasi Admin': 'Admin Registration Approval',
+      'Persetujuan Registrasi Admin': 'Admin Registration Approval',
+      'Pengaturan': 'Settings',
+      'Approval RO': 'RO Approval',
+      'Persetujuan RO': 'RO Approval',
+      'Pajak Pertambahan Nilai (PPN)': 'Value Added Tax (VAT)',
+      'Pajak Penghasilan Pasal 23 (PPh 23)': 'Income Tax Art. 23',
+      'Laporan All in One': 'All-in-One Report',
+      'Laporan Supplier': 'Supplier Report',
+      'Data Supplier': 'Supplier Data',
+      'Data Material': 'Material Data',
+      'Data Customer': 'Customer Data',
+      'Data Armada': 'Fleet Data',
+      'Data Bank': 'Bank Data',
+      'Data Rekening Bank': 'Bank Account Data',
+      'Data Pengguna': 'User Data',
+      'Data Mata Uang': 'Currency Data',
+    };
+    return map[label] || label;
+  };
+
+  const navCategory = (cat) => {
+    if (language !== 'en') return cat;
+    const map = {
+      'Utama': 'Main',
+      'Logistik & Dispatch': 'Logistics & Dispatch',
+      'Keuangan & Faktur': 'Finance & Invoice',
+      'Sistem & Master': 'System & Master',
+    };
+    return map[cat] || cat;
   };
 
   // Filter navigation items by role: Sembunyikan Pusat Laporan, Sistem & Master, dan modul SuperAdmin untuk role Admin
@@ -245,7 +297,7 @@ export default function Sidebar() {
                   <span className={`text-[10px] font-mono font-bold uppercase tracking-wider ${
                     isDark ? 'text-neutral-400' : 'text-slate-500'
                   }`}>
-                    {cat.category}
+                    {navCategory(cat.category)}
                   </span>
                 </div>
               ) : (
@@ -290,14 +342,14 @@ export default function Sidebar() {
                                 ? 'text-neutral-400 hover:text-neutral-100 hover:bg-[#181B1E]'
                                 : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
                             }`}
-                          title={sidebarCollapsed ? `${link.label} (${link.children.length} sub-item)` : link.description}
+                          title={sidebarCollapsed ? `${navLabel(link.label)} (${link.children.length} sub-item)` : link.description}
                         >
                           <div className={`flex items-center ${sidebarCollapsed ? 'justify-center' : 'gap-3 min-w-0 flex-1'}`}>
                             <Icon className={`w-4.5 h-4.5 shrink-0 transition-colors ${
                               isParentActive ? 'text-[#F4511E]' : isDark ? 'text-neutral-400 group-hover:text-white' : 'text-slate-500 group-hover:text-slate-900'
                             }`} />
                             {!sidebarCollapsed && (
-                              <span className="whitespace-nowrap leading-normal">{link.label}</span>
+                              <span className="whitespace-nowrap leading-normal">{navLabel(link.label)}</span>
                             )}
                           </div>
 
@@ -353,7 +405,7 @@ export default function Sidebar() {
                                             : 'text-slate-400 group-hover:text-slate-700'
                                       }`}
                                     />
-                                    <span className="truncate">{child.label}</span>
+                                    <span className="truncate">{navLabel(child.label)}</span>
                                   </div>
                                   {isChildActive && (
                                     <span className="w-1.5 h-1.5 rounded-full bg-[#F4511E] shrink-0" />
@@ -370,7 +422,10 @@ export default function Sidebar() {
                   // 2. Normal Single NavLink
                   const isRoApproval = link.path === '/approval-ro';
                   const isAdminApproval = link.path === '/approval-admin';
-                  const badgeCount = isRoApproval ? pendingRoCount : (isAdminApproval ? pendingAdminCount : 0);
+                  const isBkkApproval = link.path === '/approval-bkk';
+                  const badgeCount = isRoApproval
+                    ? pendingRoCount
+                    : (isAdminApproval ? pendingAdminCount : (isBkkApproval ? pendingBkkCount : 0));
                   const showBadge = badgeCount > 0;
 
                   return (
@@ -393,7 +448,7 @@ export default function Sidebar() {
                               : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
                         }`
                       }
-                      title={sidebarCollapsed ? `${cat.category}: ${link.label}${showBadge ? ` (${badgeCount} pending)` : ''}` : link.description}
+                      title={sidebarCollapsed ? `${navCategory(cat.category)}: ${navLabel(link.label)}${showBadge ? ` (${badgeCount} pending)` : ''}` : link.description}
                     >
                       <div className="relative shrink-0 flex items-center justify-center">
                         <Icon className="w-4 h-4 shrink-0 transition-colors group-hover:scale-105" />
@@ -403,7 +458,7 @@ export default function Sidebar() {
                       </div>
 
                       {!sidebarCollapsed && (
-                        <span className="whitespace-nowrap leading-normal flex-1">{link.label}</span>
+                        <span className="whitespace-nowrap leading-normal flex-1">{navLabel(link.label)}</span>
                       )}
 
                       {!sidebarCollapsed && showBadge && (
@@ -517,15 +572,21 @@ export default function Sidebar() {
                     }`}
                   >
                     <div>
-                      <span className={`block text-[9px] uppercase ${isDark ? 'text-neutral-500' : 'text-slate-400'}`}>Tanggal Lahir</span>
+                      <span className={`block text-[9px] uppercase ${isDark ? 'text-neutral-500' : 'text-slate-400'}`}>
+                        {language === 'en' ? 'Date of Birth' : 'Tanggal Lahir'}
+                      </span>
                       <span className="font-semibold">{currentUser?.birth_date || '-'}</span>
                     </div>
                     <div>
-                      <span className={`block text-[9px] uppercase ${isDark ? 'text-neutral-500' : 'text-slate-400'}`}>Gender</span>
-                      <span className="font-semibold">{currentUser?.gender || 'Laki-laki'}</span>
+                      <span className={`block text-[9px] uppercase ${isDark ? 'text-neutral-500' : 'text-slate-400'}`}>
+                        {language === 'en' ? 'Gender' : 'Gender'}
+                      </span>
+                      <span className="font-semibold">{currentUser?.gender || (language === 'en' ? 'Male' : 'Laki-laki')}</span>
                     </div>
                     <div className="col-span-2">
-                      <span className={`block text-[9px] uppercase ${isDark ? 'text-neutral-500' : 'text-slate-400'}`}>No. Telepon / WA</span>
+                      <span className={`block text-[9px] uppercase ${isDark ? 'text-neutral-500' : 'text-slate-400'}`}>
+                        {language === 'en' ? 'Phone / WA No.' : 'No. Telepon / WA'}
+                      </span>
                       <span className="font-semibold">{currentUser?.phone || '-'}</span>
                     </div>
                   </div>
@@ -549,9 +610,11 @@ export default function Sidebar() {
                   >
                     <User className="w-4 h-4 text-[#F4511E] shrink-0" />
                     <div>
-                      <div className="font-bold text-[11px]">Buka Halaman Profil Akun</div>
+                      <div className="font-bold text-[11px]">
+                        {language === 'en' ? 'Open Account Profile' : 'Buka Halaman Profil Akun'}
+                      </div>
                       <div className={`text-[10px] ${isDark ? 'text-neutral-400' : 'text-slate-500'}`}>
-                        Nama lengkap, tgl lahir, gender, kontak
+                        {language === 'en' ? 'Full name, DOB, gender, contact' : 'Nama lengkap, tgl lahir, gender, kontak'}
                       </div>
                     </div>
                   </button>
@@ -572,9 +635,11 @@ export default function Sidebar() {
                   >
                     <KeyRound className="w-4 h-4 text-amber-500 shrink-0" />
                     <div>
-                      <div className="font-bold text-[11px]">Ubah Sandi & Keamanan</div>
+                      <div className="font-bold text-[11px]">
+                        {language === 'en' ? 'Change Password & Security' : 'Ubah Sandi & Keamanan'}
+                      </div>
                       <div className={`text-[10px] ${isDark ? 'text-neutral-400' : 'text-slate-500'}`}>
-                        Kata sandi baru & verifikasi Opsi B
+                        {language === 'en' ? 'New password & Option B verification' : 'Kata sandi baru & verifikasi Opsi B'}
                       </div>
                     </div>
                   </button>
@@ -595,7 +660,9 @@ export default function Sidebar() {
                     }`}
                   >
                     <LogOut className="w-4 h-4 shrink-0" />
-                    <span className="font-bold text-[11px]">Keluar dari Akun (Logout)</span>
+                    <span className="font-bold text-[11px]">
+                      {language === 'en' ? 'Sign Out (Logout)' : 'Keluar dari Akun (Logout)'}
+                    </span>
                   </button>
                 </div>
               </motion.div>
@@ -628,7 +695,7 @@ export default function Sidebar() {
                     closeMobileSidebar();
                   }}
                   className="flex items-center gap-2.5 min-w-0 cursor-pointer group flex-1"
-                  title="Klik untuk membuka Halaman Profil Akun"
+                  title={language === 'en' ? 'Click to open Account Profile Page' : 'Klik untuk membuka Halaman Profil Akun'}
                 >
                   <div className={`w-7 h-7 rounded-full border flex items-center justify-center text-[10px] font-bold shrink-0 shadow-xs transition-colors overflow-hidden ${
                     isProfileActive
@@ -661,7 +728,7 @@ export default function Sidebar() {
                         ? 'text-white group-hover:text-amber-300'
                         : 'text-slate-900 group-hover:text-[#F4511E]'
                     }`}>
-                      {currentUser?.name || 'Pengguna'}
+                      {currentUser?.name || (language === 'en' ? 'User' : 'Pengguna')}
                     </div>
                     <div className={`text-[10px] font-mono truncate leading-none mt-0.5 ${
                       isDark ? 'text-neutral-400' : 'text-slate-500'
@@ -675,7 +742,7 @@ export default function Sidebar() {
                 <div
                   onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
                   className="flex items-center gap-1.5 shrink-0 cursor-pointer p-0.5 rounded hover:opacity-80"
-                  title={profileDropdownOpen ? 'Tutup Menu' : 'Buka Menu Opsi Akun'}
+                  title={profileDropdownOpen ? (language === 'en' ? 'Close Menu' : 'Tutup Menu') : (language === 'en' ? 'Open Account Options Menu' : 'Buka Menu Opsi Akun')}
                 >
                   <span
                     className={`text-[8px] font-bold font-mono px-1.5 py-0.5 rounded uppercase tracking-wider ${
@@ -709,11 +776,11 @@ export default function Sidebar() {
                     ? 'bg-[#14171B] hover:bg-rose-950/60 text-rose-300 hover:text-white border-[#22262A]'
                     : 'bg-white hover:bg-rose-50 text-rose-600 hover:text-rose-700 border-slate-200 shadow-2xs'
                 }`}
-                title="Keluar dari Akun (Logout)"
-                aria-label="Keluar"
+                title={language === 'en' ? 'Sign Out from Account' : 'Keluar dari Akun (Logout)'}
+                aria-label={language === 'en' ? 'Sign Out' : 'Keluar'}
               >
                 <LogOut className="w-3.5 h-3.5" />
-                <span>Keluar Akun</span>
+                <span>{language === 'en' ? 'Sign Out' : 'Keluar Akun'}</span>
               </button>
             </div>
           ) : (
@@ -736,7 +803,7 @@ export default function Sidebar() {
                       ? 'border-[#F4511E] bg-slate-100 text-slate-800 scale-105'
                       : 'border-slate-300 bg-white text-slate-700 hover:border-orange-400'
                 }`}
-                title={`Profil Akun: ${currentUser?.name || 'Pengguna'} (Klik untuk buka halaman profil)`}
+                title={language === 'en' ? `Account Profile: ${currentUser?.name || 'User'} (Click to open profile)` : `Profil Akun: ${currentUser?.name || 'Pengguna'} (Klik untuk buka halaman profil)`}
               >
                 {currentUser?.avatar ? (
                   <img
@@ -765,8 +832,8 @@ export default function Sidebar() {
                     ? 'hover:bg-rose-950/60 text-rose-400 hover:text-rose-200'
                     : 'hover:bg-rose-50 text-rose-600 hover:text-rose-700'
                 }`}
-                title="Keluar (Logout)"
-                aria-label="Keluar"
+                title={language === 'en' ? 'Sign Out' : 'Keluar (Logout)'}
+                aria-label={language === 'en' ? 'Sign Out' : 'Keluar'}
               >
                 <LogOut className="w-3.5 h-3.5" />
               </button>

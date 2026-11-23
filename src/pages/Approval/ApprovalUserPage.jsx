@@ -34,14 +34,13 @@ import { Button, Badge, Card, Modal, IndeterminateCheckbox } from '../../compone
 
 export default function ApprovalUserPage() {
   const navigate = useNavigate();
-  const { isDark } = useApp();
+  const { isDark, language } = useApp();
   const { users, currentUser, isSuperAdmin, approveUser, deleteUser, toggleUserStatus, refreshUsers } = useAuth();
   const { addToast } = useToast();
 
   // Navigation & Filter Tabs: 'pending' | 'approved' | 'all'
   const [activeTab, setActiveTab] = useState('pending');
   const [searchQuery, setSearchQuery] = useState('');
-  const [branchFilter, setBranchFilter] = useState('ALL');
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   // View Mode: 'grid' | 'list'
@@ -107,15 +106,6 @@ export default function ApprovalUserPage() {
     };
   }, [nonSuperAdminUsers, users]);
 
-  // Unique branches for filter dropdown
-  const branchOptions = useMemo(() => {
-    const set = new Set();
-    nonSuperAdminUsers.forEach((u) => {
-      if (u.branch) set.add(u.branch);
-    });
-    return Array.from(set);
-  }, [nonSuperAdminUsers]);
-
   // Filtered List
   const filteredUsers = useMemo(() => {
     return nonSuperAdminUsers.filter((u) => {
@@ -125,24 +115,20 @@ export default function ApprovalUserPage() {
       if (activeTab === 'pending' && !isUserPending) return false;
       if (activeTab === 'approved' && isUserPending) return false;
 
-      // Branch filter
-      if (branchFilter !== 'ALL' && u.branch !== branchFilter) return false;
-
       // Search query
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
         const name = (u.name || '').toLowerCase();
         const email = (u.email || '').toLowerCase();
         const phone = (u.phone || '').toLowerCase();
-        const branch = (u.branch || '').toLowerCase();
-        if (!name.includes(q) && !email.includes(q) && !phone.includes(q) && !branch.includes(q)) {
+        if (!name.includes(q) && !email.includes(q) && !phone.includes(q)) {
           return false;
         }
       }
 
       return true;
     });
-  }, [nonSuperAdminUsers, activeTab, branchFilter, searchQuery]);
+  }, [nonSuperAdminUsers, activeTab, searchQuery]);
 
   // Batch selection handlers
   const toggleSelect = (id) => {
@@ -172,17 +158,17 @@ export default function ApprovalUserPage() {
     try {
       const res = await approveUser(user.id);
       if (res?.success) {
-        addToast(`Akun Admin ${user.name} resmi disetujui & aktif!`, 'success');
+        addToast(language === 'en' ? `Admin account ${user.name} officially approved & active!` : `Akun Admin ${user.name} resmi disetujui & aktif!`, 'success');
         setSelectedIds((prev) => {
           const next = new Set(prev);
           next.delete(user.id);
           return next;
         });
       } else {
-        addToast(res?.message || 'Gagal menyetujui akun.', 'error');
+        addToast(res?.message || (language === 'en' ? 'Failed to approve account.' : 'Gagal menyetujui akun.'), 'error');
       }
     } catch (err) {
-      addToast('Terjadi kendala saat menyetujui akun.', 'error');
+      addToast(language === 'en' ? 'Error approving account.' : 'Terjadi kendala saat menyetujui akun.', 'error');
     } finally {
       setIsApproving(false);
       setApproveConfirmData(null);
@@ -201,7 +187,7 @@ export default function ApprovalUserPage() {
     try {
       const res = await deleteUser(rejectModalData.id);
       if (res?.success) {
-        addToast(`Permohonan pendaftaran akun ${rejectModalData.name} resmi ditolak. Alasan: "${rejectionReason.trim()}"`, 'info');
+        addToast(language === 'en' ? `Registration application for ${rejectModalData.name} officially rejected. Reason: "${rejectionReason.trim()}"` : `Permohonan pendaftaran akun ${rejectModalData.name} resmi ditolak. Alasan: "${rejectionReason.trim()}"`, 'info');
         setSelectedIds((prev) => {
           const next = new Set(prev);
           next.delete(rejectModalData.id);
@@ -210,10 +196,10 @@ export default function ApprovalUserPage() {
         setRejectModalData(null);
         setRejectionReason('');
       } else {
-        addToast(res?.message || 'Gagal menolak akun.', 'error');
+        addToast(res?.message || (language === 'en' ? 'Failed to reject account.' : 'Gagal menolak akun.'), 'error');
       }
     } catch (err) {
-      addToast('Terjadi kendala saat menolak pendaftaran.', 'error');
+      addToast(language === 'en' ? 'Error rejecting registration.' : 'Terjadi kendala saat menolak pendaftaran.', 'error');
     } finally {
       setIsSubmittingReject(false);
     }
@@ -231,7 +217,7 @@ export default function ApprovalUserPage() {
     }
 
     setSelectedIds(new Set());
-    addToast(`${successCount} akun Admin berhasil disetujui sekaligus!`, 'success');
+    addToast(language === 'en' ? `${successCount} Admin accounts approved at once!` : `${successCount} akun Admin berhasil disetujui sekaligus!`, 'success');
   };
 
   // Handle batch reject
@@ -249,9 +235,9 @@ export default function ApprovalUserPage() {
       setSelectedIds(new Set());
       setBatchRejectModalOpen(false);
       setBatchRejectionReason('');
-      addToast(`${count} permohonan pendaftaran Admin berhasil ditolak. Alasan: "${batchRejectionReason.trim()}"`, 'info');
+      addToast(language === 'en' ? `${count} Admin registration requests successfully rejected. Reason: "${batchRejectionReason.trim()}"` : `${count} permohonan pendaftaran Admin berhasil ditolak. Alasan: "${batchRejectionReason.trim()}"`, 'info');
     } catch (err) {
-      addToast('Gagal memproses penolakan massal.', 'error');
+      addToast(language === 'en' ? 'Failed to process bulk rejection.' : 'Gagal memproses penolakan massal.', 'error');
     } finally {
       setIsBatchSubmitting(false);
     }
@@ -265,7 +251,7 @@ export default function ApprovalUserPage() {
     }
     setTimeout(() => {
       setIsRefreshing(false);
-      addToast('Data permohonan registrasi berhasil diperbarui.', 'info');
+      addToast(language === 'en' ? 'Registration request data refreshed successfully.' : 'Data permohonan registrasi berhasil diperbarui.', 'info');
     }, 400);
   };
 
@@ -279,7 +265,7 @@ export default function ApprovalUserPage() {
             variant="ghost"
             icon={ArrowLeft}
             onClick={() => navigate('/master-data?tab=pengguna')}
-            title="Kembali ke Data Pengguna"
+            title={language === 'en' ? 'Back to User Data' : 'Kembali ke Data Pengguna'}
           />
           <div>
             <div className="flex items-center gap-2 flex-wrap">
@@ -287,14 +273,16 @@ export default function ApprovalUserPage() {
                 <UserCheck className="w-4 h-4" />
               </span>
               <h1 className="text-lg sm:text-xl font-bold text-white tracking-tight">
-                Approval Registrasi Admin
+                {language === 'en' ? 'Admin Registration Approval' : 'Persetujuan Registrasi Admin'}
               </h1>
               <Badge variant="warning" dot>
-                Otoritas Super Admin
+                {language === 'en' ? 'Super Admin Authority' : 'Otoritas Super Admin'}
               </Badge>
             </div>
             <p className="text-xs text-neutral-400 mt-0.5">
-              Pusat otorisasi & verifikasi pendaftaran akun Admin baru sebelum diberikan akses operasional sistem.
+              {language === 'en'
+                ? 'Central hub for authorizing & verifying new Admin account registrations before operational system access is granted.'
+                : 'Pusat otorisasi & verifikasi pendaftaran akun Admin baru sebelum diberikan akses operasional sistem.'}
             </p>
           </div>
         </div>
@@ -306,9 +294,9 @@ export default function ApprovalUserPage() {
             icon={RefreshCw}
             onClick={handleRefresh}
             className={isRefreshing ? 'animate-spin' : ''}
-            title="Perbarui Data"
+            title={language === 'en' ? 'Refresh Data' : 'Perbarui Data'}
           >
-            Refresh
+            {language === 'en' ? 'Refresh' : 'Refresh'}
           </Button>
           <Button
             size="sm"
@@ -316,7 +304,7 @@ export default function ApprovalUserPage() {
             icon={Users}
             onClick={() => navigate('/master-data?tab=pengguna')}
           >
-            Data Pengguna &rarr;
+            {language === 'en' ? 'User Data →' : 'Data Pengguna →'}
           </Button>
         </div>
       </div>
@@ -327,7 +315,7 @@ export default function ApprovalUserPage() {
         <Card className="p-4 bg-[#14171A] border border-[#22262A] relative overflow-hidden group">
           <div className="flex items-center justify-between">
             <span className="text-xs font-mono text-neutral-400 uppercase tracking-wider">
-              Menunggu Approval
+              {language === 'en' ? 'Pending Approval' : 'Menunggu Persetujuan'}
             </span>
             <span className="p-1.5 rounded-md bg-amber-500/10 text-amber-400 border border-amber-500/20">
               <Clock className="w-4 h-4" />
@@ -338,13 +326,19 @@ export default function ApprovalUserPage() {
               {metrics.pending}
             </span>
             <span className={`text-xs font-medium ${metrics.pending > 0 ? 'text-amber-300' : 'text-neutral-400'}`}>
-              {metrics.pending > 0 ? `${metrics.pending} akun tertahan` : 'antrean bersih'}
+              {metrics.pending > 0
+                ? (language === 'en' ? `${metrics.pending} on hold` : `${metrics.pending} akun tertahan`)
+                : (language === 'en' ? 'queue clear' : 'antrean bersih')}
             </span>
           </div>
           <p className="text-xs text-neutral-400 mt-1">
             {metrics.pending > 0
-              ? `${metrics.pending} permohonan pendaftaran menunggu verifikasi Super Admin`
-              : 'Semua permohonan registrasi telah selesai diverifikasi'}
+              ? (language === 'en'
+                  ? `${metrics.pending} registration requests awaiting Super Admin verification`
+                  : `${metrics.pending} permohonan pendaftaran menunggu verifikasi Super Admin`)
+              : (language === 'en'
+                  ? 'All registration applications have been verified'
+                  : 'Semua permohonan registrasi telah selesai diverifikasi')}
           </p>
         </Card>
 
@@ -352,7 +346,7 @@ export default function ApprovalUserPage() {
         <Card className="p-4 bg-[#14171A] border border-[#22262A] relative overflow-hidden group">
           <div className="flex items-center justify-between">
             <span className="text-xs font-mono text-neutral-400 uppercase tracking-wider">
-              Admin Disetujui
+              {language === 'en' ? 'Approved Admins' : 'Admin Disetujui'}
             </span>
             <span className="p-1.5 rounded-md bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
               <CheckCircle2 className="w-4 h-4" />
@@ -363,13 +357,17 @@ export default function ApprovalUserPage() {
               {metrics.approved}
             </span>
             <span className="text-xs text-emerald-300 font-medium">
-              {metrics.total > 0 ? `${metrics.approvalRate}% aktif` : 'aktif'}
+              {metrics.total > 0
+                ? `${metrics.approvalRate}% ${language === 'en' ? 'active' : 'aktif'}`
+                : (language === 'en' ? 'active' : 'aktif')}
             </span>
           </div>
           <p className="text-xs text-neutral-400 mt-1">
             {metrics.total > 0
-              ? `${metrics.approved} dari ${metrics.total} akun admin telah aktif beroperasi`
-              : 'Belum ada akun admin yang terdaftar'}
+              ? (language === 'en'
+                  ? `${metrics.approved} of ${metrics.total} admin accounts are actively operating`
+                  : `${metrics.approved} dari ${metrics.total} akun admin telah aktif beroperasi`)
+              : (language === 'en' ? 'No admin accounts registered yet' : 'Belum ada akun admin yang terdaftar')}
           </p>
         </Card>
 
@@ -377,7 +375,7 @@ export default function ApprovalUserPage() {
         <Card className="p-4 bg-[#14171A] border border-[#22262A] relative overflow-hidden group">
           <div className="flex items-center justify-between">
             <span className="text-xs font-mono text-neutral-400 uppercase tracking-wider">
-              Total Pengajuan
+              {language === 'en' ? 'Total Applications' : 'Total Pengajuan'}
             </span>
             <span className="p-1.5 rounded-md bg-blue-500/10 text-blue-400 border border-blue-500/20">
               <Users className="w-4 h-4" />
@@ -388,13 +386,15 @@ export default function ApprovalUserPage() {
               {metrics.total}
             </span>
             <span className="text-xs text-blue-300 font-medium">
-              {branchOptions.length > 0 ? `${branchOptions.length} cabang / hub` : 'total pendaftar'}
+              {language === 'en' ? 'total registrants' : 'total pendaftar'}
             </span>
           </div>
           <p className="text-xs text-neutral-400 mt-1">
             {metrics.total > 0
-              ? `${metrics.approved} Disetujui • ${metrics.pending} Menunggu Approval`
-              : 'Belum ada riwayat pendaftaran akun baru'}
+              ? (language === 'en'
+                  ? `${metrics.approved} Approved • ${metrics.pending} Pending Approval`
+                  : `${metrics.approved} Disetujui • ${metrics.pending} Menunggu Persetujuan`)
+              : (language === 'en' ? 'No registration history yet' : 'Belum ada riwayat pendaftaran akun baru')}
           </p>
         </Card>
 
@@ -413,13 +413,13 @@ export default function ApprovalUserPage() {
               {metrics.superAdminCount}
             </span>
             <span className="text-xs text-purple-300 font-medium">
-              otoritas direksi
+              {language === 'en' ? 'executive authority' : 'otoritas direksi'}
             </span>
           </div>
           <p className="text-xs text-neutral-400 mt-1">
             {currentUser?.name
-              ? `${currentUser.name} (${currentUser.branch || 'Pusat & Hub Gresik'})`
-              : 'Pemegang hak verifikasi & approval tunggal'}
+              ? `${currentUser.name} (${currentUser.branch || (language === 'en' ? 'HQ & Gresik Hub' : 'Pusat & Hub Gresik')})`
+              : (language === 'en' ? 'Sole verification & approval authority' : 'Pemegang hak verifikasi & persetujuan tunggal')}
           </p>
         </Card>
       </div>
@@ -437,7 +437,7 @@ export default function ApprovalUserPage() {
               }`}
           >
             <Clock className="w-3.5 h-3.5" />
-            <span>Menunggu Approval ({metrics.pending})</span>
+            <span>{language === 'en' ? `Pending Approval (${metrics.pending})` : `Menunggu Persetujuan (${metrics.pending})`}</span>
           </button>
           <button
             type="button"
@@ -448,7 +448,7 @@ export default function ApprovalUserPage() {
               }`}
           >
             <CheckCircle2 className="w-3.5 h-3.5" />
-            <span>Sudah Disetujui ({metrics.approved})</span>
+            <span>{language === 'en' ? `Approved (${metrics.approved})` : `Sudah Disetujui (${metrics.approved})`}</span>
           </button>
           <button
             type="button"
@@ -459,7 +459,7 @@ export default function ApprovalUserPage() {
               }`}
           >
             <Users className="w-3.5 h-3.5" />
-            <span>Semua Registrasi ({metrics.total})</span>
+            <span>{language === 'en' ? `All Registrations (${metrics.total})` : `Semua Registrasi (${metrics.total})`}</span>
           </button>
         </div>
 
@@ -471,7 +471,7 @@ export default function ApprovalUserPage() {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Cari nama, email, telepon, atau cabang..."
+              placeholder={language === 'en' ? 'Search name, email, or phone...' : 'Cari nama, email, atau telepon...'}
               className="w-full pl-9 pr-8 py-1.5 bg-[#181B1E] border border-[#2A2E33] rounded-lg text-xs text-white placeholder:text-neutral-500 outline-none focus:border-[#F4511E]"
             />
             {searchQuery && (
@@ -485,31 +485,17 @@ export default function ApprovalUserPage() {
             )}
           </div>
 
-          {branchOptions.length > 0 && (
-            <select
-              value={branchFilter}
-              onChange={(e) => setBranchFilter(e.target.value)}
-              className="px-2.5 py-1.5 bg-[#181B1E] border border-[#2A2E33] rounded-lg text-xs text-neutral-300 outline-none focus:border-[#F4511E] cursor-pointer"
-            >
-              <option value="ALL">Semua Cabang</option>
-              {branchOptions.map((b) => (
-                <option key={b} value={b}>
-                  {b}
-                </option>
-              ))}
-            </select>
-          )}
-
           {/* View Mode Toggle: Grid vs List */}
           <div className="flex items-center bg-[#1A1D20] border border-[#292D32] rounded-lg p-0.5 shrink-0 gap-0.5">
             <button
               type="button"
               onClick={() => handleSetViewMode('grid')}
-              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-mono font-bold transition-all cursor-pointer ${viewMode === 'grid'
-                ? 'bg-[#F4511E] text-white shadow-xs'
-                : 'text-neutral-400 hover:text-white hover:bg-white/5'
-                }`}
-              title="Tampilan Grid / Kartu"
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-mono font-bold transition-all cursor-pointer ${
+                viewMode === 'grid'
+                  ? 'bg-[#F4511E] text-white shadow-xs'
+                  : 'text-neutral-400 hover:text-white hover:bg-white/5'
+              }`}
+              title={language === 'en' ? 'Grid / Cards View' : 'Tampilan Grid / Kartu'}
             >
               <LayoutGrid className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">Grid</span>
@@ -517,11 +503,12 @@ export default function ApprovalUserPage() {
             <button
               type="button"
               onClick={() => handleSetViewMode('list')}
-              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-mono font-bold transition-all cursor-pointer ${viewMode === 'list'
-                ? 'bg-[#F4511E] text-white shadow-xs'
-                : 'text-neutral-400 hover:text-white hover:bg-white/5'
-                }`}
-              title="Tampilan Tabel / List"
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-mono font-bold transition-all cursor-pointer ${
+                viewMode === 'list'
+                  ? 'bg-[#F4511E] text-white shadow-xs'
+                  : 'text-neutral-400 hover:text-white hover:bg-white/5'
+              }`}
+              title={language === 'en' ? 'Table / List View' : 'Tampilan Tabel / List'}
             >
               <List className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">List</span>
@@ -541,7 +528,7 @@ export default function ApprovalUserPage() {
             <span className="w-6 h-6 rounded-md bg-[#F4511E] text-white flex items-center justify-center font-bold text-xs">
               {selectedIds.size}
             </span>
-            <span>akun pendaftar dipilih</span>
+            <span>{language === 'en' ? 'registrant accounts selected' : 'akun pendaftar dipilih'}</span>
           </div>
 
           <div className="flex items-center gap-2">
@@ -552,7 +539,7 @@ export default function ApprovalUserPage() {
               onClick={handleBatchApprove}
               className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold"
             >
-              Setujui Semua Terpilih ({selectedIds.size})
+              {language === 'en' ? `Approve Selected (${selectedIds.size})` : `Setujui Semua Terpilih (${selectedIds.size})`}
             </Button>
             <Button
               size="xs"
@@ -564,14 +551,14 @@ export default function ApprovalUserPage() {
               }}
               className="bg-rose-600 hover:bg-rose-500 text-white font-bold"
             >
-              Tolak Terpilih ({selectedIds.size})
+              {language === 'en' ? `Reject Selected (${selectedIds.size})` : `Tolak Terpilih (${selectedIds.size})`}
             </Button>
             <Button
               size="xs"
               variant="ghost"
               onClick={() => setSelectedIds(new Set())}
             >
-              Batal
+              {language === 'en' ? 'Cancel' : 'Batal'}
             </Button>
           </div>
         </motion.div>
@@ -585,13 +572,17 @@ export default function ApprovalUserPage() {
           </div>
           <h3 className="text-base font-bold text-white">
             {activeTab === 'pending'
-              ? 'Tidak Ada Pendaftaran Menunggu Approval'
-              : 'Tidak Ada Data Pendaftaran'}
+              ? (language === 'en' ? 'No Pending Registrations' : 'Tidak Ada Pendaftaran Menunggu Persetujuan')
+              : (language === 'en' ? 'No Registration Data' : 'Tidak Ada Data Pendaftaran')}
           </h3>
           <p className="text-xs text-neutral-400 mt-1 max-w-md mx-auto">
             {activeTab === 'pending'
-              ? 'Seluruh permohonan pendaftaran akun Admin baru telah diproses atau belum ada akun yang mendaftar.'
-              : 'Tidak ada data akun yang sesuai dengan kriteria filter atau pencarian Anda.'}
+              ? (language === 'en'
+                  ? 'All Admin account registration requests have been processed or no new accounts have applied yet.'
+                  : 'Seluruh permohonan pendaftaran akun Admin baru telah diproses atau belum ada akun yang mendaftar.')
+              : (language === 'en'
+                  ? 'No accounts match your filter or search criteria.'
+                  : 'Tidak ada data akun yang sesuai dengan kriteria filter atau pencarian Anda.')}
           </p>
         </Card>
       ) : (
@@ -612,10 +603,10 @@ export default function ApprovalUserPage() {
                 ) : (
                   <Square className="w-4 h-4 text-neutral-500" />
                 )}
-                <span>Pilih Semua di Halaman Ini</span>
+                <span>{language === 'en' ? 'Select All on This Page' : 'Pilih Semua di Halaman Ini'}</span>
               </button>
             </div>
-            <div>Menampilkan {filteredUsers.length} akun</div>
+            <div>{language === 'en' ? `Showing ${filteredUsers.length} accounts` : `Menampilkan ${filteredUsers.length} akun`}</div>
           </div>
 
           {/* View: Grid or List */}
@@ -642,7 +633,7 @@ export default function ApprovalUserPage() {
                             type="checkbox"
                             checked={isSelected}
                             onChange={() => toggleSelect(user.id)}
-                            className="checkbox checkbox-xs rounded border-neutral-600 checked:border-[#F4511E] checked:bg-[#F4511E] cursor-pointer"
+                            className="cursor-pointer"
                           />
                           <span className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#F4511E]/20 to-orange-500/10 border border-[#F4511E]/30 text-[#F4511E] font-bold text-sm flex items-center justify-center font-mono shrink-0 shadow-2xs">
                             {user.name.split(' ').map((n) => n[0]).join('').slice(0, 2)}
@@ -654,7 +645,7 @@ export default function ApprovalUserPage() {
                         </div>
 
                         <Badge size="xs" variant={isPending ? 'warning' : 'success'} dot={isPending}>
-                          {isPending ? 'Menunggu Approval' : 'Aktif'}
+                          {isPending ? (language === 'en' ? 'Pending Approval' : 'Menunggu Persetujuan') : (language === 'en' ? 'Active' : 'Aktif')}
                         </Badge>
                       </div>
 
@@ -662,21 +653,21 @@ export default function ApprovalUserPage() {
                       <div className="space-y-1.5 text-xs text-neutral-300 bg-black/25 rounded-xl p-3 border border-white/5 font-mono">
                         <div className="flex items-center justify-between">
                           <span className="text-neutral-500 text-[11px] flex items-center gap-1.5">
-                            <User className="w-3.5 h-3.5" /> Role:
+                            <User className="w-3.5 h-3.5" /> {language === 'en' ? 'Role:' : 'Role:'}
                           </span>
                           <span className="font-bold text-white">{user.roleLabel || user.role}</span>
                         </div>
 
                         <div className="flex items-center justify-between">
                           <span className="text-neutral-500 text-[11px] flex items-center gap-1.5">
-                            <MapPin className="w-3.5 h-3.5" /> Penempatan:
+                            <MapPin className="w-3.5 h-3.5" /> {language === 'en' ? 'Assignment:' : 'Penempatan:'}
                           </span>
                           <span>{user.branch || 'Hub Gresik'}</span>
                         </div>
 
                         <div className="flex items-center justify-between">
                           <span className="text-neutral-500 text-[11px] flex items-center gap-1.5">
-                            <Phone className="w-3.5 h-3.5" /> Telepon:
+                            <Phone className="w-3.5 h-3.5" /> {language === 'en' ? 'Phone:' : 'Telepon:'}
                           </span>
                           <span>{user.phone || '-'}</span>
                         </div>
@@ -684,10 +675,10 @@ export default function ApprovalUserPage() {
                         {(user.gender || user.birth_date) && (
                           <div className="flex items-center justify-between">
                             <span className="text-neutral-500 text-[11px] flex items-center gap-1.5">
-                              <Calendar className="w-3.5 h-3.5" /> Profil:
+                              <Calendar className="w-3.5 h-3.5" /> {language === 'en' ? 'Profile:' : 'Profil:'}
                             </span>
                             <span>
-                              {[user.gender, user.birth_date ? `Lahir: ${user.birth_date}` : null]
+                              {[user.gender, user.birth_date ? `${language === 'en' ? 'DOB' : 'Lahir'}: ${user.birth_date}` : null]
                                 .filter(Boolean)
                                 .join(' • ')}
                             </span>
@@ -696,14 +687,14 @@ export default function ApprovalUserPage() {
 
                         <div className="flex items-center justify-between pt-1 border-t border-white/5 text-[10px] text-neutral-500">
                           <span className="flex items-center gap-1">
-                            <Clock className="w-3 h-3" /> Terdaftar:
+                            <Clock className="w-3 h-3" /> {language === 'en' ? 'Registered:' : 'Terdaftar:'}
                           </span>
                           <span>
                             {user.created_at
-                              ? new Date(user.created_at).toLocaleString('id-ID', {
-                                dateStyle: 'medium',
-                                timeStyle: 'short',
-                              })
+                              ? new Date(user.created_at).toLocaleString(language === 'en' ? 'en-US' : 'id-ID', {
+                                  dateStyle: 'medium',
+                                  timeStyle: 'short',
+                                })
                               : 'Gresik Hub'}
                           </span>
                         </div>
@@ -721,7 +712,7 @@ export default function ApprovalUserPage() {
                             onClick={() => handleOpenRejectModal(user)}
                             className="text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 border border-rose-500/20"
                           >
-                            Tolak
+                            {language === 'en' ? 'Reject' : 'Tolak'}
                           </Button>
                           <Button
                             size="xs"
@@ -730,13 +721,13 @@ export default function ApprovalUserPage() {
                             onClick={() => handleApprove(user)}
                             className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold"
                           >
-                            Setujui Akun
+                            {language === 'en' ? 'Approve Account' : 'Setujui Akun'}
                           </Button>
                         </>
                       ) : (
                         <div className="flex items-center justify-between w-full">
                           <span className="text-[11px] font-mono text-emerald-400 flex items-center gap-1">
-                            <CheckCircle2 className="w-3.5 h-3.5" /> Akun Terverifikasi
+                            <CheckCircle2 className="w-3.5 h-3.5" /> {language === 'en' ? 'Account Verified' : 'Akun Terverifikasi'}
                           </span>
                           <Button
                             size="xs"
@@ -744,12 +735,12 @@ export default function ApprovalUserPage() {
                             onClick={async () => {
                               const res = await toggleUserStatus(user.id);
                               if (res?.success) {
-                                addToast(`Status akun ${user.name} berhasil diubah.`, 'info');
+                                addToast(language === 'en' ? `Account status for ${user.name} changed.` : `Status akun ${user.name} berhasil diubah.`, 'info');
                               }
                             }}
                             className="text-xs text-neutral-400 hover:text-white"
                           >
-                            Nonaktifkan
+                            {language === 'en' ? 'Deactivate' : 'Nonaktifkan'}
                           </Button>
                         </div>
                       )}
@@ -765,29 +756,25 @@ export default function ApprovalUserPage() {
                 <thead>
                   <tr className="bg-[#181B1E] text-[11px] font-semibold text-neutral-400 uppercase tracking-wider border-b border-[#22262A]">
                     <th className="py-3 px-3 text-center w-10">
-                      <div className="flex items-center justify-center">
-                        <IndeterminateCheckbox
-                          checked={
-                            filteredUsers.length > 0 &&
-                            filteredUsers.every((u) => selectedIds.has(u.id))
-                          }
-                          indeterminate={
-                            filteredUsers.some((u) => selectedIds.has(u.id)) &&
-                            !filteredUsers.every((u) => selectedIds.has(u.id))
-                          }
-                          onChange={handleSelectAllPending}
-                          title="Pilih semua di halaman ini"
-                        />
-                      </div>
+                      <input
+                        type="checkbox"
+                        checked={
+                          filteredUsers.length > 0 &&
+                          filteredUsers.every((u) => selectedIds.has(u.id))
+                        }
+                        onChange={handleSelectAllPending}
+                        className="cursor-pointer"
+                        title={language === 'en' ? 'Select all on this page' : 'Pilih semua di halaman ini'}
+                      />
                     </th>
-                    <th className="py-3 px-4 min-w-[200px]">Nama & Email</th>
-                    <th className="py-3 px-3 min-w-[130px]">Role / Jabatan</th>
-                    <th className="py-3 px-3 min-w-[120px]">Penempatan</th>
-                    <th className="py-3 px-3 min-w-[120px]">No. Telepon</th>
-                    <th className="py-3 px-3 min-w-[130px]">Profil</th>
-                    <th className="py-3 px-3 min-w-[140px]">Tgl Pendaftaran</th>
+                    <th className="py-3 px-4 min-w-[200px]">{language === 'en' ? 'Name & Email' : 'Nama & Email'}</th>
+                    <th className="py-3 px-3 min-w-[130px]">{language === 'en' ? 'Role / Title' : 'Role / Jabatan'}</th>
+                    <th className="py-3 px-3 min-w-[120px]">{language === 'en' ? 'Assignment' : 'Penempatan'}</th>
+                    <th className="py-3 px-3 min-w-[120px]">{language === 'en' ? 'Phone No.' : 'No. Telepon'}</th>
+                    <th className="py-3 px-3 min-w-[130px]">{language === 'en' ? 'Profile' : 'Profil'}</th>
+                    <th className="py-3 px-3 min-w-[140px]">{language === 'en' ? 'Registration Date' : 'Tgl Pendaftaran'}</th>
                     <th className="py-3 px-3 text-center min-w-[130px]">Status</th>
-                    <th className="py-3 px-4 text-center min-w-[160px]">Aksi Otoritas</th>
+                    <th className="py-3 px-4 text-center min-w-[160px]">{language === 'en' ? 'Authority Action' : 'Aksi Otoritas'}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#22262A]">
@@ -813,7 +800,7 @@ export default function ApprovalUserPage() {
                             type="checkbox"
                             checked={isSelected}
                             onChange={() => toggleSelect(user.id)}
-                            className="checkbox checkbox-xs rounded border-neutral-600 checked:border-[#F4511E] checked:bg-[#F4511E] cursor-pointer"
+                            className="cursor-pointer"
                           />
                         </td>
 
@@ -863,7 +850,7 @@ export default function ApprovalUserPage() {
 
                         {/* Profil */}
                         <td className="py-3 px-3 text-neutral-300 text-[11px]">
-                          {[user.gender, user.birth_date ? `Lahir: ${user.birth_date}` : null]
+                          {[user.gender, user.birth_date ? `${language === 'en' ? 'DOB' : 'Lahir'}: ${user.birth_date}` : null]
                             .filter(Boolean)
                             .join(' • ') || '-'}
                         </td>
@@ -871,17 +858,17 @@ export default function ApprovalUserPage() {
                         {/* Registered Date */}
                         <td className="py-3 px-3 font-mono text-[11px] text-neutral-400">
                           {user.created_at
-                            ? new Date(user.created_at).toLocaleString('id-ID', {
-                              dateStyle: 'medium',
-                              timeStyle: 'short',
-                            })
+                            ? new Date(user.created_at).toLocaleString(language === 'en' ? 'en-US' : 'id-ID', {
+                                dateStyle: 'medium',
+                                timeStyle: 'short',
+                              })
                             : 'Gresik Hub'}
                         </td>
 
                         {/* Status */}
                         <td className="py-3 px-3 text-center">
                           <Badge size="xs" variant={isPending ? 'warning' : 'success'} dot={isPending}>
-                            {isPending ? 'Menunggu Approval' : 'Aktif'}
+                            {isPending ? (language === 'en' ? 'Pending Approval' : 'Menunggu Persetujuan') : (language === 'en' ? 'Active' : 'Aktif')}
                           </Badge>
                         </td>
 
@@ -896,9 +883,9 @@ export default function ApprovalUserPage() {
                                   icon={CheckCircle2}
                                   onClick={() => handleApprove(user)}
                                   className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold"
-                                  title="Setujui pendaftaran akun"
+                                  title={language === 'en' ? 'Approve account registration' : 'Setujui pendaftaran akun'}
                                 >
-                                  Setujui
+                                  {language === 'en' ? 'Approve' : 'Setujui'}
                                 </Button>
                                 <Button
                                   size="xs"
@@ -906,9 +893,9 @@ export default function ApprovalUserPage() {
                                   icon={XCircle}
                                   onClick={() => handleOpenRejectModal(user)}
                                   className="text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 border border-rose-500/20"
-                                  title="Tolak pendaftaran akun"
+                                  title={language === 'en' ? 'Reject account registration' : 'Tolak pendaftaran akun'}
                                 >
-                                  Tolak
+                                  {language === 'en' ? 'Reject' : 'Tolak'}
                                 </Button>
                               </>
                             ) : (
@@ -918,13 +905,13 @@ export default function ApprovalUserPage() {
                                 onClick={async () => {
                                   const res = await toggleUserStatus(user.id);
                                   if (res?.success) {
-                                    addToast(`Status akun ${user.name} berhasil diubah.`, 'info');
+                                    addToast(language === 'en' ? `Account status for ${user.name} changed.` : `Status akun ${user.name} berhasil diubah.`, 'info');
                                   }
                                 }}
                                 className="text-xs text-neutral-400 hover:text-white"
-                                title="Ubah status aktif akun"
+                                title={language === 'en' ? 'Change active status' : 'Ubah status aktif akun'}
                               >
-                                Nonaktifkan
+                                {language === 'en' ? 'Deactivate' : 'Nonaktifkan'}
                               </Button>
                             )}
                           </div>
@@ -954,31 +941,35 @@ export default function ApprovalUserPage() {
                   <XCircle className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-white text-base">Tolak Pendaftaran Akun</h3>
-                  <p className="text-xs text-neutral-400">Verifikasi penolakan akses Super Admin</p>
+                  <h3 className="font-bold text-white text-base">
+                    {language === 'en' ? 'Reject Account Registration' : 'Tolak Pendaftaran Akun'}
+                  </h3>
+                  <p className="text-xs text-neutral-400">
+                    {language === 'en' ? 'Super Admin rejection verification' : 'Verifikasi penolakan akses Super Admin'}
+                  </p>
                 </div>
               </div>
 
               <p className="text-xs text-neutral-300 leading-relaxed mb-4">
-                Apakah Anda yakin ingin menolak permohonan pendaftaran untuk{' '}
-                <strong className="text-white">{rejectModalData.name}</strong> ({rejectModalData.email})? Akun
-                ini akan dihapus dari antrean registrasi.
+                {language === 'en'
+                  ? `Are you sure you want to reject the registration request for ${rejectModalData.name} (${rejectModalData.email})? This account will be removed from the registration queue.`
+                  : `Apakah Anda yakin ingin menolak permohonan pendaftaran untuk ${rejectModalData.name} (${rejectModalData.email})? Akun ini akan dihapus dari antrean registrasi.`}
               </p>
 
               {/* Alasan Penolakan (Wajib Ditulis Manual - Tanpa Pilihan Opsi) */}
               <div className="space-y-1.5 mb-4">
                 <label className="block text-xs font-semibold text-neutral-300">
-                  Alasan Penolakan <span className="text-rose-400 font-bold">*</span>
+                  {language === 'en' ? 'Rejection Reason' : 'Alasan Penolakan'} <span className="text-rose-400 font-bold">*</span>
                 </label>
                 <textarea
                   rows={3}
                   value={rejectionReason}
                   onChange={(e) => setRejectionReason(e.target.value)}
-                  placeholder="Tuliskan alasan penolakan pendaftaran akun di sini..."
+                  placeholder={language === 'en' ? 'Write the account rejection reason here...' : 'Tuliskan alasan penolakan pendaftaran akun di sini...'}
                   className="w-full text-xs font-mono p-3 rounded-xl bg-[#181B1E] border border-[#2B3138] text-white placeholder-neutral-500 focus:outline-none focus:border-rose-500 focus:ring-1 focus:ring-rose-500 resize-none transition-colors"
                 />
                 <p className="text-[10px] text-neutral-400 font-mono">
-                  Wajib menuliskan alasan penolakan akun ini secara manual.
+                  {language === 'en' ? 'Mandatory to write the rejection reason manually.' : 'Wajib menuliskan alasan penolakan akun ini secara manual.'}
                 </p>
               </div>
 
@@ -989,7 +980,7 @@ export default function ApprovalUserPage() {
                   onClick={() => setRejectModalData(null)}
                   disabled={isSubmittingReject}
                 >
-                  Batal
+                  {language === 'en' ? 'Cancel' : 'Batal'}
                 </Button>
                 <Button
                   size="sm"
@@ -1000,7 +991,7 @@ export default function ApprovalUserPage() {
                   disabled={isSubmittingReject || !rejectionReason.trim()}
                   className="bg-rose-600 hover:bg-rose-500 text-white font-bold disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Konfirmasi Tolak
+                  {language === 'en' ? 'Confirm Reject' : 'Konfirmasi Tolak'}
                 </Button>
               </div>
             </motion.div>
@@ -1023,17 +1014,19 @@ export default function ApprovalUserPage() {
                   <XCircle className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-white text-base">Tolak Pendaftaran Massal</h3>
+                  <h3 className="font-bold text-white text-base">
+                    {language === 'en' ? 'Bulk Reject Registrations' : 'Tolak Pendaftaran Massal'}
+                  </h3>
                   <p className="text-xs text-neutral-400">
-                    {selectedIds.size} akun pendaftar terpilih
+                    {language === 'en' ? `${selectedIds.size} registrant accounts selected` : `${selectedIds.size} akun pendaftar terpilih`}
                   </p>
                 </div>
               </div>
 
               <p className="text-xs text-neutral-300 leading-relaxed mb-4">
-                Apakah Anda yakin ingin menolak{' '}
-                <strong className="text-white">{selectedIds.size} permohonan pendaftaran</strong> sekaligus?
-                Tindakan ini tidak dapat dibatalkan.
+                {language === 'en'
+                  ? `Are you sure you want to reject ${selectedIds.size} registration requests at once? This action cannot be undone.`
+                  : `Apakah Anda yakin ingin menolak ${selectedIds.size} permohonan pendaftaran sekaligus? Tindakan ini tidak dapat dibatalkan.`}
               </p>
 
               {/* Alasan Penolakan Massal (Wajib Ditulis Manual - Tanpa Pilihan Opsi) */}
@@ -1060,7 +1053,7 @@ export default function ApprovalUserPage() {
                   onClick={() => setBatchRejectModalOpen(false)}
                   disabled={isBatchSubmitting}
                 >
-                  Batal
+                  {language === 'en' ? 'Cancel' : 'Batal'}
                 </Button>
                 <Button
                   size="sm"
@@ -1071,7 +1064,7 @@ export default function ApprovalUserPage() {
                   disabled={isBatchSubmitting || !batchRejectionReason.trim()}
                   className="bg-rose-600 hover:bg-rose-500 text-white font-bold disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Tolak {selectedIds.size} Akun
+                  {language === 'en' ? `Reject ${selectedIds.size} Accounts` : `Tolak ${selectedIds.size} Akun`}
                 </Button>
               </div>
             </motion.div>

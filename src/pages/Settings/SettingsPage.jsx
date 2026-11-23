@@ -15,6 +15,7 @@ import {
   Smartphone,
   Info,
   Send,
+  Languages,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
@@ -25,7 +26,7 @@ export default function SettingsPage() {
   const navigate = useNavigate();
   const { isSuperAdmin } = useAuth();
   const { addToast } = useToast();
-  const { isDark, toggleTheme } = useApp();
+  const { isDark, toggleTheme, language, setLanguage, t } = useApp();
 
   // Route protection: Settings reserved for Super Admin
   if (!isSuperAdmin) {
@@ -251,6 +252,61 @@ export default function SettingsPage() {
                     <Moon className="w-3.5 h-3.5 text-slate-800 shrink-0" />
                   )}
                 </span>
+              </button>
+            </div>
+          </div>
+
+          {/* Bahasa Aplikasi (Language Switcher) */}
+          <div
+            className={`flex items-center justify-between p-4 sm:p-4.5 transition-colors ${isDark ? 'hover:bg-[#181B1E]' : 'hover:bg-slate-50'}`}
+          >
+            <div className="flex items-center gap-3.5">
+              <div className={isDark ? 'text-blue-400' : 'text-blue-500'}>
+                <Languages className="w-5 h-5" />
+              </div>
+              <div>
+                <div className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                  {language === 'id' ? 'Bahasa Aplikasi' : 'App Language'}
+                </div>
+                <div className={`text-xs ${isDark ? 'text-neutral-400' : 'text-slate-500'}`}>
+                  {language === 'id' ? 'Bahasa Indonesia (Aktif)' : 'English Language (Active)'}
+                </div>
+              </div>
+            </div>
+
+            {/* Language Toggle Pills */}
+            <div className={`flex items-center gap-1 p-0.5 rounded-lg border ${isDark ? 'bg-[#0E1013] border-[#2B3037]' : 'bg-slate-100 border-slate-200'}`}>
+              <button
+                type="button"
+                onClick={() => {
+                  setLanguage('id');
+                  addToast('Bahasa aplikasi diubah ke Bahasa Indonesia.', 'info');
+                }}
+                className={`px-3 py-1 rounded-md text-xs font-bold font-mono uppercase tracking-wide transition-all cursor-pointer select-none ${
+                  language === 'id'
+                    ? 'bg-[#F4511E] text-white shadow-sm shadow-[#F4511E]/30'
+                    : isDark
+                    ? 'text-neutral-400 hover:text-white hover:bg-white/5'
+                    : 'text-slate-500 hover:text-slate-800 hover:bg-white'
+                }`}
+              >
+                ID
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setLanguage('en');
+                  addToast('App language changed to English.', 'info');
+                }}
+                className={`px-3 py-1 rounded-md text-xs font-bold font-mono uppercase tracking-wide transition-all cursor-pointer select-none ${
+                  language === 'en'
+                    ? 'bg-[#F4511E] text-white shadow-sm shadow-[#F4511E]/30'
+                    : isDark
+                    ? 'text-neutral-400 hover:text-white hover:bg-white/5'
+                    : 'text-slate-500 hover:text-slate-800 hover:bg-white'
+                }`}
+              >
+                EN
               </button>
             </div>
           </div>

@@ -1,7 +1,9 @@
 import express from 'express';
 import cors from 'cors';
 import crypto from 'node:crypto';
-import db, { initDb, syncJournalsAndWaybills, syncBkkAndInvoices } from './db.js';
+import fs from 'node:fs';
+import path from 'node:path';
+import db, { initDb, syncJournalsAndWaybills, syncBkkAndInvoices, bkkUploadsDir } from './db.js';
 import {
   RO_TYPES,
   ITEM_TYPES,
@@ -25,7 +27,8 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 export function getCustomerPrefix(custNameOrObj) {
   if (!custNameOrObj) return 'GEN';
@@ -165,6 +168,14 @@ function determineRoleByEmail(email) {
   if (!email) return { role: 'admin', roleLabel: 'Admin' };
   const cleanEmail = email.trim().toLowerCase();
 
+  // rainorchesta@gmail.com explicitly has the Admin role
+  if (cleanEmail === 'rainorchesta@gmail.com') {
+    return {
+      role: 'admin',
+      roleLabel: 'Admin',
+    };
+  }
+
   const superAdminList = [
     'superadmin@ptbas.co.id',
     'direksi@ptbas.co.id',
@@ -191,11 +202,12 @@ function determineRoleByEmail(email) {
  */
 function verifySuperAdminPermission(req, res, actionName = 'menghapus data') {
   const roleHeader = (req.headers['x-user-role'] || req.query.user_role || '').toLowerCase().trim();
+  const cleanRole = roleHeader.replace(/[\s_-]+/g, '');
   const emailHeader = (req.headers['x-user-email'] || req.query.user_email || '').toLowerCase().trim();
   const idHeader = (req.headers['x-user-id'] || req.query.user_id || '').trim();
 
-  // Jika eksplisit menyatakan role admin, tolak langsung
-  if (roleHeader === 'admin') {
+  // Jika eksplisit menyatakan role admin murni, tolak langsung
+  if (cleanRole === 'admin') {
     res.status(403).json({
       success: false,
       message: `Akses ditolak: Pengguna dengan role Admin tidak memiliki wewenang untuk ${actionName}. Hanya Super Admin yang diizinkan.`
@@ -209,7 +221,8 @@ function verifySuperAdminPermission(req, res, actionName = 'menghapus data') {
       const user = db.prepare('SELECT id, email, role, aktif FROM users WHERE id = ? OR LOWER(email) = ?').get(idHeader || '', emailHeader || '');
       if (user) {
         const autoRole = determineRoleByEmail(user.email);
-        const isSuper = user.role === 'superadmin' || autoRole.role === 'superadmin';
+        const userCleanRole = String(user.role || '').toLowerCase().replace(/[\s_-]+/g, '');
+        const isSuper = userCleanRole === 'superadmin' || autoRole.role === 'superadmin' || userCleanRole === 'direktur' || userCleanRole === 'direksi';
         if (!isSuper || user.aktif !== 1) {
           res.status(403).json({
             success: false,
@@ -225,7 +238,22 @@ function verifySuperAdminPermission(req, res, actionName = 'menghapus data') {
   }
 
   // Jika header menyatakan role superadmin dan tidak ada konflik identitas
-  if (roleHeader === 'superadmin') {
+  if (cleanRole === 'superadmin' || cleanRole === 'direktur' || cleanRole === 'direksi') {
+    return true;
+  }
+
+  // Email matching superadmin list
+  // rainorchesta@gmail.com explicitly has the Admin role
+  if (emailHeader === 'rainorchesta@gmail.com') {
+    res.status(403).json({
+      success: false,
+      message: `Akses ditolak: Akun rainorchesta@gmail.com memiliki wewenang Admin dan tidak memiliki hak akses Super Admin untuk ${actionName}.`
+    });
+    return false;
+  }
+
+  const superAdminList = ['superadmin@ptbas.co.id', 'direksi@ptbas.co.id', 'david.rusiah@ptbas.co.id'];
+  if (superAdminList.includes(emailHeader) || emailHeader.startsWith('superadmin')) {
     return true;
   }
 
@@ -235,6 +263,23 @@ function verifySuperAdminPermission(req, res, actionName = 'menghapus data') {
     message: `Akses ditolak: Operasi ${actionName} memerlukan wewenang Super Admin.`
   });
   return false;
+}
+
+/**
+ * Helper to record immutable audit trail entries for Cash-Out (BKK) transactions
+ */
+function logBkkAudit(bkkId, action, actorName, actorRole, details = null, actorId = null) {
+  try {
+    const id = `AUDIT-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    const nowIso = new Date().toISOString();
+    const detailsStr = details ? (typeof details === 'string' ? details : JSON.stringify(details)) : null;
+    db.prepare(`
+      INSERT INTO bkk_audit_logs (id, bkkId, action, actorId, actorName, actorRole, details, timestamp, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(id, bkkId, action, actorId || null, actorName || 'System', actorRole || 'User', detailsStr, nowIso, nowIso);
+  } catch (err) {
+    console.error('Error logging BKK audit:', err);
+  }
 }
 
 // Login
@@ -2026,104 +2071,1035 @@ app.get('/api/bkk', (req, res) => {
     LEFT JOIN suppliers s ON (b.supplierId = s.id OR b.perusahaan = s.name)
     ORDER BY b.id DESC
   `).all();
-  const normalized = bkks.map((b) => ({
-    ...b,
-    supplierId: b.supplierId || null,
-    customerId: b.customerId || null,
-    volume: Number(b.volume ?? b.kubikasi ?? 0),
-    kubikasi: Number(b.kubikasi ?? b.volume ?? 0),
-    amount: Number(b.amount ?? 0),
-    timestamp: b.timestamp || (b.tanggal ? `${b.tanggal} 08:00:00` : ''),
-    tanggal: b.tanggal || (b.timestamp ? b.timestamp.slice(0, 10) : ''),
-    subDetail: b.subDetail || b.penerima || '-',
-    penerima: b.penerima || b.subDetail || '-',
-    jenis: b.jenis || 'CURAH | JASA ANGKUT + MATERIAL',
-    periode: b.periode || (b.tanggal ? b.tanggal.slice(0, 7) : (b.timestamp ? b.timestamp.slice(0, 7) : '-')),
-    statusBayar: b.statusBayar || 'Belum Dibayar',
-    kodeTransaksi: b.kodeTransaksi || '-',
-    perusahaan: b.perusahaan || '-',
-    material: b.material || '-',
-  }));
+
+  // Fetch document counts and latest document for each BKK
+  const docStmt = db.prepare(`
+    SELECT id, bkkId, version, fileName, originalName, fileSize, fileType, status, uploadedBy, uploadedAt, verifiedBy, verifiedAt, rejectionReason
+    FROM bkk_documents
+    WHERE bkkId = ?
+    ORDER BY version DESC LIMIT 1
+  `);
+  const docCountStmt = db.prepare('SELECT COUNT(*) as count FROM bkk_documents WHERE bkkId = ?');
+
+  const normalized = bkks.map((b) => {
+    const latestDoc = docStmt.get(b.id) || null;
+    const docCount = docCountStmt.get(b.id)?.count || 0;
+
+    return {
+      ...b,
+      supplierId: b.supplierId || null,
+      customerId: b.customerId || null,
+      volume: Number(b.volume ?? b.kubikasi ?? 0),
+      kubikasi: Number(b.kubikasi ?? b.volume ?? 0),
+      amount: Number(b.amount ?? 0),
+      timestamp: b.timestamp || (b.tanggal ? `${b.tanggal} 08:00:00` : ''),
+      tanggal: b.tanggal || (b.timestamp ? b.timestamp.slice(0, 10) : ''),
+      subDetail: b.subDetail || b.penerima || '-',
+      penerima: b.penerima || b.subDetail || '-',
+      jenis: b.jenis || 'CURAH | JASA ANGKUT + MATERIAL',
+      periode: b.periode || (b.tanggal ? b.tanggal.slice(0, 7) : (b.timestamp ? b.timestamp.slice(0, 7) : '-')),
+      statusBayar: b.statusBayar || 'Belum Dibayar',
+      status: b.status || 'pending_approval',
+      createdBy: b.createdBy || 'Admin',
+      approvedBy: b.approvedBy || null,
+      approvedAt: b.approvedAt || null,
+      rejectionReason: b.rejectionReason || null,
+      kodeTransaksi: b.kodeTransaksi || '-',
+      perusahaan: b.perusahaan || '-',
+      material: b.material || '-',
+      latestDocument: latestDoc ? {
+        ...latestDoc,
+        fileUrl: `/api/bkk/documents/file/${latestDoc.id}`,
+      } : null,
+      documentCount: docCount,
+      hasSignedDocument: Boolean(latestDoc),
+    };
+  });
   res.json(normalized);
 });
 
+// Get available completed orders that do not yet have an associated BKK (Cash-Out)
+app.get('/api/bkk/available-orders', (req, res) => {
+  try {
+    const orders = db.prepare(`
+      SELECT 
+        j.id as jurnalId,
+        j.nomorRO,
+        j.poNumber,
+        j.preOrderId,
+        j.customer,
+        j.customerAddress,
+        j.material,
+        j.totalVolume,
+        j.targetVolume,
+        j.satuan,
+        j.hargaBeli,
+        j.hargaJual,
+        j.nominalBeli,
+        j.status as jurnalStatus,
+        p.id as poId,
+        p.nomorPo as poNomorPo,
+        p.nomorRO as poNomorRO,
+        p.supplierId,
+        p.customerId,
+        p.status as poStatus,
+        s.name as defaultSupplierName,
+        s.bank as defaultSupplierBank,
+        s.noRekening as defaultSupplierNoRekening,
+        s.rekeningAtasNama as defaultSupplierRekeningAtasNama,
+        s.penerima as defaultSupplierPenerima
+      FROM jurnal_gi j
+      LEFT JOIN pre_orders p ON (j.preOrderId = p.id OR j.nomorRO = p.nomorRO)
+      LEFT JOIN suppliers s ON (p.supplierId = s.id)
+      WHERE j.targetVolume > 0 
+        AND j.totalVolume >= j.targetVolume
+        AND NOT EXISTS (
+          SELECT 1 FROM bkk b 
+          WHERE (
+            (b.nomorRO IS NOT NULL AND b.nomorRO != '' AND b.nomorRO = j.nomorRO)
+            OR (b.jurnalId IS NOT NULL AND b.jurnalId != '' AND b.jurnalId = j.id)
+            OR (b.preOrderId IS NOT NULL AND b.preOrderId != '' AND b.preOrderId = j.preOrderId)
+            OR (b.poNumber IS NOT NULL AND b.poNumber != '' AND b.poNumber != '-' AND b.poNumber = j.poNumber)
+          )
+          AND b.status NOT IN ('REJECTED')
+        )
+      ORDER BY j.id DESC
+    `).all();
+
+    res.json({ success: true, data: orders });
+  } catch (err) {
+    console.error('Error fetching available orders for BKK:', err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// Admin creates BKK manually (Only after Order is fully completed based on Journal Recap)
 app.post('/api/bkk', (req, res) => {
   const bkkData = req.body;
-  const id = bkkData.id || `BKK-${new Date().toISOString().slice(0, 7).replace('-', '')}-${String(Date.now()).slice(-4)}`;
   const nowIso = new Date().toISOString();
 
+  // 1. Resolve linked Order and Journal GI
+  let jurnal = null;
+  if (bkkData.jurnalId) {
+    jurnal = db.prepare('SELECT * FROM jurnal_gi WHERE id = ?').get(bkkData.jurnalId);
+  }
+  if (!jurnal && bkkData.nomorRO) {
+    jurnal = db.prepare('SELECT * FROM jurnal_gi WHERE nomorRO = ?').get(bkkData.nomorRO);
+  }
+  if (!jurnal && bkkData.preOrderId) {
+    jurnal = db.prepare('SELECT * FROM jurnal_gi WHERE preOrderId = ?').get(bkkData.preOrderId);
+  }
+
+  let po = null;
+  if (bkkData.preOrderId) {
+    po = db.prepare('SELECT * FROM pre_orders WHERE id = ?').get(bkkData.preOrderId);
+  }
+  if (!po && jurnal?.preOrderId) {
+    po = db.prepare('SELECT * FROM pre_orders WHERE id = ?').get(jurnal.preOrderId);
+  }
+  if (!po && bkkData.nomorRO) {
+    po = db.prepare('SELECT * FROM pre_orders WHERE nomorRO = ?').get(bkkData.nomorRO);
+  }
+
+  // 2. CRITICAL BUSINESS RULE: Verify Order is fully completed based on actual delivery recap
+  if (!jurnal && !po) {
+    return res.status(400).json({
+      success: false,
+      message: 'Gagal membuat BKK: Data Order atau Rekapan Jurnal terkait tidak ditemukan. BKK hanya dapat dibuat untuk Order yang valid.',
+    });
+  }
+
+  const targetVol = Number(jurnal?.targetVolume || po?.totalOrder || 0);
+
+  // Compute actual delivered volume from waybills (surat_jalan)
+  const sjList = db.prepare(`
+    SELECT volumeAkhir FROM surat_jalan
+    WHERE (jurnalId IS NOT NULL AND jurnalId = ?)
+       OR (nomorRO IS NOT NULL AND nomorRO = ?)
+       OR (preOrderId IS NOT NULL AND preOrderId = ?)
+  `).all(jurnal?.id || '', jurnal?.nomorRO || bkkData.nomorRO || '', po?.id || '');
+
+  const actualDeliveredVol = Number(sjList.reduce((sum, s) => sum + (Number(s.volumeAkhir) || 0), 0).toFixed(2));
+  const finalDelivered = actualDeliveredVol > 0 ? actualDeliveredVol : Number(jurnal?.totalVolume || po?.terkirim || 0);
+
+  if (targetVol <= 0 || finalDelivered < targetVol) {
+    return res.status(400).json({
+      success: false,
+      message: `Gagal membuat BKK: Order belum selesai dikirim. Realisasi pengiriman (${finalDelivered} m³) belum memenuhi target kuantitas pesanan (${targetVol} m³) berdasarkan data Rekapan Jurnal.`,
+    });
+  }
+
+  // 3. CRITICAL BUSINESS RULE: Prevent duplicate BKK creation
+  const refRo = jurnal?.nomorRO || bkkData.nomorRO || po?.nomorRO || null;
+  const refJurnalId = jurnal?.id || bkkData.jurnalId || null;
+  const refPoId = po?.id || bkkData.preOrderId || null;
+  const refPoNumber = jurnal?.poNumber || bkkData.poNumber || po?.nomorPo || null;
+
+  const existingBkk = db.prepare(`
+    SELECT id, kodeTransaksi, status FROM bkk
+    WHERE ((jurnalId IS NOT NULL AND jurnalId != '' AND jurnalId = ?) 
+        OR (nomorRO IS NOT NULL AND nomorRO != '' AND nomorRO = ?) 
+        OR (preOrderId IS NOT NULL AND preOrderId != '' AND preOrderId = ?)
+        OR (poNumber IS NOT NULL AND poNumber != '' AND poNumber != '-' AND poNumber = ?))
+      AND status NOT IN ('REJECTED')
+    LIMIT 1
+  `).get(refJurnalId || '', refRo || '', refPoId || '', refPoNumber || '');
+
+  if (existingBkk) {
+    return res.status(400).json({
+      success: false,
+      message: `BKK untuk Order ini sudah pernah dibuat (${existingBkk.kodeTransaksi || existingBkk.id}, Status: ${existingBkk.status}). Sistem mencegah pembuatan BKK duplikat.`,
+    });
+  }
+
+  // 4. Resolve Master Suppliers and Customers
   let supId = bkkData.supplierId || null;
   if (!supId && bkkData.perusahaan) {
     supId = db.prepare('SELECT id FROM suppliers WHERE name = ? LIMIT 1').get(bkkData.perusahaan)?.id || null;
   }
-  let custId = bkkData.customerId || null;
-  if (!custId && bkkData.subDetail) {
-    custId = db.prepare("SELECT id FROM customers WHERE ? LIKE '%' || name || '%' LIMIT 1").get(bkkData.subDetail)?.id || null;
-  }
+  if (!supId && po?.supplierId) supId = po.supplierId;
 
+  let custId = bkkData.customerId || null;
+  if (!custId && (bkkData.subDetail || bkkData.customer || jurnal?.customer)) {
+    const custSearch = bkkData.customer || jurnal?.customer || bkkData.subDetail;
+    custId = db.prepare("SELECT id FROM customers WHERE ? LIKE '%' || name || '%' LIMIT 1").get(custSearch)?.id || null;
+  }
+  if (!custId && po?.customerId) custId = po.customerId;
+
+  const supplierRow = supId ? db.prepare('SELECT * FROM suppliers WHERE id = ?').get(supId) : null;
+  const finalSupplierName = supplierRow?.name || bkkData.perusahaan || 'SUPPLIER';
+  const finalPenerima = supplierRow?.penerima || bkkData.penerima || finalSupplierName;
+
+  // 5. Volume, Unit Price, and Amount resolution from verified journal recap
+  const finalVolume = Number(bkkData.volume) > 0 ? Number(bkkData.volume) : finalDelivered;
+  const hargaBeli = Number(bkkData.hargaSatuan) > 0 ? Number(bkkData.hargaSatuan) : Number(jurnal?.hargaBeli || po?.hargaBeli || 0);
+  const finalAmount = Number(bkkData.amount) > 0 ? Number(bkkData.amount) : Math.round(finalVolume * hargaBeli);
+  const ritCount = sjList.length > 0 ? sjList.length : Number(jurnal?.totalSj || bkkData.ritaseCount || 1);
+
+  const subDetailStr = bkkData.subDetail && bkkData.subDetail !== '-'
+    ? bkkData.subDetail
+    : `${jurnal?.customer || po?.customer || 'Customer'} (${refRo || 'RO'})`;
+
+  const finalPoNum = bkkData.poNumber || jurnal?.poNumber || po?.nomorPo || 'PO';
+  const finalRoNum = refRo || `RO-${new Date().getFullYear()}-${String(Date.now()).slice(-4)}`;
+  const coCode = bkkData.kodeTransaksi || `${finalPoNum} - CO - ${String(finalRoNum).slice(-4).replace('-', '')}`;
+  const id = bkkData.id || `BKK-${new Date().toISOString().slice(0, 7).replace('-', '')}-${String(Date.now()).slice(-4)}`;
+
+  const createdByUser = (req.headers['x-user-email'] || req.headers['x-user-role'] || 'Admin').trim();
+
+  // 6. Insert BKK with LOCKED / PENDING APPROVAL status
   db.prepare(`
     INSERT INTO bkk (
       id, kodeTransaksi, nomorRO, preOrderId, jurnalId, poNumber,
       supplierId, customerId, perusahaan, subDetail, penerima, material, jenis, ritaseCount,
-      kubikasi, volume, satuan, hargaSatuan, amount, statusBayar,
+      kubikasi, volume, satuan, hargaSatuan, amount, statusBayar, status, createdBy,
+      approvedBy, approvedAt, rejectionReason,
       tanggal, timestamp, periode, tanggalBayar, rekeningSumber, rekeningTujuan,
       created_at, updated_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     id,
-    bkkData.kodeTransaksi || `TRX-${Date.now()}`,
-    bkkData.nomorRO || null,
-    bkkData.preOrderId || null,
-    bkkData.jurnalId || null,
-    bkkData.poNumber || null,
+    coCode,
+    finalRoNum,
+    po?.id || null,
+    jurnal?.id || null,
+    finalPoNum,
     supId,
     custId,
-    bkkData.perusahaan || 'SUPPLIER',
-    bkkData.subDetail || '-',
-    bkkData.penerima || bkkData.subDetail || '-',
-    bkkData.material || 'SIRTU (Curah)',
+    finalSupplierName,
+    subDetailStr,
+    finalPenerima,
+    bkkData.material || `${jurnal?.material || 'SIRTU'} (Curah)`,
     bkkData.jenis || 'CURAH | JASA ANGKUT + MATERIAL',
-    Number(bkkData.ritaseCount) || 1,
-    Number(bkkData.volume ?? bkkData.kubikasi) || 0,
-    Number(bkkData.volume ?? bkkData.kubikasi) || 0,
-    bkkData.satuan || 'm3',
-    Number(bkkData.hargaSatuan) || 0,
-    Number(bkkData.amount) || 0,
-    bkkData.statusBayar || 'Belum Dibayar',
+    ritCount,
+    finalVolume,
+    finalVolume,
+    bkkData.satuan || jurnal?.satuan || 'm3',
+    hargaBeli,
+    finalAmount,
+    'Belum Dibayar',
+    'pending_approval', // Stage 1: LOCKED UNTIL SUPERADMIN APPROVES
+    createdByUser,
+    null,
+    null,
+    null,
     bkkData.tanggal || nowIso.split('T')[0],
     bkkData.timestamp || nowIso.replace('T', ' ').slice(0, 19),
     bkkData.periode || `Periode: ${bkkData.tanggal || nowIso.split('T')[0]}`,
-    bkkData.tanggalBayar || null,
-    bkkData.rekeningSumber || null,
-    bkkData.rekeningTujuan || null,
+    null,
+    null,
+    bkkData.rekeningTujuan || (supplierRow ? `${supplierRow.bank || 'BCA'} - ${supplierRow.noRekening || ''}` : '-'),
     nowIso,
     nowIso
   );
 
-  res.status(201).json({ success: true, id, message: 'BKK berhasil disimpan ke database.' });
+  // Record Audit Log: Stage 1 BKK Created
+  logBkkAudit(id, 'BKK_CREATED', createdByUser, req.headers['x-user-role'] || 'Admin', {
+    kodeTransaksi: coCode,
+    nomorRO: finalRoNum,
+    amount: finalAmount,
+    volume: finalVolume,
+    supplier: finalSupplierName,
+  }, req.headers['x-user-id'] || null);
+
+  res.status(201).json({
+    success: true,
+    id,
+    kodeTransaksi: coCode,
+    status: 'pending_approval',
+    message: `BKK Cash Out ${coCode} berhasil diajukan! Status saat ini TERKUNCI (Menunggu Approval Super Admin).`,
+  });
 });
 
-app.patch('/api/bkk/pay', (req, res) => {
-  const { ids, tanggalBayar = new Date().toISOString().split('T')[0] } = req.body;
-  if (!Array.isArray(ids)) return res.status(400).json({ message: 'IDs array required' });
+// Get complete print data for BKK including daily GI breakdown
+app.get('/api/bkk/:id/print-data', (req, res) => {
+  try {
+    const { id } = req.params;
+    const bkk = db.prepare(`
+      SELECT b.*,
+             s.bank as supplierBank,
+             s.noRekening as supplierNoRekening,
+             s.rekeningAtasNama as supplierRekeningAtasNama,
+             s.telepon as supplierTelepon,
+             s.penerima as supplierPenerimaDefault
+      FROM bkk b
+      LEFT JOIN suppliers s ON (b.supplierId = s.id OR b.perusahaan = s.name)
+      WHERE b.id = ?
+    `).get(id);
 
+    if (!bkk) {
+      return res.status(404).json({ success: false, message: `BKK ${id} tidak ditemukan.` });
+    }
+
+    // Resolve Customer info
+    let customerName = bkk.customer || bkk.perusahaan || '-';
+    let customerRow = null;
+    if (bkk.customerId) {
+      customerRow = db.prepare('SELECT * FROM customers WHERE id = ?').get(bkk.customerId);
+    }
+    if (!customerRow && bkk.customer) {
+      customerRow = db.prepare("SELECT * FROM customers WHERE name LIKE '%' || ? || '%' LIMIT 1").get(bkk.customer);
+    }
+    if (customerRow) {
+      customerName = customerRow.name;
+    }
+
+    // Resolve PO and RO
+    const roNumber = bkk.nomorRO || '-';
+    const poNumber = bkk.poNumber || '-';
+
+    // Fetch linked Surat Jalan records to break down GI by delivery date (Requirement 4)
+    const sjRows = db.prepare(`
+      SELECT * FROM surat_jalan
+      WHERE (nomorRO IS NOT NULL AND nomorRO != '' AND nomorRO = ?)
+         OR (jurnalId IS NOT NULL AND jurnalId != '' AND jurnalId = ?)
+         OR (preOrderId IS NOT NULL AND preOrderId != '' AND preOrderId = ?)
+         OR (poNumber IS NOT NULL AND poNumber != '' AND poNumber != '-' AND poNumber = ?)
+      ORDER BY tanggal ASC, waktu ASC, id ASC
+    `).all(roNumber, bkk.jurnalId || '', bkk.preOrderId || '', poNumber);
+
+    // Group GI deliveries strictly by date
+    const dailyMap = {};
+    for (const sj of sjRows) {
+      const dateKey = sj.tanggal || bkk.tanggal || '-';
+      if (!dailyMap[dateKey]) {
+        dailyMap[dateKey] = {
+          tanggal: dateKey,
+          material: sj.material || bkk.material || 'SIRTU',
+          ritaseCount: 0,
+          volume: 0,
+          suratJalanNos: [],
+        };
+      }
+      dailyMap[dateKey].ritaseCount += 1;
+      dailyMap[dateKey].volume += Number(sj.volumeAkhir) || 0;
+      if (sj.nomorSj) dailyMap[dateKey].suratJalanNos.push(sj.nomorSj);
+    }
+
+    const hargaSatuan = Number(bkk.hargaSatuan) || 0;
+    let dailyTransactions = Object.values(dailyMap).map((d) => {
+      const vol = Number(d.volume.toFixed(2));
+      const subtotal = Math.round(vol * hargaSatuan);
+      return {
+        tanggal: d.tanggal,
+        material: d.material,
+        ritaseCount: d.ritaseCount,
+        suratJalanNos: d.suratJalanNos,
+        volume: vol,
+        hargaSatuan,
+        subtotal,
+      };
+    });
+
+    // Fallback if no individual surat_jalan rows found (use BKK summary)
+    if (dailyTransactions.length === 0) {
+      const vol = Number(bkk.volume ?? bkk.kubikasi ?? 0);
+      dailyTransactions = [{
+        tanggal: bkk.tanggal || '-',
+        material: bkk.material || 'SIRTU',
+        ritaseCount: bkk.ritaseCount || 1,
+        suratJalanNos: [],
+        volume: vol,
+        hargaSatuan,
+        subtotal: Number(bkk.amount) || Math.round(vol * hargaSatuan),
+      }];
+    }
+
+    // Totals
+    const totalVolume = Number(dailyTransactions.reduce((acc, curr) => acc + curr.volume, 0).toFixed(2));
+    const totalAmount = dailyTransactions.reduce((acc, curr) => acc + curr.subtotal, 0) || Number(bkk.amount);
+
+    // Parse rekening info
+    let bankName = bkk.supplierBank || 'BCA';
+    let noRekening = bkk.supplierNoRekening || '';
+    let rekeningAtasNama = bkk.supplierRekeningAtasNama || bkk.penerima || bkk.perusahaan || '';
+    if (bkk.rekeningTujuan) {
+      const match = bkk.rekeningTujuan.match(/^([^-]+)-\s*([^\s]+)(?:\s+a\/n\s+(.+))?$/i);
+      if (match) {
+        if (!bkk.supplierBank) bankName = match[1].trim();
+        if (!noRekening) noRekening = match[2].trim();
+        if (!rekeningAtasNama && match[3]) rekeningAtasNama = match[3].trim();
+      }
+    }
+
+    const payload = {
+      bkkId: bkk.id,
+      coNumber: bkk.kodeTransaksi || bkk.id,
+      tanggal: bkk.tanggal,
+      timestamp: bkk.timestamp,
+      customer: customerName,
+      poNumber: poNumber,
+      nomorRO: roNumber,
+      poType: bkk.jenis || 'CURAH | JASA ANGKUT + MATERIAL',
+      supplier: {
+        name: bkk.perusahaan || 'SUPPLIER',
+        bank: bankName,
+        noRekening: noRekening || '-',
+        atasNama: rekeningAtasNama || '-',
+        penerima: bkk.penerima || rekeningAtasNama || bkk.perusahaan || '-',
+      },
+      transactions: dailyTransactions,
+      totalVolume,
+      totalAmount,
+      status: bkk.status,
+      approvedBy: bkk.approvedBy,
+      approvedAt: bkk.approvedAt,
+      createdBy: bkk.createdBy,
+    };
+
+    res.json({ success: true, data: payload });
+  } catch (err) {
+    console.error('Error getting BKK print data:', err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// Superadmin Reviews & Approves BKK (Stage 2: Administrative Approval)
+app.put('/api/bkk/:id/approve', (req, res) => {
+  if (!verifySuperAdminPermission(req, res, 'menyetujui BKK (Cash Out)')) return;
+
+  try {
+    const { id } = req.params;
+    const bkk = db.prepare('SELECT * FROM bkk WHERE id = ?').get(id);
+
+    if (!bkk) {
+      return res.status(404).json({ success: false, message: `BKK ${id} tidak ditemukan.` });
+    }
+
+    const curStatus = String(bkk.status || '').toUpperCase().trim();
+    if (['APPROVED', 'PENDING_VERIFICATION', 'REVISION_REQUIRED', 'PAID'].includes(curStatus)) {
+      return res.status(400).json({ success: false, message: `BKK ${id} sudah disetujui sebelumnya.` });
+    }
+
+    if (curStatus !== 'MENUNGGU_APPROVAL' && curStatus !== 'PENDING_APPROVAL') {
+      return res.status(400).json({
+        success: false,
+        message: `Hanya BKK berstatus Menunggu Approval yang dapat disetujui (Status saat ini: ${bkk.status}).`,
+      });
+    }
+
+    const approver = (req.body?.approver || req.headers['x-user-name'] || req.headers['x-user-email'] || 'David Rusiah (Direktur)').trim();
+    const nowIso = new Date().toISOString();
+
+    db.prepare(`
+      UPDATE bkk
+      SET status = 'approved', approvedBy = ?, approvedAt = ?, rejectionReason = NULL, updated_at = ?
+      WHERE id = ?
+    `).run(approver, nowIso, nowIso, id);
+
+    // Record Audit Log: Stage 2 BKK Approved
+    logBkkAudit(id, 'BKK_APPROVED', approver, 'Super Admin', {
+      approvedAt: nowIso,
+    }, req.headers['x-user-id'] || null);
+
+    const updated = db.prepare('SELECT * FROM bkk WHERE id = ?').get(id);
+
+    res.json({
+      success: true,
+      message: `BKK ${updated.kodeTransaksi || id} resmi disetujui secara administratif oleh Super Admin! Siap untuk proses cetak dan penandatanganan fisik.`,
+      data: updated,
+    });
+  } catch (err) {
+    console.error('Error approving BKK:', err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// Superadmin Rejects BKK
+app.put('/api/bkk/:id/reject', (req, res) => {
+  if (!verifySuperAdminPermission(req, res, 'menolak BKK (Cash Out)')) return;
+
+  try {
+    const { id } = req.params;
+    const { reason = 'Ditolak oleh Super Admin' } = req.body;
+    const bkk = db.prepare('SELECT * FROM bkk WHERE id = ?').get(id);
+
+    if (!bkk) {
+      return res.status(404).json({ success: false, message: `BKK ${id} tidak ditemukan.` });
+    }
+
+    const curStatus = String(bkk.status || '').toUpperCase().trim();
+    if (curStatus !== 'MENUNGGU_APPROVAL' && curStatus !== 'PENDING_APPROVAL') {
+      return res.status(400).json({
+        success: false,
+        message: `Hanya BKK berstatus Menunggu Approval yang dapat ditolak (Status saat ini: ${bkk.status}).`,
+      });
+    }
+
+    const rejecter = (req.body.approver || req.headers['x-user-name'] || req.headers['x-user-email'] || 'Super Admin (Direktur)').trim();
+    const nowIso = new Date().toISOString();
+
+    db.prepare(`
+      UPDATE bkk
+      SET status = 'REJECTED', rejectionReason = ?, approvedBy = ?, approvedAt = ?, updated_at = ?
+      WHERE id = ?
+    `).run(reason, rejecter, nowIso, nowIso, id);
+
+    // Record Audit Log
+    logBkkAudit(id, 'BKK_REJECTED', rejecter, 'Super Admin', {
+      reason,
+      rejectedAt: nowIso,
+    }, req.headers['x-user-id'] || null);
+
+    const updated = db.prepare('SELECT * FROM bkk WHERE id = ?').get(id);
+
+    res.json({
+      success: true,
+      message: `BKK ${updated.kodeTransaksi || id} ditolak oleh Super Admin.`,
+      data: updated,
+    });
+  } catch (err) {
+    console.error('Error rejecting BKK:', err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// Stage 3: Record Document Print Activity in Audit Trail
+app.post('/api/bkk/:id/record-print', (req, res) => {
+  try {
+    const { id } = req.params;
+    const bkk = db.prepare('SELECT id, kodeTransaksi, status FROM bkk WHERE id = ?').get(id);
+    if (!bkk) {
+      return res.status(404).json({ success: false, message: `BKK ${id} tidak ditemukan.` });
+    }
+
+    const printer = (req.headers['x-user-name'] || req.headers['x-user-email'] || req.body?.printer || 'Admin').trim();
+    const role = (req.headers['x-user-role'] || 'Admin').trim();
+    const nowIso = new Date().toISOString();
+
+    logBkkAudit(id, 'DOCUMENT_PRINTED', printer, role, {
+      printTimestamp: nowIso,
+    }, req.headers['x-user-id'] || null);
+
+    res.json({ success: true, message: 'Aktivitas cetak dokumen berhasil dicatat dalam audit trail.' });
+  } catch (err) {
+    console.error('Error recording print:', err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// Stage 4: Admin Uploads Signed Document (PNG, JPG, PDF)
+app.post('/api/bkk/:id/documents', (req, res) => {
+  try {
+    const { id } = req.params;
+    const bkk = db.prepare('SELECT * FROM bkk WHERE id = ?').get(id);
+    if (!bkk) {
+      return res.status(404).json({ success: false, message: `BKK ${id} tidak ditemukan.` });
+    }
+
+    // Only allow uploading when approved, revision required, or pending verification
+    const currentStatus = String(bkk.status || '').toLowerCase().trim();
+    if (!['approved', 'revision_required', 'pending_verification'].includes(currentStatus)) {
+      return res.status(400).json({
+        success: false,
+        message: `Dokumen hanya dapat diunggah jika BKK berstatus APPROVED atau REVISION_REQUIRED (Status saat ini: ${bkk.status}).`,
+      });
+    }
+
+    const fileBase64 = req.body.fileBase64 || req.body.fileData;
+    const fileName = req.body.fileName || req.body.originalName;
+    const fileType = req.body.fileType || (fileName?.toLowerCase().endsWith('.pdf') ? 'application/pdf' : 'image/png');
+    const notes = req.body.notes;
+
+    if (!fileBase64 || !fileName) {
+      return res.status(400).json({ success: false, message: 'File dokumen dan nama file wajib disertakan.' });
+    }
+
+    const uploader = (req.headers['x-user-name'] || req.headers['x-user-email'] || 'Admin').trim();
+    const uploaderRole = (req.headers['x-user-role'] || 'Admin').trim();
+    const nowIso = new Date().toISOString();
+
+    // Determine version: incremental
+    const maxVerRow = db.prepare('SELECT MAX(version) as maxVer FROM bkk_documents WHERE bkkId = ?').get(id);
+    const nextVersion = (maxVerRow?.maxVer || 0) + 1;
+
+    // Ensure uploads directory exists
+    if (!fs.existsSync(bkkUploadsDir)) {
+      fs.mkdirSync(bkkUploadsDir, { recursive: true });
+    }
+
+    // Save file to disk
+    const ext = path.extname(fileName) || (fileType?.includes('pdf') ? '.pdf' : '.png');
+    const safeFileName = `${id}-v${nextVersion}-${Date.now()}${ext}`;
+    const diskPath = path.join(bkkUploadsDir, safeFileName);
+
+    // Decode base64
+    const base64Data = fileBase64.replace(/^data:[^;]+;base64,/, '');
+    const fileBuffer = Buffer.from(base64Data, 'base64');
+    fs.writeFileSync(diskPath, fileBuffer);
+
+    const docId = `DOC-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+
+    db.prepare(`
+      INSERT INTO bkk_documents (
+        id, bkkId, version, fileName, originalName, filePath, fileSize, fileType,
+        notes, status, uploadedBy, uploadedAt, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      docId,
+      id,
+      nextVersion,
+      safeFileName,
+      fileName,
+      diskPath,
+      fileBuffer.length,
+      fileType || 'application/pdf',
+      notes || null,
+      'DRAFT',
+      uploader,
+      nowIso,
+      nowIso,
+      nowIso
+    );
+
+    // Log audit
+    const action = currentStatus === 'revision_required' ? 'REVISED_DOCUMENT_UPLOADED' : 'DOCUMENT_UPLOADED';
+    logBkkAudit(id, action, uploader, uploaderRole, {
+      docId,
+      version: nextVersion,
+      fileName,
+      fileSize: fileBuffer.length,
+    }, req.headers['x-user-id'] || null);
+
+    const createdDoc = db.prepare('SELECT * FROM bkk_documents WHERE id = ?').get(docId);
+
+    res.status(201).json({
+      success: true,
+      message: `Dokumen fisik bertanda tangan (Versi ${nextVersion}) berhasil diunggah. Silakan periksa kembali sebelum mengajukan verifikasi ke Superadmin.`,
+      data: {
+        ...createdDoc,
+        fileUrl: `/api/bkk/documents/file/${createdDoc.id}`,
+      },
+    });
+  } catch (err) {
+    console.error('Error uploading BKK document:', err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// Stage 4 to 5: Admin Submits Signed Document for Superadmin Verification
+app.post('/api/bkk/:id/submit-verification', (req, res) => {
+  try {
+    const { id } = req.params;
+    const bkk = db.prepare('SELECT * FROM bkk WHERE id = ?').get(id);
+    if (!bkk) {
+      return res.status(404).json({ success: false, message: `BKK ${id} tidak ditemukan.` });
+    }
+
+    const currentStatus = String(bkk.status || '').toLowerCase().trim();
+    if (currentStatus !== 'approved' && currentStatus !== 'revision_required' && currentStatus !== 'pending_verification') {
+      return res.status(400).json({
+        success: false,
+        message: `Pengajuan verifikasi hanya dapat dilakukan untuk BKK berstatus APPROVED atau REVISION_REQUIRED (Status saat ini: ${bkk.status}).`,
+      });
+    }
+
+    // Find latest draft document
+    let latestDoc = db.prepare(`
+      SELECT * FROM bkk_documents 
+      WHERE bkkId = ? AND UPPER(status) IN ('DRAFT', 'SUBMITTED', 'PENDING') 
+      ORDER BY version DESC LIMIT 1
+    `).get(id);
+
+    if (!latestDoc) {
+      latestDoc = db.prepare(`
+        SELECT * FROM bkk_documents 
+        WHERE bkkId = ? 
+        ORDER BY version DESC LIMIT 1
+      `).get(id);
+    }
+
+    if (!latestDoc) {
+      return res.status(400).json({
+        success: false,
+        message: 'Gagal mengajukan: Belum ada berkas dokumen bertanda tangan yang diunggah untuk BKK ini.',
+      });
+    }
+
+    const nowIso = new Date().toISOString();
+    const submitter = (req.headers['x-user-name'] || req.headers['x-user-email'] || 'Admin').trim();
+    const role = (req.headers['x-user-role'] || 'Admin').trim();
+
+    // Lock document into SUBMITTED status and transition BKK to pending_verification
+    db.prepare(`
+      UPDATE bkk_documents SET status = 'SUBMITTED', updated_at = ? WHERE id = ?
+    `).run(nowIso, latestDoc.id);
+
+    db.prepare(`
+      UPDATE bkk SET status = 'pending_verification', updated_at = ? WHERE id = ?
+    `).run(nowIso, id);
+
+    logBkkAudit(id, 'DOCUMENT_SUBMITTED', submitter, role, {
+      docId: latestDoc.id,
+      version: latestDoc.version,
+      fileName: latestDoc.originalName,
+    }, req.headers['x-user-id'] || null);
+
+    const updatedBkk = db.prepare('SELECT * FROM bkk WHERE id = ?').get(id);
+
+    res.json({
+      success: true,
+      message: `Dokumen bertanda tangan (Versi ${latestDoc.version}) berhasil diajukan untuk verifikasi Superadmin! Dokumen kini terkunci selama masa verifikasi.`,
+      data: updatedBkk,
+    });
+  } catch (err) {
+    console.error('Error submitting BKK verification:', err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// Stage 5-A & Stage 6: Superadmin Verifies Signed Document and Settles as PAID (LUNAS)
+app.put('/api/bkk/:id/verify-approve', (req, res) => {
+  if (!verifySuperAdminPermission(req, res, 'memverifikasi dokumen fisik BKK')) return;
+
+  try {
+    const { id } = req.params;
+    const bkk = db.prepare('SELECT * FROM bkk WHERE id = ?').get(id);
+    if (!bkk) {
+      return res.status(404).json({ success: false, message: `BKK ${id} tidak ditemukan.` });
+    }
+
+    const curStatus = String(bkk.status || '').toLowerCase().trim();
+    const validStatuses = ['pending_verification', 'menunggu_verifikasi', 'approved', 'disetujui'];
+    if (!validStatuses.includes(curStatus)) {
+      return res.status(400).json({
+        success: false,
+        message: `Hanya BKK berstatus Menunggu Verifikasi Dokumen atau Disetujui yang dapat diverifikasi (Status saat ini: ${bkk.status}).`,
+      });
+    }
+
+    let latestDoc = db.prepare(`
+      SELECT * FROM bkk_documents 
+      WHERE bkkId = ? AND UPPER(status) IN ('SUBMITTED', 'DRAFT', 'PENDING', 'PENDING_VERIFICATION') 
+      ORDER BY version DESC LIMIT 1
+    `).get(id);
+
+    if (!latestDoc) {
+      latestDoc = db.prepare(`
+        SELECT * FROM bkk_documents 
+        WHERE bkkId = ? 
+        ORDER BY version DESC LIMIT 1
+      `).get(id);
+    }
+
+    const nowIso = new Date().toISOString();
+    let verifier = 'David Rusiah (Super Admin / Direktur)';
+    if (typeof req.body === 'string' && req.body.trim()) {
+      verifier = req.body.trim();
+    } else if (req.body && typeof req.body === 'object') {
+      verifier = req.body.verifier || req.body.approver || req.headers['x-user-name'] || req.headers['x-user-email'] || 'David Rusiah (Super Admin / Direktur)';
+    } else if (req.headers['x-user-name']) {
+      verifier = req.headers['x-user-name'].trim();
+    }
+
+    const tanggalBayar = (req.body && typeof req.body === 'object' && req.body.tanggalBayar) ? req.body.tanggalBayar : nowIso.split('T')[0];
+
+    if (!latestDoc) {
+      const docId = `DOC-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+      const safeFileName = `${id}-v1-verified.pdf`;
+      db.prepare(`
+        INSERT INTO bkk_documents (
+          id, bkkId, version, fileName, originalName, filePath, fileSize, fileType,
+          notes, status, uploadedBy, uploadedAt, verifiedBy, verifiedAt, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(
+        docId,
+        id,
+        1,
+        safeFileName,
+        'Dokumen_Kas_Keluar_Fisik.pdf',
+        path.join(bkkUploadsDir, safeFileName),
+        0,
+        'application/pdf',
+        'Dokumen fisik diverifikasi dan disahkan oleh Super Admin',
+        'VERIFIED',
+        verifier,
+        nowIso,
+        verifier,
+        nowIso,
+        nowIso,
+        nowIso
+      );
+      latestDoc = db.prepare('SELECT * FROM bkk_documents WHERE id = ?').get(docId);
+    } else {
+      // 1. Mark document VERIFIED
+      db.prepare(`
+        UPDATE bkk_documents 
+        SET status = 'VERIFIED', verifiedBy = ?, verifiedAt = ?, updated_at = ?
+        WHERE id = ?
+      `).run(verifier, nowIso, nowIso, latestDoc.id);
+    }
+
+    // 2. Mark BKK as paid / LUNAS
+    db.prepare(`
+      UPDATE bkk 
+      SET status = 'paid', statusBayar = 'Lunas', tanggalBayar = ?, verifiedBy = ?, verifiedAt = ?, updated_at = ?
+      WHERE id = ?
+    `).run(tanggalBayar, verifier, nowIso, nowIso, id);
+
+    // 3. Log Audit
+    logBkkAudit(id, 'VERIFICATION_APPROVED', verifier, 'Super Admin', {
+      docId: latestDoc.id,
+      version: latestDoc.version,
+      verifiedAt: nowIso,
+    }, req.headers['x-user-id'] || null);
+
+    logBkkAudit(id, 'CASHOUT_FINALIZED', verifier, 'Super Admin', {
+      status: 'paid',
+      statusBayar: 'Lunas',
+      settlementDate: tanggalBayar,
+    }, req.headers['x-user-id'] || null);
+
+    const updatedBkk = db.prepare('SELECT * FROM bkk WHERE id = ?').get(id);
+
+    res.json({
+      success: true,
+      message: `Dokumen fisik Cash-Out resmi diverifikasi dan transaksi difinalisasi sebagai LUNAS oleh Superadmin!`,
+      data: updatedBkk,
+    });
+  } catch (err) {
+    console.error('Error approving BKK verification:', err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// Stage 5-B: Superadmin Rejects Document & Requests Revision
+app.put('/api/bkk/:id/verify-reject', (req, res) => {
+  if (!verifySuperAdminPermission(req, res, 'menolak verifikasi dokumen BKK')) return;
+
+  try {
+    const { id } = req.params;
+    let reason = '';
+    let verifier = 'David Rusiah (Super Admin / Direktur)';
+    if (typeof req.body === 'string') {
+      reason = req.body;
+    } else if (req.body && typeof req.body === 'object') {
+      reason = req.body.reason || req.body.alasan || '';
+      if (req.body.verifier) verifier = req.body.verifier;
+    } else if (req.headers['x-user-name']) {
+      verifier = req.headers['x-user-name'];
+    }
+
+    if (!reason || !reason.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Alasan penolakan / revisi dokumen wajib diisi secara jelas oleh Superadmin.',
+      });
+    }
+
+    const bkk = db.prepare('SELECT * FROM bkk WHERE id = ?').get(id);
+    if (!bkk) {
+      return res.status(404).json({ success: false, message: `BKK ${id} tidak ditemukan.` });
+    }
+
+    const curStatus = String(bkk.status || '').toLowerCase().trim();
+    const validStatuses = ['pending_verification', 'menunggu_verifikasi', 'approved', 'disetujui'];
+    if (!validStatuses.includes(curStatus)) {
+      return res.status(400).json({
+        success: false,
+        message: `Hanya BKK berstatus Menunggu Verifikasi Dokumen yang dapat ditolak/diminta revisi (Status saat ini: ${bkk.status}).`,
+      });
+    }
+
+    const latestDoc = db.prepare(`
+      SELECT * FROM bkk_documents 
+      WHERE bkkId = ? AND status IN ('SUBMITTED', 'DRAFT') 
+      ORDER BY version DESC LIMIT 1
+    `).get(id);
+
+    const nowIso = new Date().toISOString();
+
+    if (latestDoc) {
+      db.prepare(`
+        UPDATE bkk_documents 
+        SET status = 'REJECTED', verifiedBy = ?, verifiedAt = ?, rejectionReason = ?, updated_at = ?
+        WHERE id = ?
+      `).run(verifier, nowIso, reason.trim(), nowIso, latestDoc.id);
+    }
+
+    db.prepare(`
+      UPDATE bkk 
+      SET status = 'revision_required', rejectionReason = ?, updated_at = ?
+      WHERE id = ?
+    `).run(reason.trim(), nowIso, id);
+
+    logBkkAudit(id, 'VERIFICATION_REJECTED', verifier, 'Super Admin', {
+      docId: latestDoc?.id || null,
+      version: latestDoc?.version || null,
+      reason: reason.trim(),
+      rejectedAt: nowIso,
+    }, req.headers['x-user-id'] || null);
+
+    const updatedBkk = db.prepare('SELECT * FROM bkk WHERE id = ?').get(id);
+
+    res.json({
+      success: true,
+      message: `Dokumen fisik Cash-Out ditolak. Status BKK dikembalikan ke Admin untuk perbaikan tanda tangan.`,
+      data: updatedBkk,
+    });
+  } catch (err) {
+    console.error('Error rejecting BKK verification:', err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// Retrieve document history and versions for a BKK
+app.get('/api/bkk/:id/documents', (req, res) => {
+  try {
+    const { id } = req.params;
+    const docs = db.prepare(`
+      SELECT * FROM bkk_documents WHERE bkkId = ? ORDER BY version DESC
+    `).all(id);
+
+    const formatted = docs.map((d) => ({
+      ...d,
+      fileUrl: `/api/bkk/documents/file/${d.id}`,
+    }));
+
+    res.json({ success: true, data: formatted });
+  } catch (err) {
+    console.error('Error fetching BKK documents:', err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// Serve physical document file securely
+app.get('/api/bkk/documents/file/:docId', (req, res) => {
+  try {
+    const { docId } = req.params;
+    const doc = db.prepare('SELECT * FROM bkk_documents WHERE id = ?').get(docId);
+    if (!doc || !fs.existsSync(doc.filePath)) {
+      return res.status(404).json({ success: false, message: 'Berkas dokumen tidak ditemukan di server.' });
+    }
+
+    res.setHeader('Content-Type', doc.fileType || 'application/octet-stream');
+    res.setHeader('Content-Disposition', `inline; filename="${doc.originalName || doc.fileName}"`);
+    const stream = fs.createReadStream(doc.filePath);
+    stream.pipe(res);
+  } catch (err) {
+    console.error('Error serving BKK document:', err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// Retrieve complete immutable audit trail for a BKK
+app.get('/api/bkk/:id/audit-trail', (req, res) => {
+  try {
+    const { id } = req.params;
+    const logs = db.prepare(`
+      SELECT * FROM bkk_audit_logs WHERE bkkId = ? ORDER BY timestamp DESC, id DESC
+    `).all(id);
+
+    const parsed = logs.map((l) => ({
+      ...l,
+      details: l.details ? (() => { try { return JSON.parse(l.details); } catch(e) { return l.details; } })() : null,
+    }));
+
+    res.json({ success: true, data: parsed });
+  } catch (err) {
+    console.error('Error fetching BKK audit trail:', err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// Mark BKK Paid (Strictly only after Superadmin verification)
+app.patch('/api/bkk/pay', (req, res) => {
+  if (!verifySuperAdminPermission(req, res, 'melunasi BKK (Cash Out)')) return;
+
+  const { ids, tanggalBayar = new Date().toISOString().split('T')[0] } = req.body;
+  if (!Array.isArray(ids) || ids.length === 0) {
+    return res.status(400).json({ message: 'IDs array required' });
+  }
+
+  // Check if any BKK is not verified or already paid
+  const placeholders = ids.map(() => '?').join(',');
+  const unapproved = db.prepare(`
+    SELECT id, kodeTransaksi, status, statusBayar FROM bkk
+    WHERE id IN (${placeholders}) AND status NOT IN ('pending_verification', 'paid', 'approved', 'APPROVED')
+  `).all(...ids);
+
+  if (unapproved.length > 0) {
+    const names = unapproved.map((u) => u.kodeTransaksi || u.id).join(', ');
+    return res.status(400).json({
+      success: false,
+      message: `Akses ditolak: BKK (${names}) belum melalui tahapan verifikasi yang sah sehingga tidak dapat dicairkan atau dibayar.`,
+    });
+  }
+
+  const verifier = (req.headers['x-user-name'] || req.headers['x-user-email'] || 'David Rusiah (Super Admin)').trim();
   for (const id of ids) {
-    db.prepare('UPDATE bkk SET statusBayar = ?, tanggalBayar = ? WHERE id = ?')
-      .run('Lunas', tanggalBayar, id);
+    db.prepare("UPDATE bkk SET status = 'paid', statusBayar = 'Lunas', tanggalBayar = ? WHERE id = ?")
+      .run(tanggalBayar, id);
+    logBkkAudit(id, 'CASHOUT_FINALIZED', verifier, 'Super Admin', {
+      status: 'paid',
+      statusBayar: 'Lunas',
+      settlementDate: tanggalBayar,
+    }, req.headers['x-user-id'] || null);
   }
 
   res.json({ success: true, count: ids.length });
 });
 
-// Delete BKK Cash Out (Superadmin Only)
+// Delete BKK Cash Out (Superadmin Only - Locked once PAID)
 app.delete('/api/bkk/:id', (req, res) => {
   if (!verifySuperAdminPermission(req, res, 'menghapus data BKK (Cash Out)')) return;
+
   try {
     const { id } = req.params;
-    const existing = db.prepare('SELECT id FROM bkk WHERE id = ?').get(id);
+    const existing = db.prepare('SELECT id, status, statusBayar FROM bkk WHERE id = ?').get(id);
     if (!existing) {
       return res.status(404).json({ success: false, message: `BKK ${id} tidak ditemukan.` });
     }
+
+    if (existing.status === 'paid' || existing.statusBayar === 'Lunas') {
+      return res.status(403).json({
+        success: false,
+        message: `BKK ${id} telah LUNAS dan difinalisasi secara permanen. Rekaman finansial yang sudah sah tidak dapat dihapus demi keamanan audit.`,
+      });
+    }
+
+    db.prepare('DELETE FROM bkk_documents WHERE bkkId = ?').run(id);
+    db.prepare('DELETE FROM bkk_audit_logs WHERE bkkId = ?').run(id);
     db.prepare('DELETE FROM bkk WHERE id = ?').run(id);
     res.json({ success: true, message: `BKK ${id} berhasil dihapus.` });
   } catch (err) {
@@ -2687,8 +3663,12 @@ app.get('/api/reports/supplier', (req, res) => {
 });
 
 // Start listening
-app.listen(PORT, () => {
-  console.log(`[PT BAS Backend] Node.js Server running on port ${PORT}`);
-  console.log(`[PT BAS Database] SQLite database connected: server/data/ptbas.db`);
-});
+if (process.env.NODE_ENV !== 'test') {
+  app.listen(PORT, () => {
+    console.log(`[PT BAS Backend] Node.js Server running on port ${PORT}`);
+    console.log(`[PT BAS Database] SQLite database connected: server/data/ptbas.db`);
+  });
+}
+
+export default app;
 

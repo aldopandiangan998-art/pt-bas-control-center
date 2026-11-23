@@ -39,7 +39,7 @@ import { Button, Badge, Card, Modal } from '../../components/ui';
 
 export default function ApprovalRoPage() {
   const navigate = useNavigate();
-  const { isDark } = useApp();
+  const { isDark, language } = useApp();
   const { currentUser, isSuperAdmin, roleLabel } = useAuth();
   const { preOrders, approvePreOrder, rejectPreOrder, generateNomorRO, customers } = useData();
   const { addToast } = useToast();
@@ -381,14 +381,16 @@ export default function ApprovalRoPage() {
                 <ShieldCheck className="w-4 h-4" />
               </span>
               <h1 className="text-lg sm:text-xl font-bold text-white tracking-tight">
-                Pusat Persetujuan RO (Received Order)
+                {language === 'en' ? 'RO (Received Order) Approval Center' : 'Pusat Persetujuan RO (Received Order)'}
               </h1>
               <Badge variant="warning" dot>
-                Direksi Approval
+                {language === 'en' ? 'Board Approval' : 'Persetujuan Direksi'}
               </Badge>
             </div>
             <p className="text-xs text-neutral-400 mt-0.5">
-              Otorisasi pesanan customer, evaluasi margin profit, dan syarat pembayaran sebelum diterbitkan Surat Jalan (GI).
+              {language === 'en'
+                ? 'Authorize customer orders, evaluate profit margins, and payment terms before Delivery Order (GI) issuance.'
+                : 'Otorisasi pesanan customer, evaluasi margin profit, dan syarat pembayaran sebelum diterbitkan Surat Jalan (GI).'}
             </p>
           </div>
         </div>
@@ -513,7 +515,7 @@ export default function ApprovalRoPage() {
                 }`}
             >
               <Clock className="w-3.5 h-3.5 text-amber-400" />
-              <span>Perlu Persetujuan</span>
+              <span>{language === 'en' ? 'Needs Approval' : 'Perlu Persetujuan'}</span>
               <span
                 className={`text-[10px] px-1.5 py-0.2 rounded font-bold font-mono ${activeTab === 'pending'
                   ? 'bg-amber-400 text-black shadow-2xs'
@@ -537,7 +539,7 @@ export default function ApprovalRoPage() {
                 }`}
             >
               <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Disetujui</span>
+              <span>{language === 'en' ? 'Approved' : 'Disetujui'}</span>
               <span
                 className={`text-[10px] px-1.5 py-0.2 rounded font-bold font-mono ${activeTab === 'approved'
                   ? 'bg-emerald-400 text-black shadow-2xs'
@@ -561,7 +563,7 @@ export default function ApprovalRoPage() {
                 }`}
             >
               <XCircle className="w-3.5 h-3.5 text-rose-400" />
-              <span>Ditolak</span>
+              <span>{language === 'en' ? 'Rejected' : 'Ditolak'}</span>
               <span
                 className={`text-[10px] px-1.5 py-0.2 rounded font-bold font-mono ${activeTab === 'rejected'
                   ? 'bg-rose-500 text-white shadow-2xs'
@@ -682,24 +684,20 @@ export default function ApprovalRoPage() {
         {activeTab === 'pending' && filteredList.length > 0 && (
           <div className="px-3 sm:px-4 py-2.5 bg-[#14171A] flex flex-wrap items-center justify-between gap-3 text-xs font-mono">
             <div className="flex items-center gap-2.5">
-              <button
-                type="button"
-                onClick={handleSelectAllPending}
-                className="flex items-center gap-2 text-neutral-300 hover:text-white px-2.5 py-1.5 rounded-lg bg-[#1C1F23] border border-[#2B3037] hover:border-neutral-500 transition-colors cursor-pointer"
+              <label
+                className="flex items-center gap-2 text-neutral-300 hover:text-white px-2.5 py-1.5 rounded-lg bg-[#1C1F23] border border-[#2B3037] hover:border-neutral-500 transition-colors cursor-pointer select-none"
               >
-                {selectedIds.size === filteredList.length && filteredList.length > 0 ? (
-                  <CheckSquare className="w-4 h-4 text-[#F4511E]" />
-                ) : selectedIds.size > 0 ? (
-                  <MinusSquare className="w-4 h-4 text-[#F4511E]" />
-                ) : (
-                  <Square className="w-4 h-4 text-neutral-400" />
-                )}
+                <input
+                  type="checkbox"
+                  checked={selectedIds.size === filteredList.length && filteredList.length > 0}
+                  onChange={handleSelectAllPending}
+                />
                 <span>
                   {selectedIds.size === filteredList.length
-                    ? 'Batal Pilih Semua'
-                    : `Pilih Semua Pending (${filteredList.length})`}
+                    ? (language === 'en' ? 'Deselect All' : 'Batal Pilih Semua')
+                    : (language === 'en' ? `Select All Pending (${filteredList.length})` : `Pilih Semua Pending (${filteredList.length})`)}
                 </span>
-              </button>
+              </label>
 
               {selectedIds.size > 0 && (
                 <span className="text-amber-400 font-bold bg-amber-950/40 px-2 py-0.5 rounded border border-amber-900/40">
@@ -816,18 +814,12 @@ export default function ApprovalRoPage() {
                   <div className="flex items-center gap-2.5">
                     {/* Checkbox for batch approval if pending */}
                     {isPending && (
-                      <button
-                        type="button"
-                        onClick={() => toggleSelect(po.id)}
-                        className="text-neutral-400 hover:text-white p-0.5 cursor-pointer"
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => toggleSelect(po.id)}
                         title={isSelected ? 'Batalkan pilihan' : 'Pilih pesanan ini'}
-                      >
-                        {isSelected ? (
-                          <CheckSquare className="w-4 h-4 text-[#F4511E]" />
-                        ) : (
-                          <Square className="w-4 h-4" />
-                        )}
-                      </button>
+                      />
                     )}
 
                     <div>
@@ -877,9 +869,9 @@ export default function ApprovalRoPage() {
 
                   {/* Status Badge */}
                   <div className="flex items-center gap-2">
-                    {isPending && <Badge variant="warning" dot>MENUNGGU APPROVAL</Badge>}
-                    {isApproved && <Badge variant="success" dot>APPROVED</Badge>}
-                    {isRejected && <Badge variant="error" dot>DITOLAK</Badge>}
+                    {isPending && <Badge variant="warning" dot>{language === 'en' ? 'PENDING APPROVAL' : 'MENUNGGU PERSETUJUAN'}</Badge>}
+                    {isApproved && <Badge variant="success" dot>{language === 'en' ? 'APPROVED' : 'DISETUJUI'}</Badge>}
+                    {isRejected && <Badge variant="error" dot>{language === 'en' ? 'REJECTED' : 'DITOLAK'}</Badge>}
                   </div>
                 </div>
 

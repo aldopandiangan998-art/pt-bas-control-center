@@ -39,6 +39,7 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { useData, generateNomorRO } from '../../context/DataContext';
 import { useToast } from '../../context/ToastContext';
+import { useApp } from '../../context/AppContext';
 import { DEFAULT_MATERIALS } from '../../utils/constants';
 import { formatCurrency, formatVolume } from '../../utils/formatters';
 import { Button, Badge, Card, Modal } from '../../components/ui';
@@ -486,6 +487,7 @@ function CompactSearchableSelect({
 /* ─────────────────────────── main component ─────────────────────────── */
 export default function PreOrderPage() {
   const navigate = useNavigate();
+  const { language } = useApp();
   const { currentUser, isSuperAdmin, roleLabel, permissions } = useAuth();
   const { preOrders, createPreOrder, approvePreOrder, rejectPreOrder, updatePreOrderCustomerPo, deletePreOrder, materials, customers, currencies, generateNomorRO } = useData();
   const { addToast } = useToast();
@@ -1598,10 +1600,10 @@ export default function PreOrderPage() {
                 {/* Status tabs */}
                 <div className="flex flex-wrap items-center gap-1.5 pb-2 border-b border-[#20242A]">
                   {[
-                    { id: 'ALL', label: 'Semua Status' },
-                    { id: 'PENDING', label: 'Menunggu Approval' },
-                    { id: 'AKTIF', label: 'Aktif' },
-                    { id: 'SELESAI', label: 'Selesai' },
+                    { id: 'ALL', label: language === 'en' ? 'All Status' : 'Semua Status' },
+                    { id: 'PENDING', label: language === 'en' ? 'Pending Approval' : 'Menunggu Persetujuan' },
+                    { id: 'AKTIF', label: language === 'en' ? 'Active' : 'Aktif' },
+                    { id: 'SELESAI', label: language === 'en' ? 'Completed' : 'Selesai' },
                     { id: 'OVER', label: 'Over-Delivery' },
                   ].map((tab) => (
                     <button
@@ -1768,19 +1770,19 @@ export default function PreOrderPage() {
                           <table className="w-full text-xs font-mono">
                             <thead>
                               <tr className="border-b border-[#1C2026] text-[10px] text-neutral-500 uppercase tracking-wider">
-                                <th className="w-8 px-3 py-2 text-left">
-                                  <button
-                                    type="button"
-                                    onClick={handleToggleGroup}
-                                    className={`w-4 h-4 rounded border flex items-center justify-center transition-colors cursor-pointer shrink-0 ${allGroupSelected || someGroupSelected
-                                      ? 'bg-[#F4511E] border-[#F4511E] text-white shadow-xs'
-                                      : 'border-neutral-500 hover:border-neutral-300 bg-transparent'
-                                      }`}
-                                    title={allGroupSelected ? 'Batal pilih grup' : someGroupSelected ? 'Pilih semua di grup ini' : 'Pilih semua'}
-                                  >
-                                    {allGroupSelected && <Check className="w-2.5 h-2.5 stroke-[3]" />}
-                                    {!allGroupSelected && someGroupSelected && <Minus className="w-2.5 h-2.5 stroke-[3]" />}
-                                  </button>
+                                <th className="w-8 px-3 py-2 text-center">
+                                  <input
+                                    type="checkbox"
+                                    checked={orders.length > 0 && orders.every((po) => selectedIds.has(po.id))}
+                                    onChange={() => {
+                                      if (orders.every((po) => selectedIds.has(po.id))) {
+                                        setSelectedIds(new Set());
+                                      } else {
+                                        setSelectedIds(new Set(orders.map((po) => po.id)));
+                                      }
+                                    }}
+                                    title={language === 'en' ? 'Select all on this page' : 'Pilih semua'}
+                                  />
                                 </th>
                                 <th className="px-3 py-2 text-left min-w-[90px]">Tanggal</th>
                                 <th className="px-3 py-2 text-left min-w-[150px]">No. Dokumen</th>
@@ -1801,7 +1803,7 @@ export default function PreOrderPage() {
                                 const isApproved = po.status === 'APPROVED';
                                 const isPending = po.status === 'MENUNGGU_APPROVAL' || po.status === 'PENDING' || po.status === 'MENUNGGU APPROVAL';
                                 const isSelesai = po.status === 'SELESAI';
-                                const statusLabel = isPending ? 'MENUNGGU APPROVAL' : (po.status || 'AKTIF');
+                                const statusLabel = isPending ? (language === 'en' ? 'PENDING APPROVAL' : 'MENUNGGU PERSETUJUAN') : (po.status || (language === 'en' ? 'ACTIVE' : 'AKTIF'));
                                 const statusColor =
                                   isApproved
                                     ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/25'
@@ -1817,17 +1819,13 @@ export default function PreOrderPage() {
                                       } hover:bg-white/[0.03]`}
                                   >
                                     {/* Checkbox */}
-                                    <td className="px-3 py-2.5">
-                                      <button
-                                        type="button"
-                                        onClick={() => toggleSelect(po.id)}
-                                        className={`w-4 h-4 rounded border flex items-center justify-center transition-colors cursor-pointer ${isSelected
-                                          ? 'bg-[#F4511E] border-[#F4511E] text-white'
-                                          : 'border-neutral-600 hover:border-neutral-400 bg-transparent'
-                                          }`}
-                                      >
-                                        {isSelected && <Check className="w-2.5 h-2.5 stroke-[3]" />}
-                                      </button>
+                                    <td className="px-3 py-2.5 text-center">
+                                      <input
+                                        type="checkbox"
+                                        checked={isSelected}
+                                        onChange={() => toggleSelect(po.id)}
+                                        title={isSelected ? 'Batalkan pilihan' : 'Pilih pesanan ini'}
+                                      />
                                     </td>
 
                                     {/* Tanggal */}
@@ -1975,24 +1973,18 @@ export default function PreOrderPage() {
                                 : (po.status === 'MENUNGGU_APPROVAL' || po.status === 'PENDING' || po.status === 'MENUNGGU APPROVAL')
                                   ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30'
                                   : po.status === 'OVER'
-                                    ? 'bg-purple-500/15 text-purple-400 border border-purple-500/30'
-                                    : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                                }`}>
-                                {po.status === 'MENUNGGU_APPROVAL' ? 'MENUNGGU APPROVAL' : po.status}
+                                  ? 'bg-purple-500/15 text-purple-400 border border-purple-500/30'
+                                  : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                              }`}>
+                                {po.status === 'MENUNGGU_APPROVAL' ? (language === 'en' ? 'PENDING APPROVAL' : 'MENUNGGU PERSETUJUAN') : po.status}
                               </span>
                             )}
-                            <button
-                              type="button"
-                              onClick={() => toggleSelect(po.id)}
-                              className={`w-5 h-5 rounded border flex items-center justify-center transition-colors cursor-pointer ${isSelected
-                                ? 'bg-[#F4511E] border-[#F4511E] text-white'
-                                : 'border-neutral-500 hover:border-neutral-300 bg-transparent'
-                                }`}
-                              title="Pilih item"
-                              aria-label="Pilih item"
-                            >
-                              {isSelected && <Check className="w-3.5 h-3.5 stroke-[3]" />}
-                            </button>
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() => toggleSelect(po.id)}
+                              title={isSelected ? 'Batalkan pilihan' : 'Pilih pesanan ini'}
+                            />
                           </div>
                         </div>
 

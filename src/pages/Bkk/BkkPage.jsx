@@ -32,7 +32,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useData } from '../../context/DataContext';
 import { useToast } from '../../context/ToastContext';
 import { formatCurrency } from '../../utils/formatters';
-import { Modal, Button, Card, Badge, IndeterminateCheckbox } from '../../components/ui';
+import { Modal, Button, Card, Badge, SearchBar, Checkbox, IndeterminateCheckbox } from '../../components/ui';
 import BkkPrintModal from '../../components/bkk/BkkPrintModal';
 import BkkDetailWorkflowModal from '../../components/bkk/BkkDetailWorkflowModal';
 
@@ -216,6 +216,7 @@ function CashOutCard({ item, onDelete, onInfo, canDelete = true, viewMode = 'lis
             <div className="text-base sm:text-lg font-black font-mono text-white tracking-tight leading-none mt-1 truncate">
               {amountFormatted}
             </div>
+
           </div>
 
           <div className="flex items-center gap-1.5 shrink-0">
@@ -956,23 +957,14 @@ export default function BkkPage() {
             </div>
           </div>
 
-          {/* ── Search Input (Full width, matching Invoice design) ── */}
-          <div className="relative">
-            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" />
-            <input
-              type="text"
-              value={searchFilter}
-              onChange={(e) => setSearchFilter(e.target.value)}
-              placeholder="Ketik nomor transaksi, customer, supplier, material..."
-              className="w-full bg-[#14171A] border border-[#24282E] rounded-xl pl-9 pr-8 py-2.5 text-xs text-white placeholder-neutral-500 focus:outline-none focus:border-[#F4511E]"
-            />
-            {searchFilter && (
-              <X
-                className="w-3.5 h-3.5 absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-white cursor-pointer"
-                onClick={() => setSearchFilter('')}
-              />
-            )}
-          </div>
+          {/* ── Search Input (Full width, standardized design) ── */}
+          <SearchBar
+            value={searchFilter}
+            onChange={(e) => setSearchFilter(e.target.value)}
+            onClear={() => setSearchFilter('')}
+            placeholder="Ketik nomor transaksi, customer, supplier, material..."
+            size="md"
+          />
 
           {/* ── Status Chips ── */}
           <div className="flex items-center gap-1.5 px-1 overflow-x-auto pb-1">

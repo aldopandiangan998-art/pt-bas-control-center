@@ -11,7 +11,7 @@ import {
   Search,
 } from 'lucide-react';
 import { formatCurrency, formatVolume } from '../../utils/formatters';
-import { Button } from '../../components/ui';
+import { Button, SearchBar } from '../../components/ui';
 import { useToast } from '../../context/ToastContext';
 import { useData } from '../../context/DataContext';
 import { useApp } from '../../context/AppContext';
@@ -280,20 +280,14 @@ export default function LaporanAllInOnePage() {
             </button>
           </div>
 
-          <div className="relative w-full sm:w-64 pb-2 sm:pb-0">
-            <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" />
-            <input
-              type="text"
-              value={searchTable}
-              onChange={(e) => setSearchTable(e.target.value)}
-              placeholder={language === 'en' ? 'Search in table...' : 'Cari dalam tabel...'}
-              className={`w-full pl-9 pr-3 py-1.5 rounded-xl border text-xs focus:outline-none transition-colors ${
-                isDark
-                  ? 'bg-[#1A1D21] border-[#2E3339] text-white focus:border-[#F4511E]'
-                  : 'bg-white border-slate-200 text-slate-800 focus:border-[#F4511E]'
-              }`}
-            />
-          </div>
+          <SearchBar
+            containerClassName="w-full sm:w-64 pb-2 sm:pb-0"
+            value={searchTable}
+            onChange={(e) => setSearchTable(e.target.value)}
+            onClear={() => setSearchTable('')}
+            placeholder={language === 'en' ? 'Search in table...' : 'Cari dalam tabel...'}
+            size="sm"
+          />
         </div>
 
         {/* Tab 1: Surat Jalan */}

@@ -42,7 +42,7 @@ import { useToast } from '../../context/ToastContext';
 import { useApp } from '../../context/AppContext';
 import { DEFAULT_MATERIALS } from '../../utils/constants';
 import { formatCurrency, formatVolume } from '../../utils/formatters';
-import { Button, Badge, Card, Modal } from '../../components/ui';
+import { Button, Badge, Card, Modal, ViewToggle, SearchBar, Checkbox } from '../../components/ui';
 import {
   RO_TYPES,
   ITEM_TYPES,
@@ -1388,32 +1388,7 @@ export default function PreOrderPage() {
                   </button>
 
                   {/* View Mode: List vs Grid */}
-                  <div className="flex items-center bg-[#1C1F24] border border-[#2B3037] rounded-xl p-0.5 gap-0.5">
-                    <button
-                      type="button"
-                      onClick={() => handleSetViewMode('list')}
-                      className={`p-1.5 rounded-lg text-xs transition-all cursor-pointer ${
-                        viewMode === 'list'
-                          ? 'bg-[#F4511E] text-white shadow-xs'
-                          : 'text-neutral-400 hover:text-white'
-                      }`}
-                      title="Tampilan Tabel / List"
-                    >
-                      <List className="w-3.5 h-3.5" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleSetViewMode('grid')}
-                      className={`p-1.5 rounded-lg text-xs transition-all cursor-pointer ${
-                        viewMode === 'grid'
-                          ? 'bg-[#F4511E] text-white shadow-xs'
-                          : 'text-neutral-400 hover:text-white'
-                      }`}
-                      title="Tampilan Kartu / Grid"
-                    >
-                      <LayoutGrid className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
+                  <ViewToggle viewMode={viewMode} onChange={handleSetViewMode} />
                 </div>
               </div>
 
@@ -1443,7 +1418,6 @@ export default function PreOrderPage() {
                     Menampilkan <strong className="text-white">{filteredPreOrders.length}</strong> dari {safePreOrders.length} Received Order
                   </span>
                 </div>
-
                 {/* Buka / Tutup semua (hanya di list mode) */}
                 {viewMode === 'list' && filteredPreOrders.length > 0 && (
                   <div className="flex items-center gap-2 text-[11px]">
@@ -1652,18 +1626,13 @@ export default function PreOrderPage() {
                       {/* ── Group Header Row ── */}
                       <div className="flex items-center gap-2 px-3 py-2.5 bg-[#14171B] border-b border-[#20242A]">
                         {/* Group select checkbox */}
-                        <button
-                          type="button"
-                          onClick={handleToggleGroup}
-                          className={`w-4 h-4 rounded border flex items-center justify-center transition-colors cursor-pointer shrink-0 ${allGroupSelected || someGroupSelected
-                            ? 'bg-[#F4511E] border-[#F4511E] text-white shadow-xs'
-                            : 'border-neutral-500 hover:border-neutral-300 bg-transparent'
-                            }`}
+                        {/* Group select checkbox */}
+                        <Checkbox
+                          checked={allGroupSelected}
+                          indeterminate={!allGroupSelected && someGroupSelected}
+                          onChange={handleToggleGroup}
                           title={allGroupSelected ? 'Batal pilih grup' : someGroupSelected ? 'Pilih semua di grup ini' : 'Pilih semua'}
-                        >
-                          {allGroupSelected && <Check className="w-2.5 h-2.5 stroke-[3]" />}
-                          {!allGroupSelected && someGroupSelected && <Minus className="w-2.5 h-2.5 stroke-[3]" />}
-                        </button>
+                        />
 
                         {/* Collapse toggle */}
                         <button
@@ -1699,17 +1668,25 @@ export default function PreOrderPage() {
                             <thead>
                               <tr className="border-b border-[#1C2026] text-[10px] text-neutral-500 uppercase tracking-wider">
                                 <th className="w-8 px-3 py-2 text-center">
-                                  <input
-                                    type="checkbox"
+                                  <Checkbox
                                     checked={orders.length > 0 && orders.every((po) => selectedIds.has(po.id))}
+                                    indeterminate={!orders.every((po) => selectedIds.has(po.id)) && orders.some((po) => selectedIds.has(po.id))}
                                     onChange={() => {
                                       if (orders.every((po) => selectedIds.has(po.id))) {
-                                        setSelectedIds(new Set());
+                                        setSelectedIds((prev) => {
+                                          const next = new Set(prev);
+                                          orders.forEach((po) => next.delete(po.id));
+                                          return next;
+                                        });
                                       } else {
-                                        setSelectedIds(new Set(orders.map((po) => po.id)));
+                                        setSelectedIds((prev) => {
+                                          const next = new Set(prev);
+                                          orders.forEach((po) => next.add(po.id));
+                                          return next;
+                                        });
                                       }
                                     }}
-                                    title={language === 'en' ? 'Select all on this page' : 'Pilih semua'}
+                                    title={language === 'en' ? 'Select all in this group' : 'Pilih semua di grup ini'}
                                   />
                                 </th>
                                 <th className="px-3 py-2 text-left min-w-[90px]">Tanggal</th>

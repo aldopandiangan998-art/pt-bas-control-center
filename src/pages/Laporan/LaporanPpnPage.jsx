@@ -14,7 +14,7 @@ import {
   X,
 } from 'lucide-react';
 import { formatCurrency } from '../../utils/formatters';
-import { Badge, Button, IndeterminateCheckbox } from '../../components/ui';
+import { Badge, Button, SearchBar, ViewToggle, IndeterminateCheckbox } from '../../components/ui';
 import { useToast } from '../../context/ToastContext';
 import { useAuth } from '../../context/AuthContext';
 import { useApp } from '../../context/AppContext';
@@ -575,69 +575,15 @@ export default function LaporanPpnPage() {
             </div>
 
             <div className="flex items-center gap-2.5 flex-wrap sm:flex-nowrap">
-              {/* Search with clear button */}
-              <div className="relative w-full sm:w-64">
-                <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" />
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Cari Customer, Faktur, Invoice..."
-                  className={`w-full pl-9 pr-8 py-1.5 rounded-xl border text-xs focus:outline-none transition-colors ${
-                    isDark
-                      ? 'bg-[#1A1D21] border-[#2E3339] text-white focus:border-[#F4511E]'
-                      : 'bg-white border-slate-200 text-slate-800 focus:border-[#F4511E]'
-                  }`}
-                />
-                {searchQuery && (
-                  <button
-                    type="button"
-                    onClick={() => setSearchQuery('')}
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-white cursor-pointer"
-                    title="Hapus pencarian"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                )}
-              </div>
-
-              {/* View mode toggle (List / Grid) */}
-              <div
-                className={`flex items-center rounded-xl p-0.5 border shrink-0 ${
-                  isDark ? 'bg-[#1A1D21] border-[#2E3339]' : 'bg-slate-100 border-slate-200'
-                }`}
-              >
-                <button
-                  type="button"
-                  onClick={() => handleSetViewMode('list')}
-                  className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-mono transition-all cursor-pointer ${
-                    viewMode === 'list'
-                      ? 'bg-[#F4511E] text-white shadow-xs font-bold'
-                      : isDark
-                        ? 'text-neutral-400 hover:text-white hover:bg-white/5'
-                        : 'text-slate-500 hover:text-slate-900 hover:bg-slate-200/60'
-                  }`}
-                  title="Tampilan List (Tabel)"
-                >
-                  <List className="w-3.5 h-3.5" />
-                  <span className="text-[11px]">List</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleSetViewMode('grid')}
-                  className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-mono transition-all cursor-pointer ${
-                    viewMode === 'grid'
-                      ? 'bg-[#F4511E] text-white shadow-xs font-bold'
-                      : isDark
-                        ? 'text-neutral-400 hover:text-white hover:bg-white/5'
-                        : 'text-slate-500 hover:text-slate-900 hover:bg-slate-200/60'
-                  }`}
-                  title="Tampilan Grid (Kartu)"
-                >
-                  <LayoutGrid className="w-3.5 h-3.5" />
-                  <span className="text-[11px]">Grid</span>
-                </button>
-              </div>
+              <SearchBar
+                containerClassName="w-full sm:w-64"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onClear={() => setSearchQuery('')}
+                placeholder="Cari Customer, Faktur, Invoice..."
+                size="sm"
+              />
+              <ViewToggle viewMode={viewMode} onChange={handleSetViewMode} />
             </div>
           </div>
 

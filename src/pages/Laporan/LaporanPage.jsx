@@ -22,7 +22,7 @@ import {
   RotateCcw,
 } from 'lucide-react';
 import { formatCurrency, formatVolume } from '../../utils/formatters';
-import { Badge, Button, Modal } from '../../components/ui';
+import { Badge, Button, Modal, SearchBar } from '../../components/ui';
 import { useToast } from '../../context/ToastContext';
 import { useData } from '../../context/DataContext';
 import { useApp } from '../../context/AppContext';
@@ -617,26 +617,14 @@ export default function LaporanPage() {
       >
         <div className="p-4 space-y-3 font-sans">
           {/* Search Box */}
-          <div className="relative">
-            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" />
-            <input
-              type="text"
-              value={customerSearch}
-              onChange={(e) => setCustomerSearch(e.target.value)}
-              placeholder="Cari nama atau kode pelanggan..."
-              className="w-full bg-[#14171A] border border-[#24282E] rounded-xl pl-9 pr-3 py-2 text-xs text-white placeholder-neutral-500 focus:outline-none focus:border-[#F4511E]"
-              autoFocus
-            />
-            {customerSearch && (
-              <button
-                type="button"
-                onClick={() => setCustomerSearch('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-white"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
-            )}
-          </div>
+          <SearchBar
+            value={customerSearch}
+            onChange={(e) => setCustomerSearch(e.target.value)}
+            onClear={() => setCustomerSearch('')}
+            placeholder="Cari nama atau kode pelanggan..."
+            size="md"
+            autoFocus
+          />
 
           {/* Customer List */}
           <div className="max-h-72 overflow-y-auto space-y-1.5 pr-1">
@@ -702,26 +690,14 @@ export default function LaporanPage() {
       >
         <div className="p-4 space-y-3 font-sans">
           {/* Search Box */}
-          <div className="relative">
-            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" />
-            <input
-              type="text"
-              value={roSearch}
-              onChange={(e) => setRoSearch(e.target.value)}
-              placeholder="Cari ID RO atau Nomor PO Customer..."
-              className="w-full bg-[#14171A] border border-[#24282E] rounded-xl pl-9 pr-3 py-2 text-xs text-white placeholder-neutral-500 focus:outline-none focus:border-[#F4511E]"
-              autoFocus
-            />
-            {roSearch && (
-              <button
-                type="button"
-                onClick={() => setRoSearch('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-white"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
-            )}
-          </div>
+          <SearchBar
+            value={roSearch}
+            onChange={(e) => setRoSearch(e.target.value)}
+            onClear={() => setRoSearch('')}
+            placeholder="Cari ID RO atau Nomor PO Customer..."
+            size="md"
+            autoFocus
+          />
 
           {/* RO List */}
           <div className="max-h-72 overflow-y-auto space-y-2 pr-1">

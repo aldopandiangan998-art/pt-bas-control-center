@@ -26,7 +26,7 @@ import {
   Filter,
 } from 'lucide-react';
 import { formatCurrency, formatVolume } from '../../utils/formatters';
-import { Button, Badge, Card, Input, Select, Modal } from '../../components/ui';
+import { Button, Badge, Card, Input, Select, Modal, SearchBar, Checkbox } from '../../components/ui';
 import { useToast } from '../../context/ToastContext';
 import { useData } from '../../context/DataContext';
 

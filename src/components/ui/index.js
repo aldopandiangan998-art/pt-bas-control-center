@@ -6,4 +6,5 @@ export { default as Select } from './Select';
 export { default as Modal } from './Modal';
 export { default as IndeterminateCheckbox } from './IndeterminateCheckbox';
 export { default as Checkbox } from './Checkbox';
-
+export { default as ViewToggle } from './ViewToggle';
+export { default as SearchBar } from './SearchBar';

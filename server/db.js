@@ -1667,11 +1667,11 @@ function seedInitialData() {
     const insertInv = db.prepare(`
       INSERT INTO invoices (
         id, kodeTransaksi, nomorInvoice, nomorFakturPajak, tanggal,
-        customer, customerId, npwp, material, materialType,
+        customer, perusahaan, customerId, npwp, material, materialType,
         volume, satuan, hargaSatuan, dpp, tarifPpn, ppn,
         tarifPph, pph, amount, statusBayar, statusFaktur,
         poNumber, nomorRO, periode, created_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     const initialInvoices = [
@@ -1761,7 +1761,7 @@ function seedInitialData() {
     for (const inv of initialInvoices) {
       insertInv.run(
         inv.id, inv.kodeTransaksi, inv.nomorInvoice, inv.nomorFakturPajak, inv.tanggal,
-        inv.customer, inv.customerId, inv.npwp, inv.material, inv.materialType,
+        inv.customer, inv.customer, inv.customerId, inv.npwp, inv.material, inv.materialType,
         inv.volume, inv.satuan, inv.hargaSatuan, inv.dpp, inv.tarifPpn, inv.ppn,
         inv.tarifPph, inv.pph, inv.amount, inv.statusBayar, inv.statusFaktur,
         inv.poNumber, inv.nomorRO, inv.periode, inv.created_at

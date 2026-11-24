@@ -29,6 +29,7 @@ import {
   SlidersHorizontal,
   Filter,
   X,
+  Trash2,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useData } from '../../context/DataContext';
@@ -41,7 +42,7 @@ export default function ApprovalRoPage() {
   const navigate = useNavigate();
   const { isDark, language } = useApp();
   const { currentUser, isSuperAdmin, roleLabel } = useAuth();
-  const { preOrders, approvePreOrder, rejectPreOrder, generateNomorRO, customers } = useData();
+  const { preOrders, approvePreOrder, rejectPreOrder, deletePreOrder, generateNomorRO, customers } = useData();
   const { addToast } = useToast();
 
   // Navigation & Filter Tabs: 'pending' | 'approved' | 'rejected' | 'all'
@@ -66,6 +67,8 @@ export default function ApprovalRoPage() {
   const [isBatchSubmitting, setIsBatchSubmitting] = useState(false);
   const [approveConfirmData, setApproveConfirmData] = useState(null); // { id, ... }
   const [detailModalData, setDetailModalData] = useState(null); // PO object for full preview
+  const [deleteModalData, setDeleteModalData] = useState(null); // PO object for delete confirmation
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Helper to calculate financial summary for a PO
   const calculateFinancials = (po) => {
@@ -362,6 +365,22 @@ export default function ApprovalRoPage() {
     'Kapasitas armada logistik saat ini sudah penuh untuk jadwal tersebut',
     'Perlu revisi nomor PO atau surat perjanjian kontrak dari customer',
   ];
+
+  // ── DELETE HANDLER ──
+  const handleConfirmDelete = async () => {
+    if (!deleteModalData || isDeleting) return;
+    setIsDeleting(true);
+    try {
+      if (deletePreOrder) await deletePreOrder(deleteModalData.id);
+      addToast(`Received Order ${deleteModalData.nomorRO || deleteModalData.nomorRo || deleteModalData.id} berhasil dihapus.`, 'success');
+      setDeleteModalData(null);
+    } catch (err) {
+      console.error('Error deleting RO:', err);
+      addToast('Gagal menghapus Received Order. Silakan coba kembali.', 'error');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   return (
     <div className="w-full space-y-6 pb-20">
@@ -1159,6 +1178,20 @@ export default function ApprovalRoPage() {
                         Buat Surat Jalan (GI) &rarr;
                       </Button>
                     )}
+
+                    {/* Delete Button (Superadmin only) */}
+                    {isSuperAdmin && (
+                      <Button
+                        size="xs"
+                        variant="outline"
+                        icon={Trash2}
+                        onClick={() => setDeleteModalData(po)}
+                        className="border-rose-500/40 text-rose-400 hover:bg-rose-500/10 hover:text-rose-300"
+                        title="Hapus Received Order ini"
+                      >
+                        Hapus
+                      </Button>
+                    )}
                   </div>
                 </div>
               </Card>
@@ -1724,6 +1757,63 @@ export default function ApprovalRoPage() {
                   </Button>
                 </div>
               )}
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* ══════════ MODAL 4: DELETE CONFIRMATION ══════════ */}
+      <Modal
+        isOpen={Boolean(deleteModalData)}
+        onClose={() => setDeleteModalData(null)}
+        title="Hapus Data Received Order"
+        subtitle={deleteModalData ? `Nomor RO: ${deleteModalData.nomorRO || deleteModalData.nomorRo || deleteModalData.id}` : ''}
+        maxWidth="max-w-md"
+      >
+        {deleteModalData && (
+          <div className="p-4 space-y-4 font-mono text-xs">
+            <div className="p-3 rounded-lg bg-rose-950/20 border border-rose-900/30 text-rose-300 text-xs flex items-start gap-2.5">
+              <AlertCircle className="w-4 h-4 shrink-0 text-rose-400 mt-0.5" />
+              <div>
+                <p className="font-semibold text-rose-200">Peringatan: Penghapusan Permanen</p>
+                <p className="mt-0.5 text-neutral-300">
+                  Tindakan ini akan menghapus data kontrak pesanan secara permanen dari sistem dan tidak dapat dibatalkan.
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-[#0E1012] rounded-lg p-3 border border-[#22262A] space-y-2">
+              <div className="flex justify-between">
+                <span className="text-neutral-400">Customer:</span>
+                <span className="text-white font-bold">{deleteModalData.customer}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-neutral-400">Material:</span>
+                <span className="text-neutral-200">{deleteModalData.materialName || '-'}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-neutral-400">Total Order:</span>
+                <span className="text-[#F4511E] font-bold">{formatVolume(deleteModalData.totalOrder, deleteModalData.satuan || 'm³')}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-neutral-400">Status:</span>
+                <span className="text-white font-semibold">{deleteModalData.status}</span>
+              </div>
+            </div>
+
+            <div className="pt-2 flex items-center justify-end gap-2">
+              <Button variant="secondary" size="sm" onClick={() => setDeleteModalData(null)}>
+                Batal
+              </Button>
+              <Button
+                variant="danger"
+                size="sm"
+                icon={Trash2}
+                onClick={handleConfirmDelete}
+                disabled={isDeleting}
+              >
+                {isDeleting ? 'Menghapus...' : 'Ya, Hapus RO'}
+              </Button>
             </div>
           </div>
         )}

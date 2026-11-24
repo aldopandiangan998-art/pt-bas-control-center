@@ -8,22 +8,15 @@ import {
   AlertTriangle,
   Upload,
   Printer,
-  Download,
-  Eye,
   RotateCw,
   History,
   FileCheck,
   XCircle,
   ExternalLink,
   Info,
-  Check,
-  User,
-  Trash2,
-  Calendar,
   Building2,
   Receipt,
-  CreditCard,
-  Percent,
+  Calendar,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useData } from '../../context/DataContext';
@@ -57,7 +50,6 @@ export default function InvoiceDetailWorkflowModal({
     rejectInvoiceVerification,
     fetchInvoiceDocuments,
     fetchInvoiceAuditTrail,
-    deleteInvoice,
   } = useData();
   const { addToast } = useToast();
 
@@ -166,57 +158,36 @@ export default function InvoiceDetailWorkflowModal({
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const validTypes = ['application/pdf', 'image/png', 'image/jpeg', 'image/jpg'];
-    if (!validTypes.includes(file.type) && !file.name.toLowerCase().endsWith('.pdf')) {
-      addToast('Hanya format PDF, PNG, atau JPG yang diperbolehkan.', 'error');
-      return;
-    }
-
     if (file.size > 15 * 1024 * 1024) {
-      addToast('Ukuran berkas maksimal 15 MB.', 'error');
+      addToast('Ukuran berkas melebihi batas 15 MB.', 'error');
       return;
     }
 
     try {
-      const dataUrl = await readFileAsDataUrl(file);
+      const b64 = await readFileAsDataUrl(file);
       setSelectedFile(file);
-      setFileBase64(dataUrl);
-      addToast(`Berkas "${file.name}" siap diunggah.`, 'info');
-    } catch (err) {
-      addToast('Gagal memproses berkas dokumen.', 'error');
+      setFileBase64(b64);
+    } catch {
+      addToast('Gagal memproses file.', 'error');
     }
   };
 
-  // Upload handler
-  const handleUploadDocument = async (autoSubmit = false) => {
-    if (!selectedFile) {
-      addToast('Silakan pilih berkas dokumen yang telah ditandatangani.', 'warning');
+  const handleUploadDocument = async (autoSubmit = true) => {
+    if (!selectedFile || !fileBase64) {
+      addToast('Pilih berkas tanda tangan fisik terlebih dahulu.', 'error');
       return;
     }
 
     setIsUploading(true);
     try {
-      let base64 = fileBase64;
-      if (!base64 && selectedFile) {
-        base64 = await readFileAsDataUrl(selectedFile);
-      }
-
-      if (!base64) {
-        throw new Error('Gagal membaca isi berkas dokumen.');
-      }
-
-      const fileType =
-        selectedFile.type ||
-        (selectedFile.name.toLowerCase().endsWith('.pdf') ? 'application/pdf' : 'application/octet-stream');
-
       const uploadRes = await uploadInvoiceDocument(invoiceItem.id, {
-        fileBase64: base64,
-        fileData: base64,
         fileName: selectedFile.name,
         originalName: selectedFile.name,
-        fileType,
         fileSize: selectedFile.size,
-        notes: uploadNotes.trim() || undefined,
+        fileType: selectedFile.type,
+        fileBase64: fileBase64,
+        notes: uploadNotes,
+        uploader: `${currentUser?.name || 'Admin Logistik'} (${currentUser?.role || 'Staff'})`,
       });
 
       if (!uploadRes?.success) {
@@ -236,7 +207,7 @@ export default function InvoiceDetailWorkflowModal({
       setFileBase64('');
       setUploadNotes('');
       await loadData();
-        notifyUpdated();
+      notifyUpdated();
     } catch (err) {
       addToast(err.message || 'Terjadi kesalahan saat mengunggah dokumen.', 'error');
     } finally {
@@ -253,7 +224,7 @@ export default function InvoiceDetailWorkflowModal({
       if (res?.success) {
         addToast('Verifikasi fisik disetujui! Status Invoice resmi menjadi LUNAS.', 'success');
         await loadData();
-          notifyUpdated();
+        notifyUpdated();
       }
     } finally {
       setIsVerifying(false);
@@ -279,15 +250,17 @@ export default function InvoiceDetailWorkflowModal({
         setShowRejectBox(false);
         setVerificationRejectReason('');
         await loadData();
-          notifyUpdated();
+        notifyUpdated();
       }
     } finally {
       setIsVerifying(false);
     }
   };
 
-  const grandTotal = Number(invoiceItem.amount || 0);
-  const subtotalDpp = Number(invoiceItem.dpp || invoiceItem.subtotalJasa || 0);
+  const grandTotal = Number(invoiceItem.totalTagihan || invoiceItem.nominal || invoiceItem.amount || 0);
+  const subtotalDpp = Number(
+    invoiceItem.dpp || (Number(invoiceItem.volume ?? invoiceItem.totalVolume ?? 0) * Number(invoiceItem.hargaSatuan || 0)) || 0
+  );
   const ppnVal = Number(invoiceItem.ppnNominal || invoiceItem.ppn || 0);
   const pphVal = Number(invoiceItem.pphNominal || invoiceItem.pph || 0);
 
@@ -296,12 +269,12 @@ export default function InvoiceDetailWorkflowModal({
       isOpen={effectiveIsOpen}
       onClose={onClose}
       title="Alur Lengkap & Berkas Faktur Invoice"
-      subtitle={`${invoiceItem.kodeTransaksi || invoiceItem.nomorInvoice || invoiceItem.id} • ${invoiceItem.nomorRO || '-'}`}
+      subtitle={`${invoiceItem.nomorInvoice || invoiceItem.kodeTransaksi || invoiceItem.id} • ${invoiceItem.nomorRO || '-'}`}
       maxWidth="max-w-4xl"
     >
       <div className="space-y-4">
         {/* ══════════════════════════════════════════════════════════════════════
-            1. 6-STAGE WORKFLOW STEPPER
+            1. 6-STAGE WORKFLOW STEPPER (Refined matching BKK Modal)
            ══════════════════════════════════════════════════════════════════════ */}
         <div className="bg-[#14171A] border border-[#24282E] rounded-2xl p-4">
           <div className="text-[11px] font-mono text-neutral-400 mb-3 flex items-center justify-between">
@@ -332,12 +305,12 @@ export default function InvoiceDetailWorkflowModal({
                 currentStep === 1
                   ? 'bg-[#F4511E]/10 border-[#F4511E]/60 text-white ring-1 ring-[#F4511E]/30'
                   : currentStep > 1
-                  ? 'bg-[#181B1E] border-emerald-500/40 text-emerald-300'
+                  ? 'bg-[#181B1E] border-neutral-700/60 text-neutral-200'
                   : 'bg-[#181B1E] border-[#262A30] text-neutral-400'
               }`}
             >
               <div className="flex items-center gap-1.5 font-bold mb-1">
-                <CheckCircle2 className={`w-3.5 h-3.5 ${currentStep > 1 ? 'text-emerald-400' : 'text-[#F4511E]'} shrink-0`} />
+                <CheckCircle2 className={`w-3.5 h-3.5 ${currentStep > 1 ? 'text-[#F4511E]' : 'text-[#F4511E]'} shrink-0`} />
                 <span>1. Pembuatan</span>
               </div>
               <p className="text-[10px] text-neutral-400 font-sans">
@@ -353,7 +326,7 @@ export default function InvoiceDetailWorkflowModal({
                   : currentStep === 2
                   ? 'bg-[#F4511E]/10 border-[#F4511E]/60 text-white ring-1 ring-[#F4511E]/30'
                   : currentStep > 2
-                  ? 'bg-[#181B1E] border-emerald-500/40 text-emerald-300'
+                  ? 'bg-[#181B1E] border-neutral-700/60 text-neutral-200'
                   : isPendingApproval
                   ? 'bg-[#F4511E]/10 border-[#F4511E]/50 text-white ring-1 ring-[#F4511E]/30'
                   : 'bg-[#181B1E] border-[#262A30] text-neutral-400'
@@ -363,7 +336,7 @@ export default function InvoiceDetailWorkflowModal({
                 {isRejected ? (
                   <XCircle className="w-3.5 h-3.5 text-rose-400 shrink-0" />
                 ) : currentStep > 2 ? (
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                  <CheckCircle2 className="w-3.5 h-3.5 text-[#F4511E]" />
                 ) : (
                   <Lock className="w-3.5 h-3.5 text-[#F4511E] shrink-0" />
                 )}
@@ -380,20 +353,20 @@ export default function InvoiceDetailWorkflowModal({
                 currentStep === 3
                   ? 'bg-[#F4511E]/10 border-[#F4511E]/60 text-white ring-1 ring-[#F4511E]/30'
                   : currentStep > 3
-                  ? 'bg-[#181B1E] border-emerald-500/40 text-emerald-300'
+                  ? 'bg-[#181B1E] border-neutral-700/60 text-neutral-200'
                   : 'bg-[#181B1E] border-[#262A30] text-neutral-400'
               }`}
             >
               <div className="flex items-center gap-1.5 font-bold mb-1">
                 {currentStep > 3 ? (
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                  <CheckCircle2 className="w-3.5 h-3.5 text-[#F4511E]" />
                 ) : (
                   <Printer className="w-3.5 h-3.5 text-[#F4511E] shrink-0" />
                 )}
-                <span>3. Cetak & TTD</span>
+                <span>3. Cetak &amp; TTD</span>
               </div>
               <p className="text-[10px] text-neutral-400 font-sans">
-                Cetak fisik & tanda tangan
+                Cetak fisik &amp; tanda tangan
               </p>
             </div>
 
@@ -405,7 +378,7 @@ export default function InvoiceDetailWorkflowModal({
                   : currentStep === 4
                   ? 'bg-[#F4511E]/10 border-[#F4511E]/60 text-white ring-1 ring-[#F4511E]/30'
                   : currentStep > 4
-                  ? 'bg-[#181B1E] border-emerald-500/40 text-emerald-300'
+                  ? 'bg-[#181B1E] border-neutral-700/60 text-neutral-200'
                   : 'bg-[#181B1E] border-[#262A30] text-neutral-400'
               }`}
             >
@@ -413,7 +386,7 @@ export default function InvoiceDetailWorkflowModal({
                 {isRevisionRequired ? (
                   <RotateCw className="w-3.5 h-3.5 text-rose-400 shrink-0" />
                 ) : currentStep > 4 ? (
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                  <CheckCircle2 className="w-3.5 h-3.5 text-[#F4511E]" />
                 ) : (
                   <Upload className="w-3.5 h-3.5 text-[#F4511E] shrink-0" />
                 )}
@@ -430,13 +403,13 @@ export default function InvoiceDetailWorkflowModal({
                 currentStep === 5
                   ? 'bg-[#F4511E]/10 border-[#F4511E]/60 text-white ring-1 ring-[#F4511E]/30'
                   : currentStep > 5
-                  ? 'bg-[#181B1E] border-emerald-500/40 text-emerald-300'
+                  ? 'bg-[#181B1E] border-neutral-700/60 text-neutral-200'
                   : 'bg-[#181B1E] border-[#262A30] text-neutral-400'
               }`}
             >
               <div className="flex items-center gap-1.5 font-bold mb-1">
                 {currentStep > 5 ? (
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                  <CheckCircle2 className="w-3.5 h-3.5 text-[#F4511E]" />
                 ) : (
                   <ShieldCheck className="w-3.5 h-3.5 text-[#F4511E] shrink-0" />
                 )}
@@ -451,12 +424,12 @@ export default function InvoiceDetailWorkflowModal({
             <div
               className={`p-2.5 rounded-xl border transition-all text-xs ${
                 isPaid
-                  ? 'bg-emerald-950/30 border-emerald-500/70 text-emerald-300 ring-1 ring-emerald-500/50'
+                  ? 'bg-[#F4511E]/10 border-[#F4511E]/60 text-white ring-1 ring-[#F4511E]/30'
                   : 'bg-[#181B1E] border-[#262A30] text-neutral-400'
               }`}
             >
               <div className="flex items-center gap-1.5 font-bold mb-1">
-                <CheckCircle2 className={`w-3.5 h-3.5 ${isPaid ? 'text-emerald-400' : 'text-neutral-500'} shrink-0`} />
+                <CheckCircle2 className={`w-3.5 h-3.5 ${isPaid ? 'text-[#F4511E]' : 'text-neutral-500'} shrink-0`} />
                 <span>6. Lunas</span>
               </div>
               <p className="text-[10px] text-neutral-400 font-sans">
@@ -476,7 +449,7 @@ export default function InvoiceDetailWorkflowModal({
               <div className="font-bold">Permintaan Revisi Tanda Tangan Dokumen Fisik</div>
               <p className="text-neutral-300 font-sans">
                 Super Admin meminta perbaikan dokumen: <span className="font-semibold text-rose-200 font-mono">"{invoiceItem.rejectionReason || 'Tanda tangan belum lengkap'}"</span>.
-                Silakan cetak ulang / perbaiki tanda tangan fisik, lalu unggah berkas yang baru di bawah ini.
+                Silakan cetak ulang / perbaiki tanda tangan fisik, lalu unggah berkas yang baru di tab Berkas &amp; Tanda Tangan.
               </p>
             </div>
           </div>
@@ -495,29 +468,29 @@ export default function InvoiceDetailWorkflowModal({
         )}
 
         {/* ══════════════════════════════════════════════════════════════════════
-            3. TAB NAVIGATION
+            3. TAB NAVIGATION (Matching BKK Modal)
            ══════════════════════════════════════════════════════════════════════ */}
-        <div className="flex items-center gap-1.5 border-b border-[#24282E] pb-2 text-xs font-mono">
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 border-b border-[#24282E]">
           <button
             type="button"
             onClick={() => setActiveTab('summary')}
-            className={`px-3 py-1.5 rounded-lg font-bold transition-colors cursor-pointer flex items-center gap-1.5 ${
+            className={`px-3 py-1.5 rounded-xl text-xs font-mono font-bold transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
               activeTab === 'summary'
-                ? 'bg-[#F4511E] text-white'
-                : 'text-neutral-400 hover:text-white hover:bg-[#1E2228]'
+                ? 'bg-[#F4511E] text-white shadow-sm'
+                : 'bg-[#181B1E] text-neutral-400 hover:text-white border border-[#262A30]'
             }`}
           >
-            <Receipt className="w-3.5 h-3.5" />
-            <span>Ringkasan Faktur</span>
+            <Info className="w-3.5 h-3.5 text-[#F4511E]" />
+            <span>Rincian Finansial</span>
           </button>
 
           <button
             type="button"
             onClick={() => setActiveTab('document')}
-            className={`px-3 py-1.5 rounded-lg font-bold transition-colors cursor-pointer flex items-center gap-1.5 ${
+            className={`px-3 py-1.5 rounded-xl text-xs font-mono font-bold transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
               activeTab === 'document'
-                ? 'bg-[#F4511E] text-white'
-                : 'text-neutral-400 hover:text-white hover:bg-[#1E2228]'
+                ? 'bg-[#F4511E] text-white shadow-sm'
+                : 'bg-[#181B1E] text-neutral-400 hover:text-white border border-[#262A30]'
             }`}
           >
             <FileText className="w-3.5 h-3.5" />
@@ -532,143 +505,233 @@ export default function InvoiceDetailWorkflowModal({
           <button
             type="button"
             onClick={() => setActiveTab('history')}
-            className={`px-3 py-1.5 rounded-lg font-bold transition-colors cursor-pointer flex items-center gap-1.5 ${
+            className={`px-3 py-1.5 rounded-xl text-xs font-mono font-bold transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
               activeTab === 'history'
-                ? 'bg-[#F4511E] text-white'
-                : 'text-neutral-400 hover:text-white hover:bg-[#1E2228]'
+                ? 'bg-[#F4511E] text-white shadow-sm'
+                : 'bg-[#181B1E] text-neutral-400 hover:text-white border border-[#262A30]'
             }`}
           >
-            <History className="w-3.5 h-3.5" />
-            <span>Riwayat Versi ({documents.length})</span>
+            <FileCheck className="w-3.5 h-3.5" />
+            <span>Riwayat Versi Dokumen ({documents.length})</span>
           </button>
 
           <button
             type="button"
             onClick={() => setActiveTab('audit')}
-            className={`px-3 py-1.5 rounded-lg font-bold transition-colors cursor-pointer flex items-center gap-1.5 ${
+            className={`px-3 py-1.5 rounded-xl text-xs font-mono font-bold transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
               activeTab === 'audit'
-                ? 'bg-[#F4511E] text-white'
-                : 'text-neutral-400 hover:text-white hover:bg-[#1E2228]'
+                ? 'bg-[#F4511E] text-white shadow-sm'
+                : 'bg-[#181B1E] text-neutral-400 hover:text-white border border-[#262A30]'
             }`}
           >
-            <ShieldCheck className="w-3.5 h-3.5" />
+            <History className="w-3.5 h-3.5" />
             <span>Jejak Audit ({auditLogs.length})</span>
           </button>
         </div>
 
         {/* ══════════════════════════════════════════════════════════════════════
-            4. TAB CONTENT
+            TAB 1: RINCIAN FINANSIAL (FINANCIAL DETAILS)
            ══════════════════════════════════════════════════════════════════════ */}
         {activeTab === 'summary' && (
-          <div className="space-y-4">
-            {/* Top Cards: Financial Highlights */}
-            <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
-              <div className="bg-[#121417] border border-[#22262B] p-3.5 rounded-xl">
-                <span className="text-[10px] font-mono text-neutral-400 uppercase block">Total Nilai Tagihan</span>
-                <span className="text-base sm:text-lg font-bold font-mono text-white mt-1 block">
+          <div className="space-y-3 font-mono text-xs text-neutral-300">
+            {/* Amount & Key Metrics */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 bg-[#181B1E] p-3.5 rounded-xl border border-[#262A2F]">
+              <div>
+                <span className="text-neutral-500 block text-[10px] uppercase font-bold">
+                  Volume Tagihan
+                </span>
+                <span className="text-white font-black text-base">
+                  {(Number(invoiceItem.volume ?? invoiceItem.totalVolume) || 0).toFixed(2)} m³
+                </span>
+              </div>
+              <div>
+                <span className="text-neutral-500 block text-[10px] uppercase font-bold">
+                  Harga Satuan DPP
+                </span>
+                <span className="text-neutral-200 font-bold text-sm">
+                  Rp {(Number(invoiceItem.hargaSatuan) || 0).toLocaleString('id-ID')}
+                </span>
+              </div>
+              <div className="col-span-2">
+                <span className="text-neutral-500 block text-[10px] uppercase font-bold">
+                  Total Nilai Tagihan (Net)
+                </span>
+                <span className="text-[#F4511E] font-black text-lg sm:text-xl">
                   {formatCurrency(grandTotal)}
-                </span>
-                <span className="text-[10px] text-neutral-400 font-mono mt-0.5 block">Net Setelah Pajak</span>
-              </div>
-
-              <div className="bg-[#121417] border border-[#22262B] p-3.5 rounded-xl">
-                <span className="text-[10px] font-mono text-neutral-400 uppercase block">Subtotal DPP (Jasa)</span>
-                <span className="text-sm sm:text-base font-bold font-mono text-neutral-200 mt-1 block">
-                  {formatCurrency(subtotalDpp)}
-                </span>
-                <span className="text-[10px] text-neutral-400 font-mono mt-0.5 block">
-                  {Number(invoiceItem.volume || 0).toFixed(2)} m³ &times; {formatCurrency(invoiceItem.hargaSatuan)}
-                </span>
-              </div>
-
-              <div className="bg-[#121417] border border-[#22262B] p-3.5 rounded-xl">
-                <span className="text-[10px] font-mono text-neutral-400 uppercase block">PPN &amp; PPh 23</span>
-                <div className="text-xs font-mono text-neutral-300 mt-1 space-y-0.5">
-                  <div className="text-emerald-400">PPN (11%): +{formatCurrency(ppnVal)}</div>
-                  <div className="text-rose-400">PPh (2%): -{formatCurrency(pphVal)}</div>
-                </div>
-              </div>
-
-              <div className="bg-[#121417] border border-[#22262B] p-3.5 rounded-xl">
-                <span className="text-[10px] font-mono text-neutral-400 uppercase block">Status Pembayaran</span>
-                <div className="mt-1 flex items-center gap-1.5">
-                  {isPaid ? (
-                    <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-xs font-mono font-bold flex items-center gap-1">
-                      <CheckCircle2 className="w-3.5 h-3.5" />
-                      LUNAS
-                    </span>
-                  ) : (
-                    <span className="px-2 py-0.5 rounded bg-[#F4511E]/20 text-orange-300 border border-[#F4511E]/40 text-xs font-mono font-bold flex items-center gap-1">
-                      <Clock className="w-3.5 h-3.5" />
-                      BELUM LUNAS
-                    </span>
-                  )}
-                </div>
-                <span className="text-[10px] text-neutral-400 font-mono mt-1 block">
-                  {invoiceItem.tanggalBayar ? `Tgl Bayar: ${invoiceItem.tanggalBayar}` : 'Menunggu Pelunasan'}
                 </span>
               </div>
             </div>
 
-            {/* Entity Information */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="bg-[#121417] border border-[#22262B] p-4 rounded-xl space-y-2">
-                <div className="flex items-center gap-2 text-xs font-bold text-neutral-300 uppercase font-mono border-b border-[#22262B] pb-2">
-                  <Building2 className="w-4 h-4 text-[#F4511E]" />
-                  <span>Informasi Pelanggan (Customer)</span>
+            {/* Tax Breakdown Details (Clean Cohesive Neutrals) */}
+            <div className="bg-[#181B1E] p-3.5 rounded-xl border border-[#262A2F] space-y-2">
+              <div className="flex items-center justify-between border-b border-[#262A2F] pb-2">
+                <span className="text-[10px] text-neutral-500 block uppercase font-bold tracking-wider">
+                  Komposisi Pajak &amp; Perhitungan
+                </span>
+                <span className="text-neutral-400 text-[10px] font-mono">
+                  UU Harmonisasi Peraturan Perpajakan (HPP)
+                </span>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                <div>
+                  <span className="text-[10px] text-neutral-400 block">Subtotal DPP:</span>
+                  <span className="text-white font-bold">{formatCurrency(subtotalDpp)}</span>
                 </div>
-                <div className="text-xs space-y-1.5 font-sans">
-                  <div>
-                    <span className="text-neutral-400 text-[11px] block">Nama Pelanggan:</span>
-                    <span className="font-bold text-white text-sm font-mono">{invoiceItem.customer || invoiceItem.perusahaan || '-'}</span>
-                  </div>
-                  <div>
-                    <span className="text-neutral-400 text-[11px] block">Alamat Penagihan:</span>
-                    <span className="text-neutral-300">{invoiceItem.customerAddress || '-'}</span>
-                  </div>
-                  <div>
-                    <span className="text-neutral-400 text-[11px] block">NPWP Pelanggan:</span>
-                    <span className="text-neutral-300 font-mono">{invoiceItem.npwp || '-'}</span>
-                  </div>
+                <div>
+                  <span className="text-[10px] text-neutral-400 block">PPN ({invoiceItem.ppnPercent || 11}%):</span>
+                  <span className="text-neutral-200 font-bold">+{formatCurrency(ppnVal)}</span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-neutral-400 block">PPh 23 ({invoiceItem.pphPercent || 2}%):</span>
+                  <span className="text-neutral-200 font-bold">-{formatCurrency(pphVal)}</span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-neutral-400 block">Total Tagihan Bersih:</span>
+                  <span className="text-[#F4511E] font-black">{formatCurrency(grandTotal)}</span>
                 </div>
               </div>
+            </div>
 
-              <div className="bg-[#121417] border border-[#22262B] p-4 rounded-xl space-y-2">
-                <div className="flex items-center gap-2 text-xs font-bold text-neutral-300 uppercase font-mono border-b border-[#22262B] pb-2">
-                  <Receipt className="w-4 h-4 text-[#F4511E]" />
-                  <span>Detail Referensi Pesanan &amp; Bank</span>
+            {/* Entity Information (Customer & Order Reference) */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="bg-[#181B1E] p-3.5 rounded-xl border border-[#262A2F] space-y-2">
+                <span className="text-[10px] text-neutral-500 block uppercase font-bold tracking-wider">
+                  Data Pelanggan (Customer) &amp; Penagihan
+                </span>
+                <div>
+                  <span className="text-[10px] text-neutral-400 block">Nama Pelanggan:</span>
+                  <span className="text-white font-bold text-sm">
+                    {invoiceItem.customerName || invoiceItem.customer || invoiceItem.perusahaan || '-'}
+                  </span>
                 </div>
-                <div className="text-xs space-y-1.5 font-sans">
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <span className="text-neutral-400 text-[11px] block">Nomor RO:</span>
-                      <span className="font-bold text-neutral-200 font-mono">{invoiceItem.nomorRO || '-'}</span>
-                    </div>
-                    <div>
-                      <span className="text-neutral-400 text-[11px] block">Nomor PO:</span>
-                      <span className="font-bold text-neutral-200 font-mono">{invoiceItem.poNumber || '-'}</span>
-                    </div>
+                <div>
+                  <span className="text-[10px] text-neutral-400 block">Alamat Penagihan:</span>
+                  <span className="text-neutral-300 text-[11px] block">
+                    {invoiceItem.customerAddress || invoiceItem.alamat || '-'}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-neutral-400 block">NPWP Pelanggan:</span>
+                  <span className="text-neutral-200 font-mono font-medium">
+                    {invoiceItem.customerNpwp || invoiceItem.npwp || '-'}
+                  </span>
+                </div>
+                {invoiceItem.tempoHari && (
+                  <div>
+                    <span className="text-[10px] text-neutral-400 block">Jatuh Tempo:</span>
+                    <span className="text-neutral-200 font-mono text-[11px]">
+                      {invoiceItem.tempoHari} Hari
+                    </span>
                   </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <span className="text-neutral-400 text-[11px] block">Material:</span>
-                      <span className="font-bold text-neutral-200 font-mono">{invoiceItem.material || 'SIRTU'} ({invoiceItem.materialType || 'Curah'})</span>
-                    </div>
-                    <div>
-                      <span className="text-neutral-400 text-[11px] block">Tanggal Faktur:</span>
-                      <span className="text-neutral-200 font-mono">{invoiceItem.tanggal || '-'}</span>
-                    </div>
+                )}
+              </div>
+
+              <div className="bg-[#181B1E] p-3.5 rounded-xl border border-[#262A2F] space-y-2">
+                <span className="text-[10px] text-neutral-500 block uppercase font-bold tracking-wider">
+                  Data Pesanan &amp; Rekening PT BAS
+                </span>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <span className="text-[10px] text-neutral-400 block">Nomor RO:</span>
+                    <span className="text-neutral-200 font-bold font-mono">
+                      {invoiceItem.nomorRO || '-'}
+                    </span>
                   </div>
                   <div>
-                    <span className="text-neutral-400 text-[11px] block">Rekening Pembayaran PT BAS:</span>
-                    <span className="text-neutral-200 font-mono">{invoiceItem.kirimKeRekening || 'BCA - 0188920199 a/n PT Berkah Alam Semesta'}</span>
+                    <span className="text-[10px] text-neutral-400 block">Nomor PO:</span>
+                    <span className="text-neutral-200 font-mono">{invoiceItem.poNumber || '-'}</span>
                   </div>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <span className="text-[10px] text-neutral-400 block">Material:</span>
+                    <span className="text-neutral-300 font-bold uppercase">
+                      {invoiceItem.material || 'SIRTU'}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-neutral-400 block">Tanggal Faktur:</span>
+                    <span className="text-neutral-200 font-mono">
+                      {invoiceItem.tanggal || (invoiceItem.createdAt ? String(invoiceItem.createdAt).slice(0, 10) : '-')}
+                    </span>
+                  </div>
+                </div>
+                <div>
+                  <span className="text-[10px] text-neutral-400 block">Rekening Pembayaran PT BAS:</span>
+                  <span className="text-neutral-200 font-mono text-[11px] block mt-0.5">
+                    {invoiceItem.bankAccount
+                      ? `${invoiceItem.bankName || 'BCA'} - ${invoiceItem.bankAccount} a/n ${invoiceItem.accountName || 'PT BINTANG ANUGERAH SEJAHTERA'}`
+                      : invoiceItem.kirimKeRekening || 'BCA - 822-091-8888 a/n PT BINTANG ANUGERAH SEJAHTERA'}
+                  </span>
+                </div>
+                {invoiceItem.notes && (
+                  <div>
+                    <span className="text-[10px] text-neutral-400 block">Catatan Tagihan:</span>
+                    <span className="text-neutral-300 text-[11px] block italic">
+                      "{invoiceItem.notes}"
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Lifecycle & Status Audit */}
+            <div className="bg-[#181B1E] p-3.5 rounded-xl border border-[#262A2F] space-y-2">
+              <div className="flex items-center justify-between border-b border-[#262A2F] pb-2">
+                <span className="text-[10px] text-neutral-500 block uppercase font-bold tracking-wider">
+                  Status &amp; Otorisasi
+                </span>
+                <span
+                  className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                    isPaid
+                      ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                      : isPendingVerification
+                      ? 'bg-[#F4511E]/20 text-[#F4511E] border border-[#F4511E]/40'
+                      : isRevisionRequired
+                      ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40'
+                      : isApproved
+                      ? 'bg-blue-500/20 text-blue-300 border border-blue-500/40'
+                      : 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                  }`}
+                >
+                  {isPaid
+                    ? 'LUNAS (TERVERIFIKASI SAH)'
+                    : isPendingVerification
+                    ? 'MENUNGGU VERIFIKASI SUPERADMIN'
+                    : isRevisionRequired
+                    ? 'PERLU REVISI DOKUMEN TTD'
+                    : isApproved
+                    ? 'DISETUJUI (SIAP CETAK & TTD)'
+                    : 'MENUNGGU APPROVAL'}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
+                <div>
+                  <span className="text-[10px] text-neutral-400 block">Status Pelunasan:</span>
+                  <span className="text-neutral-200 font-medium">
+                    {isPaid ? 'Lunas' : 'Belum Lunas'}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-neutral-400 block">Status Dokumen Fisik:</span>
+                  <span className="text-neutral-200">
+                    {latestDocument
+                      ? `Ada (v${latestDocument.version} - ${latestDocument.status})`
+                      : 'Belum Diunggah'}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-neutral-400 block">Tanggal Pelunasan:</span>
+                  <span className="text-neutral-300">
+                    {invoiceItem.tanggalBayar || (isPaid ? 'Terverifikasi' : 'Menunggu Pelunasan')}
+                  </span>
                 </div>
               </div>
             </div>
 
             {/* Print Action Shortcut */}
-            <div className="flex items-center justify-between p-3.5 rounded-xl bg-[#181B1E] border border-[#24282E]">
+            <div className="flex items-center justify-between p-3.5 rounded-xl bg-[#181B1E] border border-[#262A2F]">
               <div className="text-xs font-sans text-neutral-300">
                 <div className="font-bold text-white flex items-center gap-2">
                   <Printer className="w-4 h-4 text-[#F4511E]" />
@@ -692,15 +755,17 @@ export default function InvoiceDetailWorkflowModal({
           </div>
         )}
 
-        {/* TAB 2: Berkas & Tanda Tangan */}
+        {/* ══════════════════════════════════════════════════════════════════════
+            TAB 2: BERKAS & TANDA TANGAN (Physical Document Management)
+           ══════════════════════════════════════════════════════════════════════ */}
         {activeTab === 'document' && (
           <div className="space-y-4">
             {/* Active Document Preview */}
             {latestDocument ? (
-              <div className="bg-[#121417] border border-[#22262B] p-4 rounded-xl space-y-3">
+              <div className="bg-[#181B1E] border border-[#262A2F] p-4 rounded-xl space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <FileCheck className="w-5 h-5 text-emerald-400" />
+                    <FileCheck className="w-5 h-5 text-[#F4511E]" />
                     <div>
                       <div className="font-bold text-white text-xs font-mono">
                         {latestDocument.originalName || latestDocument.fileName}
@@ -730,7 +795,7 @@ export default function InvoiceDetailWorkflowModal({
                       href={latestDocument.fileUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="p-1.5 rounded-lg bg-[#1E2228] hover:bg-[#2A2E36] text-neutral-300 hover:text-white transition-colors cursor-pointer"
+                      className="p-1.5 rounded-lg bg-[#24282F] hover:bg-[#2F343E] text-neutral-300 hover:text-white transition-colors cursor-pointer"
                       title="Buka berkas di tab baru"
                     >
                       <ExternalLink className="w-4 h-4" />
@@ -753,7 +818,7 @@ export default function InvoiceDetailWorkflowModal({
                 {latestDocument.fileType?.includes('pdf') && (
                   <div className="p-3 bg-[#16191D] rounded-lg border border-[#24282E] flex items-center justify-between text-xs font-mono text-neutral-300">
                     <span className="flex items-center gap-2">
-                      <FileText className="w-4 h-4 text-rose-400" />
+                      <FileText className="w-4 h-4 text-neutral-400" />
                       Berkas PDF Terverifikasi ({((latestDocument.fileSize || 0) / 1024).toFixed(1)} KB)
                     </span>
                     <a
@@ -769,7 +834,7 @@ export default function InvoiceDetailWorkflowModal({
 
                 {/* Superadmin Decision Actions */}
                 {isSuperAdmin && (isPendingVerification || (isApproved && latestDocument.status === 'SUBMITTED')) && (
-                  <div className="p-4 bg-[#181B1E] rounded-xl border border-[#F4511E]/30 space-y-3 mt-4">
+                  <div className="p-4 bg-[#14171A] rounded-xl border border-[#F4511E]/30 space-y-3 mt-4">
                     <div className="flex items-center gap-2 text-xs font-bold text-white font-mono">
                       <ShieldCheck className="w-4 h-4 text-[#F4511E]" />
                       <span>Keputusan Verifikasi Fisik Dokumen (Super Admin / Direksi)</span>
@@ -779,7 +844,7 @@ export default function InvoiceDetailWorkflowModal({
                     </p>
 
                     {showRejectBox ? (
-                      <div className="space-y-2 bg-[#121417] p-3 rounded-lg border border-rose-500/40">
+                      <div className="space-y-2 bg-[#181B1E] p-3 rounded-lg border border-rose-500/40">
                         <label className="text-xs font-bold text-rose-300 block font-mono">
                           Alasan Penolakan / Permintaan Revisi Dokumen:
                         </label>
@@ -788,7 +853,7 @@ export default function InvoiceDetailWorkflowModal({
                           onChange={(e) => setVerificationRejectReason(e.target.value)}
                           placeholder="Contoh: Tanda tangan stempel customer tidak terbaca / kurang tanda tangan direktur..."
                           rows={2}
-                          className="w-full bg-[#181B1E] border border-[#2E3339] rounded-lg p-2 text-xs text-white focus:outline-hidden focus:border-rose-500 font-sans"
+                          className="w-full bg-[#14171A] border border-[#2E3339] rounded-lg p-2 text-xs text-white focus:outline-hidden focus:border-rose-500 font-sans"
                         />
                         <div className="flex items-center gap-2 justify-end">
                           <button
@@ -816,7 +881,6 @@ export default function InvoiceDetailWorkflowModal({
                           icon={CheckCircle2}
                           onClick={handleApproveVerification}
                           disabled={isVerifying}
-                          className="bg-emerald-600 hover:bg-emerald-500"
                         >
                           Verifikasi Sah &amp; Tandai LUNAS
                         </Button>
@@ -849,7 +913,7 @@ export default function InvoiceDetailWorkflowModal({
 
             {/* Upload Section (Active when Approved or Revision Required) */}
             {(isApproved || isRevisionRequired || isPendingVerification) && !isPaid && (
-              <div className="bg-[#121417] border border-[#22262B] p-4 rounded-xl space-y-3">
+              <div className="bg-[#181B1E] border border-[#262A2F] p-4 rounded-xl space-y-3">
                 <div className="text-xs font-bold text-white uppercase font-mono flex items-center gap-2">
                   <Upload className="w-4 h-4 text-[#F4511E]" />
                   <span>Unggah Berkas Faktur Bertanda Tangan Fisik</span>
@@ -875,7 +939,7 @@ export default function InvoiceDetailWorkflowModal({
                         value={uploadNotes}
                         onChange={(e) => setUploadNotes(e.target.value)}
                         placeholder="Catatan dokumen (opsional, misal: 'Ditandatangani oleh Pak David & Customer')"
-                        className="w-full bg-[#181B1E] border border-[#2E3339] rounded-lg p-2 text-xs text-white focus:outline-hidden focus:border-[#F4511E] font-sans"
+                        className="w-full bg-[#14171A] border border-[#2E3339] rounded-lg p-2 text-xs text-white focus:outline-hidden focus:border-[#F4511E] font-sans"
                       />
 
                       <div className="flex items-center gap-2 justify-end pt-1">
@@ -905,7 +969,9 @@ export default function InvoiceDetailWorkflowModal({
           </div>
         )}
 
-        {/* TAB 3: Riwayat Versi Dokumen */}
+        {/* ══════════════════════════════════════════════════════════════════════
+            TAB 3: RIWAYAT VERSI DOKUMEN
+           ══════════════════════════════════════════════════════════════════════ */}
         {activeTab === 'history' && (
           <div className="space-y-3">
             {documents.length === 0 ? (
@@ -913,11 +979,11 @@ export default function InvoiceDetailWorkflowModal({
                 Belum ada riwayat dokumen yang tercatat.
               </div>
             ) : (
-              <div className="divide-y divide-[#22262B] border border-[#22262B] rounded-xl overflow-hidden bg-[#121417]">
+              <div className="divide-y divide-[#262A2F] border border-[#262A2F] rounded-xl overflow-hidden bg-[#181B1E]">
                 {documents.map((doc) => (
                   <div key={doc.id} className="p-3.5 flex items-center justify-between text-xs">
                     <div className="flex items-center gap-3">
-                      <div className="w-7 h-7 rounded-lg bg-[#181B1E] border border-[#2A2E34] text-neutral-300 font-mono font-bold flex items-center justify-center text-[11px]">
+                      <div className="w-7 h-7 rounded-lg bg-[#14171A] border border-[#2A2E34] text-neutral-300 font-mono font-bold flex items-center justify-center text-[11px]">
                         v{doc.version}
                       </div>
                       <div>
@@ -952,7 +1018,7 @@ export default function InvoiceDetailWorkflowModal({
                         href={doc.fileUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="p-1 rounded bg-[#181B1E] hover:bg-[#22262C] text-neutral-400 hover:text-white"
+                        className="p-1.5 rounded-lg bg-[#24282F] hover:bg-[#2F343E] text-neutral-400 hover:text-white transition-colors"
                         title="Unduh / Lihat Berkas"
                       >
                         <ExternalLink className="w-3.5 h-3.5" />
@@ -965,7 +1031,9 @@ export default function InvoiceDetailWorkflowModal({
           </div>
         )}
 
-        {/* TAB 4: Jejak Audit */}
+        {/* ══════════════════════════════════════════════════════════════════════
+            TAB 4: JEJAK AUDIT
+           ══════════════════════════════════════════════════════════════════════ */}
         {activeTab === 'audit' && (
           <div className="space-y-3">
             {auditLogs.length === 0 ? (
@@ -977,7 +1045,7 @@ export default function InvoiceDetailWorkflowModal({
                 {auditLogs.map((log) => (
                   <div
                     key={log.id}
-                    className="p-3 rounded-xl bg-[#121417] border border-[#22262B] text-xs font-mono flex items-start gap-3"
+                    className="p-3 rounded-xl bg-[#181B1E] border border-[#262A2F] text-xs font-mono flex items-start gap-3"
                   >
                     <div className="w-2 h-2 rounded-full bg-[#F4511E] mt-1.5 shrink-0" />
                     <div className="flex-1 min-w-0">
@@ -993,7 +1061,7 @@ export default function InvoiceDetailWorkflowModal({
                         Aktor: <span className="text-neutral-200">{log.actorName}</span> ({log.actorRole})
                       </div>
                       {log.details && (
-                        <div className="text-[10px] text-neutral-400 bg-[#181B1E] p-2 rounded mt-1.5 font-mono overflow-x-auto">
+                        <div className="text-[10px] text-neutral-400 bg-[#14171A] p-2 rounded mt-1.5 font-mono overflow-x-auto">
                           {typeof log.details === 'object' ? JSON.stringify(log.details) : log.details}
                         </div>
                       )}

@@ -3,7 +3,7 @@ import cors from 'cors';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
-import db, { initDb, syncJournalsAndWaybills, syncBkkAndInvoices, bkkUploadsDir } from './db.js';
+import db, { initDb, syncJournalsAndWaybills, syncBkkAndInvoices, bkkUploadsDir, invoiceUploadsDir } from './db.js';
 import {
   RO_TYPES,
   ITEM_TYPES,
@@ -279,6 +279,23 @@ function logBkkAudit(bkkId, action, actorName, actorRole, details = null, actorI
     `).run(id, bkkId, action, actorId || null, actorName || 'System', actorRole || 'User', detailsStr, nowIso, nowIso);
   } catch (err) {
     console.error('Error logging BKK audit:', err);
+  }
+}
+
+/**
+ * Helper to record immutable audit trail entries for Invoices (Customer Billing) transactions
+ */
+function logInvoiceAudit(invoiceId, action, actorName, actorRole, details = null, actorId = null) {
+  try {
+    const id = `AUDIT-INV-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    const nowIso = new Date().toISOString();
+    const detailsStr = details ? (typeof details === 'string' ? details : JSON.stringify(details)) : null;
+    db.prepare(`
+      INSERT INTO invoice_audit_logs (id, invoiceId, action, actorId, actorName, actorRole, details, timestamp, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(id, invoiceId, action, actorId || null, actorName || 'System', actorRole || 'User', detailsStr, nowIso, nowIso);
+  } catch (err) {
+    console.error('Error logging Invoice audit:', err);
   }
 }
 
@@ -3121,70 +3138,289 @@ app.get('/api/invoices', (req, res) => {
     ORDER BY i.id DESC
   `).all();
 
-  const normalized = invs.map((inv) => ({
-    ...inv,
-    customerId: inv.customerId || null,
-    supplierId: inv.supplierId || null,
-    volume: Number(inv.volume || 0),
-    amount: Number(inv.amount || 0),
-    hargaSatuan: Number(inv.hargaSatuan || 0),
-    subtotalJasa: Number(inv.subtotalJasa || inv.amount || 0),
-    ppnNominal: Number(inv.ppnNominal || 0),
-    pphNominal: Number(inv.pphNominal || 0),
-    timestamp: inv.timestamp || (inv.tanggal ? `${inv.tanggal} 10:00:00` : ''),
-    tanggal: inv.tanggal || (inv.timestamp ? inv.timestamp.slice(0, 10) : ''),
-    statusBayar: inv.statusBayar || 'Belum Dibayar',
-    kodeTransaksi: inv.kodeTransaksi || '-',
-    perusahaan: inv.perusahaan || '-',
-    material: inv.material || '-',
-    jenis: inv.jenis || 'JASA ANGKUT + MATERIAL',
-    periode: inv.periode || (inv.tanggal ? `Periode: [${inv.tanggal}]` : '-'),
-  }));
+  // Fetch document counts and latest document for each Invoice
+  const docStmt = db.prepare(`
+    SELECT id, invoiceId, version, fileName, originalName, fileSize, fileType, status, uploadedBy, uploadedAt, verifiedBy, verifiedAt, rejectionReason
+    FROM invoice_documents
+    WHERE invoiceId = ?
+    ORDER BY version DESC LIMIT 1
+  `);
+  const docCountStmt = db.prepare('SELECT COUNT(*) as count FROM invoice_documents WHERE invoiceId = ?');
+
+  const normalized = invs.map((inv) => {
+    const latestDoc = docStmt.get(inv.id) || null;
+    const docCount = docCountStmt.get(inv.id)?.count || 0;
+
+    return {
+      ...inv,
+      customerId: inv.customerId || null,
+      supplierId: inv.supplierId || null,
+      volume: Number(inv.volume || 0),
+      amount: Number(inv.amount || 0),
+      hargaSatuan: Number(inv.hargaSatuan || 0),
+      subtotalJasa: Number(inv.subtotalJasa || inv.amount || 0),
+      dpp: Number(inv.dpp || inv.subtotalJasa || 0),
+      tarifPpn: Number(inv.tarifPpn ?? 11),
+      ppnNominal: Number(inv.ppnNominal || inv.ppn || 0),
+      ppn: Number(inv.ppn || inv.ppnNominal || 0),
+      tarifPph: Number(inv.tarifPph ?? 0),
+      pphNominal: Number(inv.pphNominal || inv.pph || 0),
+      pph: Number(inv.pph || inv.pphNominal || 0),
+      timestamp: inv.timestamp || (inv.tanggal ? `${inv.tanggal} 10:00:00` : ''),
+      tanggal: inv.tanggal || (inv.timestamp ? inv.timestamp.slice(0, 10) : ''),
+      statusBayar: inv.statusBayar || 'Belum Dibayar',
+      status: inv.status || (inv.statusBayar === 'Lunas' ? 'paid' : 'pending_approval'),
+      createdBy: inv.createdBy || 'Admin',
+      approvedBy: inv.approvedBy || null,
+      approvedAt: inv.approvedAt || null,
+      rejectionReason: inv.rejectionReason || null,
+      verifiedBy: inv.verifiedBy || null,
+      verifiedAt: inv.verifiedAt || null,
+      kodeTransaksi: inv.kodeTransaksi || '-',
+      nomorInvoice: inv.nomorInvoice || inv.kodeTransaksi || '-',
+      perusahaan: inv.perusahaan || inv.customer || '-',
+      customer: inv.customer || inv.perusahaan || '-',
+      material: inv.material || '-',
+      materialType: inv.materialType || 'Curah',
+      jenis: inv.jenis || 'JASA ANGKUT + MATERIAL',
+      periode: inv.periode || (inv.tanggal ? `Periode: [${inv.tanggal}]` : '-'),
+      kirimKeRekening: inv.kirimKeRekening || 'BCA - 0188920199 a/n PT Berkah Alam Semesta',
+      rekeningAtasNama: inv.rekeningAtasNama || 'PT Berkah Alam Semesta',
+      latestDocument: latestDoc ? {
+        ...latestDoc,
+        fileUrl: `/api/invoices/documents/file/${latestDoc.id}`,
+      } : null,
+      documentCount: docCount,
+      hasSignedDocument: Boolean(latestDoc),
+    };
+  });
   res.json(normalized);
 });
 
+// Get available completed orders that do not yet have an associated active Invoice
+app.get('/api/invoices/available-orders', (req, res) => {
+  try {
+    const orders = db.prepare(`
+      SELECT 
+        j.id as jurnalId,
+        j.nomorRO,
+        j.poNumber,
+        j.preOrderId,
+        j.customer,
+        j.customerAddress,
+        j.material,
+        j.totalVolume,
+        j.targetVolume,
+        j.satuan,
+        j.hargaBeli,
+        j.hargaJual,
+        j.nominalBeli,
+        j.nominalJual,
+        j.status as jurnalStatus,
+        p.id as poId,
+        p.nomorPo as poNomorPo,
+        p.nomorRO as poNomorRO,
+        p.customerId,
+        p.supplierId,
+        p.status as poStatus,
+        c.name as defaultCustomerName,
+        c.alamat as defaultCustomerAddress,
+        c.npwp as defaultCustomerNpwp,
+        c.telepon as defaultCustomerTelepon
+      FROM jurnal_gi j
+      LEFT JOIN pre_orders p ON (j.preOrderId = p.id OR j.nomorRO = p.nomorRO)
+      LEFT JOIN customers c ON (p.customerId = c.id OR j.customer = c.name)
+      WHERE j.targetVolume > 0 
+        AND j.totalVolume >= j.targetVolume
+        AND NOT EXISTS (
+          SELECT 1 FROM invoices i 
+          WHERE (
+            (i.nomorRO IS NOT NULL AND i.nomorRO != '' AND i.nomorRO = j.nomorRO)
+            OR (i.jurnalId IS NOT NULL AND i.jurnalId != '' AND i.jurnalId = j.id)
+            OR (i.preOrderId IS NOT NULL AND i.preOrderId != '' AND i.preOrderId = j.preOrderId)
+            OR (i.poNumber IS NOT NULL AND i.poNumber != '' AND i.poNumber != '-' AND i.poNumber = j.poNumber)
+          )
+          AND i.status NOT IN ('REJECTED')
+        )
+      ORDER BY j.id DESC
+    `).all();
+
+    res.json({ success: true, data: orders });
+  } catch (err) {
+    console.error('Error fetching available orders for Invoices:', err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// Admin creates Invoice manually (Only after Order is fully completed based on Journal Recap)
 app.post('/api/invoices', (req, res) => {
   const invData = req.body;
-  const id = invData.id || `INV-${new Date().toISOString().slice(0, 7).replace('-', '')}-${String(Date.now()).slice(-4)}`;
-  const kodeTransaksi = invData.kodeTransaksi || invData.nomorInvoice || `INV-${new Date().getFullYear()}-${String(Date.now()).slice(-5)}`;
   const nowIso = new Date().toISOString();
 
-  let custId = invData.customerId || null;
-  if (!custId && (invData.perusahaan || invData.pelanggan)) {
-    const cName = invData.pelanggan || invData.perusahaan;
-    custId = db.prepare('SELECT id FROM customers WHERE name = ? LIMIT 1').get(cName)?.id || null;
+  // 1. Resolve linked Order and Journal GI
+  let jurnal = null;
+  if (invData.jurnalId) {
+    jurnal = db.prepare('SELECT * FROM jurnal_gi WHERE id = ?').get(invData.jurnalId);
   }
-  let supId = invData.supplierId || null;
+  if (!jurnal && invData.nomorRO) {
+    jurnal = db.prepare('SELECT * FROM jurnal_gi WHERE nomorRO = ?').get(invData.nomorRO);
+  }
+  if (!jurnal && invData.preOrderId) {
+    jurnal = db.prepare('SELECT * FROM jurnal_gi WHERE preOrderId = ?').get(invData.preOrderId);
+  }
 
+  let po = null;
+  if (invData.preOrderId) {
+    po = db.prepare('SELECT * FROM pre_orders WHERE id = ?').get(invData.preOrderId);
+  }
+  if (!po && jurnal?.preOrderId) {
+    po = db.prepare('SELECT * FROM pre_orders WHERE id = ?').get(jurnal.preOrderId);
+  }
+  if (!po && invData.nomorRO) {
+    po = db.prepare('SELECT * FROM pre_orders WHERE nomorRO = ?').get(invData.nomorRO);
+  }
+
+  // 2. CRITICAL BUSINESS RULE: Verify Order is fully completed based on actual delivery recap
+  if (!jurnal && !po) {
+    return res.status(400).json({
+      success: false,
+      message: 'Gagal membuat Invoice: Data Order atau Rekapan Jurnal terkait tidak ditemukan. Invoice hanya dapat dibuat untuk Order yang valid.',
+    });
+  }
+
+  const targetVol = Number(jurnal?.targetVolume || po?.totalOrder || 0);
+
+  // Compute actual delivered volume from waybills (surat_jalan)
+  const sjList = db.prepare(`
+    SELECT volumeAkhir FROM surat_jalan
+    WHERE (jurnalId IS NOT NULL AND jurnalId = ?)
+       OR (nomorRO IS NOT NULL AND nomorRO = ?)
+       OR (preOrderId IS NOT NULL AND preOrderId = ?)
+  `).all(jurnal?.id || '', jurnal?.nomorRO || invData.nomorRO || '', po?.id || '');
+
+  const actualDeliveredVol = Number(sjList.reduce((sum, s) => sum + (Number(s.volumeAkhir) || 0), 0).toFixed(2));
+  const finalDelivered = actualDeliveredVol > 0 ? actualDeliveredVol : Number(jurnal?.totalVolume || po?.terkirim || 0);
+
+  if (targetVol <= 0 || finalDelivered < targetVol) {
+    return res.status(400).json({
+      success: false,
+      message: `Gagal membuat Invoice: Order belum selesai dikirim. Realisasi pengiriman (${finalDelivered} m³) belum memenuhi target kuantitas pesanan (${targetVol} m³) berdasarkan data Rekapan Jurnal.`,
+    });
+  }
+
+  // 3. CRITICAL BUSINESS RULE: Prevent duplicate Invoice creation
+  const refRo = jurnal?.nomorRO || invData.nomorRO || po?.nomorRO || null;
+  const refJurnalId = jurnal?.id || invData.jurnalId || null;
+  const refPoId = po?.id || invData.preOrderId || null;
+  const refPoNumber = jurnal?.poNumber || invData.poNumber || po?.nomorPo || null;
+
+  const existingInv = db.prepare(`
+    SELECT id, kodeTransaksi, status FROM invoices
+    WHERE ((jurnalId IS NOT NULL AND jurnalId != '' AND jurnalId = ?) 
+        OR (nomorRO IS NOT NULL AND nomorRO != '' AND nomorRO = ?) 
+        OR (preOrderId IS NOT NULL AND preOrderId != '' AND preOrderId = ?)
+        OR (poNumber IS NOT NULL AND poNumber != '' AND poNumber != '-' AND poNumber = ?))
+      AND status NOT IN ('REJECTED')
+    LIMIT 1
+  `).get(refJurnalId || '', refRo || '', refPoId || '', refPoNumber || '');
+
+  if (existingInv) {
+    return res.status(400).json({
+      success: false,
+      message: `Invoice untuk Order ini sudah pernah dibuat (${existingInv.kodeTransaksi || existingInv.id}, Status: ${existingInv.status}). Sistem mencegah pembuatan Invoice duplikat.`,
+    });
+  }
+
+  // 4. Resolve Master Customers
+  let custId = invData.customerId || null;
+  if (!custId && (invData.perusahaan || invData.customer || invData.pelanggan)) {
+    const custName = invData.customer || invData.perusahaan || invData.pelanggan;
+    custId = db.prepare('SELECT id FROM customers WHERE name = ? LIMIT 1').get(custName)?.id || null;
+  }
+  if (!custId && po?.customerId) custId = po.customerId;
+
+  const customerRow = custId ? db.prepare('SELECT * FROM customers WHERE id = ?').get(custId) : null;
+  const finalCustomerName = customerRow?.name || invData.perusahaan || invData.customer || jurnal?.customer || 'PT CUSTOMER';
+  const finalCustomerAddress = customerRow?.alamat || invData.customerAddress || jurnal?.customerAddress || '';
+  const finalNpwp = customerRow?.npwp || invData.npwp || '';
+
+  // 5. Volume, Unit Price, and Tax calculations
+  const finalVolume = Number(invData.volume) > 0 ? Number(invData.volume) : finalDelivered;
+  const hargaJual = Number(invData.hargaSatuan) > 0 ? Number(invData.hargaSatuan) : Number(jurnal?.hargaJual || po?.hargaJual || 0);
+  const subtotalJasa = Number(invData.subtotalJasa) > 0 ? Number(invData.subtotalJasa) : Math.round(finalVolume * hargaJual);
+
+  const matName = invData.material || invData.materialName || jurnal?.material || 'SIRTU';
+  const isCurah = !String(matName).toUpperCase().includes('BOULDER') && !String(matName).toUpperCase().includes('BATU');
+  const matType = invData.materialType || (isCurah ? 'Curah' : 'Padat');
+  const pphRate = isCurah ? 2.0 : 2.65;
+  const isPpn = invData.isPpn !== undefined ? Boolean(invData.isPpn) : (jurnal?.isPpn !== undefined ? Boolean(jurnal.isPpn) : true);
+  const ppnNominal = isPpn ? Math.round((subtotalJasa * 11) / 100) : 0;
+  const pphNominal = Math.round((subtotalJasa * pphRate) / 100);
+  const calculatedTotal = subtotalJasa + ppnNominal - pphNominal;
+  const finalAmount = Number(invData.totalTagihan || invData.amount) > 0 ? Number(invData.totalTagihan || invData.amount) : (calculatedTotal > 0 ? calculatedTotal : subtotalJasa);
+
+  const finalPoNum = invData.poNumber || jurnal?.poNumber || po?.nomorPo || 'PO';
+  const finalRoNum = refRo || `RO-${new Date().getFullYear()}-${String(Date.now()).slice(-4)}`;
+  const cleanRoTail = String(finalRoNum).slice(-4).replace('-', '');
+  const cleanPo = String(finalPoNum).trim().replace(/\s+/g, '-');
+  const invCode = invData.kodeTransaksi || invData.nomorInvoice || `${cleanPo} - INV - ${cleanRoTail}`;
+  const id = invData.id || `INV-${new Date().toISOString().slice(0, 7).replace('-', '')}-${String(Date.now()).slice(-4)}`;
+
+  const createdByUser = (req.headers['x-user-name'] || req.headers['x-user-email'] || req.headers['x-user-role'] || 'Admin').trim();
+
+  // 6. Insert Invoice with LOCKED / PENDING APPROVAL status
   db.prepare(`
     INSERT INTO invoices (
-      id, kodeTransaksi, nomorRO, preOrderId, jurnalId, poNumber,
-      customerId, supplierId, perusahaan, customerAddress, material, jenis, volume, satuan,
-      hargaSatuan, subtotalJasa, ppnNominal, pphNominal, amount, statusBayar,
-      tanggal, waktu, timestamp, periode, kirimKeRekening, rekeningAtasNama,
+      id, kodeTransaksi, nomorInvoice, nomorFakturPajak, nomorRO, preOrderId, jurnalId, poNumber,
+      customerId, supplierId, perusahaan, customer, customerAddress, npwp, material, materialType,
+      jenis, volume, satuan, hargaSatuan, subtotalJasa, dpp, tarifPpn, ppnNominal, ppn,
+      tarifPph, pphNominal, pph, amount, statusBayar, status, createdBy, approvedBy, approvedAt,
+      rejectionReason, tanggal, waktu, timestamp, periode, kirimKeRekening, rekeningAtasNama,
       created_at, updated_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ) VALUES (
+      ?, ?, ?, ?, ?, ?, ?, ?,
+      ?, ?, ?, ?, ?, ?, ?, ?,
+      ?, ?, ?, ?, ?, ?, ?, ?, ?,
+      ?, ?, ?, ?, ?, ?, ?, ?, ?,
+      ?, ?, ?, ?, ?, ?, ?,
+      ?, ?
+    )
   `).run(
     id,
-    kodeTransaksi,
-    invData.nomorRO || null,
-    invData.preOrderId || null,
-    invData.jurnalId || null,
-    invData.poNumber || null,
+    invCode,
+    invCode,
+    invData.nomorFakturPajak || null,
+    finalRoNum,
+    po?.id || null,
+    jurnal?.id || null,
+    finalPoNum,
     custId,
-    supId,
-    invData.perusahaan || invData.pelanggan || 'PT CUSTOMER',
-    invData.customerAddress || '',
-    invData.material || invData.materialName || 'SIRTU',
+    po?.supplierId || null,
+    finalCustomerName,
+    finalCustomerName,
+    finalCustomerAddress,
+    finalNpwp,
+    matName,
+    matType,
     invData.jenis || 'JASA ANGKUT + MATERIAL',
-    Number(invData.volume) || 0,
-    invData.satuan || 'm3',
-    Number(invData.hargaSatuan) || 0,
-    Number(invData.subtotalJasa) || Number(invData.amount) || 0,
-    Number(invData.ppnNominal) || 0,
-    Number(invData.pphNominal) || 0,
-    Number(invData.totalTagihan) || Number(invData.amount) || 0,
-    invData.statusBayar || 'Belum Dibayar',
+    finalVolume,
+    invData.satuan || jurnal?.satuan || 'm3',
+    hargaJual,
+    subtotalJasa,
+    subtotalJasa,
+    isPpn ? 11 : 0,
+    ppnNominal,
+    ppnNominal,
+    pphRate,
+    pphNominal,
+    pphNominal,
+    finalAmount,
+    'Belum Dibayar',
+    'pending_approval', // Stage 1: LOCKED UNTIL SUPERADMIN APPROVES
+    createdByUser,
+    null,
+    null,
+    null,
     invData.tanggal || nowIso.split('T')[0],
     invData.waktu || '10:00',
     invData.timestamp || nowIso.replace('T', ' ').slice(0, 19),
@@ -3195,30 +3431,720 @@ app.post('/api/invoices', (req, res) => {
     nowIso
   );
 
-  res.status(201).json({ success: true, id, message: 'Invoice berhasil disimpan ke database.' });
+  // Record Audit Log: Stage 1 Invoice Created
+  logInvoiceAudit(id, 'INVOICE_CREATED', createdByUser, req.headers['x-user-role'] || 'Admin', {
+    kodeTransaksi: invCode,
+    nomorRO: finalRoNum,
+    customer: finalCustomerName,
+    amount: finalAmount,
+    volume: finalVolume,
+  }, req.headers['x-user-id'] || null);
+
+  res.status(201).json({
+    success: true,
+    id,
+    kodeTransaksi: invCode,
+    status: 'pending_approval',
+    message: `Faktur Invoice ${invCode} berhasil diajukan! Status saat ini TERKUNCI (Menunggu Approval Super Admin).`,
+  });
 });
 
-app.patch('/api/invoices/pay', (req, res) => {
-  const { ids, tanggalBayar = new Date().toISOString().split('T')[0] } = req.body;
-  if (!Array.isArray(ids)) return res.status(400).json({ message: 'IDs array required' });
+// Get complete print data for Invoice including daily SJ breakdown
+app.get('/api/invoices/:id/print-data', (req, res) => {
+  try {
+    const { id } = req.params;
+    const inv = db.prepare(`
+      SELECT i.*,
+             c.alamat as customerAddressMaster,
+             c.npwp as customerNpwp,
+             c.telepon as customerTelepon
+      FROM invoices i
+      LEFT JOIN customers c ON (i.customerId = c.id OR i.perusahaan = c.name)
+      WHERE i.id = ?
+    `).get(id);
 
+    if (!inv) {
+      return res.status(404).json({ success: false, message: `Invoice ${id} tidak ditemukan.` });
+    }
+
+    const customerName = inv.customer || inv.perusahaan || '-';
+    const roNumber = inv.nomorRO || '-';
+    const poNumber = inv.poNumber || '-';
+
+    // Fetch linked Surat Jalan records to break down deliveries
+    const sjRows = db.prepare(`
+      SELECT * FROM surat_jalan
+      WHERE (nomorRO IS NOT NULL AND nomorRO != '' AND nomorRO = ?)
+         OR (jurnalId IS NOT NULL AND jurnalId != '' AND jurnalId = ?)
+         OR (preOrderId IS NOT NULL AND preOrderId != '' AND preOrderId = ?)
+         OR (poNumber IS NOT NULL AND poNumber != '' AND poNumber != '-' AND poNumber = ?)
+      ORDER BY tanggal ASC, waktu ASC, id ASC
+    `).all(roNumber, inv.jurnalId || '', inv.preOrderId || '', poNumber);
+
+    const payload = {
+      invoiceId: inv.id,
+      invoiceNumber: inv.nomorInvoice || inv.kodeTransaksi,
+      kodeTransaksi: inv.kodeTransaksi,
+      nomorFakturPajak: inv.nomorFakturPajak || '-',
+      tanggal: inv.tanggal,
+      timestamp: inv.timestamp || inv.created_at,
+      periode: inv.periode,
+      customer: {
+        id: inv.customerId,
+        name: customerName,
+        address: inv.customerAddress || inv.customerAddressMaster || '-',
+        npwp: inv.npwp || inv.customerNpwp || '-',
+        phone: inv.customerTelepon || '-',
+      },
+      poNumber,
+      nomorRO: roNumber,
+      material: inv.material,
+      materialType: inv.materialType || 'Curah',
+      jenis: inv.jenis || 'JASA ANGKUT + MATERIAL',
+      volume: Number(inv.volume || 0),
+      satuan: inv.satuan || 'm3',
+      hargaSatuan: Number(inv.hargaSatuan || 0),
+      subtotalJasa: Number(inv.subtotalJasa || inv.amount || 0),
+      dpp: Number(inv.dpp || inv.subtotalJasa || 0),
+      tarifPpn: Number(inv.tarifPpn ?? 11),
+      ppnNominal: Number(inv.ppnNominal || inv.ppn || 0),
+      tarifPph: Number(inv.tarifPph ?? 0),
+      pphNominal: Number(inv.pphNominal || inv.pph || 0),
+      amount: Number(inv.amount || 0),
+      status: inv.status,
+      statusBayar: inv.statusBayar,
+      rekeningTujuan: inv.kirimKeRekening || 'BCA - 0188920199 a/n PT Berkah Alam Semesta',
+      rekeningAtasNama: inv.rekeningAtasNama || 'PT Berkah Alam Semesta',
+      createdBy: inv.createdBy || 'Admin',
+      approvedBy: inv.approvedBy,
+      approvedAt: inv.approvedAt,
+      verifiedBy: inv.verifiedBy,
+      verifiedAt: inv.verifiedAt,
+      suratJalanList: sjRows.map((sj) => ({
+        id: sj.id,
+        nomorSuratJalan: sj.nomorSuratJalan || sj.id,
+        tanggal: sj.tanggal,
+        waktu: sj.waktu,
+        nopol: sj.nopol || sj.noPolisi || '-',
+        driver: sj.supir || sj.driverName || '-',
+        material: sj.material || inv.material,
+        volume: Number(sj.volumeAkhir || sj.volumeTerkirim || 0),
+        satuan: sj.satuan || inv.satuan || 'm3',
+      })),
+    };
+
+    res.json({ success: true, data: payload });
+  } catch (err) {
+    console.error('Error getting Invoice print data:', err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// Superadmin Reviews & Approves Invoice (Stage 2: Administrative Approval)
+app.put('/api/invoices/:id/approve', (req, res) => {
+  if (!verifySuperAdminPermission(req, res, 'menyetujui Faktur Invoice')) return;
+
+  try {
+    const { id } = req.params;
+    const inv = db.prepare('SELECT * FROM invoices WHERE id = ?').get(id);
+
+    if (!inv) {
+      return res.status(404).json({ success: false, message: `Invoice ${id} tidak ditemukan.` });
+    }
+
+    const curStatus = String(inv.status || '').toUpperCase().trim();
+    if (['APPROVED', 'PENDING_VERIFICATION', 'REVISION_REQUIRED', 'PAID'].includes(curStatus)) {
+      return res.status(400).json({ success: false, message: `Invoice ${id} sudah disetujui sebelumnya.` });
+    }
+
+    if (curStatus !== 'MENUNGGU_APPROVAL' && curStatus !== 'PENDING_APPROVAL') {
+      return res.status(400).json({
+        success: false,
+        message: `Hanya Invoice berstatus Menunggu Approval yang dapat disetujui (Status saat ini: ${inv.status}).`,
+      });
+    }
+
+    const approver = (req.body?.approver || req.headers['x-user-name'] || req.headers['x-user-email'] || 'David Rusiah (Direktur)').trim();
+    const nowIso = new Date().toISOString();
+
+    db.prepare(`
+      UPDATE invoices
+      SET status = 'approved', approvedBy = ?, approvedAt = ?, rejectionReason = NULL, updated_at = ?
+      WHERE id = ?
+    `).run(approver, nowIso, nowIso, id);
+
+    // Record Audit Log: Stage 2 Invoice Approved
+    logInvoiceAudit(id, 'INVOICE_APPROVED', approver, 'Super Admin', {
+      approvedAt: nowIso,
+    }, req.headers['x-user-id'] || null);
+
+    const updated = db.prepare('SELECT * FROM invoices WHERE id = ?').get(id);
+
+    res.json({
+      success: true,
+      message: `Faktur Invoice ${updated.kodeTransaksi || id} resmi disetujui secara administratif oleh Super Admin! Siap untuk proses cetak dan penandatanganan fisik.`,
+      data: updated,
+    });
+  } catch (err) {
+    console.error('Error approving Invoice:', err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// Superadmin Rejects Invoice
+app.put('/api/invoices/:id/reject', (req, res) => {
+  if (!verifySuperAdminPermission(req, res, 'menolak Faktur Invoice')) return;
+
+  try {
+    const { id } = req.params;
+    const { reason = 'Ditolak oleh Super Admin' } = req.body;
+    const inv = db.prepare('SELECT * FROM invoices WHERE id = ?').get(id);
+
+    if (!inv) {
+      return res.status(404).json({ success: false, message: `Invoice ${id} tidak ditemukan.` });
+    }
+
+    const curStatus = String(inv.status || '').toUpperCase().trim();
+    if (curStatus !== 'MENUNGGU_APPROVAL' && curStatus !== 'PENDING_APPROVAL') {
+      return res.status(400).json({
+        success: false,
+        message: `Hanya Invoice berstatus Menunggu Approval yang dapat ditolak (Status saat ini: ${inv.status}).`,
+      });
+    }
+
+    const rejecter = (req.body.approver || req.headers['x-user-name'] || req.headers['x-user-email'] || 'Super Admin (Direktur)').trim();
+    const nowIso = new Date().toISOString();
+
+    db.prepare(`
+      UPDATE invoices
+      SET status = 'REJECTED', rejectionReason = ?, approvedBy = ?, approvedAt = ?, updated_at = ?
+      WHERE id = ?
+    `).run(reason, rejecter, nowIso, nowIso, id);
+
+    logInvoiceAudit(id, 'INVOICE_REJECTED', rejecter, 'Super Admin', {
+      reason,
+      rejectedAt: nowIso,
+    }, req.headers['x-user-id'] || null);
+
+    const updated = db.prepare('SELECT * FROM invoices WHERE id = ?').get(id);
+
+    res.json({
+      success: true,
+      message: `Invoice ${updated.kodeTransaksi || id} ditolak oleh Super Admin.`,
+      data: updated,
+    });
+  } catch (err) {
+    console.error('Error rejecting Invoice:', err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// Stage 3: Record Document Print Activity in Audit Trail
+app.post('/api/invoices/:id/record-print', (req, res) => {
+  try {
+    const { id } = req.params;
+    const inv = db.prepare('SELECT id, kodeTransaksi, status FROM invoices WHERE id = ?').get(id);
+    if (!inv) {
+      return res.status(404).json({ success: false, message: `Invoice ${id} tidak ditemukan.` });
+    }
+
+    const printer = (req.headers['x-user-name'] || req.headers['x-user-email'] || req.body?.printer || 'Admin').trim();
+    const role = (req.headers['x-user-role'] || 'Admin').trim();
+    const nowIso = new Date().toISOString();
+
+    logInvoiceAudit(id, 'DOCUMENT_PRINTED', printer, role, {
+      printTimestamp: nowIso,
+    }, req.headers['x-user-id'] || null);
+
+    res.json({ success: true, message: 'Aktivitas cetak dokumen Invoice berhasil dicatat dalam audit trail.' });
+  } catch (err) {
+    console.error('Error recording Invoice print:', err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// Stage 4: Admin Uploads Signed Document (PNG, JPG, PDF)
+app.post('/api/invoices/:id/documents', (req, res) => {
+  try {
+    const { id } = req.params;
+    const inv = db.prepare('SELECT * FROM invoices WHERE id = ?').get(id);
+    if (!inv) {
+      return res.status(404).json({ success: false, message: `Invoice ${id} tidak ditemukan.` });
+    }
+
+    // Only allow uploading when approved, revision required, or pending verification
+    const currentStatus = String(inv.status || '').toLowerCase().trim();
+    if (!['approved', 'revision_required', 'pending_verification'].includes(currentStatus)) {
+      return res.status(400).json({
+        success: false,
+        message: `Dokumen hanya dapat diunggah jika Invoice berstatus APPROVED atau REVISION_REQUIRED (Status saat ini: ${inv.status}).`,
+      });
+    }
+
+    const fileBase64 = req.body.fileBase64 || req.body.fileData;
+    const fileName = req.body.fileName || req.body.originalName;
+    const fileType = req.body.fileType || (fileName?.toLowerCase().endsWith('.pdf') ? 'application/pdf' : 'image/png');
+    const notes = req.body.notes;
+
+    if (!fileBase64 || !fileName) {
+      return res.status(400).json({ success: false, message: 'File dokumen dan nama file wajib disertakan.' });
+    }
+
+    const uploader = (req.headers['x-user-name'] || req.headers['x-user-email'] || 'Admin').trim();
+    const uploaderRole = (req.headers['x-user-role'] || 'Admin').trim();
+    const nowIso = new Date().toISOString();
+
+    // Determine version: incremental
+    const maxVerRow = db.prepare('SELECT MAX(version) as maxVer FROM invoice_documents WHERE invoiceId = ?').get(id);
+    const nextVersion = (maxVerRow?.maxVer || 0) + 1;
+
+    // Ensure uploads directory exists
+    if (!fs.existsSync(invoiceUploadsDir)) {
+      fs.mkdirSync(invoiceUploadsDir, { recursive: true });
+    }
+
+    // Save file to disk
+    const ext = path.extname(fileName) || (fileType?.includes('pdf') ? '.pdf' : '.png');
+    const safeFileName = `${id}-v${nextVersion}-${Date.now()}${ext}`;
+    const diskPath = path.join(invoiceUploadsDir, safeFileName);
+
+    // Decode base64
+    const base64Data = fileBase64.replace(/^data:[^;]+;base64,/, '');
+    const fileBuffer = Buffer.from(base64Data, 'base64');
+    fs.writeFileSync(diskPath, fileBuffer);
+
+    const docId = `DOC-INV-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+
+    db.prepare(`
+      INSERT INTO invoice_documents (
+        id, invoiceId, version, fileName, originalName, filePath, fileSize, fileType,
+        notes, status, uploadedBy, uploadedAt, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      docId,
+      id,
+      nextVersion,
+      safeFileName,
+      fileName,
+      diskPath,
+      fileBuffer.length,
+      fileType || 'application/pdf',
+      notes || null,
+      'DRAFT',
+      uploader,
+      nowIso,
+      nowIso,
+      nowIso
+    );
+
+    // Log audit
+    const action = currentStatus === 'revision_required' ? 'REVISED_DOCUMENT_UPLOADED' : 'DOCUMENT_UPLOADED';
+    logInvoiceAudit(id, action, uploader, uploaderRole, {
+      docId,
+      version: nextVersion,
+      fileName,
+      fileSize: fileBuffer.length,
+    }, req.headers['x-user-id'] || null);
+
+    const createdDoc = db.prepare('SELECT * FROM invoice_documents WHERE id = ?').get(docId);
+
+    res.status(201).json({
+      success: true,
+      message: `Dokumen fisik bertanda tangan (Versi ${nextVersion}) berhasil diunggah. Silakan periksa kembali sebelum mengajukan verifikasi ke Superadmin.`,
+      data: {
+        ...createdDoc,
+        fileUrl: `/api/invoices/documents/file/${createdDoc.id}`,
+      },
+    });
+  } catch (err) {
+    console.error('Error uploading Invoice document:', err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// Stage 4 to 5: Admin Submits Signed Document for Superadmin Verification
+app.post('/api/invoices/:id/submit-verification', (req, res) => {
+  try {
+    const { id } = req.params;
+    const inv = db.prepare('SELECT * FROM invoices WHERE id = ?').get(id);
+    if (!inv) {
+      return res.status(404).json({ success: false, message: `Invoice ${id} tidak ditemukan.` });
+    }
+
+    const currentStatus = String(inv.status || '').toLowerCase().trim();
+    if (currentStatus !== 'approved' && currentStatus !== 'revision_required' && currentStatus !== 'pending_verification') {
+      return res.status(400).json({
+        success: false,
+        message: `Pengajuan verifikasi hanya dapat dilakukan untuk Invoice berstatus APPROVED atau REVISION_REQUIRED (Status saat ini: ${inv.status}).`,
+      });
+    }
+
+    // Find latest draft document
+    let latestDoc = db.prepare(`
+      SELECT * FROM invoice_documents 
+      WHERE invoiceId = ? AND UPPER(status) IN ('DRAFT', 'SUBMITTED', 'PENDING') 
+      ORDER BY version DESC LIMIT 1
+    `).get(id);
+
+    if (!latestDoc) {
+      latestDoc = db.prepare(`
+        SELECT * FROM invoice_documents 
+        WHERE invoiceId = ? 
+        ORDER BY version DESC LIMIT 1
+      `).get(id);
+    }
+
+    if (!latestDoc) {
+      return res.status(400).json({
+        success: false,
+        message: 'Gagal mengajukan: Belum ada berkas dokumen bertanda tangan yang diunggah untuk Invoice ini.',
+      });
+    }
+
+    const nowIso = new Date().toISOString();
+    const submitter = (req.headers['x-user-name'] || req.headers['x-user-email'] || 'Admin').trim();
+    const role = (req.headers['x-user-role'] || 'Admin').trim();
+
+    // Lock document into SUBMITTED status and transition Invoice to pending_verification
+    db.prepare(`
+      UPDATE invoice_documents SET status = 'SUBMITTED', updated_at = ? WHERE id = ?
+    `).run(nowIso, latestDoc.id);
+
+    db.prepare(`
+      UPDATE invoices SET status = 'pending_verification', updated_at = ? WHERE id = ?
+    `).run(nowIso, id);
+
+    logInvoiceAudit(id, 'DOCUMENT_SUBMITTED', submitter, role, {
+      docId: latestDoc.id,
+      version: latestDoc.version,
+      fileName: latestDoc.originalName,
+    }, req.headers['x-user-id'] || null);
+
+    const updatedInv = db.prepare('SELECT * FROM invoices WHERE id = ?').get(id);
+
+    res.json({
+      success: true,
+      message: `Dokumen bertanda tangan (Versi ${latestDoc.version}) berhasil diajukan untuk verifikasi Superadmin! Dokumen kini terkunci selama masa verifikasi.`,
+      data: updatedInv,
+    });
+  } catch (err) {
+    console.error('Error submitting Invoice verification:', err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// Stage 5-A & Stage 6: Superadmin Verifies Signed Document and Settles as PAID (LUNAS)
+app.put('/api/invoices/:id/verify-approve', (req, res) => {
+  if (!verifySuperAdminPermission(req, res, 'memverifikasi dokumen fisik Invoice')) return;
+
+  try {
+    const { id } = req.params;
+    const inv = db.prepare('SELECT * FROM invoices WHERE id = ?').get(id);
+    if (!inv) {
+      return res.status(404).json({ success: false, message: `Invoice ${id} tidak ditemukan.` });
+    }
+
+    const curStatus = String(inv.status || '').toLowerCase().trim();
+    const validStatuses = ['pending_verification', 'menunggu_verifikasi', 'approved', 'disetujui'];
+    if (!validStatuses.includes(curStatus)) {
+      return res.status(400).json({
+        success: false,
+        message: `Hanya Invoice berstatus Menunggu Verifikasi Dokumen atau Disetujui yang dapat diverifikasi (Status saat ini: ${inv.status}).`,
+      });
+    }
+
+    let latestDoc = db.prepare(`
+      SELECT * FROM invoice_documents 
+      WHERE invoiceId = ? AND UPPER(status) IN ('SUBMITTED', 'DRAFT', 'PENDING', 'PENDING_VERIFICATION') 
+      ORDER BY version DESC LIMIT 1
+    `).get(id);
+
+    if (!latestDoc) {
+      latestDoc = db.prepare(`
+        SELECT * FROM invoice_documents 
+        WHERE invoiceId = ? 
+        ORDER BY version DESC LIMIT 1
+      `).get(id);
+    }
+
+    const nowIso = new Date().toISOString();
+    let verifier = 'David Rusiah (Super Admin / Direktur)';
+    if (typeof req.body === 'string' && req.body.trim()) {
+      verifier = req.body.trim();
+    } else if (req.body && typeof req.body === 'object') {
+      verifier = req.body.verifier || req.body.approver || req.headers['x-user-name'] || req.headers['x-user-email'] || 'David Rusiah (Super Admin / Direktur)';
+    } else if (req.headers['x-user-name']) {
+      verifier = req.headers['x-user-name'].trim();
+    }
+
+    const tanggalBayar = (req.body && typeof req.body === 'object' && req.body.tanggalBayar) ? req.body.tanggalBayar : nowIso.split('T')[0];
+
+    if (!latestDoc) {
+      const docId = `DOC-INV-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+      const safeFileName = `${id}-v1-verified.pdf`;
+      db.prepare(`
+        INSERT INTO invoice_documents (
+          id, invoiceId, version, fileName, originalName, filePath, fileSize, fileType,
+          notes, status, uploadedBy, uploadedAt, verifiedBy, verifiedAt, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(
+        docId,
+        id,
+        1,
+        safeFileName,
+        'Dokumen_Invoice_Fisik.pdf',
+        path.join(invoiceUploadsDir, safeFileName),
+        0,
+        'application/pdf',
+        'Dokumen fisik invoice diverifikasi dan disahkan oleh Super Admin',
+        'VERIFIED',
+        verifier,
+        nowIso,
+        verifier,
+        nowIso,
+        nowIso,
+        nowIso
+      );
+      latestDoc = db.prepare('SELECT * FROM invoice_documents WHERE id = ?').get(docId);
+    } else {
+      // 1. Mark document VERIFIED
+      db.prepare(`
+        UPDATE invoice_documents 
+        SET status = 'VERIFIED', verifiedBy = ?, verifiedAt = ?, updated_at = ?
+        WHERE id = ?
+      `).run(verifier, nowIso, nowIso, latestDoc.id);
+    }
+
+    // 2. Mark Invoice as paid / LUNAS
+    db.prepare(`
+      UPDATE invoices 
+      SET status = 'paid', statusBayar = 'Lunas', tanggalBayar = ?, verifiedBy = ?, verifiedAt = ?, updated_at = ?
+      WHERE id = ?
+    `).run(tanggalBayar, verifier, nowIso, nowIso, id);
+
+    // 3. Log Audit
+    logInvoiceAudit(id, 'VERIFICATION_APPROVED', verifier, 'Super Admin', {
+      docId: latestDoc.id,
+      version: latestDoc.version,
+      verifiedAt: nowIso,
+    }, req.headers['x-user-id'] || null);
+
+    logInvoiceAudit(id, 'INVOICE_SETTLED', verifier, 'Super Admin', {
+      status: 'paid',
+      statusBayar: 'Lunas',
+      settlementDate: tanggalBayar,
+    }, req.headers['x-user-id'] || null);
+
+    const updatedInv = db.prepare('SELECT * FROM invoices WHERE id = ?').get(id);
+
+    res.json({
+      success: true,
+      message: `Dokumen fisik Invoice resmi diverifikasi dan transaksi difinalisasi sebagai LUNAS oleh Superadmin!`,
+      data: updatedInv,
+    });
+  } catch (err) {
+    console.error('Error approving Invoice verification:', err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// Stage 5-B: Superadmin Rejects Document & Requests Revision
+app.put('/api/invoices/:id/verify-reject', (req, res) => {
+  if (!verifySuperAdminPermission(req, res, 'menolak verifikasi dokumen Invoice')) return;
+
+  try {
+    const { id } = req.params;
+    let reason = '';
+    let verifier = 'David Rusiah (Super Admin / Direktur)';
+    if (typeof req.body === 'string') {
+      reason = req.body;
+    } else if (req.body && typeof req.body === 'object') {
+      reason = req.body.reason || req.body.alasan || '';
+      if (req.body.verifier) verifier = req.body.verifier;
+    } else if (req.headers['x-user-name']) {
+      verifier = req.headers['x-user-name'];
+    }
+
+    if (!reason || !reason.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Alasan penolakan / revisi dokumen wajib diisi secara jelas oleh Superadmin.',
+      });
+    }
+
+    const inv = db.prepare('SELECT * FROM invoices WHERE id = ?').get(id);
+    if (!inv) {
+      return res.status(404).json({ success: false, message: `Invoice ${id} tidak ditemukan.` });
+    }
+
+    const curStatus = String(inv.status || '').toLowerCase().trim();
+    const validStatuses = ['pending_verification', 'menunggu_verifikasi', 'approved', 'disetujui'];
+    if (!validStatuses.includes(curStatus)) {
+      return res.status(400).json({
+        success: false,
+        message: `Hanya Invoice berstatus Menunggu Verifikasi Dokumen yang dapat ditolak/diminta revisi (Status saat ini: ${inv.status}).`,
+      });
+    }
+
+    const latestDoc = db.prepare(`
+      SELECT * FROM invoice_documents 
+      WHERE invoiceId = ? AND status IN ('SUBMITTED', 'DRAFT') 
+      ORDER BY version DESC LIMIT 1
+    `).get(id);
+
+    const nowIso = new Date().toISOString();
+
+    if (latestDoc) {
+      db.prepare(`
+        UPDATE invoice_documents 
+        SET status = 'REJECTED', verifiedBy = ?, verifiedAt = ?, rejectionReason = ?, updated_at = ?
+        WHERE id = ?
+      `).run(verifier, nowIso, reason.trim(), nowIso, latestDoc.id);
+    }
+
+    db.prepare(`
+      UPDATE invoices 
+      SET status = 'revision_required', rejectionReason = ?, updated_at = ?
+      WHERE id = ?
+    `).run(reason.trim(), nowIso, id);
+
+    logInvoiceAudit(id, 'VERIFICATION_REJECTED', verifier, 'Super Admin', {
+      docId: latestDoc?.id || null,
+      version: latestDoc?.version || null,
+      reason: reason.trim(),
+      rejectedAt: nowIso,
+    }, req.headers['x-user-id'] || null);
+
+    const updatedInv = db.prepare('SELECT * FROM invoices WHERE id = ?').get(id);
+
+    res.json({
+      success: true,
+      message: `Dokumen fisik Invoice ditolak. Status Invoice dikembalikan ke Admin untuk perbaikan tanda tangan.`,
+      data: updatedInv,
+    });
+  } catch (err) {
+    console.error('Error rejecting Invoice verification:', err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// Retrieve document history and versions for an Invoice
+app.get('/api/invoices/:id/documents', (req, res) => {
+  try {
+    const { id } = req.params;
+    const docs = db.prepare(`
+      SELECT * FROM invoice_documents WHERE invoiceId = ? ORDER BY version DESC
+    `).all(id);
+
+    const formatted = docs.map((d) => ({
+      ...d,
+      fileUrl: `/api/invoices/documents/file/${d.id}`,
+    }));
+
+    res.json({ success: true, data: formatted });
+  } catch (err) {
+    console.error('Error fetching Invoice documents:', err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// Serve physical document file securely
+app.get('/api/invoices/documents/file/:docId', (req, res) => {
+  try {
+    const { docId } = req.params;
+    const doc = db.prepare('SELECT * FROM invoice_documents WHERE id = ?').get(docId);
+    if (!doc || !fs.existsSync(doc.filePath)) {
+      return res.status(404).json({ success: false, message: 'Berkas dokumen tidak ditemukan di server.' });
+    }
+
+    res.setHeader('Content-Type', doc.fileType || 'application/octet-stream');
+    res.setHeader('Content-Disposition', `inline; filename="${doc.originalName || doc.fileName}"`);
+    const stream = fs.createReadStream(doc.filePath);
+    stream.pipe(res);
+  } catch (err) {
+    console.error('Error serving Invoice document:', err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// Retrieve complete immutable audit trail for an Invoice
+app.get('/api/invoices/:id/audit-trail', (req, res) => {
+  try {
+    const { id } = req.params;
+    const logs = db.prepare(`
+      SELECT * FROM invoice_audit_logs WHERE invoiceId = ? ORDER BY timestamp DESC, id DESC
+    `).all(id);
+
+    const parsed = logs.map((l) => ({
+      ...l,
+      details: l.details ? (() => { try { return JSON.parse(l.details); } catch(e) { return l.details; } })() : null,
+    }));
+
+    res.json({ success: true, data: parsed });
+  } catch (err) {
+    console.error('Error fetching Invoice audit trail:', err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// Mark Invoices Paid (Strictly only after Superadmin verification)
+app.patch('/api/invoices/pay', (req, res) => {
+  if (!verifySuperAdminPermission(req, res, 'melunasi Faktur Invoice')) return;
+
+  const { ids, tanggalBayar = new Date().toISOString().split('T')[0] } = req.body;
+  if (!Array.isArray(ids) || ids.length === 0) {
+    return res.status(400).json({ message: 'IDs array required' });
+  }
+
+  // Check if any Invoice is not verified or already paid
+  const placeholders = ids.map(() => '?').join(',');
+  const unapproved = db.prepare(`
+    SELECT id, kodeTransaksi, status, statusBayar FROM invoices
+    WHERE id IN (${placeholders}) AND status NOT IN ('pending_verification', 'paid', 'approved', 'APPROVED')
+  `).all(...ids);
+
+  if (unapproved.length > 0) {
+    const names = unapproved.map((u) => u.kodeTransaksi || u.id).join(', ');
+    return res.status(400).json({
+      success: false,
+      message: `Akses ditolak: Invoice (${names}) belum melalui tahapan verifikasi yang sah sehingga tidak dapat dilunasi.`,
+    });
+  }
+
+  const verifier = (req.headers['x-user-name'] || req.headers['x-user-email'] || 'David Rusiah (Super Admin)').trim();
   for (const id of ids) {
-    db.prepare('UPDATE invoices SET statusBayar = ?, tanggalBayar = ?, updated_at = ? WHERE id = ?')
-      .run('Lunas', tanggalBayar, new Date().toISOString(), id);
+    db.prepare("UPDATE invoices SET status = 'paid', statusBayar = 'Lunas', tanggalBayar = ? WHERE id = ?")
+      .run(tanggalBayar, id);
+    logInvoiceAudit(id, 'INVOICE_SETTLED', verifier, 'Super Admin', {
+      status: 'paid',
+      statusBayar: 'Lunas',
+      settlementDate: tanggalBayar,
+    }, req.headers['x-user-id'] || null);
   }
 
   res.json({ success: true, count: ids.length });
 });
 
-// Delete Invoice (Superadmin Only)
+// Delete Invoice (Superadmin Only - Locked once PAID)
 app.delete('/api/invoices/:id', (req, res) => {
   if (!verifySuperAdminPermission(req, res, 'menghapus data Invoice')) return;
+
   try {
     const { id } = req.params;
-    const existing = db.prepare('SELECT id FROM invoices WHERE id = ?').get(id);
+    const existing = db.prepare('SELECT id, status, statusBayar FROM invoices WHERE id = ?').get(id);
     if (!existing) {
       return res.status(404).json({ success: false, message: `Invoice ${id} tidak ditemukan.` });
     }
+
+    if (existing.status === 'paid' || existing.statusBayar === 'Lunas') {
+      return res.status(403).json({
+        success: false,
+        message: `Invoice ${id} telah LUNAS dan difinalisasi secara permanen. Rekaman finansial yang sudah sah tidak dapat dihapus demi keamanan audit.`,
+      });
+    }
+
+    db.prepare('DELETE FROM invoice_documents WHERE invoiceId = ?').run(id);
+    db.prepare('DELETE FROM invoice_audit_logs WHERE invoiceId = ?').run(id);
     db.prepare('DELETE FROM invoices WHERE id = ?').run(id);
     res.json({ success: true, message: `Invoice ${id} berhasil dihapus.` });
   } catch (err) {

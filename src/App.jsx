@@ -15,6 +15,7 @@ import DashboardPage from './pages/Dashboard/DashboardPage';
 import PreOrderPage from './pages/PreOrder/PreOrderPage';
 import ApprovalRoPage from './pages/Approval/ApprovalRoPage';
 import ApprovalBkkPage from './pages/Approval/ApprovalBkkPage';
+import ApprovalInvoicePage from './pages/Approval/ApprovalInvoicePage';
 import ApprovalUserPage from './pages/Approval/ApprovalUserPage';
 import SuratJalanPage from './pages/SuratJalan/SuratJalanPage';
 import RekapanPage from './pages/Rekapan/RekapanPage';
@@ -126,6 +127,14 @@ export default function App() {
                     element={
                       <SuperAdminOnlyRoute>
                         <ApprovalBkkPage />
+                      </SuperAdminOnlyRoute>
+                    }
+                  />
+                  <Route
+                    path="approval-invoice"
+                    element={
+                      <SuperAdminOnlyRoute>
+                        <ApprovalInvoicePage />
                       </SuperAdminOnlyRoute>
                     }
                   />

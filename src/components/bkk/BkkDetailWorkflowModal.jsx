@@ -479,7 +479,7 @@ export default function BkkDetailWorkflowModal({
             }`}
           >
             <FileText className="w-3.5 h-3.5" />
-            <span>Rincian Finansial</span>
+            <span>Rincian Finansial (Financial Details)</span>
           </button>
 
           <button
@@ -526,14 +526,14 @@ export default function BkkDetailWorkflowModal({
         </div>
 
         {/* ══════════════════════════════════════════════════════════════════════
-            TAB 1: RINCIAN FINANSIAL
+            TAB 1: RINCIAN FINANSIAL (FINANCIAL DETAILS)
            ══════════════════════════════════════════════════════════════════════ */}
         {activeTab === 'summary' && (
           <div className="space-y-3 font-mono text-xs text-neutral-300">
             {/* Amount & Key Metrics */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 bg-[#181B1E] p-3.5 rounded-xl border border-[#262A2F]">
               <div>
-                <span className="text-neutral-500 block text-[10px] uppercase">
+                <span className="text-neutral-500 block text-[10px] uppercase font-bold">
                   Volume Kirim
                 </span>
                 <span className="text-white font-black text-base">
@@ -542,7 +542,7 @@ export default function BkkDetailWorkflowModal({
                 </span>
               </div>
               <div>
-                <span className="text-neutral-500 block text-[10px] uppercase">
+                <span className="text-neutral-500 block text-[10px] uppercase font-bold">
                   Harga Satuan Beli
                 </span>
                 <span className="text-neutral-200 font-bold text-sm">
@@ -550,7 +550,7 @@ export default function BkkDetailWorkflowModal({
                 </span>
               </div>
               <div className="col-span-2">
-                <span className="text-neutral-500 block text-[10px] uppercase">
+                <span className="text-neutral-500 block text-[10px] uppercase font-bold">
                   Total Nilai Kas Keluar
                 </span>
                 <span className="text-[#F4511E] font-black text-lg sm:text-xl">
@@ -559,30 +559,38 @@ export default function BkkDetailWorkflowModal({
               </div>
             </div>
 
-            {/* Entity Information */}
+            {/* Entity Information (Supplier, Customer, Order & Transaction Details) */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="bg-[#181B1E] p-3.5 rounded-xl border border-[#262A2F] space-y-2">
                 <span className="text-[10px] text-neutral-500 block uppercase font-bold tracking-wider">
-                  Data Vendor Supplier
+                  Data Vendor Supplier & Pembayaran
                 </span>
                 <div>
-                  <span className="text-[10px] text-neutral-400 block">Nama Supplier:</span>
+                  <span className="text-[10px] text-neutral-400 block">Nama Supplier (Perusahaan):</span>
                   <span className="text-white font-bold text-sm">
                     {bkkItem.perusahaan || '-'}
                   </span>
                 </div>
                 <div>
-                  <span className="text-[10px] text-neutral-400 block">Penerima / A.N:</span>
+                  <span className="text-[10px] text-neutral-400 block">Penerima / Atas Nama:</span>
                   <span className="text-neutral-200">
                     {bkkItem.penerima || bkkItem.rekeningAtasNama || '-'}
                   </span>
                 </div>
                 <div>
-                  <span className="text-[10px] text-neutral-400 block">Rekening Bank:</span>
+                  <span className="text-[10px] text-neutral-400 block">Rekening Bank Tujuan:</span>
                   <span className="text-white font-mono font-medium">
                     {bkkItem.rekeningTujuan || '-'}
                   </span>
                 </div>
+                {bkkItem.rekeningSumber && (
+                  <div>
+                    <span className="text-[10px] text-neutral-400 block">Rekening Sumber PT BAS:</span>
+                    <span className="text-emerald-400 font-mono text-[11px]">
+                      {bkkItem.rekeningSumber}
+                    </span>
+                  </div>
+                )}
               </div>
 
               <div className="bg-[#181B1E] p-3.5 rounded-xl border border-[#262A2F] space-y-2">
@@ -590,27 +598,48 @@ export default function BkkDetailWorkflowModal({
                   Data Pesanan & Customer
                 </span>
                 <div>
-                  <span className="text-[10px] text-neutral-400 block">Customer:</span>
+                  <span className="text-[10px] text-neutral-400 block">Customer (Perusahaan):</span>
                   <span className="text-white font-bold">
-                    {bkkItem.customer || bkkItem.subDetail || '-'}
+                    {bkkItem.customer || '-'}
                   </span>
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <span className="text-[10px] text-neutral-400 block">Nomor RO:</span>
-                    <span className="text-neutral-200 font-bold">
-                      {bkkItem.nomorRO || '-'}
+                    <span className="text-[10px] text-neutral-400 block">Kode Transaksi:</span>
+                    <span className="text-neutral-200 font-bold font-mono">
+                      {bkkItem.kodeTransaksi || bkkItem.id || '-'}
                     </span>
                   </div>
                   <div>
+                    <span className="text-[10px] text-neutral-400 block">Nomor RO:</span>
+                    <span className="text-neutral-200 font-bold font-mono">
+                      {bkkItem.nomorRO || '-'}
+                    </span>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
                     <span className="text-[10px] text-neutral-400 block">Nomor PO:</span>
-                    <span className="text-neutral-200">{bkkItem.poNumber || '-'}</span>
+                    <span className="text-neutral-200 font-mono">{bkkItem.poNumber || '-'}</span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-neutral-400 block">Periode:</span>
+                    <span className="text-neutral-200 font-mono">
+                      {bkkItem.periode || (bkkItem.tanggal ? bkkItem.tanggal.slice(0, 7) : '-')}
+                    </span>
                   </div>
                 </div>
                 <div>
                   <span className="text-[10px] text-neutral-400 block">Material:</span>
                   <span className="text-neutral-300 font-bold uppercase">
                     {bkkItem.material || 'SIRTU'}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-neutral-400 block">Jenis Layanan / Keterangan:</span>
+                  <span className="text-neutral-300 text-[11px] block">
+                    {bkkItem.jenis || 'CURAH | JASA ANGKUT + MATERIAL'}
+                    {bkkItem.subDetail && bkkItem.subDetail !== '-' && ` • ${bkkItem.subDetail}`}
                   </span>
                 </div>
               </div>

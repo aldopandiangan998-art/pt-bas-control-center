@@ -126,6 +126,13 @@ export const NAV_CATEGORIES = [
         superAdminOnly: true,
       },
       {
+        path: '/approval-invoice',
+        label: 'Approval Invoice',
+        icon: 'Receipt',
+        description: 'Otorisasi & verifikasi berkas tanda tangan fisik faktur invoice oleh Super Admin',
+        superAdminOnly: true,
+      },
+      {
         path: '/surat-jalan',
         label: 'Surat Jalan (GI)',
         icon: 'Truck',

@@ -24,6 +24,8 @@ import {
   Check,
   Printer,
   Upload,
+  LayoutList,
+  LayoutGrid,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useData } from '../../context/DataContext';
@@ -46,9 +48,62 @@ function BinaryIcon({ className = 'text-neutral-500' }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// CashOutCard (Faithful replica of user screenshot)
+// Status Badge Helper
 // ─────────────────────────────────────────────────────────────────────────────
-function CashOutCard({ item, isSelected, onSelect, onDelete, onInfo, canDelete = true }) {
+function getBkkStatusBadge(item) {
+  const s = String(item.status || '').toLowerCase();
+  const isPaid = s === 'paid' || item.statusBayar === 'Lunas';
+  if (isPaid) {
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[10px] font-mono font-bold shrink-0">
+        <CheckCircle2 className="w-3 h-3" />
+        LUNAS
+      </span>
+    );
+  }
+  if (s === 'pending_verification') {
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-[#F4511E]/20 text-orange-300 border border-[#F4511E]/40 text-[10px] font-mono font-bold shrink-0">
+        <ShieldCheck className="w-3 h-3" />
+        VERIFIKASI
+      </span>
+    );
+  }
+  if (s === 'revision_required') {
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/40 text-[10px] font-mono font-bold shrink-0">
+        <RotateCw className="w-3 h-3" />
+        REVISI TTD
+      </span>
+    );
+  }
+  if (s === 'approved') {
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-blue-500/20 text-blue-300 border border-blue-500/40 text-[10px] font-mono font-bold shrink-0">
+        <Printer className="w-3 h-3" />
+        SIAP CETAK
+      </span>
+    );
+  }
+  if (s === 'rejected') {
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/40 text-[10px] font-mono font-bold shrink-0">
+        DITOLAK
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[10px] font-mono font-bold shrink-0">
+      <Lock className="w-3 h-3" />
+      TERKUNCI
+    </span>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CashOutCard (Medium-sized layout with List and Grid view support)
+// ─────────────────────────────────────────────────────────────────────────────
+function CashOutCard({ item, isSelected, onSelect, onDelete, onInfo, canDelete = true, viewMode = 'list' }) {
   const volumeNum = Number(item.volume ?? item.kubikasi) || 0;
   const formattedVolume = volumeNum.toFixed(2);
   const rawSatuan = item.satuan || 'm3';
@@ -57,171 +112,254 @@ function CashOutCard({ item, isSelected, onSelect, onDelete, onInfo, canDelete =
     .replace(/\s*\(Curah\)/i, '')
     .replace(/\s*\(Padat\)/i, '');
 
-  const timestamp = item.timestamp || (item.tanggal ? `${item.tanggal} 09:15:42` : '-');
+  const dateDisplay = item.tanggal || (item.timestamp ? String(item.timestamp).slice(0, 10) : '-');
   const amountFormatted = `IDR ${(Number(item.amount) || 0).toLocaleString('en-US', {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   })}`;
 
   const docCode = item.kodeTransaksi || item.nomorRO || '-';
-  const customerName = item.customer || item.perusahaan || '-';
-  const poCode = item.poNumber || item.subDetail || '-';
-  const periodeText = item.periode
-    ? (item.periode.startsWith('Periode:') ? item.periode : `Periode: ${item.periode}`)
-    : (item.tanggal ? `Periode: ${item.tanggal}` : 'Periode: -');
+  const companyName = item.customer || item.perusahaan || '-';
+  const supplierName = item.perusahaan;
 
-  return (
-    <div
-      className={`rounded-2xl border p-3.5 sm:p-4 transition-all select-none ${isSelected
-        ? 'bg-[#181615] border-[#F4511E]/70 ring-1 ring-[#F4511E]/40'
-        : 'bg-[#121417] border-[#22262B] hover:border-[#323842]'
+  const isPaid = String(item.status || '').toLowerCase() === 'paid' || item.statusBayar === 'Lunas';
+  const statusBadge = getBkkStatusBadge(item);
+
+  // ── GRID VIEW CARD (Medium-sized card with comfortable proportions)
+  if (viewMode === 'grid') {
+    return (
+      <div
+        onClick={onInfo}
+        className={`rounded-xl border p-4 transition-all select-none cursor-pointer flex flex-col justify-between group ${
+          isSelected
+            ? 'bg-[#181615] border-[#F4511E]/70 ring-1 ring-[#F4511E]/40 shadow-lg'
+            : 'bg-[#121417] border-[#22262B] hover:border-[#383E48] hover:bg-[#15171B]'
         }`}
-    >
-      <div className="flex items-start gap-3 sm:gap-5">
-        {/* Left Column */}
-        <div className="w-28 sm:w-36 shrink-0 flex flex-col justify-start">
-          <div className="text-2xl sm:text-[26px] font-black font-mono text-white tracking-tight leading-none">
-            {formattedVolume}
-          </div>
-          <div className="text-sm font-semibold font-mono text-neutral-200 mt-1 leading-tight">
-            {satuan}
-          </div>
-          <div
-            className="text-xs font-bold font-mono text-white uppercase tracking-wider mt-2.5 leading-tight truncate"
-            title={material}
-          >
-            {material}
-          </div>
-          <div className="text-[10px] text-neutral-400 font-mono uppercase leading-tight mt-1 space-y-0.5">
-            <div>CURAH | JASA</div>
-            <div>ANGKUT +</div>
-            <div>MATERIAL</div>
-          </div>
-        </div>
-
-        {/* Right Column */}
-        <div className="flex-1 min-w-0 flex flex-col justify-start">
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-1.5 min-w-0">
-              <div
-                className="w-5 h-5 rounded-full bg-rose-600/90 text-white flex items-center justify-center shrink-0 shadow-xs"
-                title="Bukti Kas Keluar"
-              >
-                <FileText className="w-2.5 h-2.5" />
-              </div>
-              <div
-                className="w-5 h-5 rounded-full bg-emerald-600/90 text-white flex items-center justify-center shrink-0 shadow-xs"
-                title="Dokumen Terhubung (RO / SJ)"
-              >
-                <BookOpen className="w-2.5 h-2.5" />
-              </div>
-              <span className="text-[11px] font-mono text-neutral-300 ml-1 truncate">
-                {timestamp}
-              </span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              {(() => {
-                const s = String(item.status || '').toLowerCase();
-                const isPaid = s === 'paid' || item.statusBayar === 'Lunas';
-                if (isPaid) {
-                  return (
-                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[9px] font-mono font-bold">
-                      <CheckCircle2 className="w-2.5 h-2.5" />
-                      LUNAS
-                    </span>
-                  );
-                }
-                if (s === 'pending_verification') {
-                  return (
-                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-[#F4511E]/20 text-orange-300 border border-[#F4511E]/40 text-[9px] font-mono font-bold">
-                      <ShieldCheck className="w-2.5 h-2.5" />
-                      VERIFIKASI
-                    </span>
-                  );
-                }
-                if (s === 'revision_required') {
-                  return (
-                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/40 text-[9px] font-mono font-bold">
-                      <RotateCw className="w-2.5 h-2.5" />
-                      REVISI TTD
-                    </span>
-                  );
-                }
-                if (s === 'approved') {
-                  return (
-                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-300 border border-blue-500/40 text-[9px] font-mono font-bold">
-                      <Printer className="w-2.5 h-2.5" />
-                      SIAP CETAK
-                    </span>
-                  );
-                }
-                if (s === 'rejected') {
-                  return (
-                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/40 text-[9px] font-mono font-bold">
-                      DITOLAK
-                    </span>
-                  );
-                }
-                return (
-                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[9px] font-mono font-bold">
-                    <Lock className="w-2.5 h-2.5" />
-                    TERKUNCI
-                  </span>
-                );
-              })()}
+      >
+        <div>
+          {/* Card Top: Checkbox, Code & Status */}
+          <div className="flex items-center justify-between gap-2 pb-2.5 border-b border-[#20242A]">
+            <div className="flex items-center gap-2 min-w-0">
               <input
                 type="checkbox"
                 checked={isSelected}
-                disabled={item.status !== 'paid' && item.statusBayar !== 'Lunas'}
-                onChange={(item.status === 'paid' || item.statusBayar === 'Lunas') ? onSelect : undefined}
-                className="cursor-pointer shrink-0"
+                disabled={!isPaid}
+                onChange={isPaid ? onSelect : undefined}
+                onClick={(e) => e.stopPropagation()}
+                className="w-4 h-4 rounded border-[#3A404A] bg-[#16191D] accent-[#F4511E] cursor-pointer shrink-0 disabled:opacity-30 disabled:cursor-not-allowed"
                 title={
-                  (item.status === 'paid' || item.statusBayar === 'Lunas')
+                  isPaid
                     ? 'Pilih BKK yang sudah Lunas'
                     : 'BKK harus diverifikasi dokumen fisiknya oleh Super Admin terlebih dahulu'
                 }
               />
+              <span className="font-mono text-xs font-bold text-neutral-300 truncate" title={docCode}>
+                {docCode}
+              </span>
+            </div>
+            <div className="shrink-0">{statusBadge}</div>
+          </div>
+
+          {/* Card Body: Company & Order details */}
+          <div className="pt-3 space-y-2.5">
+            <div>
+              <span className="text-[10px] text-neutral-500 font-mono uppercase block">Customer / Perusahaan</span>
+              <div
+                className="font-bold text-sm text-white truncate group-hover:text-[#F4511E] transition-colors"
+                title={companyName}
+              >
+                {companyName}
+              </div>
+            </div>
+
+            {supplierName && supplierName !== companyName && (
+              <div>
+                <span className="text-[10px] text-neutral-500 font-mono uppercase block">Supplier Vendor</span>
+                <div className="text-xs text-neutral-300 truncate" title={supplierName}>
+                  {supplierName}
+                </div>
+              </div>
+            )}
+
+            {/* Meta grid (RO, Volume, Material, Date) */}
+            <div className="grid grid-cols-2 gap-2 pt-1 font-mono text-xs">
+              <div className="bg-[#16191D] p-2 rounded-lg border border-[#20242A]">
+                <span className="text-[10px] text-neutral-500 block uppercase">Nomor RO</span>
+                <span className="text-neutral-200 font-semibold truncate block" title={item.nomorRO || '-'}>
+                  {item.nomorRO || '-'}
+                </span>
+              </div>
+              <div className="bg-[#16191D] p-2 rounded-lg border border-[#20242A]">
+                <span className="text-[10px] text-neutral-500 block uppercase">Volume & Material</span>
+                <span className="text-neutral-200 font-semibold truncate block" title={`${formattedVolume} ${satuan} • ${material}`}>
+                  {formattedVolume} {satuan} {material ? `• ${material}` : ''}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Card Bottom: Amount & Actions */}
+        <div className="pt-3 mt-3 border-t border-[#20242A] flex items-center justify-between gap-2">
+          <div>
+            <span className="text-[10px] text-neutral-500 font-mono uppercase block">Total Kas Keluar</span>
+            <div className="text-base font-black font-mono text-white tracking-tight">
+              {amountFormatted}
             </div>
           </div>
 
-          <div className="text-sm sm:text-base font-bold font-mono text-white mt-1.5 leading-tight">
-            {amountFormatted}
-          </div>
-          <div className="text-xs font-mono text-neutral-300 mt-1 leading-tight truncate" title={docCode}>
-            {docCode}
-          </div>
-          <div className="text-xs font-bold font-mono text-neutral-100 uppercase mt-0.5 leading-tight truncate" title={customerName}>
-            {customerName}
-          </div>
-          <div className="text-xs font-mono text-neutral-400 mt-0.5 leading-tight truncate" title={poCode}>
-            {poCode}
-          </div>
-          <div className="text-xs font-mono text-neutral-400 mt-0.5 leading-tight truncate">
-            {periodeText}
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onInfo();
+              }}
+              className="px-2.5 py-1.5 rounded-lg bg-[#181B1E] hover:bg-[#252A30] border border-[#262A30] hover:border-neutral-500 text-neutral-300 hover:text-white text-xs font-medium flex items-center gap-1.5 transition-colors cursor-pointer"
+              title="Rincian Finansial (Financial Details)"
+            >
+              <Info className="w-3.5 h-3.5 text-[#F4511E]" />
+              <span>Detail</span>
+            </button>
+
+            {canDelete && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDelete();
+                }}
+                className="p-1.5 rounded-lg bg-[#181B1E] hover:bg-rose-500/10 border border-[#262A2F] hover:border-rose-500/40 text-neutral-400 hover:text-[#F4511E] transition-colors cursor-pointer"
+                title="Hapus Cash Out"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            )}
           </div>
         </div>
       </div>
+    );
+  }
 
-      <div className="border-t border-[#22262B] mt-3 pt-2.5">
-        <div className={`grid ${canDelete ? 'grid-cols-2' : 'grid-cols-1'} gap-2`}>
-          {canDelete && (
+  // ── LIST VIEW CARD (Medium-sized horizontal layout)
+  return (
+    <div
+      onClick={onInfo}
+      className={`rounded-xl border p-3.5 sm:p-4 transition-all select-none cursor-pointer group ${
+        isSelected
+          ? 'bg-[#181615] border-[#F4511E]/70 ring-1 ring-[#F4511E]/40 shadow-sm'
+          : 'bg-[#121417] border-[#22262B] hover:border-[#383E48] hover:bg-[#15171B]'
+      }`}
+    >
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        {/* Left Column: Checkbox + Main Information */}
+        <div className="flex items-start gap-3 min-w-0 flex-1">
+          <input
+            type="checkbox"
+            checked={isSelected}
+            disabled={!isPaid}
+            onChange={isPaid ? onSelect : undefined}
+            onClick={(e) => e.stopPropagation()}
+            className="mt-1 w-4 h-4 rounded border-[#3A404A] bg-[#16191D] accent-[#F4511E] cursor-pointer shrink-0 disabled:opacity-30 disabled:cursor-not-allowed"
+            title={
+              isPaid
+                ? 'Pilih BKK yang sudah Lunas'
+                : 'BKK harus diverifikasi dokumen fisiknya oleh Super Admin terlebih dahulu'
+            }
+          />
+
+          <div className="min-w-0 flex-1 space-y-1.5">
+            {/* Row 1: Code + Status Badge + Date */}
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="font-mono text-xs font-bold text-neutral-300 bg-[#181B1F] px-2 py-0.5 rounded border border-[#262A30]">
+                {docCode}
+              </span>
+              {statusBadge}
+              <span className="text-[11px] font-mono text-neutral-400">
+                {dateDisplay}
+              </span>
+            </div>
+
+            {/* Row 2: Company Name (Customer) & Vendor */}
+            <div className="flex flex-col sm:flex-row sm:items-baseline gap-1 sm:gap-2 min-w-0">
+              <span
+                className="font-bold text-sm sm:text-base text-white truncate max-w-md group-hover:text-[#F4511E] transition-colors"
+                title={companyName}
+              >
+                {companyName}
+              </span>
+              {supplierName && supplierName !== companyName && (
+                <span className="text-xs text-neutral-400 truncate max-w-xs font-sans" title={`Vendor: ${supplierName}`}>
+                  (Vendor: <strong className="text-neutral-300 font-medium">{supplierName}</strong>)
+                </span>
+              )}
+            </div>
+
+            {/* Row 3: Key Order Meta (RO, PO, Material, Volume) */}
+            <div className="flex items-center gap-2 flex-wrap text-xs text-neutral-400 font-mono">
+              {item.nomorRO && (
+                <span className="bg-[#16191D] px-2 py-0.5 rounded text-neutral-300">
+                  RO: <strong className="text-white">{item.nomorRO}</strong>
+                </span>
+              )}
+              {item.poNumber && item.poNumber !== '-' && (
+                <span className="bg-[#16191D] px-2 py-0.5 rounded text-neutral-300">
+                  PO: <strong className="text-white">{item.poNumber}</strong>
+                </span>
+              )}
+              {volumeNum > 0 && (
+                <span className="bg-[#16191D] px-2 py-0.5 rounded text-neutral-300">
+                  Vol: <strong className="text-white">{formattedVolume} {satuan}</strong>
+                </span>
+              )}
+              {material && (
+                <span className="text-neutral-400 uppercase">
+                  • {material}
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Right Column: Amount & Actions */}
+        <div className="flex sm:flex-col items-center sm:items-end justify-between sm:justify-center gap-2 sm:gap-2.5 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-[#20242A]">
+          <div className="text-left sm:text-right">
+            <div className="text-[10px] text-neutral-400 uppercase font-mono tracking-wider">
+              Total Kas Keluar
+            </div>
+            <div className="text-base sm:text-lg font-black font-mono text-white tracking-tight">
+              {amountFormatted}
+            </div>
+          </div>
+
+          <div className="flex items-center gap-1.5">
             <button
               type="button"
-              onClick={onDelete}
-              className="py-2 px-3 rounded-xl bg-[#16191D] hover:bg-rose-500/10 border border-[#262A2F] hover:border-rose-500/40 text-[#F4511E] flex items-center justify-center transition-colors cursor-pointer group"
-              title="Hapus Cash Out"
+              onClick={(e) => {
+                e.stopPropagation();
+                onInfo();
+              }}
+              className="px-2.5 py-1.5 rounded-lg bg-[#181B1E] hover:bg-[#252A30] border border-[#262A30] hover:border-neutral-500 text-neutral-300 hover:text-white text-xs font-medium flex items-center gap-1.5 transition-colors cursor-pointer"
+              title="Rincian Finansial (Financial Details)"
             >
-              <Trash2 className="w-4 h-4 group-hover:scale-110 transition-transform text-[#F4511E]" />
+              <Info className="w-3.5 h-3.5 text-[#F4511E]" />
+              <span>Detail</span>
             </button>
-          )}
-          <button
-            type="button"
-            onClick={onInfo}
-            className="py-2 px-3 rounded-xl bg-[#16191D] hover:bg-neutral-800 border border-[#262A2F] hover:border-neutral-600 text-neutral-300 hover:text-white flex items-center justify-center transition-colors cursor-pointer group"
-            title="Detail Informasi"
-          >
-            <Info className="w-4 h-4 group-hover:scale-110 transition-transform" />
-          </button>
+
+            {canDelete && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDelete();
+                }}
+                className="p-1.5 rounded-lg bg-[#181B1E] hover:bg-rose-500/10 border border-[#262A2F] hover:border-rose-500/40 text-neutral-400 hover:text-[#F4511E] transition-colors cursor-pointer"
+                title="Hapus Cash Out"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </div>
@@ -487,6 +625,20 @@ export default function BkkPage() {
   // ── List & Search Filter State
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [searchFilter, setSearchFilter] = useState('');
+  const [viewMode, setViewMode] = useState(() => {
+    try {
+      return localStorage.getItem('bkk_view_mode') || 'list';
+    } catch (e) {
+      return 'list';
+    }
+  });
+
+  const handleSetViewMode = (mode) => {
+    setViewMode(mode);
+    try {
+      localStorage.setItem('bkk_view_mode', mode);
+    } catch (e) {}
+  };
   const [selectedItems, setSelectedItems] = useState([]);
 
   // Counts by status
@@ -915,7 +1067,7 @@ export default function BkkPage() {
               </div>
             </div>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-2">
               {filteredBkk.map((item) => (
                 <CashOutCard
                   key={item.id}

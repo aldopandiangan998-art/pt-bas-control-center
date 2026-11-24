@@ -1,1667 +1,918 @@
-import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import {
-  ArrowLeft,
-  User,
-  Building2,
-  Ticket,
-  Calendar,
-  Clock,
-  RotateCw,
-  Printer,
-  ChevronDown,
-  ChevronUp,
-  ChevronRight,
-  Search,
-  X,
-  Filter,
-  Plus,
-  Trash2,
-  Info,
-  CheckCircle2,
-  ArrowUpDown,
-  List,
-  LayoutGrid,
-  AlertTriangle,
-  Receipt,
-  FileText,
-  TrendingUp,
-  ShieldCheck,
-  Check,
-  Phone,
-  MapPin,
-  Package,
-} from 'lucide-react';
-import { formatCurrency } from '../../utils/formatters';
-import { TAX_RATES } from '../../utils/constants';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useData } from '../../context/DataContext';
-import { useToast } from '../../context/ToastContext';
-import { groupInvoices, groupCheckState } from '../../utils/cashOutGrouping';
-import { Button, Modal, Card, Input, Select, Badge, IndeterminateCheckbox } from '../../components/ui';
+import {
+  FileText,
+  Search,
+  Plus,
+  RefreshCw,
+  Printer,
+  Upload,
+  CheckCircle2,
+  Clock,
+  AlertTriangle,
+  XCircle,
+  FileCheck,
+  Building2,
+  ArrowRight,
+  TrendingUp,
+  DollarSign,
+  Layers,
+  ChevronRight,
+  ExternalLink,
+  ShieldCheck,
+  Calendar,
+  Sparkles,
+  Info
+} from 'lucide-react';
+import InvoicePrintModal from '../../components/invoice/InvoicePrintModal';
+import InvoiceDetailWorkflowModal from '../../components/invoice/InvoiceDetailWorkflowModal';
 
-// ─────────────────────────────────────────────────────────────────────────────
-// LocalStorage helpers
-// ─────────────────────────────────────────────────────────────────────────────
-function lsGet(key, fallback) {
-  try {
-    const v = localStorage.getItem(key);
-    return v !== null ? JSON.parse(v) : fallback;
-  } catch {
-    return fallback;
+const STATUS_CONFIG = {
+  draft: {
+    label: 'Draft',
+    bg: 'bg-zinc-800/80 text-zinc-300 border-zinc-700/60',
+    icon: Clock
+  },
+  pending_approval: {
+    label: 'Menunggu Approval',
+    bg: 'bg-amber-950/40 text-amber-400 border-amber-800/50',
+    icon: Clock
+  },
+  approved: {
+    label: 'Disetujui (Siap Cetak)',
+    bg: 'bg-blue-950/40 text-blue-400 border-blue-800/50',
+    icon: FileCheck
+  },
+  rejected: {
+    label: 'Ditolak',
+    bg: 'bg-rose-950/40 text-rose-400 border-rose-800/50',
+    icon: XCircle
+  },
+  pending_verification: {
+    label: 'Verifikasi TTD',
+    bg: 'bg-purple-950/40 text-purple-400 border-purple-800/50',
+    icon: ShieldCheck
+  },
+  revision_required: {
+    label: 'Revisi Berkas',
+    bg: 'bg-orange-950/40 text-orange-400 border-orange-800/50',
+    icon: AlertTriangle
+  },
+  paid: {
+    label: 'LUNAS',
+    bg: 'bg-emerald-950/40 text-emerald-400 border-emerald-800/50',
+    icon: CheckCircle2
   }
-}
-function lsSet(key, value) {
-  try { localStorage.setItem(key, JSON.stringify(value)); } catch { /* noop */ }
-}
+};
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Status Badge
-// ─────────────────────────────────────────────────────────────────────────────
-function StatusBadge({ paid, small = false }) {
-  const size = small ? 'px-1.5 py-px text-[9px]' : 'px-2.5 py-0.5 text-[10px]';
-  if (paid) {
-    return (
-      <span className={`inline-block rounded-full font-bold font-mono tracking-wide bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 ${size}`}>
-        LUNAS
-      </span>
-    );
-  }
-  return (
-    <span className={`inline-block rounded-full font-bold font-mono tracking-wide bg-[#F4511E]/20 text-[#F4511E] border border-[#F4511E]/30 ${size}`}>
-      BELUM LUNAS
-    </span>
-  );
-}
+const formatRupiah = (val) => {
+  return new Intl.NumberFormat('id-ID', {
+    style: 'currency',
+    currency: 'IDR',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0
+  }).format(val || 0);
+};
 
-// ─────────────────────────────────────────────────────────────────────────────
-// InvoiceGroupHeader
-// ─────────────────────────────────────────────────────────────────────────────
-function InvoiceGroupHeader({ group, expanded, onToggle, checkState, onGroupCheckChange }) {
-  const { label, summary } = group;
-  const isAll = checkState === 'all';
-  const isSome = checkState === 'some';
-
-  return (
-    <div
-      className="flex items-center gap-2 px-3 py-2 bg-[#1A1D22] border border-[#2A2E33] rounded-xl cursor-pointer select-none hover:bg-[#1E2228] transition-colors"
-      onClick={onToggle}
-    >
-      {/* Checkbox pilih semua grup */}
-      <div onClick={(e) => e.stopPropagation()}>
-        <IndeterminateCheckbox
-          checked={isAll}
-          indeterminate={isSome}
-          onChange={onGroupCheckChange}
-        />
-      </div>
-
-      {/* Chevron */}
-      <div className="shrink-0 text-neutral-500">
-        {expanded ? (
-          <ChevronDown className="w-4 h-4" />
-        ) : (
-          <ChevronRight className="w-4 h-4" />
-        )}
-      </div>
-
-      {/* Group label */}
-      <span className="text-xs font-bold text-neutral-100 uppercase tracking-wide flex-1 truncate">
-        {label}
-      </span>
-
-      {/* Summary badges */}
-      <div className="flex items-center gap-1.5 shrink-0 flex-wrap justify-end">
-        <span className="text-[10px] font-mono text-neutral-500 bg-[#131517] border border-[#2A2E33] rounded px-1.5 py-0.5">
-          {summary.count} inv
-        </span>
-        {summary.unpaidCount > 0 && (
-          <span className="text-[10px] font-mono text-[#F4511E] bg-[#F4511E]/10 border border-[#F4511E]/30 rounded px-1.5 py-0.5">
-            {summary.unpaidCount} blm lunas
-          </span>
-        )}
-        {summary.paidCount > 0 && (
-          <span className="text-[10px] font-mono text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 rounded px-1.5 py-0.5">
-            {summary.paidCount} lunas
-          </span>
-        )}
-        <span className="text-[10px] font-mono text-neutral-300 font-bold">
-          {formatCurrency(summary.totalAmount)}
-        </span>
-        {summary.totalVolume !== null && (
-          <span className="text-[10px] font-mono text-neutral-500">
-            {summary.totalVolume.toFixed(2)} m³
-          </span>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// InvoiceRow (tabular row for list view)
-// ─────────────────────────────────────────────────────────────────────────────
-function InvoiceRow({ item, isSelected, onSelect, onInfo, onDelete, isEven, canDelete = true }) {
-  const isPaid = item.statusBayar === 'Lunas';
-  return (
-    <tr
-      className={`border-b border-[#24282C] transition-colors ${
-        isEven ? 'bg-[#131517]' : 'bg-[#15181C]'
-      } hover:bg-[#1C1F24] ${isSelected ? 'ring-1 ring-inset ring-[#F4511E]/40' : ''}`}
-    >
-      {/* Checkbox */}
-      <td className="pl-3 pr-1 py-2.5 w-8">
-        <input
-          type="checkbox"
-          checked={isSelected}
-          onChange={onSelect}
-          className="cursor-pointer"
-        />
-      </td>
-
-      {/* Tanggal */}
-      <td className="px-3 py-2.5 text-[11px] font-mono text-neutral-400 whitespace-nowrap">
-        {item.timestamp ? item.timestamp.slice(0, 16) : '-'}
-      </td>
-
-      {/* No. Invoice */}
-      <td className="px-3 py-2.5 text-[11px] font-mono text-neutral-300 whitespace-nowrap">
-        {item.kodeTransaksi}
-      </td>
-
-      {/* Material + Jenis */}
-      <td className="px-3 py-2.5 text-[11px]">
-        <div className="font-bold text-white">{item.material}</div>
-        <div className="text-[9px] text-neutral-500 uppercase leading-tight">{item.jenis}</div>
-      </td>
-
-      {/* Volume */}
-      <td className="px-3 py-2.5 text-[11px] font-mono text-white text-right whitespace-nowrap">
-        {item.volume.toFixed(2)} m³
-      </td>
-
-      {/* Total Tagihan (IDR) */}
-      <td className="px-3 py-2.5 text-[11px] font-mono font-bold text-white text-right whitespace-nowrap">
-        {formatCurrency(item.amount)}
-      </td>
-
-      {/* Status */}
-      <td className="px-3 py-2.5 whitespace-nowrap">
-        <StatusBadge paid={isPaid} small />
-      </td>
-
-      {/* Periode */}
-      <td className="px-3 py-2.5 text-[11px] font-mono text-neutral-400 whitespace-nowrap">
-        {item.periode}
-      </td>
-
-      {/* Aksi (Trash & Info) */}
-      <td className="px-3 py-2.5 text-center whitespace-nowrap w-16">
-        <div className="inline-flex items-center gap-1.5">
-          {canDelete && (
-            <button
-              type="button"
-              onClick={onDelete}
-              className="text-rose-500/80 hover:text-rose-400 transition-colors cursor-pointer p-1"
-              title="Hapus Invoice"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-            </button>
-          )}
-          <button
-            type="button"
-            onClick={onInfo}
-            className="text-[#F4511E] hover:text-[#F4511E]/80 transition-colors cursor-pointer p-1"
-            title="Detail Informasi"
-          >
-            <Info className="w-3.5 h-3.5" />
-          </button>
-        </div>
-      </td>
-    </tr>
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// InvoiceGridCard (compact card for grid view)
-// ─────────────────────────────────────────────────────────────────────────────
-function InvoiceGridCard({ item, isSelected, onSelect, onInfo, onDelete, canDelete = true }) {
-  const isPaid = item.statusBayar === 'Lunas';
-  return (
-    <div
-      className={`bg-[#15181C] border rounded-xl p-3 flex flex-col justify-between gap-2.5 transition-all hover:border-[#383E47] ${
-        isSelected
-          ? 'border-[#F4511E]/70 ring-1 ring-[#F4511E]/40 bg-[#1A1817]'
-          : 'border-[#24282C]'
-      }`}
-    >
-      {/* Top Header: Checkbox + Dokumen + Status + Aksi */}
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2 min-w-0">
-          <input
-            type="checkbox"
-            checked={isSelected}
-            onChange={onSelect}
-            className="cursor-pointer shrink-0"
-          />
-          <span className="text-[11px] font-mono font-bold text-neutral-200 truncate" title={item.kodeTransaksi}>
-            {item.kodeTransaksi}
-          </span>
-        </div>
-        <div className="flex items-center gap-1 shrink-0">
-          <StatusBadge paid={isPaid} small />
-          {canDelete && (
-            <button
-              type="button"
-              onClick={onDelete}
-              className="w-6 h-6 flex items-center justify-center rounded-lg text-neutral-400 hover:text-rose-400 hover:bg-[#1E2228] transition-colors cursor-pointer"
-              title="Hapus Invoice"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-            </button>
-          )}
-          <button
-            type="button"
-            onClick={onInfo}
-            className="w-6 h-6 flex items-center justify-center rounded-lg text-neutral-400 hover:text-[#F4511E] hover:bg-[#1E2228] transition-colors cursor-pointer"
-            title="Detail Informasi"
-          >
-            <Info className="w-3.5 h-3.5" />
-          </button>
-        </div>
-      </div>
-
-      {/* Middle: Nominal & Volume */}
-      <div className="flex items-baseline justify-between gap-2 py-1 border-y border-[#24282C]/70">
-        <div>
-          <span className="text-[10px] text-neutral-500 uppercase font-mono block">Tagihan</span>
-          <span className="text-sm font-bold font-mono text-white">
-            {formatCurrency(item.amount)}
-          </span>
-        </div>
-        <div className="text-right">
-          <span className="text-[10px] text-neutral-500 uppercase font-mono block">Volume</span>
-          <span className="text-xs font-bold font-mono text-white">
-            {item.volume.toFixed(2)} m³
-          </span>
-        </div>
-      </div>
-
-      {/* Bottom: Material & Customer, Periode */}
-      <div className="space-y-1 text-[10px] font-mono">
-        <div className="flex items-center justify-between text-neutral-300">
-          <span className="font-bold text-neutral-200">{item.material}</span>
-          <span className="text-[9px] text-neutral-500 uppercase truncate max-w-[120px]">{item.jenis}</span>
-        </div>
-        <div className="flex items-center justify-between text-neutral-400">
-          <span className="truncate max-w-[150px]">{item.perusahaan}</span>
-          <span className="text-neutral-500">{item.timestamp ? item.timestamp.slice(0, 10) : '-'}</span>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// InvoiceGroupedTable (full grouped-table view: supports 'list' and 'grid')
-// ─────────────────────────────────────────────────────────────────────────────
-function InvoiceGroupedTable({
-  groups,
-  expandedGroups,
-  onToggleGroup,
-  selectedItems,
-  onToggleSelect,
-  onToggleGroupSelect,
-  onInfo,
-  onDelete,
-  canDelete = false,
-  displayMode = 'list',
-}) {
-  if (groups.length === 0) {
-    return (
-      <div className="bg-[#14171A] border border-[#22262A] rounded-2xl p-8 sm:p-12 text-center space-y-3 font-mono my-3">
-        <div className="w-12 h-12 rounded-full bg-[#1C1F24] border border-[#2B3037] flex items-center justify-center mx-auto text-neutral-400">
-          <Receipt className="w-6 h-6 text-[#F4511E]" />
-        </div>
-        <p className="text-sm font-semibold text-white">Tidak ada Faktur Tagihan</p>
-        <p className="text-xs text-neutral-400 max-w-sm mx-auto">
-          Tidak ada data invoice yang sesuai dengan kata kunci pencarian atau filter status yang dipilih.
-        </p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-3">
-      {groups.map((group) => {
-        const isExpanded = expandedGroups.has(group.key);
-        const groupIds = group.items.map((i) => i.id);
-        const checkState = groupCheckState(groupIds, selectedItems);
-
-        return (
-          <div key={group.key}>
-            <InvoiceGroupHeader
-              group={group}
-              expanded={isExpanded}
-              onToggle={() => onToggleGroup(group.key)}
-              checkState={checkState}
-              onGroupCheckChange={() => onToggleGroupSelect(group)}
-            />
-
-            {isExpanded && (
-              displayMode === 'list' ? (
-                <div className="mt-1 w-full overflow-hidden rounded-xl border border-[#24282C]">
-                  <table className="w-full text-left border-collapse">
-                    <thead>
-                      <tr className="bg-[#1A1D22] border-b border-[#2A2E33]">
-                        <th className="pl-3 pr-1 py-2 w-8">
-                          <IndeterminateCheckbox
-                            checked={checkState === 'all'}
-                            indeterminate={checkState === 'some'}
-                            onChange={() => onToggleGroupSelect(group)}
-                            title={checkState === 'all' ? 'Batal pilih grup' : 'Pilih semua di grup ini'}
-                          />
-                        </th>
-                        <th className="px-3 py-2 text-[10px] font-semibold text-neutral-400 uppercase tracking-wide whitespace-nowrap">Tanggal</th>
-                        <th className="px-3 py-2 text-[10px] font-semibold text-neutral-400 uppercase tracking-wide whitespace-nowrap">No. Invoice</th>
-                        <th className="px-3 py-2 text-[10px] font-semibold text-neutral-400 uppercase tracking-wide">Material</th>
-                        <th className="px-3 py-2 text-[10px] font-semibold text-neutral-400 uppercase tracking-wide text-right whitespace-nowrap">Volume</th>
-                        <th className="px-3 py-2 text-[10px] font-semibold text-neutral-400 uppercase tracking-wide text-right whitespace-nowrap">Total Tagihan (IDR)</th>
-                        <th className="px-3 py-2 text-[10px] font-semibold text-neutral-400 uppercase tracking-wide whitespace-nowrap">Status</th>
-                        <th className="px-3 py-2 text-[10px] font-semibold text-neutral-400 uppercase tracking-wide whitespace-nowrap">Periode</th>
-                        <th className="px-3 py-2 text-[10px] font-semibold text-neutral-400 uppercase tracking-wide text-center w-16">Aksi</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {group.items.map((item, idx) => (
-                        <InvoiceRow
-                          key={item.id}
-                          item={item}
-                          isSelected={selectedItems.includes(item.id)}
-                          isEven={idx % 2 === 0}
-                          onSelect={() => onToggleSelect(item.id)}
-                          onInfo={() => onInfo(item)}
-                          onDelete={() => onDelete(item)}
-                          canDelete={canDelete}
-                        />
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
-                <div className="mt-2 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2.5">
-                  {group.items.map((item) => (
-                    <InvoiceGridCard
-                      key={item.id}
-                      item={item}
-                      isSelected={selectedItems.includes(item.id)}
-                      onSelect={() => onToggleSelect(item.id)}
-                      onInfo={() => onInfo(item)}
-                      onDelete={() => onDelete(item)}
-                      canDelete={canDelete}
-                    />
-                  ))}
-                </div>
-              )
-            )}
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// InvoicePage (main page component)
-// ─────────────────────────────────────────────────────────────────────────────
 export default function InvoicePage() {
-  const navigate = useNavigate();
-  const location = useLocation();
-  const { isSuperAdmin } = useAuth();
+  const { user } = useAuth();
   const {
-    customers,
-    bankAccounts,
     invoiceList,
-    createInvoice,
-    markInvoicePaid,
-    deleteInvoice,
-    preOrders,
-    rekapanList,
-    fetchMasterData,
+    fetchInvoices,
+    fetchAvailableOrdersForInvoice,
+    createInvoice
   } = useData();
-  const { addToast } = useToast();
 
-  // ── Tab: 'list' | 'create'
-  const [activeTab, setActiveTab] = useState(() => {
-    if (location.state?.fromRekapan || location.state?.activeTab === 'create') {
-      return 'create';
-    }
-    return 'list';
+  const [activeTab, setActiveTab] = useState('list'); // 'list' | 'create'
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [selectedInvoiceForModal, setSelectedInvoiceForModal] = useState(null);
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  const [selectedInvoiceForPrint, setSelectedInvoiceForPrint] = useState(null);
+  const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
+
+  // Available completed orders for Invoice creation
+  const [availableOrders, setAvailableOrders] = useState([]);
+  const [isLoadingAvailable, setIsLoadingAvailable] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState(null);
+  const [createSubmitting, setCreateSubmitting] = useState(false);
+  const [createSuccessMsg, setCreateSuccessMsg] = useState('');
+  const [createErrorMsg, setCreateErrorMsg] = useState('');
+
+  // Invoice creation form state
+  const [formData, setFormData] = useState({
+    ppnPercent: 11,
+    pphType: '2%', // '2%' or '2.65%' or 'none'
+    bankName: 'BCA (Bank Central Asia)',
+    bankAccount: '822-091-8888',
+    accountName: 'PT BINTANG ANUGERAH SEJAHTERA',
+    tempoHari: 14,
+    notes: ''
   });
 
-  // ── View preferences (persisted to localStorage)
-  const [displayMode, setDisplayMode] = useState(() => lsGet('inv_displayMode', 'list')); // 'list' | 'grid'
-  const [groupBy, setGroupBy] = useState(() => lsGet('inv_groupBy', 'company')); // 'company'|'status'|'material'|'month'
-  const [sortOrder, setSortOrder] = useState(() => lsGet('inv_sortOrder', 'default')); // 'default'|'name'
-
-  // Persist preferences
-  useEffect(() => { lsSet('inv_displayMode', displayMode); }, [displayMode]);
-  useEffect(() => { lsSet('inv_groupBy', groupBy); }, [groupBy]);
-  useEffect(() => { lsSet('inv_sortOrder', sortOrder); }, [sortOrder]);
-
-  // ── Search & Filter
-  const [searchFilter, setSearchFilter] = useState('');
-  const [statusFilter, setStatusFilter] = useState('ALL');
-
-  // ── Selection & Modals
-  const [selectedItems, setSelectedItems] = useState([]);
-  const [infoModalItem, setInfoModalItem] = useState(null);
-
-  // ── Expanded groups (Set of group keys)
-  const [expandedGroups, setExpandedGroups] = useState(new Set());
-
-  // ── Form state for creating invoice (Integrated with Master Data & Orders)
-  const [formCustomerId, setFormCustomerId] = useState('');
-  const [selectedOrderId, setSelectedOrderId] = useState('');
-  const [formNomorRo, setFormNomorRo] = useState('');
-  const [formPoNumber, setFormPoNumber] = useState('');
-  const [formMaterial, setFormMaterial] = useState('');
-  const [formMaterialType, setFormMaterialType] = useState('Curah');
-  const [formVolume, setFormVolume] = useState('');
-  const [formHargaSatuan, setFormHargaSatuan] = useState('');
-  const [formIsPpn, setFormIsPpn] = useState(true);
-  const [formTanggal, setFormTanggal] = useState(new Date().toISOString().split('T')[0]);
-  const [formWaktu, setFormWaktu] = useState('10:00');
-  const [formKirimKeRekening, setFormKirimKeRekening] = useState('');
-  const [filterHidden, setFilterHidden] = useState(false);
-  const [invoiceGenerated, setInvoiceGenerated] = useState(false);
-  const [lastCreatedInvoice, setLastCreatedInvoice] = useState(null);
-
-  // Delete confirmation state (merged from user commit)
-  const [deleteConfirmInvoice, setDeleteConfirmInvoice] = useState({ open: false, id: null, label: '', item: null });
-
-  const handleAskDeleteInvoice = (id, label, item = null) => {
-    if (!isSuperAdmin) {
-      addToast('Akses ditolak: Hanya Super Admin yang diizinkan untuk menghapus Invoice.', 'error');
-      return;
-    }
-    setDeleteConfirmInvoice({ open: true, id, label, item });
-  };
-
-  const handleConfirmDeleteInvoice = () => {
-    if (!isSuperAdmin) {
-      addToast('Akses ditolak: Hanya Super Admin yang diizinkan untuk menghapus Invoice.', 'error');
-      setDeleteConfirmInvoice({ open: false, id: null, label: '', item: null });
-      return;
-    }
-    if (deleteConfirmInvoice.id) {
-      deleteInvoice(deleteConfirmInvoice.id);
-      setSelectedItems((prev) => prev.filter((i) => i !== deleteConfirmInvoice.id));
-      setDeleteConfirmInvoice({ open: false, id: null, label: '', item: null });
-    }
-  };
-
-  // Pre-fill from navigation state if coming from Rekapan / Orders
+  // Reload data
   useEffect(() => {
-    if (location.state?.order) {
-      const o = location.state.order;
-      if (o.nomorRO) {
-        setSearchFilter(o.nomorRO);
-      }
-      if (location.state.fromRekapan || location.state.activeTab === 'create') {
-        setActiveTab('create');
-        if (o.customer) {
-          const cust = customers.find(
-            (c) => c.name === o.customer || c.id === o.customerId
-          );
-          if (cust) setFormCustomerId(cust.id);
-        }
-        setSelectedOrderId(o.nomorRO || o.id || '');
-        setFormNomorRo(o.nomorRO || o.id || '');
-        setFormPoNumber(o.poNumber || '');
-        setFormMaterial(o.material || '');
-        const isCurah =
-          !String(o.material || '').toUpperCase().includes('BOULDER') &&
-          !String(o.material || '').toUpperCase().includes('BATU');
-        setFormMaterialType(isCurah ? 'Curah' : 'Padat');
-        const vol = Number(o.totalVolume || o.terkirim || o.targetVolume || o.totalOrder || 0);
-        setFormVolume(vol > 0 ? vol : (Number(o.targetVolume || o.totalOrder) || ''));
-        const price = Number(o.hargaJual || 50000);
-        setFormHargaSatuan(price);
-        setFormIsPpn(o.isPpn !== undefined ? Boolean(o.isPpn) : true);
-      }
-    }
-  }, [location.state, customers]);
+    fetchInvoices();
+  }, [fetchInvoices]);
 
-  // Ensure fresh master data and initial defaults on Create Tab
   useEffect(() => {
     if (activeTab === 'create') {
-      if (customers.length === 0 || bankAccounts.length === 0) {
-        fetchMasterData?.();
-      }
-      if (!formCustomerId && customers.length > 0) {
-        setFormCustomerId(customers[0].id);
-      }
-      if (!formKirimKeRekening && bankAccounts.length > 0) {
-        const firstAcc = bankAccounts[0];
-        setFormKirimKeRekening(`${firstAcc.bank} - ${firstAcc.nomorRekening} a/n ${firstAcc.rekeningAtasNama}`);
-      }
+      loadAvailableOrders();
     }
-  }, [activeTab, customers, bankAccounts, formCustomerId, formKirimKeRekening, fetchMasterData]);
+  }, [activeTab]);
 
-  // Available orders for the selected customer / all approved orders
-  const availableOrders = useMemo(() => {
-    const list = [];
-    const seen = new Set();
-
-    (preOrders || [])
-      .filter((p) => p.status === 'APPROVED' || p.status === 'DISETUJUI' || p.status === 'AKTIF')
-      .forEach((p) => {
-        const ro = p.nomorRO || p.id;
-        if (!seen.has(ro)) {
-          seen.add(ro);
-          list.push({
-            id: p.id,
-            nomorRO: p.nomorRO,
-            poNumber: p.nomorPo || p.nomorPoCustomer || p.poNumber || 'PO Pending',
-            customer: p.customer,
-            customerId: p.customerId,
-            material: p.materialName || p.material,
-            volume: Number(p.terkirim || p.totalOrder || 0),
-            targetVolume: Number(p.totalOrder || 0),
-            hargaJual: Number(p.hargaJual || 50000),
-            satuan: p.satuan || 'm3',
-            isPpn: p.jenisWajibPajak === 'PKP',
-          });
-        }
-      });
-
-    (rekapanList || []).forEach((r) => {
-      const ro = r.nomorRO || r.id;
-      if (!seen.has(ro)) {
-        seen.add(ro);
-        list.push({
-          id: r.id,
-          nomorRO: r.nomorRO,
-          poNumber: r.poNumber,
-          customer: r.customer,
-          customerId: r.customerId,
-          material: r.material,
-          volume: Number(r.totalVolume || 0),
-          targetVolume: Number(r.targetVolume || 0),
-          hargaJual: Number(r.hargaJual || 50000),
-          satuan: r.satuan || 'm3',
-          isPpn: r.isPpn,
-        });
+  const loadAvailableOrders = async () => {
+    setIsLoadingAvailable(true);
+    try {
+      const res = await fetchAvailableOrdersForInvoice();
+      if (res.success) {
+        setAvailableOrders(res.data || []);
       }
-    });
-
-    if (formCustomerId) {
-      const targetCust = customers.find((c) => c.id === formCustomerId || c.name === formCustomerId);
-      if (targetCust) {
-        return list.filter(
-          (o) =>
-            o.customerId === targetCust.id ||
-            o.customer?.toLowerCase() === targetCust.name?.toLowerCase()
-        );
-      }
-    }
-
-    return list;
-  }, [preOrders, rekapanList, customers, formCustomerId]);
-
-  const handleSelectOrder = (orderId) => {
-    setSelectedOrderId(orderId);
-    if (!orderId) {
-      setFormNomorRo('');
-      setFormPoNumber('');
-      setFormMaterial('');
-      setFormVolume('');
-      setFormHargaSatuan('');
-      return;
-    }
-    const ord = availableOrders.find((o) => o.id === orderId || o.nomorRO === orderId);
-    if (ord) {
-      setFormNomorRo(ord.nomorRO || ord.id);
-      setFormPoNumber(ord.poNumber || '');
-      setFormMaterial(ord.material || 'SIRTU');
-      const isCurah =
-        !String(ord.material || '').toUpperCase().includes('BOULDER') &&
-        !String(ord.material || '').toUpperCase().includes('BATU');
-      setFormMaterialType(isCurah ? 'Curah' : 'Padat');
-      const vol = Number(ord.volume > 0 ? ord.volume : (ord.targetVolume || 0));
-      setFormVolume(vol > 0 ? vol : '');
-      setFormHargaSatuan(Number(ord.hargaJual || 50000));
-      setFormIsPpn(ord.isPpn !== undefined ? Boolean(ord.isPpn) : true);
-      if (ord.customerId && !formCustomerId) {
-        setFormCustomerId(ord.customerId);
-      }
+    } catch (err) {
+      console.error('Failed to load available orders:', err);
+    } finally {
+      setIsLoadingAvailable(false);
     }
   };
 
-  const selectedCustomer = useMemo(
-    () => customers.find((c) => c.id === formCustomerId || c.name === formCustomerId),
-    [customers, formCustomerId]
-  );
+  // Stats calculation
+  const stats = useMemo(() => {
+    const list = invoiceList || [];
+    const totalCount = list.length;
+    const pendingApprovalCount = list.filter(i => (i.status || '').toLowerCase() === 'pending_approval' || (i.status || '').toLowerCase() === 'menunggu_approval').length;
+    const pendingVerifCount = list.filter(i => (i.status || '').toLowerCase() === 'pending_verification').length;
+    const paidCount = list.filter(i => (i.status || '').toLowerCase() === 'paid' || i.statusBayar === 'Lunas').length;
 
-  // Exact Tax calculations per Implementation Plan Section 2 (Aturan 28 - 31)
-  const calculation = useMemo(() => {
-    const vol = Number(formVolume) || 0;
-    const unitPrice = Number(formHargaSatuan) || 0;
-    const subtotal = Math.round(vol * unitPrice);
-    const ppnNominal = formIsPpn ? Math.round((subtotal * TAX_RATES.PPN_PERCENT) / 100) : 0;
-    const pphRate = formMaterialType === 'Curah' ? TAX_RATES.PPH_CURAH : TAX_RATES.PPH_PADAT;
-    const pphNominal = Math.round((subtotal * pphRate) / 100);
-    const totalTagihan = subtotal + ppnNominal - pphNominal;
+    const totalNominal = list.reduce((sum, item) => sum + (Number(item.totalTagihan) || Number(item.nominal) || 0), 0);
+    const paidNominal = list
+      .filter(i => (i.status || '').toLowerCase() === 'paid' || i.statusBayar === 'Lunas')
+      .reduce((sum, item) => sum + (Number(item.totalTagihan) || Number(item.nominal) || 0), 0);
+    const outstandingNominal = totalNominal - paidNominal;
 
     return {
-      subtotal,
-      ppnNominal,
-      pphRate,
-      pphNominal,
-      totalTagihan,
+      totalCount,
+      pendingApprovalCount,
+      pendingVerifCount,
+      paidCount,
+      totalNominal,
+      paidNominal,
+      outstandingNominal
     };
-  }, [formVolume, formHargaSatuan, formIsPpn, formMaterialType]);
+  }, [invoiceList]);
 
-  // Handle Generate & Save Invoice
-  const handleApply = async (e) => {
-    e.preventDefault();
-    const targetCust = selectedCustomer;
-    const custName = targetCust?.name || 'PT CUSTOMER';
-
-    if (!targetCust && !custName) {
-      addToast('Pilih pelanggan terlebih dahulu', 'warning');
-      return;
-    }
-    if (!formVolume || Number(formVolume) <= 0) {
-      addToast('Volume tagihan harus lebih dari 0 m³', 'warning');
-      return;
-    }
-    if (!formHargaSatuan || Number(formHargaSatuan) <= 0) {
-      addToast('Harga satuan jual harus lebih dari Rp 0', 'warning');
-      return;
-    }
-
-    const cleanPo = formPoNumber ? formPoNumber.trim() : 'PO';
-    const cleanRo = formNomorRo ? formNomorRo.replace('RO-', '').replace(/[^a-zA-Z0-9]/g, '') : String(Date.now()).slice(-4);
-    const invCode = `${cleanPo} - INV - ${cleanRo}`;
-
-    const newInvData = {
-      nomorInvoice: invCode,
-      kodeTransaksi: invCode,
-      nomorRO: formNomorRo || null,
-      idReceivedOrder: formNomorRo || null,
-      poNumber: formPoNumber || null,
-      nomorPoCustomer: formPoNumber || null,
-      customerId: targetCust?.id || null,
-      pelanggan: custName,
-      perusahaan: custName,
-      customerAddress: targetCust?.address || '',
-      material: formMaterial || 'SIRTU',
-      materialName: formMaterial || 'SIRTU',
-      materialType: formMaterialType,
-      jenis: 'JASA ANGKUT + MATERIAL',
-      volume: Number(formVolume),
-      satuan: 'm3',
-      hargaSatuan: Number(formHargaSatuan),
-      subtotalJasa: calculation.subtotal,
-      ppnNominal: calculation.ppnNominal,
-      pphNominal: calculation.pphNominal,
-      totalTagihan: calculation.totalTagihan,
-      amount: calculation.totalTagihan,
-      kirimKeRekening: formKirimKeRekening,
-      rekeningAtasNama: 'PT Berkah Alam Semesta',
-      tanggal: formTanggal,
-      waktu: formWaktu,
-      periode: `Periode: [${formTanggal}]`,
-      statusBayar: 'Belum Dibayar',
-    };
-
-    const saved = await createInvoice(newInvData);
-    setLastCreatedInvoice(saved || newInvData);
-    setInvoiceGenerated(true);
-    addToast(`Faktur Invoice ${invCode} berhasil dibuat & disimpan ke database!`, 'success');
-  };
-
-  // Filtered Invoices for List View
+  // Filtered invoices
   const filteredInvoices = useMemo(() => {
-    return invoiceList.filter((item) => {
-      const q = (searchFilter || '').toLowerCase().trim();
-      if (q) {
-        const terms = q.split(/\s+/).filter(Boolean);
-        const searchableText = [
-          String(item.id || ''),
-          String(item.nomorInvoice || ''),
-          String(item.nomorFakturPajak || ''),
-          String(item.kodeTransaksi || ''),
-          String(item.nomorRO || ''),
-          String(item.idReceivedOrder || ''),
-          String(item.poNumber || ''),
-          String(item.nomorPoCustomer || ''),
-          String(item.perusahaan || ''),
-          String(item.pelanggan || ''),
-          String(item.customer || ''),
-          String(item.customerAddress || ''),
-          String(item.material || ''),
-          String(item.materialName || ''),
-          String(item.materialType || ''),
-          String(item.jenis || ''),
-          String(item.statusBayar || ''),
-          String(item.statusFaktur || ''),
-          String(item.tanggal || ''),
-          String(item.created_at || ''),
-          String(item.periode || ''),
-          String(item.rekeningAtasNama || ''),
-        ]
-          .join(' ')
-          .toLowerCase();
+    let result = invoiceList || [];
 
-        const matchAllTerms = terms.every((term) => searchableText.includes(term));
-        if (!matchAllTerms) return false;
-      }
-
-      const matchStatus =
-        statusFilter === 'ALL' ||
-        (statusFilter === 'BELUM_BAYAR' && item.statusBayar !== 'Lunas') ||
-        (statusFilter === 'LUNAS' && item.statusBayar === 'Lunas');
-
-      return matchStatus;
-    });
-  }, [invoiceList, searchFilter, statusFilter]);
-
-  // Grouped data (memoised)
-  const groups = useMemo(
-    () => groupInvoices(filteredInvoices, groupBy, sortOrder),
-    [filteredInvoices, groupBy, sortOrder]
-  );
-
-  // Auto-expand groups when they change
-  useEffect(() => {
-    if (groups.length <= 10) {
-      setExpandedGroups(new Set(groups.map((g) => g.key)));
-    } else {
-      setExpandedGroups(new Set(groups.length > 0 ? [groups[0].key] : []));
-    }
-  }, [groupBy, sortOrder]);
-
-  // Handlers
-  const handleReset = () => {
-    setSearchFilter('');
-    setStatusFilter('ALL');
-    setSelectedItems([]);
-    addToast('Data filter berhasil di-reset', 'info');
-  };
-
-  const toggleSelect = useCallback((id) => {
-    setSelectedItems((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
-    );
-  }, []);
-
-  const handleToggleGroup = useCallback((key) => {
-    setExpandedGroups((prev) => {
-      const next = new Set(prev);
-      next.has(key) ? next.delete(key) : next.add(key);
-      return next;
-    });
-  }, []);
-
-  const handleToggleGroupSelect = useCallback((group) => {
-    const ids = group.items.map((i) => i.id);
-    const state = groupCheckState(ids, selectedItems);
-    if (state === 'all') {
-      setSelectedItems((prev) => prev.filter((id) => !ids.includes(id)));
-    } else {
-      setSelectedItems((prev) => {
-        const set = new Set(prev);
-        ids.forEach((id) => set.add(id));
-        return [...set];
+    if (statusFilter !== 'all') {
+      result = result.filter(inv => {
+        const s = (inv.status || 'draft').toLowerCase();
+        if (statusFilter === 'pending_approval') {
+          return s === 'pending_approval' || s === 'menunggu_approval';
+        }
+        if (statusFilter === 'paid') {
+          return s === 'paid' || inv.statusBayar === 'Lunas';
+        }
+        return s === statusFilter.toLowerCase();
       });
     }
-  }, [selectedItems]);
 
-  const handleExpandAll = () => {
-    setExpandedGroups(new Set(groups.map((g) => g.key)));
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      result = result.filter(inv => {
+        return (
+          (inv.nomorInvoice || '').toLowerCase().includes(q) ||
+          (inv.customerName || inv.customer || '').toLowerCase().includes(q) ||
+          (inv.nomorRO || '').toLowerCase().includes(q) ||
+          (inv.poNumber || '').toLowerCase().includes(q) ||
+          (inv.id || '').toLowerCase().includes(q)
+        );
+      });
+    }
+
+    // Sort newest first
+    return [...result].sort((a, b) => new Date(b.createdAt || b.tanggal || 0) - new Date(a.createdAt || a.tanggal || 0));
+  }, [invoiceList, statusFilter, searchQuery]);
+
+  // Handle select order to invoice
+  const handleSelectOrder = (order) => {
+    setSelectedOrder(order);
+    setCreateErrorMsg('');
+    setCreateSuccessMsg('');
   };
-  const handleCollapseAll = () => {
-    setExpandedGroups(new Set());
+
+  // Calculations for create form
+  const formCalculations = useMemo(() => {
+    if (!selectedOrder) return { dpp: 0, ppn: 0, pph: 0, netTotal: 0 };
+    const vol = Number(selectedOrder.totalVolume) || 0;
+    const price = Number(selectedOrder.hargaSatuan) || 0;
+    const dpp = vol * price;
+    const ppnRate = formData.ppnPercent / 100;
+    const ppn = Math.round(dpp * ppnRate);
+
+    let pphRate = 0;
+    if (formData.pphType === '2%') pphRate = 0.02;
+    if (formData.pphType === '2.65%') pphRate = 0.0265;
+    const pph = Math.round(dpp * pphRate);
+
+    const netTotal = dpp + ppn - pph;
+
+    return { dpp, ppn, pph, netTotal };
+  }, [selectedOrder, formData]);
+
+  // Handle submit create invoice
+  const handleCreateSubmit = async (e) => {
+    e.preventDefault();
+    if (!selectedOrder) {
+      setCreateErrorMsg('Pilih Order/Jurnal yang telah selesai terlebih dahulu.');
+      return;
+    }
+
+    setCreateSubmitting(true);
+    setCreateErrorMsg('');
+    setCreateSuccessMsg('');
+
+    try {
+      const payload = {
+        jurnalId: selectedOrder.jurnalId,
+        preOrderId: selectedOrder.preOrderId,
+        nomorRO: selectedOrder.nomorRO,
+        poNumber: selectedOrder.poNumber,
+        customerName: selectedOrder.customerName,
+        customerAddress: selectedOrder.customerAddress,
+        customerNpwp: selectedOrder.customerNpwp,
+        material: selectedOrder.material,
+        volume: Number(selectedOrder.totalVolume) || 0,
+        hargaSatuan: Number(selectedOrder.hargaSatuan) || 0,
+        dpp: formCalculations.dpp,
+        ppn: formCalculations.ppn,
+        pph: formCalculations.pph,
+        ppnPercent: formData.ppnPercent,
+        pphPercent: formData.pphType === '2%' ? 2 : formData.pphType === '2.65%' ? 2.65 : 0,
+        totalTagihan: formCalculations.netTotal,
+        tempoHari: Number(formData.tempoHari) || 14,
+        bankName: formData.bankName,
+        bankAccount: formData.bankAccount,
+        accountName: formData.accountName,
+        notes: formData.notes
+      };
+
+      const res = await createInvoice(payload);
+      if (res.success) {
+        setCreateSuccessMsg(`Faktur Invoice #${res.data?.nomorInvoice || ''} berhasil dibuat dan otomatis dikunci menunggu Approval Superadmin.`);
+        setSelectedOrder(null);
+        await fetchInvoices();
+        setTimeout(() => {
+          setActiveTab('list');
+          setCreateSuccessMsg('');
+        }, 1800);
+      } else {
+        setCreateErrorMsg(res.message || 'Gagal membuat invoice.');
+      }
+    } catch (err) {
+      setCreateErrorMsg(err.message || 'Terjadi kesalahan sistem saat membuat invoice.');
+    } finally {
+      setCreateSubmitting(false);
+    }
   };
 
-  const totalSelected = invoiceList
-    .filter((item) => selectedItems.includes(item.id))
-    .reduce((sum, item) => sum + item.amount, 0);
-
-  const handleBatchMarkPaid = () => {
-    markInvoicePaid(selectedItems);
-    setSelectedItems([]);
-    addToast(`${selectedItems.length} Invoice berhasil dicatat LUNAS!`, 'success');
+  const openDetailModal = (invoice) => {
+    setSelectedInvoiceForModal(invoice);
+    setIsDetailModalOpen(true);
   };
 
-  // ─────────────────────────────────────────────────────────────────────────
+  const openPrintModal = (invoice) => {
+    setSelectedInvoiceForPrint(invoice);
+    setIsPrintModalOpen(true);
+  };
+
   return (
-    <div className="space-y-4 w-full pb-32">
-
-      {/* ── TOP HEADER WITH TAB SWITCHER ── */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#24282C]">
-        <div className="flex items-center gap-2.5">
-          <button
-            type="button"
-            onClick={() => {
-              if (activeTab === 'create') {
-                setActiveTab('list');
-              } else {
-                navigate('/');
-              }
-            }}
-            className="w-8 h-8 flex items-center justify-center rounded-full text-neutral-300 hover:text-white hover:bg-neutral-800 transition-colors cursor-pointer"
-            title="Kembali"
-          >
-            <ArrowLeft className="w-5 h-5" />
-          </button>
-          <div>
-            <h1 className="text-base sm:text-lg font-bold text-white tracking-tight">
-              {activeTab === 'list' ? 'Data Invoice' : 'Buat Invoice'}
-            </h1>
-            <p className="text-[11px] text-neutral-400">
-              {activeTab === 'list'
-                ? 'Daftar faktur tagihan customer & piutang aktif'
-                : 'Formulir pembuatan faktur pajak & tagihan resmi'}
-            </p>
+    <div className="min-h-screen bg-[#0B0C0E] text-zinc-100 p-4 sm:p-6 lg:p-8">
+      {/* HEADER SECTION */}
+      <div className="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#22262B] pb-5">
+        <div>
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-xl bg-orange-500/10 border border-orange-500/20 flex items-center justify-center text-[#F4511E]">
+              <FileText className="w-5 h-5" />
+            </div>
+            <div>
+              <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-white flex items-center gap-2">
+                Faktur Invoice Pelanggan
+                <span className="text-xs px-2 py-0.5 rounded-full bg-[#1A1D21] border border-[#2A2E35] text-zinc-400 font-mono">
+                  B2B Billing Workflow
+                </span>
+              </h1>
+              <p className="text-xs sm:text-sm text-zinc-400">
+                Penerbitan tagihan penagihan material, persetujuan bertingkat, verifikasi berkas tanda tangan fisik & pelunasan.
+              </p>
+            </div>
           </div>
         </div>
 
-        {/* Tab switcher */}
-        <div className="flex items-center gap-1.5 bg-[#131517] p-1 rounded-md border border-[#24282C] self-start sm:self-auto">
-          <Button
-            size="xs"
-            variant={activeTab === 'list' ? 'primary' : 'ghost'}
-            onClick={() => setActiveTab('list')}
+        {/* TOP CONTROLS & TABS */}
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => {
+              fetchInvoices();
+              if (activeTab === 'create') loadAvailableOrders();
+            }}
+            className="p-2.5 rounded-lg bg-[#14171A] border border-[#22262B] text-zinc-400 hover:text-white hover:border-[#33383F] transition-all"
+            title="Refresh Data"
           >
-            Daftar Invoice ({invoiceList.length})
-          </Button>
-          <Button
-            size="xs"
-            variant={activeTab === 'create' ? 'primary' : 'ghost'}
-            icon={Plus}
-            onClick={() => setActiveTab('create')}
-          >
-            Input Invoice
-          </Button>
+            <RefreshCw className="w-4 h-4" />
+          </button>
+
+          <div className="flex bg-[#121417] p-1 rounded-xl border border-[#22262B]">
+            <button
+              onClick={() => setActiveTab('list')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all ${
+                activeTab === 'list'
+                  ? 'bg-[#F4511E] text-white shadow-lg shadow-orange-500/20'
+                  : 'text-zinc-400 hover:text-white'
+              }`}
+            >
+              <FileText className="w-4 h-4" />
+              Daftar Invoice
+              <span className="ml-1 px-1.5 py-0.2 rounded-full bg-black/30 text-[11px] font-mono">
+                {invoiceList.length}
+              </span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('create')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all ${
+                activeTab === 'create'
+                  ? 'bg-[#F4511E] text-white shadow-lg shadow-orange-500/20'
+                  : 'text-zinc-400 hover:text-white'
+              }`}
+            >
+              <Plus className="w-4 h-4" />
+              Buat Invoice Baru
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* ════════════════════════════════════════════════════════════════════════
-          VIEW 1 — DAFTAR INVOICE (Matching Cash Out layout)
-         ════════════════════════════════════════════════════════════════════════ */}
+      {/* KPI METRIC CARDS - Visual style matching BKK Page */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div className="bg-[#121417] border border-[#22262B] p-4 rounded-xl relative overflow-hidden">
+          <div className="flex items-center justify-between text-zinc-400 text-xs font-medium mb-1">
+            <span>Total Tagihan Diterbitkan</span>
+            <DollarSign className="w-4 h-4 text-emerald-400" />
+          </div>
+          <div className="text-xl sm:text-2xl font-bold font-mono text-white tracking-tight">
+            {formatRupiah(stats.totalNominal)}
+          </div>
+          <div className="mt-2 text-[11px] text-zinc-500 flex items-center justify-between">
+            <span>Total: {stats.totalCount} Faktur</span>
+            <span className="text-emerald-400/90 font-mono">Lunas: {stats.paidCount}</span>
+          </div>
+        </div>
+
+        <div className="bg-[#121417] border border-[#22262B] p-4 rounded-xl relative overflow-hidden">
+          <div className="flex items-center justify-between text-zinc-400 text-xs font-medium mb-1">
+            <span>Outstanding (Piutang)</span>
+            <TrendingUp className="w-4 h-4 text-orange-400" />
+          </div>
+          <div className="text-xl sm:text-2xl font-bold font-mono text-[#F4511E] tracking-tight">
+            {formatRupiah(stats.outstandingNominal)}
+          </div>
+          <div className="mt-2 text-[11px] text-zinc-500 flex items-center justify-between">
+            <span>Terbayar: {formatRupiah(stats.paidNominal)}</span>
+          </div>
+        </div>
+
+        <div className="bg-[#121417] border border-[#22262B] p-4 rounded-xl relative overflow-hidden">
+          <div className="flex items-center justify-between text-zinc-400 text-xs font-medium mb-1">
+            <span>Menunggu Approval</span>
+            <Clock className="w-4 h-4 text-amber-400" />
+          </div>
+          <div className="text-2xl font-bold font-mono text-amber-400">
+            {stats.pendingApprovalCount}
+          </div>
+          <div className="mt-2 text-[11px] text-zinc-500">
+            Perlu persetujuan Superadmin sebelum cetak
+          </div>
+        </div>
+
+        <div className="bg-[#121417] border border-[#22262B] p-4 rounded-xl relative overflow-hidden">
+          <div className="flex items-center justify-between text-zinc-400 text-xs font-medium mb-1">
+            <span>Verifikasi Dokumen Fisik</span>
+            <ShieldCheck className="w-4 h-4 text-purple-400" />
+          </div>
+          <div className="text-2xl font-bold font-mono text-purple-400">
+            {stats.pendingVerifCount}
+          </div>
+          <div className="mt-2 text-[11px] text-zinc-500">
+            Berkas TTD fisik terunggah menunggu cek
+          </div>
+        </div>
+      </div>
+
+      {/* TAB CONTENT: DAFTAR INVOICE */}
       {activeTab === 'list' && (
-        <div className="space-y-3">
-
-          {/* ── Toolbar Row 1: count + icon buttons ── */}
-          <div className="flex items-center justify-between px-1">
-            <div className="flex items-center gap-2">
-              {filteredInvoices.length > 0 && (
-                <IndeterminateCheckbox
-                  checked={filteredInvoices.length > 0 && selectedItems.length === filteredInvoices.length}
-                  indeterminate={selectedItems.length > 0 && selectedItems.length < filteredInvoices.length}
-                  onChange={() => {
-                    if (selectedItems.length === filteredInvoices.length) {
-                      setSelectedItems([]);
-                    } else {
-                      setSelectedItems(filteredInvoices.map((i) => i.id));
-                    }
-                  }}
-                  title={selectedItems.length === filteredInvoices.length ? 'Batal pilih semua' : 'Pilih semua invoice'}
-                />
-              )}
-              <span className="text-[11px] text-neutral-400 font-mono">
-                Total {filteredInvoices.length} Faktur Tagihan
-              </span>
+        <div className="space-y-4">
+          {/* SEARCH & FILTER BAR */}
+          <div className="bg-[#121417] border border-[#22262B] p-3 rounded-xl flex flex-col md:flex-row md:items-center justify-between gap-3">
+            <div className="relative flex-1">
+              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Cari nomor invoice, nama pelanggan, nomor RO, nomor PO..."
+                className="w-full bg-[#181B1F] border border-[#2A2E35] rounded-lg pl-9 pr-4 py-2 text-xs sm:text-sm text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-[#F4511E] transition-all"
+              />
             </div>
 
-            <div className="flex items-center gap-1">
-              {/* Status filter cycle */}
-              <button
-                type="button"
-                onClick={() =>
-                  setStatusFilter((p) =>
-                    p === 'ALL' ? 'BELUM_BAYAR' : p === 'BELUM_BAYAR' ? 'LUNAS' : 'ALL'
-                  )
-                }
-                className={`w-8 h-8 flex items-center justify-center rounded-full transition-colors cursor-pointer ${
-                  statusFilter !== 'ALL'
-                    ? 'bg-[#F4511E]/20 text-[#F4511E]'
-                    : 'text-neutral-300 hover:text-white hover:bg-neutral-800'
-                }`}
-                title={`Filter Status: ${statusFilter}`}
-              >
-                <Filter className="w-4 h-4" />
-              </button>
-
-              {/* Date range */}
-              <button
-                type="button"
-                onClick={() => addToast('Pilih rentang tanggal Invoice', 'info')}
-                className="w-8 h-8 flex items-center justify-center rounded-full text-neutral-300 hover:text-white hover:bg-neutral-800 transition-colors cursor-pointer"
-                title="Rentang Tanggal"
-              >
-                <Calendar className="w-4 h-4" />
-              </button>
-
-              {/* Refresh */}
-              <button
-                type="button"
-                onClick={handleReset}
-                className="w-8 h-8 flex items-center justify-center rounded-full text-neutral-300 hover:text-white hover:bg-neutral-800 transition-colors cursor-pointer"
-                title="Refresh"
-              >
-                <RotateCw className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-
-          {/* ── Toolbar Row 2: grid/list toggle + group-by + sort + expand/collapse ── */}
-          <div className="flex items-center gap-2 px-1 flex-wrap">
-            {/* Grid / List View Toggle */}
-            <div className="flex items-center bg-[#1C1F24] border border-[#2A2E33] rounded-lg p-0.5">
-              <button
-                type="button"
-                onClick={() => setDisplayMode('list')}
-                className={`p-1.5 rounded-md transition-colors cursor-pointer ${
-                  displayMode === 'list'
-                    ? 'bg-[#F4511E] text-white shadow-sm'
-                    : 'text-neutral-400 hover:text-white'
-                }`}
-                title="Tampilan Tabel (List)"
-              >
-                <List className="w-3.5 h-3.5" />
-              </button>
-              <button
-                type="button"
-                onClick={() => setDisplayMode('grid')}
-                className={`p-1.5 rounded-md transition-colors cursor-pointer ${
-                  displayMode === 'grid'
-                    ? 'bg-[#F4511E] text-white shadow-sm'
-                    : 'text-neutral-400 hover:text-white'
-                }`}
-                title="Tampilan Grid"
-              >
-                <LayoutGrid className="w-3.5 h-3.5" />
-              </button>
-            </div>
-
-            {/* Group By dropdown */}
-            <div className="relative">
-              <select
-                value={groupBy}
-                onChange={(e) => setGroupBy(e.target.value)}
-                className="bg-[#1C1F24] border border-[#2A2E33] rounded-lg pl-2.5 pr-7 py-1.5 text-[11px] text-neutral-300 focus:outline-none focus:border-[#F4511E] appearance-none cursor-pointer"
-                title="Kelompokkan Berdasarkan"
-              >
-                <option value="company">Perusahaan</option>
-                <option value="status">Status</option>
-                <option value="material">Material</option>
-                <option value="month">Bulan</option>
-              </select>
-              <ChevronDown className="w-3 h-3 text-neutral-500 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
-            </div>
-
-            {/* Sort order */}
-            <button
-              type="button"
-              onClick={() => setSortOrder((p) => (p === 'default' ? 'name' : 'default'))}
-              className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] border transition-colors cursor-pointer ${
-                sortOrder === 'name'
-                  ? 'bg-[#F4511E]/10 text-[#F4511E] border-[#F4511E]/30'
-                  : 'bg-[#1C1F24] text-neutral-400 border-[#2A2E33] hover:text-white'
-              }`}
-              title={sortOrder === 'name' ? 'Urut: A–Z' : 'Urut: Prioritas'}
-            >
-              <ArrowUpDown className="w-3.5 h-3.5" />
-              <span>{sortOrder === 'name' ? 'A–Z' : 'Prioritas'}</span>
-            </button>
-
-            {/* Expand / Collapse all */}
-            <div className="flex items-center gap-1 ml-auto">
-              <button
-                type="button"
-                onClick={handleExpandAll}
-                className="text-[11px] text-neutral-500 hover:text-neutral-200 transition-colors cursor-pointer px-1.5"
-                title="Buka Semua"
-              >
-                Buka semua
-              </button>
-              <span className="text-neutral-700 text-xs">|</span>
-              <button
-                type="button"
-                onClick={handleCollapseAll}
-                className="text-[11px] text-neutral-500 hover:text-neutral-200 transition-colors cursor-pointer px-1.5"
-                title="Tutup Semua"
-              >
-                Tutup semua
-              </button>
-            </div>
-          </div>
-
-          {/* Search input — always visible */}
-          <div className="relative">
-            <Search className="w-4 h-4 text-neutral-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-            <input
-              type="text"
-              value={searchFilter}
-              onChange={(e) => setSearchFilter(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Escape') setSearchFilter('');
-              }}
-              placeholder="Cari nomor invoice, faktur pajak, RO, PO customer, nama customer, material, status..."
-              className="w-full bg-[#1C1F24] border border-[#2A2E33] focus:border-[#F4511E] focus:ring-1 focus:ring-[#F4511E]/30 rounded-xl pl-10 pr-28 py-2.5 text-xs text-white placeholder-neutral-500 focus:outline-none font-mono transition-all shadow-inner"
-            />
-            <div className="absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
-              {searchFilter.trim() && (
-                <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[#F4511E]/10 text-[#F4511E] border border-[#F4511E]/30 hidden sm:inline">
-                  {filteredInvoices.length} ditemukan
-                </span>
-              )}
-              {searchFilter && (
+            <div className="flex items-center gap-2 overflow-x-auto pb-1 md:pb-0">
+              <span className="text-xs text-zinc-500 whitespace-nowrap pl-1">Status:</span>
+              {[
+                { key: 'all', label: 'Semua' },
+                { key: 'pending_approval', label: 'Menunggu Approval' },
+                { key: 'approved', label: 'Siap Cetak' },
+                { key: 'pending_verification', label: 'Verifikasi TTD' },
+                { key: 'revision_required', label: 'Perlu Revisi' },
+                { key: 'paid', label: 'Lunas' }
+              ].map(f => (
                 <button
-                  type="button"
-                  onClick={() => setSearchFilter('')}
-                  className="text-neutral-400 hover:text-white p-1 rounded-md hover:bg-white/10 transition-colors cursor-pointer"
-                  title="Hapus pencarian (Esc)"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              )}
-            </div>
-          </div>
-
-          {/* Active filter chips */}
-          {(searchFilter.trim() || statusFilter !== 'ALL') && (
-            <div className="flex items-center gap-2 flex-wrap text-xs pt-0.5">
-              <span className="text-[11px] text-neutral-500 font-mono">Filter aktif:</span>
-              {searchFilter.trim() && (
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg bg-[#F4511E]/10 border border-[#F4511E]/30 text-[#F4511E] text-[11px] font-mono">
-                  <span>Pencarian: &ldquo;{searchFilter}&rdquo;</span>
-                  <button
-                    type="button"
-                    onClick={() => setSearchFilter('')}
-                    className="hover:text-white transition-colors cursor-pointer"
-                    title="Hapus filter pencarian"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                </span>
-              )}
-              {statusFilter !== 'ALL' && (
-                <span
-                  className={`inline-flex items-center gap-1.5 text-[11px] font-mono px-2.5 py-0.5 rounded-lg border cursor-pointer ${
-                    statusFilter === 'LUNAS'
-                      ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30'
-                      : 'text-[#F4511E] bg-[#F4511E]/10 border-[#F4511E]/30'
+                  key={f.key}
+                  onClick={() => setStatusFilter(f.key)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all ${
+                    statusFilter === f.key
+                      ? 'bg-[#F4511E]/15 border border-[#F4511E] text-white'
+                      : 'bg-[#181B1F] border border-[#2A2E35] text-zinc-400 hover:text-zinc-200'
                   }`}
-                  onClick={() => setStatusFilter('ALL')}
-                  title="Klik untuk hapus filter status"
                 >
-                  <span>Status: {statusFilter === 'LUNAS' ? 'LUNAS' : 'BELUM LUNAS'}</span>
-                  <X className="w-3.5 h-3.5" />
-                </span>
-              )}
-              {(searchFilter.trim() || statusFilter !== 'ALL') && (
+                  {f.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* INVOICE CARDS LIST - Matching BkkCard styling with high emphasis on amount, code, customer */}
+          {filteredInvoices.length === 0 ? (
+            <div className="bg-[#121417] border border-[#22262B] rounded-xl p-12 text-center">
+              <FileText className="w-12 h-12 text-zinc-600 mx-auto mb-3" />
+              <h3 className="text-base font-semibold text-zinc-300">Tidak ada faktur invoice ditemukan</h3>
+              <p className="text-xs text-zinc-500 mt-1 max-w-sm mx-auto">
+                {searchQuery || statusFilter !== 'all'
+                  ? 'Coba sesuaikan kata kunci pencarian atau filter status yang dipilih.'
+                  : 'Belum ada faktur yang diterbitkan. Anda dapat membuat invoice dari Order / Jurnal yang telah selesai 100%.'}
+              </p>
+              {statusFilter === 'all' && !searchQuery && (
                 <button
-                  type="button"
-                  onClick={() => {
-                    setSearchFilter('');
-                    setStatusFilter('ALL');
-                  }}
-                  className="text-[10px] text-neutral-500 hover:text-neutral-300 underline font-mono ml-auto cursor-pointer"
+                  onClick={() => setActiveTab('create')}
+                  className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[#F4511E] hover:bg-[#d84315] text-white text-xs font-medium transition-all"
                 >
-                  Reset semua
+                  <Plus className="w-4 h-4" /> Buat Invoice Baru
                 </button>
               )}
             </div>
-          )}
+          ) : (
+            <div className="grid grid-cols-1 gap-3.5">
+              {filteredInvoices.map((inv) => {
+                const normalizedStatus = (inv.status || 'draft').toLowerCase();
+                const statusMeta = STATUS_CONFIG[normalizedStatus] || STATUS_CONFIG.draft;
+                const StatusIcon = statusMeta.icon;
+                const isApprovedOrBeyond = ['approved', 'pending_verification', 'revision_required', 'paid'].includes(normalizedStatus);
+                const isPaid = normalizedStatus === 'paid' || inv.statusBayar === 'Lunas';
 
-          {/* ── Main Grouped Table List ── */}
-          <InvoiceGroupedTable
-            groups={groups}
-            expandedGroups={expandedGroups}
-            onToggleGroup={handleToggleGroup}
-            selectedItems={selectedItems}
-            onToggleSelect={toggleSelect}
-            onToggleGroupSelect={handleToggleGroupSelect}
-            onInfo={setInfoModalItem}
-            onDelete={(item) => handleAskDeleteInvoice(item.id, item.kodeTransaksi, item)}
-            canDelete={isSuperAdmin}
-            displayMode={displayMode}
-          />
-        </div>
-      )}
+                return (
+                  <div
+                    key={inv.id || inv.nomorInvoice}
+                    className="bg-[#121417] border border-[#22262B] hover:border-[#32373E] rounded-xl p-4 sm:p-5 transition-all relative overflow-hidden group"
+                  >
+                    {/* Left Accent indicator */}
+                    <div
+                      className={`absolute left-0 top-0 bottom-0 w-1 ${
+                        isPaid
+                          ? 'bg-emerald-500'
+                          : normalizedStatus === 'pending_approval' || normalizedStatus === 'menunggu_approval'
+                          ? 'bg-amber-500'
+                          : normalizedStatus === 'pending_verification'
+                          ? 'bg-purple-500'
+                          : normalizedStatus === 'revision_required'
+                          ? 'bg-rose-500'
+                          : normalizedStatus === 'approved'
+                          ? 'bg-blue-500'
+                          : 'bg-zinc-600'
+                      }`}
+                    />
 
-      {/* ════════════════════════════════════════════════════════════════════════
-          VIEW 2 — INPUT INVOICE (Formulir Buat Invoice Terintegrasi)
-         ════════════════════════════════════════════════════════════════════════ */}
-      {activeTab === 'create' && (
-        <div className="max-w-4xl mx-auto space-y-4">
-          <Card className="p-4 sm:p-6 border-[#24282C] bg-[#14171A] space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-[#202428]">
-              <div>
-                <h2 className="text-sm sm:text-base font-bold text-white flex items-center gap-2">
-                  <Receipt className="w-4 h-4 text-[#F4511E]" />
-                  Formulir Faktur Tagihan Invoice (Piutang Usaha)
-                </h2>
-                <p className="text-[11px] text-neutral-400 mt-0.5">
-                  Pilih pelanggan dan tarik data pesanan RO resmi untuk mengkalkulasi tagihan dan pajak secara otomatis.
-                </p>
-              </div>
-
-              {selectedOrderId && (
-                <Badge variant="primary" size="xs">
-                  <Check className="w-3 h-3 mr-1" />
-                  Pesanan Terhubung ({selectedOrderId})
-                </Badge>
-              )}
-            </div>
-
-            <form onSubmit={handleApply} className="space-y-4">
-              {!filterHidden && (
-                <>
-                  {/* Step 1: Pilih Pelanggan & Rekening Tujuan PT BAS */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                    <div>
-                      <Select
-                        label="Pilih Pelanggan (Customer)"
-                        icon={User}
-                        value={formCustomerId}
-                        onChange={(e) => {
-                          const newCustId = e.target.value;
-                          setFormCustomerId(newCustId);
-                          setSelectedOrderId('');
-                          setFormNomorRo('');
-                          setFormPoNumber('');
-                          setFormMaterial('');
-                          setFormVolume('');
-                          setFormHargaSatuan('');
-                        }}
-                      >
-                        <option value="">-- Pilih Customer --</option>
-                        {customers.map((c) => (
-                          <option key={c.id} value={c.id}>
-                            {c.name} {c.alias ? `(${c.alias})` : ''}
-                          </option>
-                        ))}
-                      </Select>
-                    </div>
-
-                    <div>
-                      <Select
-                        label="Kirim ke Rekening PT BAS"
-                        icon={Building2}
-                        value={formKirimKeRekening}
-                        onChange={(e) => setFormKirimKeRekening(e.target.value)}
-                      >
-                        {bankAccounts.map((acc) => (
-                          <option
-                            key={acc.id}
-                            value={`${acc.bank} - ${acc.nomorRekening} a/n ${acc.rekeningAtasNama}`}
+                    <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                      {/* Left: Invoice Identity & Details */}
+                      <div className="space-y-2 flex-1">
+                        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                          <span className="font-mono text-sm sm:text-base font-bold text-white bg-[#1A1D21] px-2.5 py-0.5 rounded border border-[#2A2E35]">
+                            {inv.nomorInvoice}
+                          </span>
+                          <span
+                            className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-medium border ${statusMeta.bg}`}
                           >
-                            {acc.bank} - {acc.nomorRekening} a/n {acc.rekeningAtasNama}
-                          </option>
-                        ))}
-                      </Select>
-                    </div>
-                  </div>
-
-                  {/* Customer Information Card */}
-                  {selectedCustomer && (
-                    <div className="p-3 bg-[#111315] rounded-lg border border-[#202428] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5 font-mono text-xs">
-                      <div className="space-y-0.5">
-                        <div className="text-white font-bold flex items-center gap-2">
-                          <span>{selectedCustomer.name}</span>
-                          {selectedCustomer.alias && (
-                            <span className="text-[10px] text-neutral-400 font-normal">
-                              ({selectedCustomer.alias})
-                            </span>
-                          )}
-                          <Badge size="xs" variant={selectedCustomer.isPpn ? 'primary' : 'neutral'}>
-                            {selectedCustomer.isPpn ? 'PKP (PPN 11%)' : 'Non-PKP'}
-                          </Badge>
-                        </div>
-                        <div className="text-neutral-400 text-[11px] flex items-center gap-3 flex-wrap">
-                          {selectedCustomer.address && (
-                            <span className="flex items-center gap-1">
-                              <MapPin className="w-3 h-3 text-neutral-500" />
-                              {selectedCustomer.address}
-                            </span>
-                          )}
-                          {selectedCustomer.telepon && (
-                            <span className="flex items-center gap-1">
-                              <Phone className="w-3 h-3 text-neutral-500" />
-                              {selectedCustomer.telepon}
+                            <StatusIcon className="w-3 h-3" />
+                            {statusMeta.label}
+                          </span>
+                          {inv.hasSignedDocument && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono bg-purple-950/40 text-purple-300 border border-purple-800/40">
+                              <ShieldCheck className="w-3 h-3" /> TTD Fisik Ada
                             </span>
                           )}
                         </div>
+
+                        <div className="flex flex-wrap items-center gap-y-1 gap-x-4 text-xs text-zinc-300">
+                          <div className="flex items-center gap-1.5 font-medium text-white">
+                            <Building2 className="w-3.5 h-3.5 text-zinc-400" />
+                            <span className="text-zinc-100">{inv.customerName || inv.customer || 'Pelanggan'}</span>
+                          </div>
+                          <div className="text-zinc-500">•</div>
+                          <div className="text-zinc-400">
+                            RO: <span className="font-mono text-zinc-300">{inv.nomorRO || '-'}</span>
+                          </div>
+                          {inv.poNumber && (
+                            <>
+                              <div className="text-zinc-500">•</div>
+                              <div className="text-zinc-400">
+                                PO: <span className="font-mono text-zinc-300">{inv.poNumber}</span>
+                              </div>
+                            </>
+                          )}
+                          <div className="text-zinc-500">•</div>
+                          <div className="text-zinc-400">
+                            Vol: <span className="font-mono text-zinc-300">{inv.volume || inv.totalVolume || 0} m³</span>
+                          </div>
+                        </div>
+
+                        {/* Tax breakdown chips */}
+                        <div className="flex flex-wrap items-center gap-2 pt-1 text-[11px] text-zinc-400">
+                          <span className="bg-[#181B1F] px-2 py-0.5 rounded border border-[#262A30] font-mono">
+                            DPP: {formatRupiah(inv.dpp || (inv.volume * inv.hargaSatuan) || 0)}
+                          </span>
+                          <span className="bg-[#181B1F] px-2 py-0.5 rounded border border-[#262A30] font-mono">
+                            PPN 11%: {formatRupiah(inv.ppn || 0)}
+                          </span>
+                          <span className="bg-[#181B1F] px-2 py-0.5 rounded border border-[#262A30] font-mono">
+                            PPh: {formatRupiah(inv.pph || 0)}
+                          </span>
+                          <span className="text-zinc-500 text-[10px] ml-1">
+                            Tgl: {new Date(inv.createdAt || inv.tanggal || Date.now()).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
+                          </span>
+                        </div>
                       </div>
 
-                      <div className="text-[11px] text-neutral-400 text-right sm:self-center">
-                        <div>NPWP: <strong className="text-white">{selectedCustomer.npwp || '-'}</strong></div>
-                      </div>
-                    </div>
-                  )}
+                      {/* Right: Net Amount (Major visual emphasis) & Action Buttons */}
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between lg:justify-end gap-4 border-t lg:border-t-0 border-[#22262B] pt-3 lg:pt-0">
+                        <div className="text-left sm:text-right">
+                          <div className="text-[10px] uppercase tracking-wider text-zinc-400 font-medium">
+                            Nilai Bersih Tagihan (Net)
+                          </div>
+                          <div className="text-lg sm:text-2xl font-extrabold font-mono text-[#10B981] tracking-tight">
+                            {formatRupiah(inv.totalTagihan || inv.nominal || 0)}
+                          </div>
+                          <div className="text-[10px] text-zinc-500">
+                            Status Bayar:{' '}
+                            <span className={isPaid ? 'text-emerald-400 font-semibold' : 'text-amber-400'}>
+                              {isPaid ? 'Lunas' : 'Belum Lunas'}
+                            </span>
+                          </div>
+                        </div>
 
-                  {/* Step 2: Auto-Retrieve dari Pesanan / Nomor RO */}
-                  <div>
-                    <Select
-                      label="Tarik Data dari Pesanan / Nomor RO (Auto-Retrieve)"
-                      icon={Ticket}
-                      value={selectedOrderId}
-                      onChange={(e) => handleSelectOrder(e.target.value)}
-                    >
-                      <option value="">-- Pilih Pesanan / RO untuk Mengisi Otomatis --</option>
-                      {availableOrders.map((ord) => (
-                        <option key={ord.id || ord.nomorRO} value={ord.nomorRO || ord.id}>
-                          [{ord.nomorRO || ord.id}] {ord.material} • PO: {ord.poNumber || 'DRAFT'} ({ord.volume || ord.targetVolume} m³)
-                        </option>
-                      ))}
-                    </Select>
-                    <p className="text-[10px] text-neutral-400 mt-1 font-mono">
-                      * Memilih pesanan akan otomatis mengisi nomor RO, nomor PO, material, volume realisasi, dan harga jual customer.
-                    </p>
-                  </div>
+                        {/* Actions */}
+                        <div className="flex items-center gap-2">
+                          {/* Print Button (Only if approved by Superadmin) */}
+                          <button
+                            onClick={() => openPrintModal(inv)}
+                            disabled={!isApprovedOrBeyond}
+                            title={
+                              isApprovedOrBeyond
+                                ? 'Cetak Faktur Invoice Resmi'
+                                : 'Faktur harus disetujui Superadmin terlebih dahulu sebelum dapat dicetak'
+                            }
+                            className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-all ${
+                              isApprovedOrBeyond
+                                ? 'bg-[#181B1F] hover:bg-[#20242A] border border-[#2E333B] text-zinc-200 hover:text-white'
+                                : 'bg-[#15171A] border border-[#202327] text-zinc-600 cursor-not-allowed opacity-60'
+                            }`}
+                          >
+                            <Printer className="w-3.5 h-3.5 text-blue-400" />
+                            <span>Cetak</span>
+                          </button>
 
-                  {/* Step 3: Nomor Referensi Dokumen & Waktu */}
-                  <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
-                    <Input
-                      label="Nomor RO Resmi"
-                      icon={Ticket}
-                      value={formNomorRo}
-                      onChange={(e) => setFormNomorRo(e.target.value)}
-                      placeholder="RO-LW-112026-001"
-                      className="font-mono text-white"
-                    />
-
-                    <Input
-                      label="Nomor PO Customer"
-                      icon={Ticket}
-                      value={formPoNumber}
-                      onChange={(e) => setFormPoNumber(e.target.value)}
-                      placeholder="PO-LW-112026-001"
-                      className="font-mono text-white"
-                    />
-
-                    <Input
-                      label="Tanggal Invoice"
-                      icon={Calendar}
-                      type="date"
-                      value={formTanggal}
-                      onChange={(e) => setFormTanggal(e.target.value)}
-                    />
-
-                    <Input
-                      label="Waktu"
-                      icon={Clock}
-                      type="time"
-                      value={formWaktu}
-                      onChange={(e) => setFormWaktu(e.target.value)}
-                    />
-                  </div>
-
-                  {/* Step 4: Spesifikasi Material & Perpajakan */}
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    <Input
-                      label="Nama Material"
-                      icon={Package}
-                      value={formMaterial}
-                      onChange={(e) => setFormMaterial(e.target.value)}
-                      placeholder="SIRTU / BASE COURSE"
-                    />
-
-                    <Select
-                      label="Kategori Material"
-                      value={formMaterialType}
-                      onChange={(e) => setFormMaterialType(e.target.value)}
-                    >
-                      <option value="Curah">Curah (PPh 23: 2.0%)</option>
-                      <option value="Padat">Padat (PPh 23: 2.65%)</option>
-                    </Select>
-
-                    <Select
-                      label="Perpajakan PPN"
-                      value={formIsPpn ? 'ppn' : 'non-ppn'}
-                      onChange={(e) => setFormIsPpn(e.target.value === 'ppn')}
-                    >
-                      <option value="ppn">PKP (PPN 11%)</option>
-                      <option value="non-ppn">Non-PPN (0%)</option>
-                    </Select>
-                  </div>
-
-                  {/* Step 5: Volume & Harga Satuan */}
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3.5 bg-[#111315] rounded-lg border border-[#202428]">
-                    <Input
-                      label="Volume Tagihan (m³)"
-                      type="number"
-                      placeholder="0"
-                      value={formVolume}
-                      onChange={(e) => setFormVolume(e.target.value)}
-                      className="font-mono text-amber-400 font-bold"
-                    />
-
-                    <Input
-                      label="Harga Satuan Jual (IDR/m³)"
-                      type="number"
-                      placeholder="0"
-                      value={formHargaSatuan}
-                      onChange={(e) => setFormHargaSatuan(e.target.value)}
-                      className="font-mono text-white font-bold"
-                    />
-
-                    <div>
-                      <label className="block text-[11px] font-medium text-neutral-400 mb-1">
-                        Subtotal Dasar
-                      </label>
-                      <div className="w-full bg-[#181B1E] border border-[#262A2E] rounded-md px-3 py-2 text-sm font-mono font-bold text-white">
-                        {formatCurrency(calculation.subtotal)}
+                          {/* Workflow / Detail / Upload Modal */}
+                          <button
+                            type="button"
+                            onClick={() => openDetailModal(inv)}
+                            className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-[#F4511E] hover:bg-[#d84315] text-white text-xs font-semibold shadow-md shadow-orange-500/10 transition-all cursor-pointer"
+                            title="Buka rincian lengkap invoice & unggah berkas tanda tangan fisik"
+                          >
+                            <FileText className="w-3.5 h-3.5" />
+                            <span>Invoice Details</span>
+                            <ArrowRight className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </div>
-
-                  {/* Kotak Ringkasan Perhitungan Resmi PT BAS */}
-                  <div className="bg-[#111315] p-4 rounded-lg border border-[#262A2E] space-y-2.5 font-mono text-xs max-w-md ml-auto">
-                    <div className="text-[10px] uppercase font-bold text-neutral-400 tracking-wider pb-1 border-b border-[#202428] flex justify-between">
-                      <span>Rincian Tagihan &amp; Pajak</span>
-                      <span className="text-[#F4511E]">PT BAS Official</span>
-                    </div>
-
-                    <div className="flex justify-between py-1 text-neutral-300">
-                      <span>Subtotal Jasa &amp; Material:</span>
-                      <strong className="text-white">{formatCurrency(calculation.subtotal)}</strong>
-                    </div>
-
-                    <div className="flex justify-between py-1 text-neutral-300">
-                      <span>PPN 11% (Pasal 22):</span>
-                      <strong className={formIsPpn ? 'text-emerald-400' : 'text-neutral-500'}>
-                        +{formatCurrency(calculation.ppnNominal)}
-                      </strong>
-                    </div>
-
-                    <div className="flex justify-between py-1 text-neutral-300">
-                      <span>PPh 23 ({calculation.pphRate}%):</span>
-                      <strong className="text-[#F4511E]">
-                        -{formatCurrency(calculation.pphNominal)}
-                      </strong>
-                    </div>
-
-                    <div className="pt-2.5 border-t border-[#262A2E] flex justify-between items-baseline">
-                      <span className="font-bold text-white text-xs">Total Bersih Tagihan:</span>
-                      <span className="text-base sm:text-lg font-bold text-[#F4511E]">
-                        {formatCurrency(calculation.totalTagihan)}
-                      </span>
-                    </div>
-                  </div>
-                </>
-              )}
-
-              {/* Action Buttons */}
-              <div className="flex items-center gap-2 pt-2">
-                <Button
-                  type="submit"
-                  variant="primary"
-                  size="md"
-                  className="flex-1 bg-[#F4511E] hover:bg-[#ff6b3d] text-white uppercase font-bold tracking-wider py-2.5 cursor-pointer"
-                >
-                  TERAPKAN &amp; SIMPAN INVOICE
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="md"
-                  onClick={() => {
-                    setSelectedOrderId('');
-                    setFormNomorRo('');
-                    setFormPoNumber('');
-                    setFormMaterial('');
-                    setFormVolume('');
-                    setFormHargaSatuan('');
-                    setInvoiceGenerated(false);
-                    addToast('Formulir di-reset', 'info');
-                  }}
-                  className="cursor-pointer"
-                >
-                  Reset Form
-                </Button>
-              </div>
-
-              {/* Toggle Collapse */}
-              <div className="text-center pt-1">
-                <button
-                  type="button"
-                  onClick={() => setFilterHidden(!filterHidden)}
-                  className="text-[11px] text-neutral-400 hover:text-white inline-flex items-center gap-1 font-mono transition-colors cursor-pointer"
-                >
-                  {filterHidden ? 'Tampilkan Formulir' : 'Sembunyikan Formulir'}
-                  {filterHidden ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronUp className="w-3.5 h-3.5" />}
-                </button>
-              </div>
-            </form>
-          </Card>
-
-          {/* Generated Enterprise Invoice Sheet Preview */}
-          {invoiceGenerated && (
-            <Card className="p-5 sm:p-6 space-y-4 border-[#24282C] bg-[#14171A]">
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-4 border-b border-[#24282C]">
-                <div>
-                  <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-[#F4511E] block">
-                    PT BERKAH ALAM SEMESTA • FAKTUR TAGIHAN RESMI
-                  </span>
-                  <h2 className="text-lg font-bold text-white font-mono mt-0.5">
-                    {lastCreatedInvoice?.kodeTransaksi || `${formPoNumber || 'PO'} - INV - ${formNomorRo || '0001'}`}
-                  </h2>
-                  <p className="text-xs text-neutral-400 font-mono mt-0.5">
-                    Customer: <strong className="text-white">{selectedCustomer?.name || 'Customer'}</strong> | PO:{' '}
-                    {formPoNumber || '-'} | RO: {formNomorRo || '-'}
-                  </p>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setActiveTab('list')}
-                    className="cursor-pointer"
-                  >
-                    Lihat Data Invoice &rarr;
-                  </Button>
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    icon={Printer}
-                    onClick={() => window.print()}
-                    className="cursor-pointer"
-                  >
-                    Cetak Faktur Penjualan
-                  </Button>
-                </div>
-              </div>
-
-              {/* Tax Breakdown Table */}
-              <div className="space-y-2 max-w-sm ml-auto font-mono text-xs">
-                <div className="flex justify-between py-1.5 border-b border-[#202326]">
-                  <span className="text-neutral-400">Total Jasa &amp; Material:</span>
-                  <span className="text-white font-medium">{formatCurrency(calculation.subtotal)}</span>
-                </div>
-
-                <div className="flex justify-between py-1.5 border-b border-[#202326]">
-                  <span className="text-neutral-400">PPN 11% (Pasal 22):</span>
-                  <span className="text-emerald-400 font-medium">+{formatCurrency(calculation.ppnNominal)}</span>
-                </div>
-
-                <div className="flex justify-between py-1.5 border-b border-[#202326]">
-                  <span className="text-neutral-400">
-                    PPH {calculation.pphRate}% ({formMaterialType}):
-                  </span>
-                  <span className="text-[#F4511E] font-medium">-{formatCurrency(calculation.pphNominal)}</span>
-                </div>
-
-                <div className="pt-2 flex justify-between items-baseline border-t border-[#2A2E33]">
-                  <span className="text-xs font-bold text-neutral-300">Total Bersih Tagihan:</span>
-                  <span className="text-lg font-bold text-[#F4511E]">
-                    {formatCurrency(calculation.totalTagihan)}
-                  </span>
-                </div>
-              </div>
-            </Card>
+                );
+              })}
+            </div>
           )}
         </div>
       )}
 
-      {/* ── STICKY BATCH ACTIONS BAR (When items are checked) ── */}
-      {selectedItems.length > 0 && (
-        <div className="fixed bottom-0 left-0 right-0 z-40 bg-[#111315]/95 backdrop-blur-md border-t border-[#262A2F] p-3 shadow-2xl">
-          <div className="w-full max-w-7xl mx-auto flex items-center justify-between gap-3 px-2">
-            <div className="flex items-center gap-2 min-w-0">
-              <span className="w-2 h-2 rounded-full bg-[#F4511E] animate-pulse shrink-0" />
-              <div className="text-xs font-mono text-neutral-300 truncate">
-                <strong className="text-white">{selectedItems.length}</strong> Invoice Terpilih &bull; Total:{' '}
-                <strong className="text-[#F4511E] text-sm">
-                  {formatCurrency(totalSelected)}
-                </strong>
+      {/* TAB CONTENT: BUAT INVOICE BARU (Manual Creation strictly after 100% completion) */}
+      {activeTab === 'create' && (
+        <div className="space-y-6 max-w-5xl">
+          {/* Information Banner */}
+          <div className="bg-[#121417] border border-[#22262B] p-4 rounded-xl flex items-start gap-3">
+            <Info className="w-5 h-5 text-blue-400 shrink-0 mt-0.5" />
+            <div className="text-xs sm:text-sm text-zinc-300">
+              <span className="font-semibold text-white">Aturan Workflow Penerbitan Faktur Invoice:</span>
+              <p className="text-zinc-400 text-xs mt-0.5">
+                Sesuai SOP PT Bintang Anugerah Sejahtera, faktur tagihan hanya dapat diterbitkan apabila seluruh volume pengiriman pada Order / Jurnal telah tercapai 100% (Completed). Setelah invoice dibuat, status terkunci otomatis ke <span className="text-amber-400 font-mono">Menunggu Approval Superadmin</span> sebelum dapat dicetak dan ditandatangani.
+              </p>
+            </div>
+          </div>
+
+          {/* Messages */}
+          {createSuccessMsg && (
+            <div className="bg-emerald-950/40 border border-emerald-800/60 p-4 rounded-xl flex items-center gap-3 text-emerald-300 text-sm">
+              <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
+              <span>{createSuccessMsg}</span>
+            </div>
+          )}
+          {createErrorMsg && (
+            <div className="bg-rose-950/40 border border-rose-800/60 p-4 rounded-xl flex items-center gap-3 text-rose-300 text-sm">
+              <AlertTriangle className="w-5 h-5 text-rose-400 shrink-0" />
+              <span>{createErrorMsg}</span>
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            {/* Step 1: Select Available Completed Order */}
+            <div className="lg:col-span-5 space-y-3">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-semibold text-zinc-300 uppercase tracking-wider flex items-center gap-1.5">
+                  <span className="h-5 w-5 rounded-full bg-[#F4511E] text-white flex items-center justify-center text-[10px]">1</span>
+                  Pilih Order Selesai 100%
+                </label>
+                <button
+                  type="button"
+                  onClick={loadAvailableOrders}
+                  className="text-xs text-orange-400 hover:text-orange-300 flex items-center gap-1"
+                >
+                  <RefreshCw className="w-3 h-3" /> Refresh
+                </button>
               </div>
+
+              {isLoadingAvailable ? (
+                <div className="bg-[#121417] border border-[#22262B] p-8 rounded-xl text-center text-zinc-400 text-xs">
+                  <RefreshCw className="w-5 h-5 animate-spin mx-auto mb-2 text-orange-400" />
+                  Memeriksa order & jurnal pengiriman yang telah selesai...
+                </div>
+              ) : availableOrders.length === 0 ? (
+                <div className="bg-[#121417] border border-[#22262B] p-6 rounded-xl text-center text-zinc-400 text-xs">
+                  <Layers className="w-8 h-8 text-zinc-600 mx-auto mb-2" />
+                  <div className="font-medium text-zinc-300">Tidak ada order yang siap ditagihkan</div>
+                  <div className="text-[11px] text-zinc-500 mt-1">
+                    Semua order selesai sudah memiliki faktur invoice, atau belum ada order yang mencapai 100% pengiriman trip.
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-2 max-h-[460px] overflow-y-auto pr-1">
+                  {availableOrders.map((ord) => {
+                    const isSelected = selectedOrder?.jurnalId === ord.jurnalId && selectedOrder?.nomorRO === ord.nomorRO;
+                    return (
+                      <div
+                        key={`${ord.jurnalId}-${ord.nomorRO}`}
+                        onClick={() => handleSelectOrder(ord)}
+                        className={`p-3.5 rounded-xl border cursor-pointer transition-all ${
+                          isSelected
+                            ? 'bg-[#F4511E]/10 border-[#F4511E] shadow-md shadow-orange-500/10'
+                            : 'bg-[#121417] border-[#22262B] hover:border-[#333840]'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between mb-1.5">
+                          <span className="font-mono text-xs font-bold text-white bg-[#1A1D21] px-2 py-0.5 rounded border border-[#2A2E35]">
+                            RO: {ord.nomorRO}
+                          </span>
+                          <span className="text-[10px] font-semibold text-emerald-400 bg-emerald-950/40 border border-emerald-800/40 px-2 py-0.5 rounded-full">
+                            100% Completed
+                          </span>
+                        </div>
+                        <div className="font-medium text-xs text-zinc-200 truncate">
+                          {ord.customerName}
+                        </div>
+                        <div className="text-[11px] text-zinc-400 flex items-center gap-2 mt-1">
+                          <span>{ord.material}</span>
+                          <span>•</span>
+                          <span className="font-mono text-zinc-300">{ord.totalVolume} m³</span>
+                          <span>•</span>
+                          <span className="font-mono text-zinc-300">{formatRupiah(ord.hargaSatuan)}/m³</span>
+                        </div>
+                        {ord.poNumber && (
+                          <div className="text-[10px] text-zinc-500 font-mono mt-1">
+                            PO: {ord.poNumber}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
 
-            <div className="flex items-center gap-2 shrink-0">
-              <button
-                type="button"
-                onClick={() => setSelectedItems([])}
-                className="px-3 py-2 rounded-xl text-xs font-semibold text-neutral-400 hover:text-white bg-[#1C1F24] border border-[#2A2E33] transition-colors cursor-pointer"
-              >
-                Batal
-              </button>
+            {/* Step 2: Invoice Creation Form */}
+            <div className="lg:col-span-7">
+              <form onSubmit={handleCreateSubmit} className="bg-[#121417] border border-[#22262B] rounded-xl p-5 space-y-4">
+                <label className="text-xs font-semibold text-zinc-300 uppercase tracking-wider flex items-center gap-1.5">
+                  <span className="h-5 w-5 rounded-full bg-[#F4511E] text-white flex items-center justify-center text-[10px]">2</span>
+                  Rincian Penagihan & Pajak
+                </label>
 
-              <button
-                type="button"
-                onClick={handleBatchMarkPaid}
-                className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 transition-colors shadow-md shadow-emerald-600/20 flex items-center gap-1.5 cursor-pointer"
-              >
-                <CheckCircle2 className="w-3.5 h-3.5" />
-                <span>Catat Lunas</span>
-              </button>
+                {!selectedOrder ? (
+                  <div className="p-8 text-center text-zinc-500 text-xs border border-dashed border-[#2A2E35] rounded-xl">
+                    Silakan pilih salah satu Order yang siap ditagihkan di panel sebelah kiri.
+                  </div>
+                ) : (
+                  <>
+                    {/* Selected Order Summary Card */}
+                    <div className="bg-[#181B1F] border border-[#2A2E35] p-3.5 rounded-xl space-y-2">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-zinc-400">Pelanggan:</span>
+                        <span className="font-semibold text-white">{selectedOrder.customerName}</span>
+                      </div>
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-zinc-400">Nomor RO / PO:</span>
+                        <span className="font-mono text-zinc-200">{selectedOrder.nomorRO} {selectedOrder.poNumber ? `(${selectedOrder.poNumber})` : ''}</span>
+                      </div>
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-zinc-400">Material & Volume:</span>
+                        <span className="font-medium text-zinc-200">{selectedOrder.material} — {selectedOrder.totalVolume} m³</span>
+                      </div>
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-zinc-400">Harga Satuan:</span>
+                        <span className="font-mono text-zinc-200">{formatRupiah(selectedOrder.hargaSatuan)} / m³</span>
+                      </div>
+                    </div>
+
+                    {/* Tax Settings */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs text-zinc-400 mb-1">Tarif PPN (%)</label>
+                        <select
+                          value={formData.ppnPercent}
+                          onChange={(e) => setFormData({ ...formData, ppnPercent: Number(e.target.value) })}
+                          className="w-full bg-[#181B1F] border border-[#2A2E35] rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:border-[#F4511E]"
+                        >
+                          <option value={11}>PPN 11% (Standar UU HPP)</option>
+                          <option value={12}>PPN 12%</option>
+                          <option value={0}>0% (Bebas PPN / Non-PKP)</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs text-zinc-400 mb-1">Tarif PPh 23 (%)</label>
+                        <select
+                          value={formData.pphType}
+                          onChange={(e) => setFormData({ ...formData, pphType: e.target.value })}
+                          className="w-full bg-[#181B1F] border border-[#2A2E35] rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:border-[#F4511E]"
+                        >
+                          <option value="2%">PPh 23 (2% - Ber-NPWP)</option>
+                          <option value="2.65%">PPh 23 (2.65% - Khusus)</option>
+                          <option value="none">0% (Tanpa Potongan PPh)</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* Due Date & Bank Details */}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <div>
+                        <label className="block text-xs text-zinc-400 mb-1">Jatuh Tempo (Hari)</label>
+                        <input
+                          type="number"
+                          value={formData.tempoHari}
+                          onChange={(e) => setFormData({ ...formData, tempoHari: e.target.value })}
+                          className="w-full bg-[#181B1F] border border-[#2A2E35] rounded-lg px-3 py-2 text-xs font-mono text-zinc-200 focus:outline-none focus:border-[#F4511E]"
+                          min="1"
+                        />
+                      </div>
+                      <div className="sm:col-span-2">
+                        <label className="block text-xs text-zinc-400 mb-1">Rekening Pembayaran PT BAS</label>
+                        <input
+                          type="text"
+                          value={formData.bankAccount}
+                          onChange={(e) => setFormData({ ...formData, bankAccount: e.target.value })}
+                          className="w-full bg-[#181B1F] border border-[#2A2E35] rounded-lg px-3 py-2 text-xs font-mono text-zinc-200 focus:outline-none focus:border-[#F4511E]"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Calculated Amounts Breakdown */}
+                    <div className="bg-[#16181C] border border-[#262A30] p-4 rounded-xl space-y-2">
+                      <div className="flex items-center justify-between text-xs text-zinc-400">
+                        <span>Dasar Pengenaan Pajak (DPP):</span>
+                        <span className="font-mono text-zinc-200 font-semibold">{formatRupiah(formCalculations.dpp)}</span>
+                      </div>
+                      <div className="flex items-center justify-between text-xs text-zinc-400">
+                        <span>PPN ({formData.ppnPercent}%):</span>
+                        <span className="font-mono text-emerald-400">+ {formatRupiah(formCalculations.ppn)}</span>
+                      </div>
+                      <div className="flex items-center justify-between text-xs text-zinc-400">
+                        <span>PPh ({formData.pphType}):</span>
+                        <span className="font-mono text-rose-400">- {formatRupiah(formCalculations.pph)}</span>
+                      </div>
+                      <div className="border-t border-[#262A30] pt-2 flex items-center justify-between">
+                        <span className="text-xs font-bold text-white uppercase tracking-wider">Total Bersih Ditagihkan (Net):</span>
+                        <span className="text-lg font-bold font-mono text-[#10B981]">{formatRupiah(formCalculations.netTotal)}</span>
+                      </div>
+                    </div>
+
+                    {/* Notes */}
+                    <div>
+                      <label className="block text-xs text-zinc-400 mb-1">Catatan Tagihan (Opsional)</label>
+                      <textarea
+                        rows="2"
+                        value={formData.notes}
+                        onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                        placeholder="Contoh: Pembayaran mohon mencantumkan nomor invoice pada berita transfer..."
+                        className="w-full bg-[#181B1F] border border-[#2A2E35] rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:border-[#F4511E]"
+                      />
+                    </div>
+
+                    {/* Submit Button */}
+                    <div className="pt-2 flex items-center justify-end gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedOrder(null)}
+                        className="px-4 py-2 rounded-lg bg-[#181B1F] border border-[#2A2E35] text-xs font-medium text-zinc-400 hover:text-white"
+                      >
+                        Batal
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={createSubmitting}
+                        className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-[#F4511E] hover:bg-[#d84315] disabled:opacity-50 text-white text-xs font-semibold shadow-lg shadow-orange-500/20 transition-all"
+                      >
+                        {createSubmitting ? (
+                          <>
+                            <RefreshCw className="w-4 h-4 animate-spin" />
+                            <span>Menerbitkan Faktur...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles className="w-4 h-4" />
+                            <span>Terbitkan Faktur & Kunci Approval</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </>
+                )}
+              </form>
             </div>
           </div>
         </div>
       )}
 
-      {/* ── MODAL DETAIL INFORMASI INVOICE ── */}
-      <Modal
-        isOpen={Boolean(infoModalItem)}
-        onClose={() => setInfoModalItem(null)}
-        title="Detail Faktur Invoice"
-        subtitle={infoModalItem?.kodeTransaksi}
-      >
-        {infoModalItem && (
-          <div className="p-4 space-y-3 font-mono text-xs text-neutral-300">
-            <div className="grid grid-cols-2 gap-2 bg-[#181B1E] p-3 rounded-lg border border-[#262A2F]">
-              <div>
-                <span className="text-neutral-500 block text-[10px] uppercase">Volume</span>
-                <span className="text-white font-bold">{infoModalItem.volume} m³</span>
-              </div>
-              <div>
-                <span className="text-neutral-500 block text-[10px] uppercase">Material</span>
-                <span className="text-white font-bold">{infoModalItem.material}</span>
-              </div>
-              <div className="col-span-2 pt-1 border-t border-[#262A2F]">
-                <span className="text-neutral-500 block text-[10px] uppercase">Total Tagihan</span>
-                <span className="text-[#F4511E] font-bold text-sm">
-                  {formatCurrency(infoModalItem.amount)}
-                </span>
-              </div>
-            </div>
+      {/* MODAL: DETAIL & WORKFLOW STEPPER */}
+      {isDetailModalOpen && selectedInvoiceForModal && (
+        <InvoiceDetailWorkflowModal
+          isOpen={isDetailModalOpen}
+          invoiceItem={selectedInvoiceForModal}
+          invoice={selectedInvoiceForModal}
+          onClose={() => {
+            setIsDetailModalOpen(false);
+            setSelectedInvoiceForModal(null);
+          }}
+          onUpdated={() => {
+            fetchInvoices();
+          }}
+          onInvoiceUpdated={() => {
+            fetchInvoices();
+          }}
+          onOpenPrintModal={(inv) => {
+            const target = inv || selectedInvoiceForModal;
+            setIsDetailModalOpen(false);
+            setSelectedInvoiceForPrint(target);
+            setIsPrintModalOpen(true);
+          }}
+        />
+      )}
 
-            <div className="space-y-1.5 bg-[#181B1E] p-3 rounded-lg border border-[#262A2F]">
-              <div>
-                <span className="text-neutral-500 block text-[10px] uppercase">Customer</span>
-                <span className="text-white">{infoModalItem.perusahaan}</span>
-              </div>
-              <div>
-                <span className="text-neutral-500 block text-[10px] uppercase">Layanan</span>
-                <span className="text-neutral-200">{infoModalItem.jenis}</span>
-              </div>
-              <div>
-                <span className="text-neutral-500 block text-[10px] uppercase">Waktu Invoice</span>
-                <span className="text-neutral-200">{infoModalItem.timestamp}</span>
-              </div>
-              <div>
-                <span className="text-neutral-500 block text-[10px] uppercase">Periode</span>
-                <span className="text-neutral-200">{infoModalItem.periode}</span>
-              </div>
-              <div>
-                <span className="text-neutral-500 block text-[10px] uppercase">Status Pembayaran</span>
-                <span
-                  className={
-                    infoModalItem.statusBayar === 'Lunas'
-                      ? 'text-emerald-400 font-bold'
-                      : 'text-[#F4511E] font-bold'
-                  }
-                >
-                  {infoModalItem.statusBayar === 'Lunas' ? 'LUNAS' : 'BELUM LUNAS'}
-                </span>
-              </div>
-            </div>
-
-            <div className="flex justify-end pt-2">
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={() => setInfoModalItem(null)}
-              >
-                Tutup
-              </Button>
-            </div>
-          </div>
-        )}
-      </Modal>
-
-      {/* MODAL: KONFIRMASI HAPUS INVOICE */}
-      <Modal
-        isOpen={deleteConfirmInvoice.open && isSuperAdmin}
-        onClose={() => setDeleteConfirmInvoice({ open: false, id: null, label: '', item: null })}
-        title="Konfirmasi Hapus Invoice"
-        subtitle="Tindakan ini tidak dapat dibatalkan"
-      >
-        <div className="p-4 space-y-4">
-          <div className="flex items-start gap-3 p-3 rounded-xl bg-rose-500/10 border border-rose-500/30">
-            <Trash2 className="w-5 h-5 text-rose-400 shrink-0 mt-0.5" />
-            <div>
-              <p className="text-sm text-neutral-200">
-                Apakah Anda yakin ingin menghapus invoice{' '}
-                <span className="font-bold text-white font-mono">{deleteConfirmInvoice.label}</span>?
-              </p>
-              {deleteConfirmInvoice.item && (
-                <p className="text-xs text-neutral-400 font-mono mt-1">
-                  Customer: <strong className="text-white">{deleteConfirmInvoice.item.perusahaan}</strong> &bull; Total:{' '}
-                  <strong className="text-[#F4511E]">{formatCurrency(deleteConfirmInvoice.item.amount)}</strong>
-                </p>
-              )}
-              <p className="text-xs text-rose-400 mt-1.5 font-medium">
-                Data yang dihapus tidak dapat dikembalikan.
-              </p>
-            </div>
-          </div>
-          <div className="flex justify-end gap-2 pt-1">
-            <Button
-              variant="ghost"
-              onClick={() => setDeleteConfirmInvoice({ open: false, id: null, label: '', item: null })}
-            >
-              Batal
-            </Button>
-            <Button
-              variant="danger"
-              icon={Trash2}
-              onClick={handleConfirmDeleteInvoice}
-              className="bg-rose-600 hover:bg-rose-700 text-white border-0"
-            >
-              Ya, Hapus
-            </Button>
-          </div>
-        </div>
-      </Modal>
+      {/* MODAL: PRINT INVOICE A4 TEMPLATE */}
+      {isPrintModalOpen && selectedInvoiceForPrint && (
+        <InvoicePrintModal
+          isOpen={isPrintModalOpen}
+          invoiceItem={selectedInvoiceForPrint}
+          invoice={selectedInvoiceForPrint}
+          onClose={() => {
+            setIsPrintModalOpen(false);
+            setSelectedInvoiceForPrint(null);
+          }}
+        />
+      )}
     </div>
   );
 }

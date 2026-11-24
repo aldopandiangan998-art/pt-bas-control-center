@@ -15,6 +15,10 @@ export const bkkUploadsDir = path.join(dataDir, 'uploads', 'bkk');
 if (!fs.existsSync(bkkUploadsDir)) {
   fs.mkdirSync(bkkUploadsDir, { recursive: true });
 }
+export const invoiceUploadsDir = path.join(dataDir, 'uploads', 'invoices');
+if (!fs.existsSync(invoiceUploadsDir)) {
+  fs.mkdirSync(invoiceUploadsDir, { recursive: true });
+}
 
 const dbPath = path.join(dataDir, 'ptbas.db');
 const db = new DatabaseSync(dbPath);
@@ -369,6 +373,38 @@ export function initDb() {
       timestamp TEXT NOT NULL,
       created_at TEXT NOT NULL
     );
+
+    CREATE TABLE IF NOT EXISTS invoice_documents (
+      id TEXT PRIMARY KEY,
+      invoiceId TEXT NOT NULL,
+      version INTEGER NOT NULL DEFAULT 1,
+      fileName TEXT NOT NULL,
+      originalName TEXT NOT NULL,
+      filePath TEXT NOT NULL,
+      fileSize INTEGER DEFAULT 0,
+      fileType TEXT,
+      notes TEXT,
+      status TEXT NOT NULL DEFAULT 'DRAFT',
+      uploadedBy TEXT NOT NULL,
+      uploadedAt TEXT NOT NULL,
+      verifiedBy TEXT,
+      verifiedAt TEXT,
+      rejectionReason TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS invoice_audit_logs (
+      id TEXT PRIMARY KEY,
+      invoiceId TEXT NOT NULL,
+      action TEXT NOT NULL,
+      actorId TEXT,
+      actorName TEXT NOT NULL,
+      actorRole TEXT NOT NULL,
+      details TEXT,
+      timestamp TEXT NOT NULL,
+      created_at TEXT NOT NULL
+    );
   `);
 
   // Safe migration for user profile & password reset fields
@@ -707,19 +743,28 @@ export function initDb() {
       ['rekeningAtasNama', 'TEXT'],
       ['timestamp', 'TEXT'],
       ['updated_at', 'TEXT'],
+      ['status', "TEXT DEFAULT 'pending_approval'"],
+      ['createdBy', 'TEXT'],
+      ['approvedBy', 'TEXT'],
+      ['approvedAt', 'TEXT'],
+      ['rejectionReason', 'TEXT'],
+      ['verifiedBy', 'TEXT'],
+      ['verifiedAt', 'TEXT'],
     ];
     for (const [col, colType] of newInvCols) {
       if (!invCols.includes(col)) {
         db.exec(`ALTER TABLE invoices ADD COLUMN ${col} ${colType};`);
       }
     }
-    // Synchronize customer and perusahaan if one is empty
+    // Synchronize customer and perusahaan if one is empty, and initialize default status
     db.exec(`
       UPDATE invoices SET customer = perusahaan WHERE (customer IS NULL OR customer = '') AND perusahaan IS NOT NULL;
       UPDATE invoices SET perusahaan = customer WHERE (perusahaan IS NULL OR perusahaan = '') AND customer IS NOT NULL;
       UPDATE invoices SET dpp = subtotalJasa WHERE (dpp IS NULL OR dpp = 0) AND subtotalJasa > 0;
       UPDATE invoices SET ppn = ppnNominal WHERE (ppn IS NULL OR ppn = 0) AND ppnNominal > 0;
       UPDATE invoices SET pph = pphNominal WHERE (pph IS NULL OR pph = 0) AND pphNominal > 0;
+      UPDATE invoices SET status = 'paid' WHERE (status IS NULL OR status = '') AND (statusBayar = 'Lunas');
+      UPDATE invoices SET status = 'pending_approval' WHERE (status IS NULL OR status = '');
     `);
   } catch (err) {
     console.warn('Migration invoices table error:', err);
@@ -730,6 +775,10 @@ export function initDb() {
     db.exec(`
       CREATE INDEX IF NOT EXISTS idx_invoices_tanggal ON invoices(tanggal);
       CREATE INDEX IF NOT EXISTS idx_invoices_customer ON invoices(customer);
+      CREATE INDEX IF NOT EXISTS idx_invoices_status ON invoices(status);
+      CREATE INDEX IF NOT EXISTS idx_invoice_docs_invoiceId ON invoice_documents(invoiceId);
+      CREATE INDEX IF NOT EXISTS idx_invoice_audit_invoiceId ON invoice_audit_logs(invoiceId);
+      CREATE INDEX IF NOT EXISTS idx_invoice_audit_timestamp ON invoice_audit_logs(timestamp);
       CREATE INDEX IF NOT EXISTS idx_pph21_tanggal ON pph21_records(tanggal);
       CREATE INDEX IF NOT EXISTS idx_pph23_tanggal ON pph23_records(tanggal);
       CREATE INDEX IF NOT EXISTS idx_bkk_tanggal ON bkk(tanggal);
@@ -1162,52 +1211,15 @@ export function syncBkkAndInvoices() {
       const pphNom = Math.round((invAmount * pphRate) / 100);
       const totalBersih = invAmount + ppnNom - pphNom;
 
-      if (!existingInv) {
-        const invId = `INV-${jrn.id.replace('REK-', '')}`;
-        db.prepare(`
-          INSERT INTO invoices (
-            id, kodeTransaksi, nomorRO, preOrderId, jurnalId, poNumber,
-            customerId, supplierId, perusahaan, customer, customerAddress, material, jenis, volume, satuan,
-            hargaSatuan, subtotalJasa, ppnNominal, pphNominal, amount, statusBayar, tanggal, waktu,
-            timestamp, periode, kirimKeRekening, rekeningAtasNama, created_at, updated_at
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `).run(
-          invId,
-          invCode,
-          jrn.nomorRO,
-          jrn.preOrderId,
-          jrn.id,
-          effectivePoNum,
-          custId,
-          supId,
-          jrn.customer,
-          jrn.customer,
-          jrn.customerAddress || '',
-          jrn.material,
-          'JASA ANGKUT + MATERIAL',
-          invVolume,
-          jrn.satuan || 'm3',
-          Number(jrn.hargaJual) || 0,
-          invAmount,
-          ppnNom,
-          pphNom,
-          totalBersih > 0 ? totalBersih : invAmount,
-          'Belum Dibayar',
-          maxDate,
-          '10:00',
-          timestampStr,
-          periodeStr,
-          'BCA - 0188920199 a/n PT Berkah Alam Semesta',
-          'PT Berkah Alam Semesta',
-          nowIso,
-          nowIso
-        );
-      } else {
+      // ── A. INVOICES (CUSTOMER BILLING) ──
+      // Catatan Bisnis PT BAS: Invoice dibuat secara manual oleh Admin setelah Order komplit 100% (semua trip pengiriman selesai).
+      // Sistem TIDAK membuat Invoice secara otomatis.
+      if (existingInv) {
         db.prepare(`
           UPDATE invoices
           SET volume = ?, hargaSatuan = ?, subtotalJasa = ?, ppnNominal = ?, pphNominal = ?,
-              amount = ?, customerId = COALESCE(customerId, ?), poNumber = ?,
-              kodeTransaksi = ?, periode = ?, updated_at = ?
+              amount = ?, customerId = COALESCE(customerId, ?), poNumber = COALESCE(poNumber, ?),
+              periode = COALESCE(periode, ?), updated_at = ?
           WHERE id = ?
         `).run(
           invVolume,
@@ -1218,7 +1230,6 @@ export function syncBkkAndInvoices() {
           totalBersih > 0 ? totalBersih : invAmount,
           custId,
           effectivePoNum,
-          invCode,
           periodeStr,
           nowIso,
           existingInv.id

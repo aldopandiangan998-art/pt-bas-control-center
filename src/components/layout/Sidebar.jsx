@@ -70,13 +70,28 @@ export default function Sidebar() {
   const navigate = useNavigate();
   const { sidebarOpen, closeMobileSidebar, sidebarCollapsed, toggleCollapseSidebar, isDark, language } = useApp();
   const { currentUser, isSuperAdmin, logout, users } = useAuth();
-  const { preOrders } = useData();
+  const { preOrders, bkkList, invoiceList } = useData();
   const { addToast } = useToast();
 
   // Pending RO counter for notification badge
   const pendingRoCount = useMemo(() => {
     return preOrders ? preOrders.filter((po) => po.status === 'MENUNGGU_APPROVAL').length : 0;
   }, [preOrders]);
+
+  // Pending BKK counter for notification badge
+  const pendingBkkCount = useMemo(() => {
+    if (!isSuperAdmin || !bkkList) return 0;
+    return bkkList.filter((b) => b.status === 'MENUNGGU_APPROVAL').length;
+  }, [bkkList, isSuperAdmin]);
+
+  // Pending Invoice counter for Super Admin badge (Awaiting Approval or Document Verification)
+  const pendingInvoiceCount = useMemo(() => {
+    if (!isSuperAdmin || !invoiceList) return 0;
+    return invoiceList.filter((inv) => {
+      const s = (inv.status || '').toLowerCase();
+      return s === 'pending_approval' || s === 'menunggu_approval' || s === 'pending_verification';
+    }).length;
+  }, [invoiceList, isSuperAdmin]);
 
   // Pending Admin Registration counter for Super Admin badge
   const pendingAdminCount = useMemo(() => {
@@ -119,6 +134,10 @@ export default function Sidebar() {
       'Pengaturan': 'Settings',
       'Approval RO': 'RO Approval',
       'Persetujuan RO': 'RO Approval',
+      'Approval Invoice': 'Invoice Approval',
+      'Persetujuan Invoice': 'Invoice Approval',
+      'Approval BKK': 'BKK Approval',
+      'Persetujuan BKK': 'BKK Approval',
       'Pajak Pertambahan Nilai (PPN)': 'Value Added Tax (VAT)',
       'Pajak Penghasilan Pasal 23 (PPh 23)': 'Income Tax Art. 23',
       'Laporan All in One': 'All-in-One Report',
@@ -416,7 +435,11 @@ export default function Sidebar() {
                   // 2. Normal Single NavLink
                   const isRoApproval = link.path === '/approval-ro';
                   const isAdminApproval = link.path === '/approval-admin';
-                  const badgeCount = isRoApproval ? pendingRoCount : (isAdminApproval ? pendingAdminCount : 0);
+                  const isBkkApproval = link.path === '/approval-bkk';
+                  const isInvoiceApproval = link.path === '/approval-invoice';
+                  const badgeCount = isRoApproval
+                    ? pendingRoCount
+                    : (isAdminApproval ? pendingAdminCount : (isBkkApproval ? pendingBkkCount : (isInvoiceApproval ? pendingInvoiceCount : 0)));
                   const showBadge = badgeCount > 0;
 
                   return (

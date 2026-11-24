@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -18,12 +18,22 @@ import {
   ListFilter,
   Filter,
   Calendar,
+  Lock,
+  ShieldCheck,
+  AlertTriangle,
+  Check,
+  Printer,
+  Upload,
+  LayoutList,
+  LayoutGrid,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useData } from '../../context/DataContext';
 import { useToast } from '../../context/ToastContext';
 import { formatCurrency } from '../../utils/formatters';
-import { Modal, Button, SearchBar, Checkbox } from '../../components/ui';
+import { Modal, Button, Card, Badge, SearchBar, Checkbox, IndeterminateCheckbox } from '../../components/ui';
+import BkkPrintModal from '../../components/bkk/BkkPrintModal';
+import BkkDetailWorkflowModal from '../../components/bkk/BkkDetailWorkflowModal';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Binary Icon (1011 / 001) matching reference screenshot
@@ -38,9 +48,62 @@ function BinaryIcon({ className = 'text-neutral-500' }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// CashOutCard (Faithful replica of user screenshot)
+// Status Badge Helper
 // ─────────────────────────────────────────────────────────────────────────────
-function CashOutCard({ item, isSelected, onSelect, onDelete, onInfo, canDelete = true }) {
+function getBkkStatusBadge(item) {
+  const s = String(item.status || '').toLowerCase();
+  const isPaid = s === 'paid' || item.statusBayar === 'Lunas';
+  if (isPaid) {
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[10px] font-mono font-bold shrink-0">
+        <CheckCircle2 className="w-3 h-3" />
+        LUNAS
+      </span>
+    );
+  }
+  if (s === 'pending_verification') {
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-[#F4511E]/20 text-orange-300 border border-[#F4511E]/40 text-[10px] font-mono font-bold shrink-0">
+        <ShieldCheck className="w-3 h-3" />
+        VERIFIKASI
+      </span>
+    );
+  }
+  if (s === 'revision_required') {
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/40 text-[10px] font-mono font-bold shrink-0">
+        <RotateCw className="w-3 h-3" />
+        REVISI TTD
+      </span>
+    );
+  }
+  if (s === 'approved') {
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-blue-500/20 text-blue-300 border border-blue-500/40 text-[10px] font-mono font-bold shrink-0">
+        <Printer className="w-3 h-3" />
+        SIAP CETAK
+      </span>
+    );
+  }
+  if (s === 'rejected') {
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/40 text-[10px] font-mono font-bold shrink-0">
+        DITOLAK
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[10px] font-mono font-bold shrink-0">
+      <Lock className="w-3 h-3" />
+      TERKUNCI
+    </span>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CashOutCard (Medium-sized layout with List and Grid view support)
+// ─────────────────────────────────────────────────────────────────────────────
+function CashOutCard({ item, isSelected, onSelect, onDelete, onInfo, canDelete = true, viewMode = 'list' }) {
   const volumeNum = Number(item.volume ?? item.kubikasi) || 0;
   const formattedVolume = volumeNum.toFixed(2);
   const rawSatuan = item.satuan || 'm3';
@@ -49,113 +112,255 @@ function CashOutCard({ item, isSelected, onSelect, onDelete, onInfo, canDelete =
     .replace(/\s*\(Curah\)/i, '')
     .replace(/\s*\(Padat\)/i, '');
 
-  const timestamp = item.timestamp || (item.tanggal ? `${item.tanggal} 09:15:42` : '-');
+  const dateDisplay = item.tanggal || (item.timestamp ? String(item.timestamp).slice(0, 10) : '-');
   const amountFormatted = `IDR ${(Number(item.amount) || 0).toLocaleString('en-US', {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   })}`;
 
   const docCode = item.kodeTransaksi || item.nomorRO || '-';
-  const customerName = item.customer || item.perusahaan || '-';
-  const poCode = item.poNumber || item.subDetail || '-';
-  const periodeText = item.periode
-    ? (item.periode.startsWith('Periode:') ? item.periode : `Periode: ${item.periode}`)
-    : (item.tanggal ? `Periode: ${item.tanggal}` : 'Periode: -');
+  const companyName = item.customer || item.perusahaan || '-';
+  const supplierName = item.perusahaan;
 
-  return (
-    <div
-      className={`rounded-2xl border p-3.5 sm:p-4 transition-all select-none ${
-        isSelected
-          ? 'bg-[#181615] border-[#F4511E]/70 ring-1 ring-[#F4511E]/40'
-          : 'bg-[#121417] border-[#22262B] hover:border-[#323842]'
-      }`}
-    >
-      <div className="flex items-start gap-3 sm:gap-5">
-        {/* Left Column */}
-        <div className="w-28 sm:w-36 shrink-0 flex flex-col justify-start">
-          <div className="text-2xl sm:text-[26px] font-black font-mono text-white tracking-tight leading-none">
-            {formattedVolume}
+  const isPaid = String(item.status || '').toLowerCase() === 'paid' || item.statusBayar === 'Lunas';
+  const statusBadge = getBkkStatusBadge(item);
+
+  // ── GRID VIEW CARD (Medium-sized card with comfortable proportions)
+  if (viewMode === 'grid') {
+    return (
+      <div
+        onClick={onInfo}
+        className={`rounded-xl border p-4 transition-all select-none cursor-pointer flex flex-col justify-between group ${
+          isSelected
+            ? 'bg-[#181615] border-[#F4511E]/70 ring-1 ring-[#F4511E]/40 shadow-lg'
+            : 'bg-[#121417] border-[#22262B] hover:border-[#383E48] hover:bg-[#15171B]'
+        }`}
+      >
+        <div>
+          {/* Card Top: Checkbox, Code & Status */}
+          <div className="flex items-center justify-between gap-2 pb-2.5 border-b border-[#20242A]">
+            <div className="flex items-center gap-2 min-w-0">
+              <input
+                type="checkbox"
+                checked={isSelected}
+                disabled={!isPaid}
+                onChange={isPaid ? onSelect : undefined}
+                onClick={(e) => e.stopPropagation()}
+                className="w-4 h-4 rounded border-[#3A404A] bg-[#16191D] accent-[#F4511E] cursor-pointer shrink-0 disabled:opacity-30 disabled:cursor-not-allowed"
+                title={
+                  isPaid
+                    ? 'Pilih BKK yang sudah Lunas'
+                    : 'BKK harus diverifikasi dokumen fisiknya oleh Super Admin terlebih dahulu'
+                }
+              />
+              <span className="font-mono text-xs font-bold text-neutral-300 truncate" title={docCode}>
+                {docCode}
+              </span>
+            </div>
+            <div className="shrink-0">{statusBadge}</div>
           </div>
-          <div className="text-sm font-semibold font-mono text-neutral-200 mt-1 leading-tight">
-            {satuan}
-          </div>
-          <div
-            className="text-xs font-bold font-mono text-white uppercase tracking-wider mt-2.5 leading-tight truncate"
-            title={material}
-          >
-            {material}
-          </div>
-          <div className="text-[10px] text-neutral-400 font-mono uppercase leading-tight mt-1 space-y-0.5">
-            <div>CURAH | JASA</div>
-            <div>ANGKUT +</div>
-            <div>MATERIAL</div>
+
+          {/* Card Body: Company & Order details */}
+          <div className="pt-3 space-y-2.5">
+            <div>
+              <span className="text-[10px] text-neutral-500 font-mono uppercase block">Customer / Perusahaan</span>
+              <div
+                className="font-bold text-sm text-white truncate group-hover:text-[#F4511E] transition-colors"
+                title={companyName}
+              >
+                {companyName}
+              </div>
+            </div>
+
+            {supplierName && supplierName !== companyName && (
+              <div>
+                <span className="text-[10px] text-neutral-500 font-mono uppercase block">Supplier Vendor</span>
+                <div className="text-xs text-neutral-300 truncate" title={supplierName}>
+                  {supplierName}
+                </div>
+              </div>
+            )}
+
+            {/* Meta grid (RO, Volume, Material, Date) */}
+            <div className="grid grid-cols-2 gap-2 pt-1 font-mono text-xs">
+              <div className="bg-[#16191D] p-2 rounded-lg border border-[#20242A]">
+                <span className="text-[10px] text-neutral-500 block uppercase">Nomor RO</span>
+                <span className="text-neutral-200 font-semibold truncate block" title={item.nomorRO || '-'}>
+                  {item.nomorRO || '-'}
+                </span>
+              </div>
+              <div className="bg-[#16191D] p-2 rounded-lg border border-[#20242A]">
+                <span className="text-[10px] text-neutral-500 block uppercase">Volume & Material</span>
+                <span className="text-neutral-200 font-semibold truncate block" title={`${formattedVolume} ${satuan} • ${material}`}>
+                  {formattedVolume} {satuan} {material ? `• ${material}` : ''}
+                </span>
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* Right Column */}
-        <div className="flex-1 min-w-0 flex flex-col justify-start">
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-1.5 min-w-0">
-              <div
-                className="w-5 h-5 rounded-full bg-rose-600/90 text-white flex items-center justify-center shrink-0 shadow-xs"
-                title="Bukti Kas Keluar"
-              >
-                <FileText className="w-2.5 h-2.5" />
-              </div>
-              <div
-                className="w-5 h-5 rounded-full bg-emerald-600/90 text-white flex items-center justify-center shrink-0 shadow-xs"
-                title="Dokumen Terhubung (RO / SJ)"
-              >
-                <BookOpen className="w-2.5 h-2.5" />
-              </div>
-              <span className="text-[11px] font-mono text-neutral-300 ml-1 truncate">
-                {timestamp}
-              </span>
+        {/* Card Bottom: Amount & Actions */}
+        <div className="pt-3 mt-3 border-t border-[#20242A] flex items-center justify-between gap-2">
+          <div>
+            <span className="text-[10px] text-neutral-500 font-mono uppercase block">Total Kas Keluar</span>
+            <div className="text-base font-black font-mono text-white tracking-tight">
+              {amountFormatted}
             </div>
-            <Checkbox
-              checked={isSelected}
-              onChange={onSelect}
-            />
+
           </div>
 
-          <div className="text-sm sm:text-base font-bold font-mono text-white mt-1.5 leading-tight">
-            {amountFormatted}
-          </div>
-          <div className="text-xs font-mono text-neutral-300 mt-1 leading-tight truncate" title={docCode}>
-            {docCode}
-          </div>
-          <div className="text-xs font-bold font-mono text-neutral-100 uppercase mt-0.5 leading-tight truncate" title={customerName}>
-            {customerName}
-          </div>
-          <div className="text-xs font-mono text-neutral-400 mt-0.5 leading-tight truncate" title={poCode}>
-            {poCode}
-          </div>
-          <div className="text-xs font-mono text-neutral-400 mt-0.5 leading-tight truncate">
-            {periodeText}
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onInfo();
+              }}
+              className="px-2.5 py-1.5 rounded-lg bg-[#181B1E] hover:bg-[#252A30] border border-[#262A30] hover:border-neutral-500 text-neutral-300 hover:text-white text-xs font-medium flex items-center gap-1.5 transition-colors cursor-pointer"
+              title="Rincian Finansial (Financial Details)"
+            >
+              <Info className="w-3.5 h-3.5 text-[#F4511E]" />
+              <span>Detail</span>
+            </button>
+
+            {canDelete && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDelete();
+                }}
+                className="p-1.5 rounded-lg bg-[#181B1E] hover:bg-rose-500/10 border border-[#262A2F] hover:border-rose-500/40 text-neutral-400 hover:text-[#F4511E] transition-colors cursor-pointer"
+                title="Hapus Cash Out"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            )}
           </div>
         </div>
       </div>
+    );
+  }
 
-      <div className="border-t border-[#22262B] mt-3 pt-2.5">
-        <div className={`grid ${canDelete ? 'grid-cols-2' : 'grid-cols-1'} gap-2`}>
-          {canDelete && (
+  // ── LIST VIEW CARD (Medium-sized horizontal layout)
+  return (
+    <div
+      onClick={onInfo}
+      className={`rounded-xl border p-3.5 sm:p-4 transition-all select-none cursor-pointer group ${
+        isSelected
+          ? 'bg-[#181615] border-[#F4511E]/70 ring-1 ring-[#F4511E]/40 shadow-sm'
+          : 'bg-[#121417] border-[#22262B] hover:border-[#383E48] hover:bg-[#15171B]'
+      }`}
+    >
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        {/* Left Column: Checkbox + Main Information */}
+        <div className="flex items-start gap-3 min-w-0 flex-1">
+          <input
+            type="checkbox"
+            checked={isSelected}
+            disabled={!isPaid}
+            onChange={isPaid ? onSelect : undefined}
+            onClick={(e) => e.stopPropagation()}
+            className="mt-1 w-4 h-4 rounded border-[#3A404A] bg-[#16191D] accent-[#F4511E] cursor-pointer shrink-0 disabled:opacity-30 disabled:cursor-not-allowed"
+            title={
+              isPaid
+                ? 'Pilih BKK yang sudah Lunas'
+                : 'BKK harus diverifikasi dokumen fisiknya oleh Super Admin terlebih dahulu'
+            }
+          />
+
+          <div className="min-w-0 flex-1 space-y-1.5">
+            {/* Row 1: Code + Status Badge + Date */}
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="font-mono text-xs font-bold text-neutral-300 bg-[#181B1F] px-2 py-0.5 rounded border border-[#262A30]">
+                {docCode}
+              </span>
+              {statusBadge}
+              <span className="text-[11px] font-mono text-neutral-400">
+                {dateDisplay}
+              </span>
+            </div>
+
+            {/* Row 2: Company Name (Customer) & Vendor */}
+            <div className="flex flex-col sm:flex-row sm:items-baseline gap-1 sm:gap-2 min-w-0">
+              <span
+                className="font-bold text-sm sm:text-base text-white truncate max-w-md group-hover:text-[#F4511E] transition-colors"
+                title={companyName}
+              >
+                {companyName}
+              </span>
+              {supplierName && supplierName !== companyName && (
+                <span className="text-xs text-neutral-400 truncate max-w-xs font-sans" title={`Vendor: ${supplierName}`}>
+                  (Vendor: <strong className="text-neutral-300 font-medium">{supplierName}</strong>)
+                </span>
+              )}
+            </div>
+
+            {/* Row 3: Key Order Meta (RO, PO, Material, Volume) */}
+            <div className="flex items-center gap-2 flex-wrap text-xs text-neutral-400 font-mono">
+              {item.nomorRO && (
+                <span className="bg-[#16191D] px-2 py-0.5 rounded text-neutral-300">
+                  RO: <strong className="text-white">{item.nomorRO}</strong>
+                </span>
+              )}
+              {item.poNumber && item.poNumber !== '-' && (
+                <span className="bg-[#16191D] px-2 py-0.5 rounded text-neutral-300">
+                  PO: <strong className="text-white">{item.poNumber}</strong>
+                </span>
+              )}
+              {volumeNum > 0 && (
+                <span className="bg-[#16191D] px-2 py-0.5 rounded text-neutral-300">
+                  Vol: <strong className="text-white">{formattedVolume} {satuan}</strong>
+                </span>
+              )}
+              {material && (
+                <span className="text-neutral-400 uppercase">
+                  • {material}
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Right Column: Amount & Actions */}
+        <div className="flex sm:flex-col items-center sm:items-end justify-between sm:justify-center gap-2 sm:gap-2.5 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-[#20242A]">
+          <div className="text-left sm:text-right">
+            <div className="text-[10px] text-neutral-400 uppercase font-mono tracking-wider">
+              Total Kas Keluar
+            </div>
+            <div className="text-base sm:text-lg font-black font-mono text-white tracking-tight">
+              {amountFormatted}
+            </div>
+          </div>
+
+          <div className="flex items-center gap-1.5">
             <button
               type="button"
-              onClick={onDelete}
-              className="py-2 px-3 rounded-xl bg-[#16191D] hover:bg-rose-500/10 border border-[#262A2F] hover:border-rose-500/40 text-[#F4511E] flex items-center justify-center transition-colors cursor-pointer group"
-              title="Hapus Cash Out"
+              onClick={(e) => {
+                e.stopPropagation();
+                onInfo();
+              }}
+              className="px-2.5 py-1.5 rounded-lg bg-[#181B1E] hover:bg-[#252A30] border border-[#262A30] hover:border-neutral-500 text-neutral-300 hover:text-white text-xs font-medium flex items-center gap-1.5 transition-colors cursor-pointer"
+              title="Rincian Finansial (Financial Details)"
             >
-              <Trash2 className="w-4 h-4 group-hover:scale-110 transition-transform text-[#F4511E]" />
+              <Info className="w-3.5 h-3.5 text-[#F4511E]" />
+              <span>Detail</span>
             </button>
-          )}
-          <button
-            type="button"
-            onClick={onInfo}
-            className="py-2 px-3 rounded-xl bg-[#16191D] hover:bg-[#F4511E]/10 border border-[#262A2F] hover:border-[#F4511E]/40 text-[#F4511E] flex items-center justify-center transition-colors cursor-pointer group"
-            title="Detail Informasi"
-          >
-            <Info className="w-4 h-4 group-hover:scale-110 transition-transform text-[#F4511E]" />
-          </button>
+
+            {canDelete && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDelete();
+                }}
+                className="p-1.5 rounded-lg bg-[#181B1E] hover:bg-rose-500/10 border border-[#262A2F] hover:border-rose-500/40 text-neutral-400 hover:text-[#F4511E] transition-colors cursor-pointer"
+                title="Hapus Cash Out"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </div>
@@ -180,12 +385,18 @@ export default function BkkPage() {
   const { isSuperAdmin } = useAuth();
   const {
     bkkList,
+    fetchBkk,
     createBkk,
     deleteBkk,
     markBkkPaid,
     bankAccounts,
     suppliers,
     customers,
+    preOrders,
+    suratJalanList,
+    generateNomorRO,
+    rekapanList,
+    fetchAvailableOrdersForBkk,
   } = useData();
   const { addToast } = useToast();
 
@@ -197,7 +408,7 @@ export default function BkkPage() {
     return 'list';
   });
 
-  // ── Form State (Matching provided reference image)
+  // ── Form State
   const defaultCustomer = useMemo(() => {
     return customers.find((c) => c.name.includes('ASCO') || c.kodePrefix?.includes('ADM 044')) || customers[0] || null;
   }, [customers]);
@@ -210,9 +421,151 @@ export default function BkkPage() {
   const [formSupplierId, setFormSupplierId] = useState('');
   const [formPoNumber, setFormPoNumber] = useState('');
   const [formRoNumber, setFormRoNumber] = useState('');
+  const [formMaterial, setFormMaterial] = useState('SIRTU');
+  const [formVolume, setFormVolume] = useState(0);
+  const [formHargaBeli, setFormHargaBeli] = useState(0);
+  const [formAmount, setFormAmount] = useState(0);
+  const [formJurnalId, setFormJurnalId] = useState('');
+  const [formPreOrderId, setFormPreOrderId] = useState('');
+
   const [keteranganList, setKeteranganList] = useState([
     { id: 1, type: 'general', deskripsi: '' },
   ]);
+
+  // ── Available Orders that DO NOT have an existing BKK (Requirement 1 - live from database)
+  const [availableOrders, setAvailableOrders] = useState([]);
+  const [loadingOrders, setLoadingOrders] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Keep a ref of bkkList so loadAvailableOrders does not get recreated on polling
+  const bkkListRef = useRef(bkkList);
+  useEffect(() => {
+    bkkListRef.current = bkkList;
+  }, [bkkList]);
+
+  const loadAvailableOrders = useCallback(async (isInitial = false) => {
+    if (isInitial || availableOrders.length === 0) {
+      setLoadingOrders(true);
+    }
+    try {
+      const orders = await fetchAvailableOrdersForBkk();
+      // Double check client-side against bkkList
+      const currentBkkList = bkkListRef.current || [];
+      const filtered = (orders || []).filter((o) => {
+        return !currentBkkList.some(
+          (b) =>
+            b.status !== 'REJECTED' &&
+            ((o.nomorRO && b.nomorRO === o.nomorRO) ||
+              (o.poNumber && o.poNumber !== '-' && b.poNumber === o.poNumber) ||
+              (o.jurnalId && b.jurnalId === o.jurnalId) ||
+              (o.preOrderId && b.preOrderId === o.preOrderId))
+        );
+      });
+      setAvailableOrders((prev) => {
+        if (JSON.stringify(prev) === JSON.stringify(filtered)) return prev;
+        return filtered;
+      });
+    } catch (err) {
+      console.error('Failed to load available orders:', err);
+    } finally {
+      setLoadingOrders(false);
+    }
+  }, [fetchAvailableOrdersForBkk]);
+
+  // Load available orders ONLY when the user is on the create tab
+  useEffect(() => {
+    if (activeTab === 'create') {
+      loadAvailableOrders(true);
+    }
+  }, [activeTab, loadAvailableOrders]);
+
+  // Current matched journal based on active form numbers
+  const currentMatchedJournal = useMemo(() => {
+    if (!formRoNumber && !formPoNumber) return null;
+    return (
+      availableOrders.find((r) => r.nomorRO === formRoNumber) ||
+      (rekapanList || []).find(
+        (r) =>
+          (formRoNumber && r.nomorRO === formRoNumber) ||
+          (formPoNumber && formPoNumber !== '-' && r.poNumber === formPoNumber)
+      ) ||
+      null
+    );
+  }, [availableOrders, rekapanList, formRoNumber, formPoNumber]);
+
+  // Business Rule Validation 1: Check if current order is completed 100%
+  const isCurrentOrderCompleted = useMemo(() => {
+    if (!formRoNumber) return false;
+    const inAvailable = availableOrders.find((r) => r.nomorRO === formRoNumber);
+    if (inAvailable) return true;
+
+    if (!currentMatchedJournal) return false;
+    const tot = Number(currentMatchedJournal.totalVolume || 0);
+    const tgt = Number(currentMatchedJournal.targetVolume || 0);
+    const status = String(currentMatchedJournal.status || '').toUpperCase();
+    if (status === 'SELESAI' || status === 'COMPLETED') return true;
+    return tgt > 0 ? tot >= tgt : tot > 0;
+  }, [availableOrders, formRoNumber, currentMatchedJournal]);
+
+  // Business Rule Validation 2: Check if duplicate BKK already exists
+  const existingOrderBkk = useMemo(() => {
+    if (!formRoNumber && !formPoNumber && !formJurnalId) return null;
+    return (
+      (bkkList || []).find(
+        (b) =>
+          b.status !== 'REJECTED' &&
+          ((formRoNumber && b.nomorRO && b.nomorRO === formRoNumber) ||
+            (formPoNumber && formPoNumber !== '-' && b.poNumber === formPoNumber) ||
+            (formJurnalId && b.jurnalId === formJurnalId) ||
+            (formPreOrderId && b.preOrderId === formPreOrderId))
+      ) || null
+    );
+  }, [bkkList, formRoNumber, formPoNumber, formJurnalId, formPreOrderId]);
+
+  // Select available completed order from dropdown
+  const handleSelectCompletedOrder = (roNumber) => {
+    if (!roNumber) {
+      setFormRoNumber('');
+      setFormPoNumber('');
+      setFormVolume(0);
+      setFormHargaBeli(0);
+      setFormAmount(0);
+      setFormJurnalId('');
+      setFormPreOrderId('');
+      return;
+    }
+
+    const matched = availableOrders.find((r) => r.nomorRO === roNumber) ||
+      (rekapanList || []).find((r) => r.nomorRO === roNumber);
+    if (!matched) return;
+
+    setFormRoNumber(matched.nomorRO);
+    setFormPoNumber(matched.poNumber || matched.poNomorPo || '-');
+    setFormMaterial(matched.material || 'SIRTU');
+    const vol = Number(matched.totalVolume) || 0;
+    const hBeli = Number(matched.hargaBeli) || 0;
+    setFormVolume(vol);
+    setFormHargaBeli(hBeli);
+    setFormAmount(Number(matched.nominalBeli) || Math.round(vol * hBeli));
+    setFormJurnalId(matched.jurnalId || matched.id || '');
+    setFormPreOrderId(matched.preOrderId || matched.poId || '');
+
+    // Auto-match Customer
+    if (matched.customerId) {
+      setFormCustomerId(matched.customerId);
+    } else if (matched.customer) {
+      const c = customers.find((x) => x.name.toLowerCase().includes(matched.customer.toLowerCase()));
+      if (c) setFormCustomerId(c.id);
+    }
+
+    // Auto-match Supplier
+    if (matched.supplierId) {
+      setFormSupplierId(matched.supplierId);
+    } else if (matched.defaultSupplierName) {
+      const s = suppliers.find((x) => x.name.toLowerCase().includes(matched.defaultSupplierName.toLowerCase()));
+      if (s) setFormSupplierId(s.id);
+    }
+  };
 
   // Set initial default selections once master data loads
   useEffect(() => {
@@ -227,12 +580,23 @@ export default function BkkPage() {
     }
   }, [defaultSupplier, formSupplierId]);
 
-  // Handle incoming order state
+  // Handle incoming order state (e.g. from RekapanPage) - Run only once per navigation
+  const locationOrderHandledRef = useRef(false);
   useEffect(() => {
-    if (location.state?.order) {
+    if (location.state?.order && !locationOrderHandledRef.current) {
+      locationOrderHandledRef.current = true;
       const o = location.state.order;
       if (o.nomorRO) setFormRoNumber(o.nomorRO);
       if (o.poNumber) setFormPoNumber(o.poNumber);
+      if (o.material) setFormMaterial(o.material);
+      if (o.totalVolume) setFormVolume(Number(o.totalVolume) || 0);
+      if (o.hargaBeli) setFormHargaBeli(Number(o.hargaBeli) || 0);
+      if (o.nominalBeli || (o.totalVolume && o.hargaBeli)) {
+        setFormAmount(Number(o.nominalBeli) || Math.round((Number(o.totalVolume) || 0) * (Number(o.hargaBeli) || 0)));
+      }
+      if (o.id) setFormJurnalId(o.id);
+      if (o.preOrderId) setFormPreOrderId(o.preOrderId);
+
       if (o.customer) {
         const c = customers.find((x) => x.name.toLowerCase().includes(o.customer.toLowerCase()));
         if (c) setFormCustomerId(c.id);
@@ -262,10 +626,52 @@ export default function BkkPage() {
   // ── List & Search Filter State
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [searchFilter, setSearchFilter] = useState('');
+  const [viewMode, setViewMode] = useState(() => {
+    try {
+      return localStorage.getItem('bkk_view_mode') || 'list';
+    } catch (e) {
+      return 'list';
+    }
+  });
+
+  const handleSetViewMode = (mode) => {
+    setViewMode(mode);
+    try {
+      localStorage.setItem('bkk_view_mode', mode);
+    } catch (e) {}
+  };
   const [selectedItems, setSelectedItems] = useState([]);
 
+  // Counts by status
+  const counts = useMemo(() => {
+    let pending = 0;
+    let approved = 0;
+    let verification = 0;
+    let revision = 0;
+    let paid = 0;
+
+    bkkList.forEach((b) => {
+      const s = String(b.status || '').toLowerCase();
+      if (s === 'paid' || b.statusBayar === 'Lunas') paid++;
+      else if (s === 'pending_verification') verification++;
+      else if (s === 'revision_required') revision++;
+      else if (s === 'approved') approved++;
+      else if (s === 'pending_approval' || s === 'menunggu_approval') pending++;
+    });
+
+    return {
+      pending,
+      approved,
+      verification,
+      revision,
+      paid,
+      all: bkkList.length,
+    };
+  }, [bkkList]);
+
   // ── Modals
-  const [infoModalItem, setInfoModalItem] = useState(null);
+  const [workflowModalItem, setWorkflowModalItem] = useState(null);
+  const [printModalItem, setPrintModalItem] = useState(null);
   const [deleteConfirmItem, setDeleteConfirmItem] = useState(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [paymentForm, setPaymentForm] = useState({
@@ -313,49 +719,88 @@ export default function BkkPage() {
     );
   };
 
-  // ── Submit Buat Cash Out
+  // ── Submit Buat Cash Out (Strict manual submission after 100% order completion)
   const handleCreateSubmit = async (e) => {
     e.preventDefault();
+    if (isSubmitting) return;
 
-    const sup = selectedSupplier;
-    const cust = selectedCustomer;
-    const keteranganText = keteranganList
-      .filter((k) => k.deskripsi)
-      .map((k) => `[${k.type}] ${k.deskripsi}`)
-      .join(' | ');
+    if (!formRoNumber) {
+      addToast('Silakan pilih Nomor RO yang telah selesai dikirim.', 'error');
+      return;
+    }
 
-    const today = new Date().toISOString().split('T')[0];
-    const newBkkData = {
-      tanggal: today,
-      timestamp: `${today} ${new Date().toTimeString().slice(0, 8)}`,
-      supplierId: formSupplierId,
-      penerima: sup?.penerima || sup?.name || '-',
-      perusahaan: sup?.name || '-',
-      rekeningTujuan: nomorRekeningDisplay
-        ? `${nomorRekeningDisplay} a/n ${rekeningAtasNamaDisplay}`
-        : '-',
-      rekeningAtasNama: rekeningAtasNamaDisplay,
-      customerId: formCustomerId,
-      customer: cust?.name || '-',
-      poNumber: formPoNumber || '-',
-      nomorRO: formRoNumber || `RO-${new Date().getFullYear()}-${String(Date.now()).slice(-4)}`,
-      material: 'SIRTU',
-      volume: 0,
-      kubikasi: 0,
-      satuan: 'm³',
-      amount: 0,
-      subDetail: keteranganText || formPoNumber || '-',
-      statusBayar: 'Belum Dibayar',
-      periode: today.slice(0, 7),
-    };
+    if (!isCurrentOrderCompleted) {
+      addToast(
+        'Gagal: Order belum selesai dikirim. Sesuai alur bisnis PT BAS, BKK hanya dapat dibuat setelah kuantitas pengiriman 100% terpenuhi berdasarkan Rekapan Jurnal.',
+        'error'
+      );
+      return;
+    }
 
+    if (existingOrderBkk) {
+      addToast(
+        `Gagal: BKK untuk Order ${formRoNumber} sudah pernah dibuat (${existingOrderBkk.kodeTransaksi || existingOrderBkk.id}). Sistem mencegah duplikasi BKK.`,
+        'error'
+      );
+      return;
+    }
+
+    setIsSubmitting(true);
     try {
-      await createBkk(newBkkData);
-      addToast('BKK Cash Out berhasil dibuat & disimpan ke daftar!', 'success');
-      setActiveTab('list');
-    } catch (err) {
-      addToast('BKK Cash Out berhasil disimpan!', 'success');
-      setActiveTab('list');
+      const sup = selectedSupplier;
+      const cust = selectedCustomer;
+      const keteranganText = keteranganList
+        .filter((k) => k.deskripsi)
+        .map((k) => `[${k.type}] ${k.deskripsi}`)
+        .join(' | ');
+
+      const today = new Date().toISOString().split('T')[0];
+      const resolvedVol = formVolume > 0 ? formVolume : Number(currentMatchedJournal?.totalVolume || 0);
+      const resolvedHarga = formHargaBeli > 0 ? formHargaBeli : Number(currentMatchedJournal?.hargaBeli || 0);
+      const resolvedAmount = formAmount > 0 ? formAmount : Math.round(resolvedVol * resolvedHarga);
+
+      const newBkkData = {
+        tanggal: today,
+        timestamp: `${today} ${new Date().toTimeString().slice(0, 8)}`,
+        supplierId: formSupplierId,
+        penerima: sup?.penerima || sup?.name || '-',
+        perusahaan: sup?.name || '-',
+        rekeningTujuan: nomorRekeningDisplay
+          ? `${nomorRekeningDisplay} a/n ${rekeningAtasNamaDisplay}`
+          : '-',
+        rekeningAtasNama: rekeningAtasNamaDisplay,
+        customerId: formCustomerId,
+        customer: cust?.name || currentMatchedJournal?.customer || '-',
+        poNumber: formPoNumber || currentMatchedJournal?.poNumber || '-',
+        nomorRO: formRoNumber || currentMatchedJournal?.nomorRO,
+        jurnalId: formJurnalId || currentMatchedJournal?.id || null,
+        preOrderId: formPreOrderId || currentMatchedJournal?.preOrderId || null,
+        material: formMaterial || currentMatchedJournal?.material || 'SIRTU',
+        volume: resolvedVol,
+        kubikasi: resolvedVol,
+        satuan: currentMatchedJournal?.satuan || 'm³',
+        hargaSatuan: resolvedHarga,
+        amount: resolvedAmount,
+        subDetail: keteranganText || `${cust?.name || currentMatchedJournal?.customer || 'Customer'} (${formRoNumber})`,
+        statusBayar: 'Belum Dibayar',
+        status: 'MENUNGGU_APPROVAL',
+        periode: today.slice(0, 7),
+      };
+
+      const res = await createBkk(newBkkData);
+      if (res?.success) {
+        setFormRoNumber('');
+        setFormPoNumber('');
+        setFormVolume(0);
+        setFormHargaBeli(0);
+        setFormAmount(0);
+        setFormJurnalId('');
+        setFormPreOrderId('');
+        await loadAvailableOrders(true);
+        setActiveTab('list');
+      }
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -376,10 +821,16 @@ export default function BkkPage() {
         (item.penerima && item.penerima.toLowerCase().includes(q));
 
       // Status filter
+      const s = String(item.status || '').toLowerCase();
+      const isPaid = s === 'paid' || item.statusBayar === 'Lunas';
+
       const matchStatus =
         statusFilter === 'ALL' ||
-        (statusFilter === 'BELUM_BAYAR' && item.statusBayar !== 'Lunas') ||
-        (statusFilter === 'LUNAS' && item.statusBayar === 'Lunas');
+        (statusFilter === 'PENDING' && (s === 'pending_approval' || s === 'menunggu_approval')) ||
+        (statusFilter === 'APPROVED' && s === 'approved') ||
+        (statusFilter === 'VERIFIKASI' && s === 'pending_verification') ||
+        (statusFilter === 'REVISI' && s === 'revision_required') ||
+        (statusFilter === 'LUNAS' && isPaid);
 
       return matchSearch && matchStatus;
     });
@@ -474,11 +925,10 @@ export default function BkkPage() {
                     p === 'ALL' ? 'BELUM_BAYAR' : p === 'BELUM_BAYAR' ? 'LUNAS' : 'ALL'
                   )
                 }
-                className={`w-8 h-8 flex items-center justify-center rounded-full transition-colors cursor-pointer ${
-                  statusFilter !== 'ALL'
-                    ? 'bg-[#F4511E]/20 text-[#F4511E]'
-                    : 'text-neutral-300 hover:text-white hover:bg-neutral-800'
-                }`}
+                className={`w-8 h-8 flex items-center justify-center rounded-full transition-colors cursor-pointer ${statusFilter !== 'ALL'
+                  ? 'bg-[#F4511E]/20 text-[#F4511E]'
+                  : 'text-neutral-300 hover:text-white hover:bg-neutral-800'
+                  }`}
                 title={`Filter Status: ${statusFilter}`}
               >
                 <Filter className="w-4 h-4" />
@@ -516,39 +966,71 @@ export default function BkkPage() {
           />
 
           {/* ── Status Chips ── */}
-          <div className="flex items-center gap-1.5 px-1">
+          <div className="flex items-center gap-1.5 px-1 overflow-x-auto pb-1">
             <button
               type="button"
               onClick={() => setStatusFilter('ALL')}
-              className={`px-3 py-1 rounded-lg text-xs font-mono font-bold transition-colors cursor-pointer ${
-                statusFilter === 'ALL'
-                  ? 'bg-[#F4511E] text-white'
-                  : 'bg-[#181B1E] text-neutral-400 hover:text-white border border-[#262A30]'
-              }`}
+              className={`px-3 py-1.5 rounded-xl text-xs font-mono font-bold transition-all cursor-pointer whitespace-nowrap ${statusFilter === 'ALL'
+                ? 'bg-[#F4511E] text-white shadow-sm'
+                : 'bg-[#181B1E] text-neutral-400 hover:text-white border border-[#262A30]'
+                }`}
             >
-              SEMUA ({bkkList.length})
+              SEMUA ({counts.all})
             </button>
             <button
               type="button"
-              onClick={() => setStatusFilter('BELUM_BAYAR')}
-              className={`px-3 py-1 rounded-lg text-xs font-mono font-bold transition-colors cursor-pointer ${
-                statusFilter === 'BELUM_BAYAR'
-                  ? 'bg-rose-600 text-white'
-                  : 'bg-[#181B1E] text-rose-400 hover:text-rose-300 border border-[#262A30]'
-              }`}
+              onClick={() => setStatusFilter('PENDING')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-mono font-bold transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${statusFilter === 'PENDING'
+                ? 'bg-[#F4511E] text-white shadow-sm'
+                : 'bg-[#181B1E] text-neutral-400 hover:text-white border border-[#262A30]'
+                }`}
             >
-              BELUM LUNAS
+              <Lock className="w-3.5 h-3.5" />
+              <span>APPROVAL ({counts.pending})</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setStatusFilter('APPROVED')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-mono font-bold transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${statusFilter === 'APPROVED'
+                ? 'bg-[#F4511E] text-white shadow-sm'
+                : 'bg-[#181B1E] text-neutral-400 hover:text-white border border-[#262A30]'
+                }`}
+            >
+              <Printer className="w-3.5 h-3.5" />
+              <span>SIAP CETAK ({counts.approved})</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setStatusFilter('VERIFIKASI')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-mono font-bold transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${statusFilter === 'VERIFIKASI'
+                ? 'bg-[#F4511E] text-white shadow-sm'
+                : 'bg-[#181B1E] text-neutral-400 hover:text-white border border-[#262A30]'
+                }`}
+            >
+              <ShieldCheck className="w-3.5 h-3.5" />
+              <span>VERIFIKASI ({counts.verification})</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setStatusFilter('REVISI')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-mono font-bold transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${statusFilter === 'REVISI'
+                ? 'bg-[#F4511E] text-white shadow-sm'
+                : 'bg-[#181B1E] text-neutral-400 hover:text-white border border-[#262A30]'
+                }`}
+            >
+              <RotateCw className="w-3.5 h-3.5" />
+              <span>REVISI ({counts.revision})</span>
             </button>
             <button
               type="button"
               onClick={() => setStatusFilter('LUNAS')}
-              className={`px-3 py-1 rounded-lg text-xs font-mono font-bold transition-colors cursor-pointer ${
-                statusFilter === 'LUNAS'
-                  ? 'bg-emerald-600 text-white'
-                  : 'bg-[#181B1E] text-emerald-400 hover:text-emerald-300 border border-[#262A30]'
-              }`}
+              className={`px-3 py-1.5 rounded-xl text-xs font-mono font-bold transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${statusFilter === 'LUNAS'
+                ? 'bg-[#F4511E] text-white shadow-sm'
+                : 'bg-[#181B1E] text-neutral-400 hover:text-white border border-[#262A30]'
+                }`}
             >
-              LUNAS
+              <CheckCircle2 className="w-3.5 h-3.5" />
+              <span>LUNAS ({counts.paid})</span>
             </button>
           </div>
 
@@ -577,7 +1059,7 @@ export default function BkkPage() {
               </div>
             </div>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-2">
               {filteredBkk.map((item) => (
                 <CashOutCard
                   key={item.id}
@@ -585,7 +1067,7 @@ export default function BkkPage() {
                   isSelected={selectedItems.includes(item.id)}
                   onSelect={() => toggleSelect(item.id)}
                   onDelete={() => setDeleteConfirmItem(item)}
-                  onInfo={() => setInfoModalItem(item)}
+                  onInfo={() => setWorkflowModalItem(item)}
                   canDelete={isSuperAdmin}
                 />
               ))}
@@ -595,237 +1077,243 @@ export default function BkkPage() {
       )}
 
       {/* ════════════════════════════════════════════════════════════════════════
-          VIEW 2 — BUAT CASH OUT FORM (Faithfully styled per user screenshot)
+          VIEW 2 — BUAT CASH OUT FORM (Slim, Compact, Refined UI)
          ════════════════════════════════════════════════════════════════════════ */}
       {activeTab === 'create' && (
         <div className="max-w-xl mx-auto py-2">
-          <form onSubmit={handleCreateSubmit} className="space-y-2.5">
-            {/* 1. Pilih Pelanggan (Customer) + Orange Refresh Button */}
-            <div className="flex items-stretch gap-2">
-              <div className="flex-1 bg-[#1C1F24] rounded-xl px-3.5 py-2.5 flex items-center gap-3">
-                <User className="w-5 h-5 text-neutral-400 shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <label className="block text-[11px] text-neutral-400 font-normal leading-tight mb-0.5">
-                    Pilih Pelanggan
+          <Card className="p-4 sm:p-5 bg-[#14171A] border-[#24282C] rounded-2xl shadow-xl space-y-4">
+
+            {/* Header Form */}
+            <div className="pb-3 border-b border-[#22262B] flex items-center justify-between">
+              <div>
+                <h2 className="text-sm sm:text-base font-bold text-white tracking-tight flex items-center gap-2">
+                  <Receipt className="w-4 h-4 text-[#F4511E]" />
+                  <span>Formulir Pengajuan BKK (Cash Out)</span>
+                </h2>
+                <p className="text-[11px] text-neutral-400 mt-0.5">
+                  Pilih pesanan yang telah komplit 100% untuk pengeluaran kas supplier
+                </p>
+              </div>
+              <Badge variant="outline" size="xs" className="font-mono text-[#F4511E] border-[#F4511E]/30">
+                Alur Sah PT BAS
+              </Badge>
+            </div>
+
+            <form onSubmit={handleCreateSubmit} className="space-y-3.5">
+
+              {/* 1. Pilih Nomor RO (Hanya menampilkan RO yang belum pernah dibuatkan BKK) */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-semibold text-neutral-300 flex items-center gap-1.5">
+                    <span>Nomor RO (Order Selesai Kirim)</span>
+                    <span className="text-[#F4511E]">*</span>
                   </label>
+                  <span className="text-[10px] font-mono text-neutral-500">
+                    {loadingOrders && availableOrders.length === 0 ? 'Memuat database...' : `${availableOrders.length} RO Tersedia`}
+                  </span>
+                </div>
+
+                <div className="relative">
+                  <select
+                    value={formRoNumber}
+                    disabled={loadingOrders && availableOrders.length === 0}
+                    onChange={(e) => handleSelectCompletedOrder(e.target.value)}
+                    className="w-full bg-[#181B1E] text-white text-xs sm:text-sm font-medium rounded-xl px-3 py-2.5 border border-[#2B3037] focus:outline-none focus:border-[#F4511E] appearance-none pr-8 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                    required
+                  >
+                    <option value="" className="text-neutral-500">
+                      {loadingOrders && availableOrders.length === 0
+                        ? '— Sedang memeriksa database... —'
+                        : availableOrders.length === 0
+                          ? '— Tidak ada RO yang tersedia (Semua order telah memiliki BKK) —'
+                          : '— Pilih Nomor Received Order (RO) —'}
+                    </option>
+                    {/* Fallback option if formRoNumber is selected but not currently in availableOrders list */}
+                    {formRoNumber && !availableOrders.some((o) => o.nomorRO === formRoNumber) && (
+                      <option value={formRoNumber} className="bg-[#181B1E]">
+                        {formRoNumber} &bull; {currentMatchedJournal?.customer || selectedCustomer?.name || 'Customer'} ({formVolume || 0} m³ - {formMaterial || 'SIRTU'})
+                      </option>
+                    )}
+                    {availableOrders.map((o) => (
+                      <option key={o.nomorRO || o.jurnalId} value={o.nomorRO} className="bg-[#181B1E]">
+                        {o.nomorRO} &bull; {o.customer} ({o.totalVolume} m³ - {o.material})
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown className="w-4 h-4 text-neutral-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                </div>
+
+                {availableOrders.length === 0 && !loadingOrders && (
+                  <div className="p-2.5 rounded-xl bg-neutral-900/60 border border-neutral-800 text-[11px] text-neutral-400 flex items-center gap-2">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                    <span>Semua pesanan yang telah selesai dikirim saat ini sudah memiliki rekapan BKK.</span>
+                  </div>
+                )}
+              </div>
+
+              {/* 2. Informasi PO & Customer (2 Kolom Slim) */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <div className="space-y-1">
+                  <label className="text-[11px] font-medium text-neutral-400">Nomor PO</label>
+                  <input
+                    type="text"
+                    value={formPoNumber}
+                    onChange={(e) => setFormPoNumber(e.target.value)}
+                    placeholder="PO Number"
+                    className="w-full bg-[#181B1E] text-xs font-mono text-white rounded-xl px-3 py-2 border border-[#2B3037] focus:outline-none focus:border-[#F4511E]"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[11px] font-medium text-neutral-400">Pelanggan (Customer)</label>
                   <div className="relative">
                     <select
                       value={formCustomerId}
                       onChange={(e) => setFormCustomerId(e.target.value)}
-                      className="w-full bg-transparent text-white text-xs sm:text-sm font-semibold uppercase focus:outline-none appearance-none pr-5 cursor-pointer truncate"
+                      className="w-full bg-[#181B1E] text-white text-xs font-medium rounded-xl px-3 py-2 border border-[#2B3037] focus:outline-none focus:border-[#F4511E] appearance-none pr-8 cursor-pointer truncate"
+                      required
                     >
-                      <option value="" className="bg-[#1C1F24] text-neutral-400">
-                        — Pilih Pelanggan —
-                      </option>
+                      <option value="" className="text-neutral-500">— Pilih Pelanggan —</option>
                       {customers.filter((c) => c.aktif !== false).map((c) => (
-                        <option key={c.id} value={c.id} className="bg-[#1C1F24] text-white">
+                        <option key={c.id} value={c.id} className="bg-[#181B1E]">
                           {c.kodePrefix ? `${c.kodePrefix} - ${c.name}` : c.name}
-                        </option>
-                      ))}
-                    </select>
-                    <ChevronDown className="w-4 h-4 text-neutral-400 absolute right-0 top-1/2 -translate-y-1/2 pointer-events-none" />
-                  </div>
-                </div>
-              </div>
-
-              {/* Orange Refresh Button */}
-              <button
-                type="button"
-                onClick={handleResetCustomer}
-                className="w-12 sm:w-14 rounded-xl bg-[#F4511E] hover:bg-[#E04418] flex items-center justify-center shrink-0 cursor-pointer transition-colors shadow-sm"
-                title="Reset Pelanggan"
-              >
-                <RotateCw className="w-5 h-5 text-white" />
-              </button>
-            </div>
-
-            {/* 2. ID Nomor Purchase Order (Orange bottom border line + Orange chevron) */}
-            <div className="bg-[#1C1F24] border-b-2 border-b-[#F4511E] rounded-xl px-3.5 py-3 flex items-center gap-3">
-              <Receipt className="w-5 h-5 text-neutral-400 shrink-0" />
-              <div className="flex-1 relative">
-                <input
-                  type="text"
-                  value={formPoNumber}
-                  onChange={(e) => setFormPoNumber(e.target.value)}
-                  placeholder="ID Nomor Purchase Order"
-                  className="w-full bg-transparent text-xs sm:text-sm text-[#F4511E] font-medium placeholder-[#F4511E]/80 focus:outline-none pr-5"
-                />
-                <ChevronDown className="w-4 h-4 text-[#F4511E] absolute right-0 top-1/2 -translate-y-1/2 pointer-events-none" />
-              </div>
-            </div>
-
-            {/* 3. ID Nomor Received Order (auto) */}
-            <div className="bg-[#1C1F24] rounded-xl px-3.5 py-3 flex items-center gap-3">
-              <Receipt className="w-5 h-5 text-neutral-500 shrink-0" />
-              <input
-                type="text"
-                value={formRoNumber}
-                onChange={(e) => setFormRoNumber(e.target.value)}
-                placeholder="ID Nomor Received Order (auto)"
-                className="flex-1 bg-transparent text-xs sm:text-sm text-neutral-200 placeholder-neutral-400 focus:outline-none"
-              />
-            </div>
-
-            {/* 4. Pilih Supplier + Orange Refresh Button */}
-            <div className="flex items-stretch gap-2">
-              <div className="flex-1 bg-[#1C1F24] rounded-xl px-3.5 py-2.5 flex items-center gap-3">
-                <User className="w-5 h-5 text-neutral-400 shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <label className="block text-[11px] text-neutral-400 font-normal leading-tight mb-0.5">
-                    Pilih Supplier
-                  </label>
-                  <div className="relative">
-                    <select
-                      value={formSupplierId}
-                      onChange={(e) => setFormSupplierId(e.target.value)}
-                      className="w-full bg-transparent text-white text-xs sm:text-sm font-semibold uppercase focus:outline-none appearance-none pr-5 cursor-pointer truncate"
-                    >
-                      <option value="" className="bg-[#1C1F24] text-neutral-400">
-                        — Pilih Supplier —
-                      </option>
-                      {suppliers.filter((s) => s.aktif !== false).map((s) => (
-                        <option key={s.id} value={s.id} className="bg-[#1C1F24] text-white">
-                          {s.name}
-                        </option>
-                      ))}
-                    </select>
-                    <ChevronDown className="w-4 h-4 text-neutral-400 absolute right-0 top-1/2 -translate-y-1/2 pointer-events-none" />
-                  </div>
-                </div>
-              </div>
-
-              {/* Orange Refresh Button */}
-              <button
-                type="button"
-                onClick={handleResetSupplier}
-                className="w-12 sm:w-14 rounded-xl bg-[#F4511E] hover:bg-[#E04418] flex items-center justify-center shrink-0 cursor-pointer transition-colors shadow-sm"
-                title="Reset Supplier"
-              >
-                <RotateCw className="w-5 h-5 text-white" />
-              </button>
-            </div>
-
-            {/* 5. Nomor Rekening (auto) */}
-            <div className="bg-[#1C1F24] rounded-xl px-3.5 py-2.5 flex items-center gap-3">
-              <BinaryIcon className="text-neutral-400 shrink-0" />
-              <div className="flex-1 min-w-0">
-                <div className="text-[11px] text-neutral-400 leading-tight">Nomor Rekening (auto)</div>
-                <div className="text-xs sm:text-sm text-white font-mono font-medium mt-0.5">
-                  {nomorRekeningDisplay || <span className="text-neutral-600">—</span>}
-                </div>
-              </div>
-            </div>
-
-            {/* 6. Rekening Atas Nama & Penerima Pembayaran (2 columns) */}
-            <div className="grid grid-cols-2 gap-2">
-              <div className="bg-[#1C1F24] rounded-xl px-3 py-2.5 flex items-start gap-2.5 min-w-0">
-                <User className="w-4 h-4 text-neutral-400 mt-0.5 shrink-0" />
-                <div className="min-w-0">
-                  <div className="text-[10px] text-neutral-400 leading-tight truncate">
-                    Rekening Atas Nama ...
-                  </div>
-                  <div className="text-xs text-white font-medium uppercase truncate mt-0.5">
-                    {rekeningAtasNamaDisplay || <span className="text-neutral-600">—</span>}
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-[#1C1F24] rounded-xl px-3 py-2.5 flex items-start gap-2.5 min-w-0">
-                <User className="w-4 h-4 text-neutral-400 mt-0.5 shrink-0" />
-                <div className="min-w-0">
-                  <div className="text-[10px] text-neutral-400 leading-tight truncate">
-                    Penerima Pembayara...
-                  </div>
-                  <div className="text-xs text-white font-medium uppercase truncate mt-0.5">
-                    {penerimaDisplay || <span className="text-neutral-600">—</span>}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Horizontal Divider */}
-            <div className="border-b border-[#252930] my-2" />
-
-            {/* 7. Section: Daftar Keterangan */}
-            <div className="space-y-2 pt-0.5">
-              <div className="text-xs text-neutral-400 font-normal">
-                Daftar Keterangan
-              </div>
-
-              {keteranganList.map((ket) => (
-                <div key={ket.id} className="flex items-center gap-2">
-                  {/* Red Square Trash Button */}
-                  <button
-                    type="button"
-                    onClick={() => handleRemoveKeterangan(ket.id)}
-                    className="w-10 h-10 rounded-lg bg-[#C62828] hover:bg-[#B71C1C] flex items-center justify-center shrink-0 cursor-pointer transition-colors shadow-xs"
-                    title="Hapus Keterangan"
-                  >
-                    <Trash2 className="w-4 h-4 text-white" />
-                  </button>
-
-                  {/* Dropdown Tipe Keterangan */}
-                  <div className="bg-[#1C1F24] rounded-xl px-3 py-2.5 flex-1 relative flex items-center">
-                    <select
-                      value={ket.type}
-                      onChange={(e) => handleUpdateKeterangan(ket.id, 'type', e.target.value)}
-                      className="w-full bg-transparent text-neutral-200 text-xs focus:outline-none appearance-none pr-5 cursor-pointer truncate"
-                    >
-                      {KETERANGAN_TYPES.map((t) => (
-                        <option key={t} value={t} className="bg-[#1C1F24] text-white">
-                          {t}
                         </option>
                       ))}
                     </select>
                     <ChevronDown className="w-3.5 h-3.5 text-neutral-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                   </div>
+                </div>
+              </div>
 
-                  {/* Item / Deskripsi Input */}
-                  <div className="bg-[#1C1F24] rounded-xl px-3 py-2.5 flex-[1.4] flex items-center">
-                    <input
-                      type="text"
-                      value={ket.deskripsi}
-                      onChange={(e) => handleUpdateKeterangan(ket.id, 'deskripsi', e.target.value)}
-                      placeholder="Item/Deskripsi"
-                      className="w-full bg-transparent text-white text-xs placeholder-neutral-400 focus:outline-none"
-                    />
+              {/* 3. Supplier & Rekening Pembayaran */}
+              <div className="space-y-2 pt-1 border-t border-[#22262B]">
+                <div className="space-y-1">
+                  <label className="text-[11px] font-medium text-neutral-400">Supplier Vendor</label>
+                  <div className="relative">
+                    <select
+                      value={formSupplierId}
+                      onChange={(e) => setFormSupplierId(e.target.value)}
+                      className="w-full bg-[#181B1E] text-white text-xs font-medium rounded-xl px-3 py-2 border border-[#2B3037] focus:outline-none focus:border-[#F4511E] appearance-none pr-8 cursor-pointer truncate"
+                      required
+                    >
+                      <option value="" className="text-neutral-500">— Pilih Supplier —</option>
+                      {suppliers.filter((s) => s.aktif !== false).map((s) => (
+                        <option key={s.id} value={s.id} className="bg-[#181B1E]">
+                          {s.name}
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronDown className="w-3.5 h-3.5 text-neutral-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                   </div>
                 </div>
-              ))}
 
-              {/* 8. Button: + TAMBAH KETERANGAN */}
-              <button
-                type="button"
-                onClick={handleAddKeterangan}
-                className="w-full py-2.5 rounded-xl border border-[#F4511E] bg-[#16191D]/40 hover:bg-[#F4511E]/10 text-[#F4511E] text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 transition-colors cursor-pointer mt-2"
-              >
-                <span className="w-4 h-4 rounded-full border border-[#F4511E] flex items-center justify-center text-[10px] font-black leading-none">
-                  +
-                </span>
-                <span>TAMBAH KETERANGAN</span>
-              </button>
-            </div>
+                {/* Info Rekening Bank & Penerima (Slim Readonly Card) */}
+                <div className="bg-[#181B1E] border border-[#262A30] rounded-xl p-2.5 grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs font-mono">
+                  <div>
+                    <span className="text-[10px] text-neutral-500 block uppercase">Rekening Tujuan:</span>
+                    <span className="text-white font-medium">{nomorRekeningDisplay || '-'}</span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-neutral-500 block uppercase">Atas Nama / Penerima:</span>
+                    <span className="text-white font-medium truncate block">
+                      {rekeningAtasNamaDisplay || penerimaDisplay || '-'}
+                    </span>
+                  </div>
+                </div>
+              </div>
 
-            {/* 9. Button: TERAPKAN */}
-            <button
-              type="submit"
-              className="w-full py-3.5 rounded-xl bg-[#F4511E] hover:bg-[#E04418] active:bg-[#D84315] text-[#121417] text-xs sm:text-sm font-extrabold uppercase tracking-wider transition-colors cursor-pointer shadow-md shadow-[#F4511E]/20 mt-3"
-            >
-              TERAPKAN
-            </button>
+              {/* 4. Daftar Keterangan (Slim) */}
+              <div className="space-y-2 pt-1 border-t border-[#22262B]">
+                <div className="flex items-center justify-between">
+                  <label className="text-[11px] font-medium text-neutral-400">Keterangan Transaksi</label>
+                  <button
+                    type="button"
+                    onClick={handleAddKeterangan}
+                    className="text-[11px] text-[#F4511E] hover:underline font-semibold flex items-center gap-1 cursor-pointer"
+                  >
+                    <Plus className="w-3 h-3" />
+                    <span>Tambah Baris</span>
+                  </button>
+                </div>
 
-            {/* 10. Button: Kembali ke Daftar BKK */}
-            <div className="flex justify-center pt-2 pb-1">
-              <button
-                type="button"
-                onClick={() => setActiveTab('list')}
-                className="px-6 py-1.5 rounded-lg border border-[#F4511E] text-[#F4511E] hover:bg-[#F4511E]/10 text-xs font-semibold inline-flex items-center gap-1.5 transition-colors cursor-pointer"
-              >
-                <span>Kembali ke Daftar BKK</span>
-                <ChevronUp className="w-3.5 h-3.5 text-[#F4511E]" />
-              </button>
-            </div>
-          </form>
+                <div className="space-y-1.5">
+                  {keteranganList.map((ket) => (
+                    <div key={ket.id} className="flex items-center gap-1.5">
+                      <select
+                        value={ket.type}
+                        onChange={(e) => handleUpdateKeterangan(ket.id, 'type', e.target.value)}
+                        className="w-32 bg-[#181B1E] text-neutral-200 text-xs rounded-lg px-2.5 py-1.5 border border-[#2B3037] focus:outline-none focus:border-[#F4511E] cursor-pointer"
+                      >
+                        {KETERANGAN_TYPES.map((t) => (
+                          <option key={t} value={t} className="bg-[#181B1E]">{t}</option>
+                        ))}
+                      </select>
+                      <input
+                        type="text"
+                        value={ket.deskripsi}
+                        onChange={(e) => handleUpdateKeterangan(ket.id, 'deskripsi', e.target.value)}
+                        placeholder="Deskripsi keterangan..."
+                        className="flex-1 bg-[#181B1E] text-white text-xs rounded-lg px-3 py-1.5 border border-[#2B3037] focus:outline-none focus:border-[#F4511E]"
+                      />
+                      {keteranganList.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveKeterangan(ket.id)}
+                          className="w-7 h-7 rounded-lg bg-[#202428] hover:bg-rose-500/20 text-neutral-400 hover:text-rose-400 flex items-center justify-center transition-colors cursor-pointer shrink-0"
+                          title="Hapus"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* 5. Ringkasan Finansial (Slim 3-Column Box) */}
+              <div className="p-3 bg-[#181B1E] border border-[#282C33] rounded-xl grid grid-cols-3 gap-2 text-center font-mono text-xs">
+                <div>
+                  <span className="text-[10px] text-neutral-500 block uppercase">Volume Kirim</span>
+                  <span className="text-white font-bold">{formVolume || 0} m³</span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-neutral-500 block uppercase">Harga Beli</span>
+                  <span className="text-neutral-300 font-bold">Rp {(formHargaBeli || 0).toLocaleString('id-ID')}</span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-neutral-500 block uppercase">Total Nilai BKK</span>
+                  <span className="text-[#F4511E] font-black text-sm">
+                    {formatCurrency(formAmount || Math.round((formVolume || 0) * (formHargaBeli || 0)))}
+                  </span>
+                </div>
+              </div>
+
+              {/* 6. Tombol Aksi */}
+              <div className="pt-2 flex flex-col sm:flex-row items-center gap-2">
+                <Button
+                  type="submit"
+                  variant="primary"
+                  size="md"
+                  icon={Lock}
+                  disabled={!formRoNumber || isSubmitting}
+                  className="w-full sm:flex-1 cursor-pointer"
+                >
+                  {isSubmitting ? 'Mengajukan...' : 'Ajukan BKK (Menunggu Approval)'}
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="md"
+                  onClick={() => setActiveTab('list')}
+                  className="w-full sm:w-auto cursor-pointer"
+                >
+                  Kembali ke Daftar
+                </Button>
+              </div>
+
+            </form>
+          </Card>
         </div>
       )}
 
@@ -861,92 +1349,17 @@ export default function BkkPage() {
         </div>
       )}
 
-      {/* ── MODAL DETAIL CASH OUT ── */}
-      <Modal
-        isOpen={Boolean(infoModalItem)}
-        onClose={() => setInfoModalItem(null)}
-        title="Detail Cash Out"
-        subtitle={infoModalItem?.kodeTransaksi}
-      >
-        {infoModalItem && (
-          <div className="p-4 space-y-3 font-mono text-xs text-neutral-300">
-            <div className="grid grid-cols-2 gap-2 bg-[#181B1E] p-3 rounded-lg border border-[#262A2F]">
-              <div>
-                <span className="text-neutral-500 block text-[10px] uppercase">Volume</span>
-                <span className="text-white font-bold">
-                  {(Number(infoModalItem.volume ?? infoModalItem.kubikasi) || 0).toFixed(2)} m³
-                </span>
-              </div>
-              <div>
-                <span className="text-neutral-500 block text-[10px] uppercase">Material</span>
-                <span className="text-white font-bold">{infoModalItem.material}</span>
-              </div>
-              <div className="col-span-2 pt-1 border-t border-[#262A2F]">
-                <span className="text-neutral-500 block text-[10px] uppercase">Nominal Kas Keluar</span>
-                <span className="text-[#F4511E] font-bold text-sm">
-                  {formatCurrency(infoModalItem.amount)}
-                </span>
-              </div>
-            </div>
-
-            <div className="space-y-1.5 bg-[#181B1E] p-3 rounded-lg border border-[#262A2F]">
-              <div>
-                <span className="text-neutral-500 block text-[10px] uppercase">Customer / Perusahaan</span>
-                <span className="text-white">{infoModalItem.customer || infoModalItem.perusahaan}</span>
-              </div>
-              <div>
-                <span className="text-neutral-500 block text-[10px] uppercase">No. PO & Subdetail</span>
-                <span className="text-neutral-200">{infoModalItem.subDetail || infoModalItem.poNumber || '-'}</span>
-              </div>
-              <div>
-                <span className="text-neutral-500 block text-[10px] uppercase">Waktu Transaksi</span>
-                <span className="text-neutral-200">{infoModalItem.timestamp || infoModalItem.tanggal || '-'}</span>
-              </div>
-              <div>
-                <span className="text-neutral-500 block text-[10px] uppercase">Periode</span>
-                <span className="text-neutral-200">{infoModalItem.periode || '-'}</span>
-              </div>
-              <div>
-                <span className="text-neutral-500 block text-[10px] uppercase">Status Pembayaran</span>
-                <span
-                  className={
-                    infoModalItem.statusBayar === 'Lunas'
-                      ? 'text-emerald-400 font-bold'
-                      : 'text-[#F4511E] font-bold'
-                  }
-                >
-                  {infoModalItem.statusBayar}
-                </span>
-              </div>
-              {infoModalItem.rekeningTujuan && (
-                <div>
-                  <span className="text-neutral-500 block text-[10px] uppercase">Rekening Tujuan</span>
-                  <span className="text-neutral-300 font-mono">{infoModalItem.rekeningTujuan}</span>
-                </div>
-              )}
-            </div>
-
-            <div className={`flex ${isSuperAdmin ? 'justify-between' : 'justify-end'} items-center pt-2 border-t border-[#262A2F]`}>
-              {isSuperAdmin && (
-                <Button
-                  variant="danger"
-                  size="sm"
-                  icon={Trash2}
-                  onClick={() => {
-                    setDeleteConfirmItem(infoModalItem);
-                    setInfoModalItem(null);
-                  }}
-                >
-                  Hapus BKK
-                </Button>
-              )}
-              <Button variant="primary" size="sm" onClick={() => setInfoModalItem(null)}>
-                Tutup
-              </Button>
-            </div>
-          </div>
-        )}
-      </Modal>
+      {/* ── MODAL WORKFLOW & DETAIL CASH OUT (BKK) ── */}
+      <BkkDetailWorkflowModal
+        isOpen={Boolean(workflowModalItem)}
+        onClose={() => setWorkflowModalItem(null)}
+        bkkItem={workflowModalItem}
+        onOpenPrintModal={(item) => setPrintModalItem(item)}
+        onBkkUpdated={() => {
+          fetchBkk();
+          loadAvailableOrders();
+        }}
+      />
 
       {/* ── MODAL KONFIRMASI HAPUS BKK ── */}
       <Modal
@@ -1031,6 +1444,13 @@ export default function BkkPage() {
           </div>
         </div>
       </Modal>
+
+      {/* ── MODAL CETAK & EKSPOR PDF CASH-OUT (BKK) ── */}
+      <BkkPrintModal
+        isOpen={Boolean(printModalItem)}
+        onClose={() => setPrintModalItem(null)}
+        bkkItem={printModalItem}
+      />
     </div>
   );
 }

@@ -31,7 +31,7 @@ export default function LaporanPage() {
   const navigate = useNavigate();
   const { addToast } = useToast();
   const { isDark } = useApp();
-  const { customers, suratJalanList, bkkList, invoiceList, preOrders } = useData();
+  const { customers, suratJalanList, bkkList, invoiceList, preOrders, generateNomorRO, generatePoNumber } = useData();
 
   // ── States strictly matching Screenshot media_1794964617296_7cac7e57.jpg ──
   const [filterHidden, setFilterHidden] = useState(false);
@@ -72,7 +72,7 @@ export default function LaporanPage() {
     // 1. From preOrders
     (preOrders || []).forEach((po) => {
       if (po.customer && po.customer.toLowerCase().includes(custName)) {
-        const roLabel = po.nomorRO || po.nomorRo || `RO-${po.id}`;
+        const roLabel = po.nomorRO || po.nomorRo || (generateNomorRO ? generateNomorRO(po.customer, preOrders, po.tanggal, customers) : '');
         const poNum = po.nomorPo || po.id;
         if (!seen.has(roLabel)) {
           seen.add(roLabel);
@@ -112,8 +112,8 @@ export default function LaporanPage() {
     if (list.length === 0) {
       list.push({
         id: `RO-${selectedCustomer.id || '01'}`,
-        nomorRoLabel: `RO-2026-${(selectedCustomer.kodePrefix || 'BAS').replace(/\s+/g, '')}-01`,
-        nomorPo: `PO-CUST-${(selectedCustomer.kodePrefix || 'BAS').replace(/\s+/g, '')}-2026`,
+        nomorRoLabel: generateNomorRO ? generateNomorRO(selectedCustomer.name, [...preOrders, ...suratJalanList], new Date(), customers) : `RO-${(selectedCustomer.kodePrefix || 'BAS').replace(/\s+/g, '')}-112026-001`,
+        nomorPo: generatePoNumber ? generatePoNumber(selectedCustomer.name, preOrders, new Date(), customers) : `PO-${(selectedCustomer.kodePrefix || 'BAS').replace(/\s+/g, '')}-112026-001`,
         material: 'BASE COURSE / LIMESTONE',
         tanggal: new Date().toISOString().slice(0, 10),
         volume: 250,

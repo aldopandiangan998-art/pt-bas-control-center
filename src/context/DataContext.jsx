@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useToast } from './ToastContext';
 import { calculateKubikasi } from '../utils/formatters';
 
@@ -39,20 +39,128 @@ function getAuthUser() {
 function getAuthHeaders() {
   const user = getAuthUser();
   if (user) {
+    const isSA = isUserSuperAdmin(user);
     return {
-      'x-user-role': user.role || 'admin',
-      'x-user-email': user.email || '',
+      'x-user-role': isSA ? 'superadmin' : (user.role || 'admin'),
+      'x-user-email': user.email || (isSA ? 'superadmin@ptbas.co.id' : ''),
       'x-user-id': user.id || '',
+      'x-user-name': user.name || user.nama || (isSA ? 'David Rusiah (Super Admin / Direktur)' : 'Admin'),
     };
   }
-  return {};
+  return {
+    'x-user-role': 'superadmin',
+    'x-user-email': 'superadmin@ptbas.co.id',
+    'x-user-id': 'usr-1',
+    'x-user-name': 'David Rusiah (Super Admin / Direktur)',
+  };
+}
+
+export function getCustomerPrefix(custNameOrObj, customersList = []) {
+  if (!custNameOrObj) return 'GEN';
+  if (typeof custNameOrObj === 'object') {
+    if (custNameOrObj.kodePrefix) return custNameOrObj.kodePrefix.replace(/\s+/g, '').toUpperCase();
+    if (custNameOrObj.name) custNameOrObj = custNameOrObj.name;
+    else return 'GEN';
+  }
+  const custName = String(custNameOrObj).trim();
+  
+  const normalize = (s) => s.toLowerCase().replace(/\b(pt|cv|tbk|persero)\b/gi, '').replace(/[^a-z0-9]/g, '').trim();
+  const targetNorm = normalize(custName);
+
+  const customers = customersList || [];
+
+  // 1. Exact match on name or alias (case-insensitive)
+  let found = customers.find((c) => c.name?.toLowerCase() === custName.toLowerCase() || c.alias?.toLowerCase() === custName.toLowerCase());
+
+  // 2. Normalized match (ignoring PT, CV, punctuation)
+  if (!found) {
+    found = customers.find((c) => normalize(c.name || '') === targetNorm || (c.alias && normalize(c.alias) === targetNorm));
+  }
+
+  // 3. Exact match with kodePrefix
+  if (!found) {
+    found = customers.find((c) => c.kodePrefix && c.kodePrefix.toLowerCase() === custName.toLowerCase());
+  }
+
+  // 4. Word boundary match on kodePrefix (avoid false substring matches like 'si' in 'solusi')
+  if (!found) {
+    found = customers.find((c) => {
+      if (!c.kodePrefix) return false;
+      const cleanPrefix = c.kodePrefix.replace(/\s+/g, '');
+      const regex = new RegExp('(\\b|[^a-zA-Z0-9])' + cleanPrefix + '(\\b|[^a-zA-Z0-9])', 'i');
+      return regex.test(custName);
+    });
+  }
+
+  if (found && found.kodePrefix) {
+    return found.kodePrefix.replace(/\s+/g, '').toUpperCase();
+  }
+  const clean = custName
+    .replace(/\b(PT|CV|TBK|PERSERO)\b/gi, '')
+    .replace(/[^A-Za-z0-9]/g, '')
+    .toUpperCase();
+  return clean.slice(0, 4) || 'GEN';
+}
+
+export function generateNomorRO(custNameOrObj, existingRos = [], date = new Date(), customersList = []) {
+  const d = date instanceof Date ? date : new Date(date || Date.now());
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const yyyy = String(d.getFullYear());
+  const monthYear = `${mm}${yyyy}`;
+  const prefix = getCustomerPrefix(custNameOrObj, customersList);
+
+  let maxSeq = 0;
+  const roList = Array.isArray(existingRos) ? existingRos : [];
+  for (const item of roList) {
+    const str = typeof item === 'string' ? item : (item?.nomorRO || item?.nomorRo || '');
+    if (!str) continue;
+    const match = str.match(new RegExp(`-${monthYear}-(\\d+)`));
+    if (match) {
+      const num = parseInt(match[1], 10);
+      if (!isNaN(num) && num > maxSeq) {
+        maxSeq = num;
+      }
+    }
+  }
+
+  const nextSeq = String(maxSeq + 1).padStart(3, '0');
+  return `RO-${prefix}-${monthYear}-${nextSeq}`;
+}
+
+export function generatePoNumber(custNameOrObj, existingPos = [], date = new Date(), customersList = []) {
+  const d = date instanceof Date ? date : new Date(date || Date.now());
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const yyyy = String(d.getFullYear());
+  const monthYear = `${mm}${yyyy}`;
+  const prefix = getCustomerPrefix(custNameOrObj, customersList);
+
+  let maxSeq = 0;
+  const poList = Array.isArray(existingPos) ? existingPos : [];
+  for (const item of poList) {
+    const str = typeof item === 'string'
+      ? item
+      : (item?.nomorPo || item?.poNumber || item?.nomorPoCustomer || '');
+    if (!str || str === 'MENUNGGU SURAT JALAN PERTAMA' || str.startsWith('PO-DRAFT-')) continue;
+    const match = str.match(new RegExp(`-${monthYear}-(\\d+)`));
+    if (match) {
+      const num = parseInt(match[1], 10);
+      if (!isNaN(num) && num > maxSeq) {
+        maxSeq = num;
+      }
+    }
+  }
+
+  const nextSeq = String(maxSeq + 1).padStart(3, '0');
+  return `PO-${prefix}-${monthYear}-${nextSeq}`;
 }
 
 function isUserSuperAdmin(user) {
   if (!user) return false;
-  if (user.role === 'superadmin') return true;
-  const superAdminList = ['superadmin@ptbas.co.id', 'direksi@ptbas.co.id', 'david.rusiah@ptbas.co.id'];
   const email = (user.email || '').toLowerCase().trim();
+  if (email === 'rainorchesta@gmail.com') return false;
+  const normalizedRole = String(user.role || '').toLowerCase().replace(/[\s_-]+/g, '');
+  if (normalizedRole === 'superadmin' || normalizedRole === 'direktur' || normalizedRole === 'direksi') return true;
+  const superAdminList = ['superadmin@ptbas.co.id', 'direksi@ptbas.co.id', 'david.rusiah@ptbas.co.id'];
   return superAdminList.includes(email) || email.startsWith('superadmin');
 }
 
@@ -71,9 +179,56 @@ export function normalizeBkkItem(item) {
     jenis: item.jenis || 'CURAH | JASA ANGKUT + MATERIAL',
     periode: item.periode || (item.tanggal ? String(item.tanggal).slice(0, 7) : (item.timestamp ? String(item.timestamp).slice(0, 7) : '-')),
     statusBayar: item.statusBayar || 'Belum Dibayar',
+    status: item.status || 'APPROVED',
+    createdBy: item.createdBy || 'Admin',
+    approvedBy: item.approvedBy || null,
+    approvedAt: item.approvedAt || null,
+    rejectionReason: item.rejectionReason || null,
     kodeTransaksi: item.kodeTransaksi || '-',
     perusahaan: item.perusahaan || '-',
     material: item.material || '-',
+  };
+}
+
+export function normalizeInvoiceItem(item) {
+  if (!item || typeof item !== 'object') return item;
+  const vol = Number(item.volume ?? 0) || 0;
+  return {
+    ...item,
+    volume: vol,
+    amount: Number(item.amount ?? item.totalTagihan ?? 0) || 0,
+    hargaSatuan: Number(item.hargaSatuan ?? 0) || 0,
+    subtotalJasa: Number(item.subtotalJasa ?? item.amount ?? 0) || 0,
+    dpp: Number(item.dpp ?? item.subtotalJasa ?? item.amount ?? 0) || 0,
+    tarifPpn: Number(item.tarifPpn ?? 11),
+    ppnNominal: Number(item.ppnNominal ?? item.ppn ?? 0) || 0,
+    ppn: Number(item.ppn ?? item.ppnNominal ?? 0) || 0,
+    tarifPph: Number(item.tarifPph ?? 0),
+    pphNominal: Number(item.pphNominal ?? item.pph ?? 0) || 0,
+    pph: Number(item.pph ?? item.pphNominal ?? 0) || 0,
+    timestamp: item.timestamp || (item.tanggal ? `${item.tanggal} 10:00:00` : ''),
+    tanggal: item.tanggal || (item.timestamp ? String(item.timestamp).slice(0, 10) : ''),
+    statusBayar: item.statusBayar || 'Belum Dibayar',
+    status: item.status || (item.statusBayar === 'Lunas' ? 'paid' : 'pending_approval'),
+    createdBy: item.createdBy || 'Admin',
+    approvedBy: item.approvedBy || null,
+    approvedAt: item.approvedAt || null,
+    rejectionReason: item.rejectionReason || null,
+    verifiedBy: item.verifiedBy || null,
+    verifiedAt: item.verifiedAt || null,
+    kodeTransaksi: item.kodeTransaksi || item.nomorInvoice || '-',
+    nomorInvoice: item.nomorInvoice || item.kodeTransaksi || '-',
+    perusahaan: item.perusahaan || item.customer || '-',
+    customer: item.customer || item.perusahaan || '-',
+    material: item.material || '-',
+    materialType: item.materialType || 'Curah',
+    jenis: item.jenis || 'JASA ANGKUT + MATERIAL',
+    periode: item.periode || (item.tanggal ? `Periode: [${item.tanggal}]` : '-'),
+    kirimKeRekening: item.kirimKeRekening || 'BCA - 0188920199 a/n PT Berkah Alam Semesta',
+    rekeningAtasNama: item.rekeningAtasNama || 'PT Berkah Alam Semesta',
+    latestDocument: item.latestDocument || null,
+    documentCount: item.documentCount || 0,
+    hasSignedDocument: Boolean(item.latestDocument || item.hasSignedDocument),
   };
 }
 
@@ -211,10 +366,11 @@ export function DataProvider({ children }) {
             !String(inv.kodeTransaksi || '').includes('4590011130')
         )
       : [];
+    const normalized = filtered.map(normalizeInvoiceItem);
     try {
-      localStorage.setItem(STORAGE_KEYS.invoices, JSON.stringify(filtered));
+      localStorage.setItem(STORAGE_KEYS.invoices, JSON.stringify(normalized));
     } catch (e) {}
-    return filtered;
+    return normalized;
   });
 
   // Jurnal GI / Rekapan list per PT BAS (cleaned of dummy data, synchronized with Pre Orders)
@@ -765,24 +921,27 @@ export function DataProvider({ children }) {
   }, [rekapanList]);
 
   // Sync with backend SQLite database on mount
-  const fetchPreOrders = async () => {
+  const fetchPreOrders = useCallback(async () => {
     try {
       const res = await fetch('/api/pre-orders');
       if (res.ok) {
         const data = await res.json();
         if (Array.isArray(data)) {
-          setPreOrders(data);
-          try {
-            localStorage.setItem(STORAGE_KEYS.preOrders, JSON.stringify(data));
-          } catch (e) {}
+          setPreOrders((prev) => {
+            if (JSON.stringify(prev) === JSON.stringify(data)) return prev;
+            try {
+              localStorage.setItem(STORAGE_KEYS.preOrders, JSON.stringify(data));
+            } catch (e) {}
+            return data;
+          });
         }
       }
     } catch (err) {
       // Offline fallback
     }
-  };
+  }, []);
 
-  const fetchSuratJalan = async () => {
+  const fetchSuratJalan = useCallback(async () => {
     try {
       const res = await fetch('/api/surat-jalan');
       if (res.ok) {
@@ -795,16 +954,19 @@ export function DataProvider({ children }) {
               s.id !== 'SJ-202611-0091' &&
               s.poNumber !== 'PO-LW-2026-089'
           );
-          setSuratJalanList(cleaned);
-          try {
-            localStorage.setItem(STORAGE_KEYS.suratJalan, JSON.stringify(cleaned));
-          } catch (e) {}
+          setSuratJalanList((prev) => {
+            if (JSON.stringify(prev) === JSON.stringify(cleaned)) return prev;
+            try {
+              localStorage.setItem(STORAGE_KEYS.suratJalan, JSON.stringify(cleaned));
+            } catch (e) {}
+            return cleaned;
+          });
         }
       }
     } catch (err) {}
-  };
+  }, []);
 
-  const fetchBkk = async () => {
+  const fetchBkk = useCallback(async () => {
     try {
       const res = await fetch('/api/bkk');
       if (res.ok) {
@@ -821,41 +983,49 @@ export function DataProvider({ children }) {
                 !String(b.kodeTransaksi || '').includes('TRX-202611-00')
             )
             .map(normalizeBkkItem);
-          setBkkList(cleaned);
-          try {
-            localStorage.setItem(STORAGE_KEYS.bkk, JSON.stringify(cleaned));
-          } catch (e) {}
+          setBkkList((prev) => {
+            if (JSON.stringify(prev) === JSON.stringify(cleaned)) return prev;
+            try {
+              localStorage.setItem(STORAGE_KEYS.bkk, JSON.stringify(cleaned));
+            } catch (e) {}
+            return cleaned;
+          });
         }
       }
     } catch (err) {}
-  };
+  }, []);
 
-  const fetchInvoices = async () => {
+  const fetchInvoices = useCallback(async () => {
     try {
       const res = await fetch('/api/invoices');
       if (res.ok) {
         const data = await res.json();
         if (Array.isArray(data)) {
-          const cleaned = data.filter(
-            (inv) =>
-              !['inv-1', 'inv-2', 'inv-3', 'inv-4', 'inv-5', 'inv-6'].includes(inv.id) &&
-              !String(inv.id || '').startsWith('dummy') &&
-              !String(inv.kodeTransaksi || '').includes('POS-2608') &&
-              !String(inv.kodeTransaksi || '').includes('POL-2607') &&
-              !String(inv.kodeTransaksi || '').includes('4500391980') &&
-              !String(inv.kodeTransaksi || '').includes('4510010537') &&
-              !String(inv.kodeTransaksi || '').includes('4590011130')
-          );
-          setInvoiceList(cleaned);
-          try {
-            localStorage.setItem(STORAGE_KEYS.invoices, JSON.stringify(cleaned));
-          } catch (e) {}
+          const cleaned = data
+            .filter(
+              (inv) =>
+                !['inv-1', 'inv-2', 'inv-3', 'inv-4', 'inv-5', 'inv-6'].includes(inv.id) &&
+                !String(inv.id || '').startsWith('dummy') &&
+                !String(inv.kodeTransaksi || '').includes('POS-2608') &&
+                !String(inv.kodeTransaksi || '').includes('POL-2607') &&
+                !String(inv.kodeTransaksi || '').includes('4500391980') &&
+                !String(inv.kodeTransaksi || '').includes('4510010537') &&
+                !String(inv.kodeTransaksi || '').includes('4590011130')
+            )
+            .map(normalizeInvoiceItem);
+          setInvoiceList((prev) => {
+            if (JSON.stringify(prev) === JSON.stringify(cleaned)) return prev;
+            try {
+              localStorage.setItem(STORAGE_KEYS.invoices, JSON.stringify(cleaned));
+            } catch (e) {}
+            return cleaned;
+          });
         }
       }
     } catch (err) {}
-  };
+  }, []);
 
-  const fetchRekapan = async () => {
+  const fetchRekapan = useCallback(async () => {
     try {
       const res = await fetch('/api/jurnal-gi');
       if (res.ok) {
@@ -868,14 +1038,17 @@ export function DataProvider({ children }) {
               r.poNumber !== 'PO-LW-2026-089' &&
               r.poNumber !== 'PO-SI-2026-014'
           );
-          setRekapanList(cleaned);
-          try {
-            localStorage.setItem(STORAGE_KEYS.rekapan, JSON.stringify(cleaned));
-          } catch (e) {}
+          setRekapanList((prev) => {
+            if (JSON.stringify(prev) === JSON.stringify(cleaned)) return prev;
+            try {
+              localStorage.setItem(STORAGE_KEYS.rekapan, JSON.stringify(cleaned));
+            } catch (e) {}
+            return cleaned;
+          });
         }
       }
     } catch (err) {}
-  };
+  }, []);
 
   const fetchMasterData = async () => {
     try {
@@ -980,7 +1153,7 @@ export function DataProvider({ children }) {
       if (e.key === STORAGE_KEYS.invoices && e.newValue) {
         try {
           const parsed = JSON.parse(e.newValue);
-          if (Array.isArray(parsed)) setInvoiceList(parsed);
+          if (Array.isArray(parsed)) setInvoiceList(parsed.map(normalizeInvoiceItem));
         } catch (err) {}
       }
       if (e.key === STORAGE_KEYS.rekapan && e.newValue) {
@@ -1009,7 +1182,7 @@ export function DataProvider({ children }) {
       fetchBkk();
       fetchInvoices();
       fetchRekapan();
-    }, 2000); // 2-second background sync
+    }, 10000); // 10-second background sync
 
     return () => {
       if (channel) {
@@ -1027,9 +1200,9 @@ export function DataProvider({ children }) {
 
   // Pre Order Actions
   const createPreOrder = async (data) => {
-    const timestamp = Date.now();
-    const id = data.id || `PO-DRAFT-${timestamp}`;
-    const nomorRO = data.nomorRO || `RO-${new Date().getFullYear()}-${String(timestamp).slice(-4)}`;
+    const id = (data.id && !isNaN(Number(data.id))) ? Number(data.id) : Date.now();
+    const allRos = [...preOrders, ...suratJalanList, ...rekapanList];
+    const nomorRO = data.nomorRO || generateNomorRO(data.customer, allRos, new Date(), customers);
     const newPo = {
       ...data,
       id,
@@ -1102,9 +1275,10 @@ export function DataProvider({ children }) {
 
     // Optimistic update Pre Orders
     setPreOrders((prev) => {
+      const allRos = [...prev, ...suratJalanList, ...rekapanList];
       const updated = prev.map((po) => {
         if (po.id === id) {
-          const finalRo = po.nomorRO || `RO-${new Date().getFullYear()}-${String(po.id).slice(-4)}`;
+          const finalRo = po.nomorRO || generateNomorRO(po.customer, allRos, new Date(), customers);
           approvedPo = {
             ...po,
             nomorRO: finalRo,
@@ -1127,7 +1301,8 @@ export function DataProvider({ children }) {
     setRekapanList((prev) => {
       const po = approvedPo || preOrders.find((p) => p.id === id);
       if (!po) return prev;
-      const finalRo = po.nomorRO || `RO-${new Date().getFullYear()}-${String(po.id).slice(-4)}`;
+      const allRos = [...preOrders, ...suratJalanList, ...prev];
+      const finalRo = po.nomorRO || generateNomorRO(po.customer, allRos, new Date(), customers);
       const exists = prev.some((r) => r.preOrderId === id || r.nomorRO === finalRo);
       if (exists) return prev;
 
@@ -1249,6 +1424,102 @@ export function DataProvider({ children }) {
     addToast('Pre Order ditolak dan dikembalikan untuk revisi.', 'error');
   };
 
+  const updatePreOrderCustomerPo = async (id, poNumber, syncWaybills = true) => {
+    const cleanPo = (poNumber && String(poNumber).trim() !== '') ? String(poNumber).trim().slice(0, 50) : null;
+    const now = new Date().toISOString().replace('T', ' ').substring(0, 16);
+    const user = getAuthUser();
+    const updaterName = user?.name || 'Admin';
+
+    let targetRoNum = '';
+
+    // 1. Optimistic update in preOrders
+    setPreOrders((prev) => {
+      const updated = prev.map((po) => {
+        if (po.id === id) {
+          targetRoNum = po.nomorRO || '';
+          return {
+            ...po,
+            nomorPo: cleanPo,
+            nomorPoCustomer: cleanPo,
+            poUpdatedBy: updaterName,
+            poUpdatedAt: now,
+          };
+        }
+        return po;
+      });
+      try {
+        localStorage.setItem(STORAGE_KEYS.preOrders, JSON.stringify(updated));
+      } catch (e) {}
+      return updated;
+    });
+
+    // 2. Optimistic update in suratJalanList & rekapanList if syncWaybills
+    if (syncWaybills) {
+      setSuratJalanList((prev) => {
+        const updated = prev.map((sj) => {
+          if (sj.preOrderId === id || (targetRoNum && sj.nomorRO === targetRoNum)) {
+            return { ...sj, poNumber: cleanPo };
+          }
+          return sj;
+        });
+        try {
+          localStorage.setItem(STORAGE_KEYS.suratJalan, JSON.stringify(updated));
+        } catch (e) {}
+        return updated;
+      });
+
+      setRekapanList((prev) => {
+        const updated = prev.map((j) => {
+          if (j.preOrderId === id || (targetRoNum && j.nomorRO === targetRoNum)) {
+            return { ...j, poNumber: cleanPo };
+          }
+          return j;
+        });
+        try {
+          localStorage.setItem(STORAGE_KEYS.rekapan, JSON.stringify(updated));
+        } catch (e) {}
+        return updated;
+      });
+    }
+
+    // 3. Broadcast to other tabs
+    try {
+      const ch = new BroadcastChannel('ptbas_sync_channel');
+      ch.postMessage({ type: 'SYNC_PREORDERS', action: 'update_po', id, poNumber: cleanPo });
+      ch.close();
+    } catch (e) {}
+
+    // 4. Send PATCH to backend
+    try {
+      const res = await fetch(`/api/pre-orders/${encodeURIComponent(id)}/customer-po`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          poNumber: cleanPo,
+          syncWaybills,
+          updatedBy: updaterName,
+        }),
+      });
+
+      if (res.ok) {
+        const result = await res.json().catch(() => null);
+        addToast(
+          result?.message || (cleanPo ? `Nomor PO ${cleanPo} berhasil disimpan!` : 'Nomor PO berhasil dikosongkan.'),
+          'success'
+        );
+        return result?.data;
+      } else {
+        const errJson = await res.json().catch(() => ({}));
+        console.warn('Backend update customer PO failed:', res.status, errJson);
+        addToast(errJson.message || 'Gagal menyimpan Nomor PO ke database', 'error');
+        throw new Error(errJson.message || 'Gagal menyimpan Nomor PO ke database');
+      }
+    } catch (err) {
+      console.warn('Backend update customer PO error:', err);
+      throw err;
+    }
+  };
+
   const deletePreOrder = async (id) => {
     const user = getAuthUser();
     if (!isUserSuperAdmin(user)) {
@@ -1304,9 +1575,8 @@ export function DataProvider({ children }) {
       throw new Error('Pre Order belum disetujui');
     }
 
-    const sjId = `SJ-${new Date().toISOString().slice(0, 7).replace('-', '')}-${String(
-      suratJalanList.length + 1
-    ).padStart(4, '0')}`;
+    const nextId = (suratJalanList.length > 0 ? Math.max(...suratJalanList.map((s) => Number(s.id) || 0)) : 0) + 1;
+    const sjId = sjData.id ? Number(sjData.id) : nextId;
 
     const calc = calculateKubikasi(
       sjData.panjangCm,
@@ -1315,11 +1585,35 @@ export function DataProvider({ children }) {
       sjData.koreksiTinggiCm || 0
     );
 
-    const finalNomorRo = targetPo?.nomorRO || sjData.nomorRO || sjData.nomorRo || (targetPo ? `RO-${targetPo.id}` : '');
+    const allRos = [...preOrders, ...suratJalanList, ...rekapanList];
+    const finalNomorRo = targetPo?.nomorRO || sjData.nomorRO || sjData.nomorRo || generateNomorRO(sjData.customer, allRos, sjData.tanggal ? new Date(sjData.tanggal) : new Date(), customers);
+
+    const allPos = [
+      ...preOrders.map((p) => p.nomorPo || p.nomorPoCustomer),
+      ...suratJalanList.map((s) => s.poNumber),
+      ...rekapanList.map((r) => r.poNumber),
+      ...invoiceList.map((i) => i.poNumber),
+    ];
+
+    const isNumericOrDraft = (str) => {
+      if (!str) return true;
+      const s = String(str).trim();
+      return s === '' || s === 'MENUNGGU SURAT JALAN PERTAMA' || s.startsWith('PO-DRAFT-') || /^\d{10,}$/.test(s);
+    };
+
+    let assignedPoNum = null;
+    if (sjData.poNumber && String(sjData.poNumber).trim() !== '' && !isNumericOrDraft(sjData.poNumber) && String(sjData.poNumber) !== String(targetPo?.id)) {
+      assignedPoNum = String(sjData.poNumber).trim().slice(0, 50);
+    } else if (targetPo?.nomorPo && !isNumericOrDraft(targetPo.nomorPo)) {
+      assignedPoNum = String(targetPo.nomorPo).trim().slice(0, 50);
+    } else if (sjData.autoGeneratePo) {
+      assignedPoNum = generatePoNumber(sjData.customer, allPos, sjData.tanggal ? new Date(sjData.tanggal) : new Date(), customers);
+    }
 
     const newSj = {
       ...sjData,
       id: sjId,
+      poNumber: assignedPoNum,
       nomorRO: finalNomorRo,
       preOrderId: targetPo?.id || sjData.preOrderId || null,
       volumeAkhir: calc.volumeAkhir,
@@ -1336,7 +1630,6 @@ export function DataProvider({ children }) {
     });
 
     // 2. Update Pre Orders terkirim & auto-assign PO number if first delivery
-    let assignedPoNum = sjData.poNumber;
     setPreOrders((prev) => {
       const updated = prev.map((po) => {
         const isMatch =
@@ -1346,11 +1639,6 @@ export function DataProvider({ children }) {
           (po.nomorRO && finalNomorRo && po.nomorRO === finalNomorRo);
 
         if (isMatch) {
-          assignedPoNum =
-            po.nomorPo ||
-            `PO-${sjData.customer.replace(/[^A-Z]/g, '').slice(0, 2)}-2026-${Math.floor(
-              100 + Math.random() * 900
-            )}`;
           return {
             ...po,
             nomorPo: assignedPoNum,
@@ -1380,7 +1668,6 @@ export function DataProvider({ children }) {
           const existingDetails = Array.isArray(jrn.suratJalanDetails) ? jrn.suratJalanDetails : [];
           const sjItemDesc = {
             id: sjId,
-            nomorSj: sjData.nomorSj,
             poNumber: assignedPoNum || jrn.poNumber,
             nomorRO: jrn.nomorRO || finalNomorRo,
             jurnalId: jrn.id,
@@ -1399,7 +1686,7 @@ export function DataProvider({ children }) {
             status: 'Selesai',
           };
 
-          const filteredDetails = existingDetails.filter((d) => d.id !== sjId && d.nomorSj !== sjData.nomorSj);
+          const filteredDetails = existingDetails.filter((d) => d.id !== sjId);
           filteredDetails.push(sjItemDesc);
 
           const updatedTotalSj = filteredDetails.length;
@@ -1435,7 +1722,6 @@ export function DataProvider({ children }) {
 
         const sjItemDesc = {
           id: sjId,
-          nomorSj: sjData.nomorSj,
           poNumber: assignedPoNum || sjData.poNumber,
           nomorRO: finalNomorRo,
           jurnalId: newRekId,
@@ -1533,45 +1819,199 @@ export function DataProvider({ children }) {
       console.warn('Backend Surat Jalan sync failed, saved in localStorage:', err);
     }
 
-    addToast(`Surat Jalan No. ${sjData.nomorSj} berhasil disimpan! (${calc.volumeAkhir} m³) & otomatis masuk ke Ringkasan Jurnal.`, 'success');
+    addToast(`Surat Jalan GI #${sjId} berhasil disimpan! (${calc.volumeAkhir} m³) & otomatis masuk ke Ringkasan Jurnal.`, 'success');
     return newSj;
   };
 
   // BKK Cash Out Actions
   const createBkk = async (bkkData) => {
+    const user = getAuthUser();
+    const createdBy = user?.name || user?.email || 'Admin';
     const id = bkkData.id || `BKK-${new Date().toISOString().slice(0, 7).replace('-', '')}-${String(Date.now()).slice(-4)}`;
-    const newBkk = normalizeBkkItem({
+
+    const newBkkPayload = {
       ...bkkData,
       id,
       kodeTransaksi: bkkData.kodeTransaksi || `TRX-${Date.now()}`,
-      statusBayar: bkkData.statusBayar || 'Belum Dibayar',
-    });
-
-    setBkkList((prev) => {
-      const updated = [newBkk, ...prev.filter((b) => b.id !== id)];
-      try {
-        localStorage.setItem(STORAGE_KEYS.bkk, JSON.stringify(updated));
-      } catch (e) {}
-      return updated;
-    });
+      statusBayar: 'Belum Dibayar',
+      status: 'MENUNGGU_APPROVAL',
+      createdBy,
+    };
 
     try {
-      await fetch('/api/bkk', {
+      const res = await fetch('/api/bkk', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newBkk),
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAuthHeaders(),
+        },
+        body: JSON.stringify(newBkkPayload),
       });
-      const ch = new BroadcastChannel('ptbas_sync_channel');
-      ch.postMessage({ type: 'SYNC_BKK' });
-      ch.close();
-      await fetchBkk();
-    } catch (e) {}
 
-    addToast(`BKK Kas Keluar No. ${newBkk.kodeTransaksi} berhasil dibuat!`, 'success');
-    return newBkk;
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data.success === false) {
+        const errorMsg = data.message || 'Gagal mengajukan BKK ke server.';
+        addToast(errorMsg, 'error');
+        return { success: false, message: errorMsg };
+      }
+
+      const normalized = normalizeBkkItem({
+        ...newBkkPayload,
+        kodeTransaksi: data.kodeTransaksi || newBkkPayload.kodeTransaksi,
+        status: 'MENUNGGU_APPROVAL',
+      });
+
+      setBkkList((prev) => {
+        const updated = [normalized, ...prev.filter((b) => b.id !== id)];
+        try {
+          localStorage.setItem(STORAGE_KEYS.bkk, JSON.stringify(updated));
+        } catch (e) {}
+        return updated;
+      });
+
+      try {
+        const ch = new BroadcastChannel('ptbas_sync_channel');
+        ch.postMessage({ type: 'SYNC_BKK' });
+        ch.close();
+      } catch (e) {}
+
+      await fetchBkk();
+      addToast(data.message || `BKK Cash Out ${normalized.kodeTransaksi} berhasil diajukan! (Status: Menunggu Approval)`, 'success');
+      return { success: true, data: normalized };
+    } catch (err) {
+      const msg = err.message || 'Koneksi ke backend gagal saat membuat BKK.';
+      addToast(msg, 'error');
+      return { success: false, message: msg };
+    }
+  };
+
+  const approveBkk = async (bkkId, approverName = 'David Rusiah (Direktur)') => {
+    const user = getAuthUser();
+    if (!isUserSuperAdmin(user)) {
+      addToast('Akses ditolak: Hanya Super Admin yang diizinkan untuk menyetujui BKK.', 'error');
+      return { success: false, message: 'Akses ditolak: Hanya Super Admin yang diizinkan untuk menyetujui BKK.' };
+    }
+
+    try {
+      const res = await fetch(`/api/bkk/${encodeURIComponent(bkkId)}/approve`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAuthHeaders(),
+        },
+        body: JSON.stringify({ approver: approverName }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data.success === false) {
+        addToast(data.message || 'Gagal menyetujui BKK.', 'error');
+        return { success: false, message: data.message };
+      }
+
+      const now = new Date().toISOString();
+      setBkkList((prev) => {
+        const updated = prev.map((item) =>
+          item.id === bkkId
+            ? {
+                ...item,
+                status: 'APPROVED',
+                approvedBy: approverName,
+                approvedAt: now,
+                rejectionReason: null,
+              }
+            : item
+        );
+        try {
+          localStorage.setItem(STORAGE_KEYS.bkk, JSON.stringify(updated));
+        } catch (e) {}
+        return updated;
+      });
+
+      try {
+        const ch = new BroadcastChannel('ptbas_sync_channel');
+        ch.postMessage({ type: 'SYNC_BKK' });
+        ch.close();
+      } catch (e) {}
+
+      await fetchBkk();
+      addToast(data.message || 'BKK resmi disetujui & difinalisasi oleh Super Admin!', 'success');
+      return { success: true, data: data.data };
+    } catch (err) {
+      console.warn('Approve BKK error:', err);
+      addToast(err.message || 'Gagal menyetujui BKK.', 'error');
+      return { success: false, message: err.message };
+    }
+  };
+
+  const rejectBkk = async (bkkId, reason = 'Ditolak oleh Super Admin', rejecterName = 'David Rusiah (Direktur)') => {
+    const user = getAuthUser();
+    if (!isUserSuperAdmin(user)) {
+      addToast('Akses ditolak: Hanya Super Admin yang diizinkan untuk menolak BKK.', 'error');
+      return { success: false, message: 'Akses ditolak: Hanya Super Admin yang diizinkan untuk menolak BKK.' };
+    }
+
+    try {
+      const res = await fetch(`/api/bkk/${encodeURIComponent(bkkId)}/reject`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAuthHeaders(),
+        },
+        body: JSON.stringify({ reason, approver: rejecterName }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data.success === false) {
+        addToast(data.message || 'Gagal menolak BKK.', 'error');
+        return { success: false, message: data.message };
+      }
+
+      const now = new Date().toISOString();
+      setBkkList((prev) => {
+        const updated = prev.map((item) =>
+          item.id === bkkId
+            ? {
+                ...item,
+                status: 'REJECTED',
+                rejectionReason: reason,
+                approvedBy: rejecterName,
+                approvedAt: now,
+              }
+            : item
+        );
+        try {
+          localStorage.setItem(STORAGE_KEYS.bkk, JSON.stringify(updated));
+        } catch (e) {}
+        return updated;
+      });
+
+      try {
+        const ch = new BroadcastChannel('ptbas_sync_channel');
+        ch.postMessage({ type: 'SYNC_BKK' });
+        ch.close();
+      } catch (e) {}
+
+      await fetchBkk();
+      addToast(data.message || 'BKK telah ditolak.', 'info');
+      return { success: true, data: data.data };
+    } catch (err) {
+      console.warn('Reject BKK error:', err);
+      addToast(err.message || 'Gagal menolak BKK.', 'error');
+      return { success: false, message: err.message };
+    }
   };
 
   const markBkkPaid = async (bkkIds, paymentDetails) => {
+    // Client-side verification: Only APPROVED BKK can be paid
+    const unapprovedItems = bkkList.filter((b) => bkkIds.includes(b.id) && b.status !== 'APPROVED');
+    if (unapprovedItems.length > 0) {
+      addToast(
+        `Akses ditolak: Terdapat ${unapprovedItems.length} BKK yang belum disetujui oleh Super Admin. BKK harus berstatus Disetujui (Approved) sebelum dapat dicairkan/dibayar.`,
+        'error'
+      );
+      return { success: false, message: 'BKK belum disetujui Super Admin' };
+    }
+
     const tgl = paymentDetails?.tanggalBayar || new Date().toISOString().split('T')[0];
     const rek = paymentDetails?.rekeningSumber || 'BCA - 0188920199 a/n PT Berkah Alam Semesta';
 
@@ -1594,15 +2034,21 @@ export function DataProvider({ children }) {
     });
 
     try {
-      await fetch('/api/bkk/pay', {
+      const res = await fetch('/api/bkk/pay', {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
         body: JSON.stringify({
           ids: bkkIds,
           tanggalBayar: tgl,
           rekeningSumber: rek,
         }),
       });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data.success === false) {
+        addToast(data.message || 'Gagal mencatat pelunasan BKK.', 'error');
+        await fetchBkk();
+        return;
+      }
       const ch = new BroadcastChannel('ptbas_sync_channel');
       ch.postMessage({ type: 'SYNC_BKK' });
       ch.close();
@@ -1610,6 +2056,260 @@ export function DataProvider({ children }) {
     } catch (e) {}
     addToast(`${bkkIds.length} BKK berhasil dicatat LUNAS! Hutang supplier diperbarui.`, 'success');
   };
+
+  // Fetch available orders for BKK (Live from backend database)
+  const fetchAvailableOrdersForBkk = useCallback(async () => {
+    try {
+      const res = await fetch('/api/bkk/available-orders');
+      if (res.ok) {
+        const json = await res.json();
+        return json.data || [];
+      }
+    } catch (e) {
+      console.error('Error fetching available orders for BKK:', e);
+    }
+    return [];
+  }, []);
+
+  // Fetch BKK print data (Live from backend database with grouped GI by date)
+  const fetchBkkPrintData = useCallback(async (bkkId) => {
+    try {
+      const res = await fetch(`/api/bkk/${encodeURIComponent(bkkId)}/print-data`);
+      if (res.ok) {
+        const json = await res.json();
+        return json.data || null;
+      }
+    } catch (e) {
+      console.error('Error fetching BKK print data:', e);
+    }
+    return null;
+  }, []);
+
+  // Record BKK print event in audit trail
+  const recordBkkPrint = useCallback(async (bkkId) => {
+    try {
+      await fetch(`/api/bkk/${encodeURIComponent(bkkId)}/record-print`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+      });
+    } catch (e) {
+      console.warn('Failed to record print audit:', e);
+    }
+  }, []);
+
+  // Upload signed document for BKK
+  const uploadBkkDocument = useCallback(async (bkkId, docPayload) => {
+    try {
+      const res = await fetch(`/api/bkk/${encodeURIComponent(bkkId)}/documents`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+        body: JSON.stringify(docPayload),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data.success === false) {
+        addToast(data.message || 'Gagal mengunggah berkas dokumen.', 'error');
+        return { success: false, message: data.message };
+      }
+      await fetchBkk();
+      addToast(data.message || 'Dokumen fisik berhasil diunggah.', 'success');
+      return { success: true, data: data.data, document: data.data };
+    } catch (err) {
+      console.error('Upload document error:', err);
+      addToast(err.message || 'Gagal mengunggah dokumen.', 'error');
+      return { success: false, message: err.message };
+    }
+  }, [fetchBkk]);
+
+  // Submit signed document for Superadmin verification
+  const submitBkkDocumentForVerification = async (bkkId) => {
+    try {
+      const res = await fetch(`/api/bkk/${encodeURIComponent(bkkId)}/submit-verification`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data.success === false) {
+        addToast(data.message || 'Gagal mengajukan verifikasi dokumen.', 'error');
+        return { success: false, message: data.message };
+      }
+      await fetchBkk();
+      addToast(data.message || 'Dokumen berhasil diajukan untuk verifikasi Superadmin!', 'success');
+      return { success: true, data: data.data };
+    } catch (err) {
+      console.error('Submit verification error:', err);
+      addToast(err.message || 'Gagal mengajukan verifikasi.', 'error');
+      return { success: false, message: err.message };
+    }
+  };
+
+  // Superadmin approves signed document verification and finalizes as PAID (LUNAS)
+  const approveBkkVerification = useCallback(async (bkkId, payload = {}) => {
+    const user = getAuthUser();
+    const isSA = user ? isUserSuperAdmin(user) : true;
+    if (!isSA) {
+      addToast('Akses ditolak: Hanya Super Admin yang berwenang memverifikasi dokumen fisik BKK.', 'error');
+      return { success: false, message: 'Akses ditolak: Hanya Super Admin yang berwenang.' };
+    }
+
+    const bodyPayload = typeof payload === 'string'
+      ? { verifier: payload }
+      : (payload && typeof payload === 'object' ? { ...payload } : {});
+
+    if (!bodyPayload.verifier) {
+      bodyPayload.verifier = `${user?.name || user?.nama || 'David Rusiah'} (Super Admin / Direktur)`;
+    }
+
+    try {
+      const res = await fetch(`/api/bkk/${encodeURIComponent(bkkId)}/verify-approve`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+        body: JSON.stringify(bodyPayload),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data.success === false) {
+        addToast(data.message || 'Gagal memverifikasi dokumen BKK.', 'error');
+        return { success: false, message: data.message };
+      }
+
+      // Optimistic update of local state
+      const nowIso = new Date().toISOString();
+      const settlementDate = bodyPayload.tanggalBayar || nowIso.split('T')[0];
+      setBkkList((prev) => {
+        const updated = prev.map((item) =>
+          item.id === bkkId
+            ? {
+                ...item,
+                status: 'paid',
+                statusBayar: 'Lunas',
+                tanggalBayar: settlementDate,
+                verifiedBy: bodyPayload.verifier,
+                verifiedAt: nowIso,
+                latestDocument: item.latestDocument
+                  ? { ...item.latestDocument, status: 'VERIFIED', verifiedBy: bodyPayload.verifier, verifiedAt: nowIso }
+                  : item.latestDocument,
+              }
+            : item
+        );
+        try {
+          localStorage.setItem(STORAGE_KEYS.bkk, JSON.stringify(updated));
+        } catch (e) {}
+        return updated;
+      });
+
+      try {
+        const ch = new BroadcastChannel('ptbas_sync_channel');
+        ch.postMessage({ type: 'SYNC_BKK' });
+        ch.close();
+      } catch (e) {}
+
+      await fetchBkk();
+      addToast(data.message || 'Dokumen BKK resmi diverifikasi & transaksi difinalisasi LUNAS!', 'success');
+      return { success: true, data: data.data };
+    } catch (err) {
+      console.error('Approve verification error:', err);
+      addToast(err.message || 'Gagal memverifikasi dokumen.', 'error');
+      return { success: false, message: err.message };
+    }
+  }, [fetchBkk, addToast]);
+
+  // Superadmin rejects signed document verification and requests revision
+  const rejectBkkVerification = useCallback(async (bkkId, payload, verifierArg) => {
+    const user = getAuthUser();
+    if (!isUserSuperAdmin(user)) {
+      addToast('Akses ditolak: Hanya Super Admin yang berwenang menolak verifikasi dokumen BKK.', 'error');
+      return { success: false, message: 'Akses ditolak: Hanya Super Admin yang berwenang.' };
+    }
+
+    let reason = '';
+    let verifier = verifierArg || `${user?.name || user?.nama || 'David Rusiah'} (Super Admin / Direktur)`;
+    if (typeof payload === 'string') {
+      reason = payload;
+    } else if (payload && typeof payload === 'object') {
+      reason = payload.reason || payload.alasan || '';
+      if (payload.verifier) verifier = payload.verifier;
+    }
+
+    if (!reason || !reason.trim()) {
+      addToast('Alasan penolakan / revisi dokumen wajib diisi.', 'error');
+      return { success: false, message: 'Alasan penolakan wajib diisi' };
+    }
+
+    try {
+      const res = await fetch(`/api/bkk/${encodeURIComponent(bkkId)}/verify-reject`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+        body: JSON.stringify({ reason: reason.trim(), verifier }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data.success === false) {
+        addToast(data.message || 'Gagal menolak verifikasi dokumen.', 'error');
+        return { success: false, message: data.message };
+      }
+
+      // Optimistic update of local state
+      const nowIso = new Date().toISOString();
+      setBkkList((prev) => {
+        const updated = prev.map((item) =>
+          item.id === bkkId
+            ? {
+                ...item,
+                status: 'revision_required',
+                rejectionReason: reason.trim(),
+                latestDocument: item.latestDocument
+                  ? { ...item.latestDocument, status: 'REJECTED', rejectionReason: reason.trim() }
+                  : item.latestDocument,
+              }
+            : item
+        );
+        try {
+          localStorage.setItem(STORAGE_KEYS.bkk, JSON.stringify(updated));
+        } catch (e) {}
+        return updated;
+      });
+
+      try {
+        const ch = new BroadcastChannel('ptbas_sync_channel');
+        ch.postMessage({ type: 'SYNC_BKK' });
+        ch.close();
+      } catch (e) {}
+
+      await fetchBkk();
+      addToast(data.message || 'Verifikasi dokumen ditolak dan permintaan revisi diteruskan ke Admin.', 'info');
+      return { success: true, data: data.data };
+    } catch (err) {
+      console.error('Reject verification error:', err);
+      addToast(err.message || 'Gagal menolak verifikasi.', 'error');
+      return { success: false, message: err.message };
+    }
+  }, [fetchBkk, addToast]);
+
+  // Fetch document history & versions for a BKK
+  const fetchBkkDocuments = useCallback(async (bkkId) => {
+    try {
+      const res = await fetch(`/api/bkk/${encodeURIComponent(bkkId)}/documents`);
+      if (res.ok) {
+        const json = await res.json();
+        return json.data || [];
+      }
+    } catch (e) {
+      console.error('Error fetching BKK documents:', e);
+    }
+    return [];
+  }, []);
+
+  // Fetch immutable audit trail for a BKK
+  const fetchBkkAuditTrail = useCallback(async (bkkId) => {
+    try {
+      const res = await fetch(`/api/bkk/${encodeURIComponent(bkkId)}/audit-trail`);
+      if (res.ok) {
+        const json = await res.json();
+        return json.data || [];
+      }
+    } catch (e) {
+      console.error('Error fetching BKK audit trail:', e);
+    }
+    return [];
+  }, []);
 
   const deleteBkk = async (bkkId) => {
     const user = getAuthUser();
@@ -1652,56 +2352,436 @@ export function DataProvider({ children }) {
   };
 
   // ------------------------------------------
-  // INVOICE HELPERS
+  // INVOICE HELPERS & WORKFLOW ACTIONS
   // ------------------------------------------
+  const fetchAvailableOrdersForInvoice = useCallback(async () => {
+    try {
+      const res = await fetch('/api/invoices/available-orders');
+      if (res.ok) {
+        const json = await res.json();
+        return json.data || [];
+      }
+    } catch (err) {
+      console.error('Failed to fetch available orders for Invoice:', err);
+    }
+    return [];
+  }, []);
+
   const createInvoice = async (invData) => {
+    const user = getAuthUser();
+    const createdBy = user?.name || user?.email || 'Admin';
     const id = invData.id || `INV-${new Date().toISOString().slice(0, 7).replace('-', '')}-${String(Date.now()).slice(-4)}`;
-    const nowIso = new Date().toISOString();
-    const newInv = {
+
+    const newInvPayload = {
+      ...invData,
       id,
-      volume: Number(invData.volume) || 0,
-      material: invData.material || invData.materialName || 'SIRTU',
-      jenis: invData.jenis || 'JASA ANGKUT + MATERIAL',
-      timestamp: nowIso.replace('T', ' ').substring(0, 19),
-      tanggal: invData.tanggal || nowIso.split('T')[0],
-      waktu: invData.waktu || '10:00',
-      subtotalJasa: Number(invData.subtotalJasa) || Number(invData.amount) || 0,
-      ppnNominal: Number(invData.ppnNominal) || 0,
-      pphNominal: Number(invData.pphNominal) || 0,
-      amount: Number(invData.totalTagihan) || Number(invData.amount) || 0,
-      kodeTransaksi: invData.nomorInvoice || invData.kodeTransaksi || `INV-${new Date().getFullYear()}-${String(Date.now()).slice(-5)}`,
-      perusahaan: invData.pelanggan || invData.perusahaan || 'PT CUSTOMER',
-      nomorRO: invData.idReceivedOrder || invData.nomorRO || null,
-      poNumber: invData.nomorPoCustomer || invData.poNumber || null,
-      kirimKeRekening: invData.kirimKeRekening || 'BCA - 0188920199 a/n PT Berkah Alam Semesta',
-      rekeningAtasNama: invData.rekeningAtasNama || 'PT Berkah Alam Semesta',
-      periode: invData.periode || `Periode: [${invData.tanggal || nowIso.split('T')[0]}]`,
+      kodeTransaksi: invData.kodeTransaksi || invData.nomorInvoice || `INV-${Date.now()}`,
       statusBayar: 'Belum Dibayar',
+      status: 'pending_approval',
+      createdBy,
     };
 
-    setInvoiceList((prev) => {
-      const updated = [newInv, ...prev.filter((i) => i.id !== id)];
+    try {
+      const res = await fetch('/api/invoices', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAuthHeaders(),
+        },
+        body: JSON.stringify(newInvPayload),
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data.success === false) {
+        const errorMsg = data.message || 'Gagal membuat Invoice di server.';
+        addToast(errorMsg, 'error');
+        return { success: false, message: errorMsg };
+      }
+
+      const normalized = normalizeInvoiceItem({
+        ...newInvPayload,
+        kodeTransaksi: data.kodeTransaksi || newInvPayload.kodeTransaksi,
+        status: 'pending_approval',
+      });
+
+      setInvoiceList((prev) => {
+        const updated = [normalized, ...prev.filter((i) => i.id !== id)];
+        try {
+          localStorage.setItem(STORAGE_KEYS.invoices, JSON.stringify(updated));
+        } catch (e) {}
+        return updated;
+      });
+
       try {
-        localStorage.setItem(STORAGE_KEYS.invoices, JSON.stringify(updated));
+        const ch = new BroadcastChannel('ptbas_sync_channel');
+        ch.postMessage({ type: 'SYNC_INVOICES' });
+        ch.close();
       } catch (e) {}
-      return updated;
-    });
+
+      await fetchInvoices();
+      addToast(data.message || `Faktur Invoice ${normalized.kodeTransaksi} berhasil diajukan! (Status: Menunggu Approval)`, 'success');
+      return { success: true, data: normalized };
+    } catch (err) {
+      const msg = err.message || 'Koneksi ke backend gagal saat membuat Invoice.';
+      addToast(msg, 'error');
+      return { success: false, message: msg };
+    }
+  };
+
+  const approveInvoice = async (invoiceId, approverName = 'David Rusiah (Direktur)') => {
+    const user = getAuthUser();
+    if (!isUserSuperAdmin(user)) {
+      addToast('Akses ditolak: Hanya Super Admin yang diizinkan untuk menyetujui Faktur Invoice.', 'error');
+      return { success: false, message: 'Akses ditolak: Hanya Super Admin yang diizinkan untuk menyetujui Faktur Invoice.' };
+    }
 
     try {
-      await fetch('/api/invoices', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newInv),
+      const res = await fetch(`/api/invoices/${encodeURIComponent(invoiceId)}/approve`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAuthHeaders(),
+        },
+        body: JSON.stringify({ approver: approverName }),
       });
-      const ch = new BroadcastChannel('ptbas_sync_channel');
-      ch.postMessage({ type: 'SYNC_INVOICES' });
-      ch.close();
-      await fetchInvoices();
-    } catch (e) {}
 
-    addToast(`Invoice No. ${newInv.kodeTransaksi} berhasil dibuat!`, 'success');
-    return newInv;
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data.success === false) {
+        addToast(data.message || 'Gagal menyetujui Invoice.', 'error');
+        return { success: false, message: data.message };
+      }
+
+      const now = new Date().toISOString();
+      setInvoiceList((prev) => {
+        const updated = prev.map((item) =>
+          item.id === invoiceId
+            ? {
+                ...item,
+                status: 'approved',
+                approvedBy: approverName,
+                approvedAt: now,
+                rejectionReason: null,
+              }
+            : item
+        );
+        try {
+          localStorage.setItem(STORAGE_KEYS.invoices, JSON.stringify(updated));
+        } catch (e) {}
+        return updated;
+      });
+
+      try {
+        const ch = new BroadcastChannel('ptbas_sync_channel');
+        ch.postMessage({ type: 'SYNC_INVOICES' });
+        ch.close();
+      } catch (e) {}
+
+      await fetchInvoices();
+      addToast(data.message || 'Invoice resmi disetujui & siap cetak!', 'success');
+      return { success: true, data: data.data };
+    } catch (err) {
+      console.warn('Approve Invoice error:', err);
+      addToast(err.message || 'Gagal menyetujui Invoice.', 'error');
+      return { success: false, message: err.message };
+    }
   };
+
+  const rejectInvoice = async (invoiceId, reason = 'Ditolak oleh Super Admin') => {
+    const user = getAuthUser();
+    if (!isUserSuperAdmin(user)) {
+      addToast('Akses ditolak: Hanya Super Admin yang diizinkan untuk menolak Faktur Invoice.', 'error');
+      return { success: false, message: 'Akses ditolak: Hanya Super Admin yang diizinkan untuk menolak Faktur Invoice.' };
+    }
+
+    try {
+      const approver = user?.name || user?.email || 'David Rusiah (Super Admin)';
+      const res = await fetch(`/api/invoices/${encodeURIComponent(invoiceId)}/reject`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAuthHeaders(),
+        },
+        body: JSON.stringify({ reason, approver }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data.success === false) {
+        addToast(data.message || 'Gagal menolak Invoice.', 'error');
+        return { success: false, message: data.message };
+      }
+
+      setInvoiceList((prev) => {
+        const updated = prev.map((item) =>
+          item.id === invoiceId
+            ? {
+                ...item,
+                status: 'rejected',
+                rejectionReason: reason,
+              }
+            : item
+        );
+        try {
+          localStorage.setItem(STORAGE_KEYS.invoices, JSON.stringify(updated));
+        } catch (e) {}
+        return updated;
+      });
+
+      try {
+        const ch = new BroadcastChannel('ptbas_sync_channel');
+        ch.postMessage({ type: 'SYNC_INVOICES' });
+        ch.close();
+      } catch (e) {}
+
+      await fetchInvoices();
+      addToast(data.message || 'Invoice telah ditolak oleh Super Admin.', 'info');
+      return { success: true, data: data.data };
+    } catch (err) {
+      console.warn('Reject Invoice error:', err);
+      addToast(err.message || 'Gagal menolak Invoice.', 'error');
+      return { success: false, message: err.message };
+    }
+  };
+
+  const fetchInvoicePrintData = useCallback(async (invoiceId) => {
+    try {
+      const res = await fetch(`/api/invoices/${encodeURIComponent(invoiceId)}/print-data`);
+      if (res.ok) {
+        const json = await res.json();
+        return json.data;
+      }
+    } catch (err) {
+      console.error('Error fetching Invoice print data:', err);
+    }
+    return null;
+  }, []);
+
+  const recordInvoicePrint = useCallback(async (invoiceId) => {
+    try {
+      const user = getAuthUser();
+      await fetch(`/api/invoices/${encodeURIComponent(invoiceId)}/record-print`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAuthHeaders(),
+        },
+        body: JSON.stringify({ printer: user?.name || user?.email || 'Admin' }),
+      });
+      await fetchInvoices();
+    } catch (err) {
+      console.error('Error recording Invoice print:', err);
+    }
+  }, [fetchInvoices]);
+
+  const uploadInvoiceDocument = async (invoiceId, docPayload) => {
+    try {
+      const res = await fetch(`/api/invoices/${encodeURIComponent(invoiceId)}/documents`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAuthHeaders(),
+        },
+        body: JSON.stringify(docPayload),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data.success === false) {
+        addToast(data.message || 'Gagal mengunggah dokumen fisik Invoice.', 'error');
+        return { success: false, message: data.message };
+      }
+      await fetchInvoices();
+      addToast(data.message || 'Dokumen fisik berhasil diunggah.', 'success');
+      return { success: true, data: data.data };
+    } catch (err) {
+      console.error('Upload Invoice document error:', err);
+      addToast(err.message || 'Gagal mengunggah berkas dokumen.', 'error');
+      return { success: false, message: err.message };
+    }
+  };
+
+  const submitInvoiceDocumentForVerification = async (invoiceId) => {
+    try {
+      const res = await fetch(`/api/invoices/${encodeURIComponent(invoiceId)}/submit-verification`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAuthHeaders(),
+        },
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data.success === false) {
+        addToast(data.message || 'Gagal mengajukan verifikasi dokumen Invoice.', 'error');
+        return { success: false, message: data.message };
+      }
+      await fetchInvoices();
+      addToast(data.message || 'Dokumen berhasil diajukan untuk verifikasi Superadmin!', 'success');
+      return { success: true, data: data.data };
+    } catch (err) {
+      console.error('Submit Invoice verification error:', err);
+      addToast(err.message || 'Gagal mengajukan verifikasi.', 'error');
+      return { success: false, message: err.message };
+    }
+  };
+
+  const approveInvoiceVerification = useCallback(async (invoiceId, payload = {}) => {
+    const user = getAuthUser();
+    const isSA = user ? isUserSuperAdmin(user) : true;
+    if (!isSA) {
+      addToast('Akses ditolak: Hanya Super Admin yang berwenang memverifikasi dokumen fisik Invoice.', 'error');
+      return { success: false, message: 'Akses ditolak: Hanya Super Admin yang berwenang.' };
+    }
+
+    const bodyPayload = typeof payload === 'string'
+      ? { verifier: payload }
+      : (payload && typeof payload === 'object' ? { ...payload } : {});
+
+    if (!bodyPayload.verifier) {
+      bodyPayload.verifier = `${user?.name || user?.nama || 'David Rusiah'} (Super Admin / Direktur)`;
+    }
+
+    try {
+      const res = await fetch(`/api/invoices/${encodeURIComponent(invoiceId)}/verify-approve`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+        body: JSON.stringify(bodyPayload),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data.success === false) {
+        addToast(data.message || 'Gagal memverifikasi dokumen Invoice.', 'error');
+        return { success: false, message: data.message };
+      }
+
+      const nowIso = new Date().toISOString();
+      const settlementDate = bodyPayload.tanggalBayar || nowIso.split('T')[0];
+      setInvoiceList((prev) => {
+        const updated = prev.map((item) =>
+          item.id === invoiceId
+            ? {
+                ...item,
+                status: 'paid',
+                statusBayar: 'Lunas',
+                tanggalBayar: settlementDate,
+                verifiedBy: bodyPayload.verifier,
+                verifiedAt: nowIso,
+                latestDocument: item.latestDocument
+                  ? { ...item.latestDocument, status: 'VERIFIED', verifiedBy: bodyPayload.verifier, verifiedAt: nowIso }
+                  : item.latestDocument,
+              }
+            : item
+        );
+        try {
+          localStorage.setItem(STORAGE_KEYS.invoices, JSON.stringify(updated));
+        } catch (e) {}
+        return updated;
+      });
+
+      try {
+        const ch = new BroadcastChannel('ptbas_sync_channel');
+        ch.postMessage({ type: 'SYNC_INVOICES' });
+        ch.close();
+      } catch (e) {}
+
+      await fetchInvoices();
+      addToast(data.message || 'Dokumen Invoice resmi diverifikasi & status berubah menjadi LUNAS!', 'success');
+      return { success: true, data: data.data };
+    } catch (err) {
+      console.error('Approve Invoice verification error:', err);
+      addToast(err.message || 'Gagal memverifikasi dokumen.', 'error');
+      return { success: false, message: err.message };
+    }
+  }, [fetchInvoices, addToast]);
+
+  const rejectInvoiceVerification = useCallback(async (invoiceId, payload, verifierArg) => {
+    const user = getAuthUser();
+    if (!isUserSuperAdmin(user)) {
+      addToast('Akses ditolak: Hanya Super Admin yang berwenang menolak verifikasi dokumen Invoice.', 'error');
+      return { success: false, message: 'Akses ditolak: Hanya Super Admin yang berwenang.' };
+    }
+
+    let reason = '';
+    let verifier = verifierArg || `${user?.name || user?.nama || 'David Rusiah'} (Super Admin / Direktur)`;
+    if (typeof payload === 'string') {
+      reason = payload;
+    } else if (payload && typeof payload === 'object') {
+      reason = payload.reason || payload.alasan || '';
+      if (payload.verifier) verifier = payload.verifier;
+    }
+
+    if (!reason || !reason.trim()) {
+      addToast('Alasan penolakan / revisi dokumen wajib diisi.', 'error');
+      return { success: false, message: 'Alasan penolakan wajib diisi' };
+    }
+
+    try {
+      const res = await fetch(`/api/invoices/${encodeURIComponent(invoiceId)}/verify-reject`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+        body: JSON.stringify({ reason: reason.trim(), verifier }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data.success === false) {
+        addToast(data.message || 'Gagal menolak verifikasi dokumen Invoice.', 'error');
+        return { success: false, message: data.message };
+      }
+
+      setInvoiceList((prev) => {
+        const updated = prev.map((item) =>
+          item.id === invoiceId
+            ? {
+                ...item,
+                status: 'revision_required',
+                rejectionReason: reason.trim(),
+                latestDocument: item.latestDocument
+                  ? { ...item.latestDocument, status: 'REJECTED', rejectionReason: reason.trim() }
+                  : item.latestDocument,
+              }
+            : item
+        );
+        try {
+          localStorage.setItem(STORAGE_KEYS.invoices, JSON.stringify(updated));
+        } catch (e) {}
+        return updated;
+      });
+
+      try {
+        const ch = new BroadcastChannel('ptbas_sync_channel');
+        ch.postMessage({ type: 'SYNC_INVOICES' });
+        ch.close();
+      } catch (e) {}
+
+      await fetchInvoices();
+      addToast(data.message || 'Verifikasi dokumen ditolak dan permintaan revisi diteruskan ke Admin.', 'info');
+      return { success: true, data: data.data };
+    } catch (err) {
+      console.error('Reject Invoice verification error:', err);
+      addToast(err.message || 'Gagal menolak verifikasi.', 'error');
+      return { success: false, message: err.message };
+    }
+  }, [fetchInvoices, addToast]);
+
+  const fetchInvoiceDocuments = useCallback(async (invoiceId) => {
+    try {
+      const res = await fetch(`/api/invoices/${encodeURIComponent(invoiceId)}/documents`);
+      if (res.ok) {
+        const json = await res.json();
+        return json.data || [];
+      }
+    } catch (e) {
+      console.error('Error fetching Invoice documents:', e);
+    }
+    return [];
+  }, []);
+
+  const fetchInvoiceAuditTrail = useCallback(async (invoiceId) => {
+    try {
+      const res = await fetch(`/api/invoices/${encodeURIComponent(invoiceId)}/audit-trail`);
+      if (res.ok) {
+        const json = await res.json();
+        return json.data || [];
+      }
+    } catch (e) {
+      console.error('Error fetching Invoice audit trail:', e);
+    }
+    return [];
+  }, []);
 
   const markInvoicePaid = async (invIds, paymentDetails) => {
     const tgl = paymentDetails?.tanggalBayar || new Date().toISOString().split('T')[0];
@@ -2259,12 +3339,35 @@ export function DataProvider({ children }) {
         createPreOrder,
         approvePreOrder,
         rejectPreOrder,
+        updatePreOrderCustomerPo,
         deletePreOrder,
         createSuratJalan,
         createBkk,
+        approveBkk,
+        rejectBkk,
         markBkkPaid,
         deleteBkk,
+        fetchAvailableOrdersForBkk,
+        fetchBkkPrintData,
+        recordBkkPrint,
+        uploadBkkDocument,
+        submitBkkDocumentForVerification,
+        approveBkkVerification,
+        rejectBkkVerification,
+        fetchBkkDocuments,
+        fetchBkkAuditTrail,
+        fetchAvailableOrdersForInvoice,
         createInvoice,
+        approveInvoice,
+        rejectInvoice,
+        fetchInvoicePrintData,
+        recordInvoicePrint,
+        uploadInvoiceDocument,
+        submitInvoiceDocumentForVerification,
+        approveInvoiceVerification,
+        rejectInvoiceVerification,
+        fetchInvoiceDocuments,
+        fetchInvoiceAuditTrail,
         markInvoicePaid,
         deleteInvoice,
 
@@ -2307,6 +3410,11 @@ export function DataProvider({ children }) {
         addCurrency,
         updateCurrency,
         deleteCurrency,
+
+        // RO & PO Helper Utilities
+        getCustomerPrefix: (c) => getCustomerPrefix(c, customers),
+        generateNomorRO: (c, d) => generateNomorRO(c, [...preOrders, ...suratJalanList, ...rekapanList], d, customers),
+        generatePoNumber: (c, d) => generatePoNumber(c, [...preOrders, ...suratJalanList, ...rekapanList, ...invoiceList], d, customers),
       }}
     >
       {children}

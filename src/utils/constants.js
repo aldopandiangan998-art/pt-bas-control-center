@@ -16,6 +16,14 @@ export function determineRoleByEmail(email) {
   if (!email) return { role: 'admin', roleLabel: 'Admin' };
   const cleanEmail = email.trim().toLowerCase();
 
+  // rainorchesta@gmail.com explicitly has the Admin role
+  if (cleanEmail === 'rainorchesta@gmail.com') {
+    return {
+      role: 'admin',
+      roleLabel: 'Admin',
+    };
+  }
+
   const superAdminList = [
     'superadmin@ptbas.co.id',
     'direksi@ptbas.co.id',
@@ -108,6 +116,20 @@ export const NAV_CATEGORIES = [
         label: 'Approval RO',
         icon: 'ShieldCheck',
         description: 'Verifikasi & persetujuan kontrak pesanan customer oleh Direksi',
+        superAdminOnly: true,
+      },
+      {
+        path: '/approval-bkk',
+        label: 'Approval BKK',
+        icon: 'Banknote',
+        description: 'Otorisasi & persetujuan kas keluar supplier (BKK) oleh Super Admin',
+        superAdminOnly: true,
+      },
+      {
+        path: '/approval-invoice',
+        label: 'Approval Invoice',
+        icon: 'Receipt',
+        description: 'Otorisasi & verifikasi berkas tanda tangan fisik faktur invoice oleh Super Admin',
         superAdminOnly: true,
       },
       {

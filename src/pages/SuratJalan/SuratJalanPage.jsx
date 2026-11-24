@@ -30,7 +30,7 @@ export default function SuratJalanPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { isDark, language } = useApp();
-  const { preOrders, createSuratJalan, materials, armadaList, customers } = useData();
+  const { preOrders, createSuratJalan, materials, armadaList, customers, generateNomorRO, generatePoNumber } = useData();
   const { addToast } = useToast();
 
   const preOrderState = location.state || {};
@@ -149,9 +149,9 @@ export default function SuratJalanPage() {
   }, [approvedPos, preOrderState, isFromCreateGi]);
 
   const targetCustomer = isFromCreateGi ? (preOrderState.customer || matchedPo?.customer || '') : '';
-  const targetPoNumber = isFromCreateGi ? (preOrderState.nomorPo || matchedPo?.nomorPo || matchedPo?.id || '') : '';
+  const targetPoNumber = isFromCreateGi ? (preOrderState.nomorPo || matchedPo?.nomorPo || matchedPo?.nomorPoCustomer || '') : '';
   const targetRoNumber = isFromCreateGi
-    ? (preOrderState.nomorRO || preOrderState.nomorRo || matchedPo?.nomorRO || (matchedPo ? `RO-${matchedPo.id}` : ''))
+    ? (preOrderState.nomorRO || preOrderState.nomorRo || matchedPo?.nomorRO || (matchedPo ? (generateNomorRO ? generateNomorRO(matchedPo.customer, preOrders, matchedPo.tanggal, customers) : '') : ''))
     : '';
   const targetPreOrderId = isFromCreateGi ? (preOrderState.preOrderId || matchedPo?.id || '') : '';
 
@@ -174,10 +174,8 @@ export default function SuratJalanPage() {
       const defaultArmada = armadaList[0] || {};
       const now = new Date();
       const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-      const sjNum = `296${Math.floor(70 + Math.random() * 29)}`;
 
       return {
-        nomorSj: sjNum,
         customer: targetCustomer,
         poNumber: targetPoNumber,
         nomorRo: targetRoNumber,
@@ -200,7 +198,6 @@ export default function SuratJalanPage() {
 
     // DIRECT NAVIGATION: ALL FIELDS ARE SET TO BLANK BY DEFAULT
     return {
-      nomorSj: '',
       customer: '',
       poNumber: '',
       nomorRo: '',
@@ -237,7 +234,7 @@ export default function SuratJalanPage() {
   useEffect(() => {
     if (location.state?.fromCreateGi || location.state?.fromPreOrder || location.state?.customer) {
       const selectedCust = location.state.customer || '';
-      const targetPo = location.state.nomorPo || location.state.preOrderId || '';
+      const targetPo = location.state.nomorPo || location.state.nomorPoCustomer || '';
       let targetMat = location.state.materialId;
       if (!targetMat && location.state.materialName) {
         const match = materials.find(
@@ -249,11 +246,9 @@ export default function SuratJalanPage() {
       const defaultArmada = armadaList[0] || {};
       const now = new Date();
       const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-      const sjNum = `296${Math.floor(70 + Math.random() * 29)}`;
 
       setFormData((prev) => ({
         ...prev,
-        nomorSj: prev.nomorSj || sjNum,
         customer: selectedCust,
         poNumber: targetPo || prev.poNumber,
         nomorRo: location.state.nomorRo || location.state.nomorRO || prev.nomorRo,
@@ -272,12 +267,12 @@ export default function SuratJalanPage() {
     }
   }, [location.state, materials, armadaList]);
 
-  // Reactive auto-detection when customer is set but PO number is still blank
+  // Reactive auto-detection when customer is set but preOrderId is still blank
   useEffect(() => {
-    if (formData.customer && !formData.poNumber && customerApprovedPos.length > 0) {
+    if (formData.customer && !formData.preOrderId && customerApprovedPos.length > 0) {
       const topPo = customerApprovedPos[0];
-      const detectedPoVal = topPo.nomorPo || topPo.nomorPoCustomer || topPo.id;
-      const detectedRo = topPo.nomorRO || topPo.nomorRo || `RO-${topPo.id}`;
+      const detectedPoVal = topPo.nomorPo || topPo.nomorPoCustomer || '';
+      const detectedRo = topPo.nomorRO || topPo.nomorRo || (generateNomorRO ? generateNomorRO(topPo.customer, preOrders, topPo.tanggal, customers) : '');
 
       let newMatId = topPo.materialId;
       if (!newMatId && topPo.materialName) {
@@ -289,7 +284,7 @@ export default function SuratJalanPage() {
 
       setFormData((prev) => ({
         ...prev,
-        poNumber: detectedPoVal,
+        poNumber: prev.poNumber || detectedPoVal,
         nomorRo: prev.nomorRo || detectedRo,
         preOrderId: prev.preOrderId || topPo.id,
         materialId: prev.materialId || newMatId,
@@ -297,7 +292,7 @@ export default function SuratJalanPage() {
         jenis: normalizeServiceType(topPo.jenisRO || topPo.jenis || prev.jenis || 'Jasa Angkut + Material'),
       }));
     }
-  }, [formData.customer, formData.poNumber, customerApprovedPos, materials]);
+  }, [formData.customer, formData.preOrderId, customerApprovedPos, materials]);
 
   // Customer dropdown change handler: detects PO Number automatically!
   const handleCustomerChange = (newCustomer) => {
@@ -329,8 +324,8 @@ export default function SuratJalanPage() {
     const todayStr = now.toISOString().split('T')[0];
 
     if (targetPo) {
-      const detectedPoVal = targetPo.nomorPo || targetPo.nomorPoCustomer || targetPo.id;
-      const detectedRo = targetPo.nomorRO || targetPo.nomorRo || (targetPo.id ? `RO-${targetPo.id}` : '');
+      const detectedPoVal = targetPo.nomorPo || targetPo.nomorPoCustomer || '';
+      const detectedRo = targetPo.nomorRO || targetPo.nomorRo || (generateNomorRO ? generateNomorRO(targetPo.customer, preOrders, targetPo.tanggal, customers) : '');
 
       let newMatId = targetPo.materialId;
       if (!newMatId && targetPo.materialName) {
@@ -353,7 +348,6 @@ export default function SuratJalanPage() {
         isPpn: targetPo.jenisWajibPajak === 'PKP',
         tanggal: prev.tanggal || todayStr,
         waktu: prev.waktu || timeStr,
-        nomorSj: prev.nomorSj || `296${Math.floor(70 + Math.random() * 29)}`,
         nomorNota: prev.nomorNota || '',
         jenis: normalizeServiceType(targetPo.jenisRO || targetPo.jenis || prev.jenis || 'Jasa Angkut + Material'),
         nomorPolisi: prev.nomorPolisi || defaultArmada.nopol || 'W 9821 UB',
@@ -363,14 +357,14 @@ export default function SuratJalanPage() {
         koreksiTinggiCm: prev.koreksiTinggiCm || 0,
       }));
 
-      if (targetPo.nomorPo || targetPo.nomorPoCustomer) {
+      if (detectedPoVal) {
         addToast(
-          `Nomor PO "${detectedPoVal}" otomatis terdeteksi untuk ${newCustomer} (RO: ${detectedRo}).`,
+          `Pre Order (${detectedRo}) terdeteksi dengan PO "${detectedPoVal}" untuk ${newCustomer}.`,
           'success'
         );
       } else {
         addToast(
-          `RO "${detectedRo}" terdeteksi untuk ${newCustomer}. Nomor PO akan terbit otomatis pada Surat Jalan pertama.`,
+          `Pre Order (${detectedRo}) terdeteksi untuk ${newCustomer}. Nomor PO bersifat opsional.`,
           'info'
         );
       }
@@ -389,30 +383,26 @@ export default function SuratJalanPage() {
     }
   };
 
-  // PO selection handler
-  const handlePoChange = (selVal) => {
-    if (!selVal) {
+  // Pre Order / RO selection handler
+  const handlePreOrderChange = (selId) => {
+    if (!selId) {
       setFormData((prev) => ({
         ...prev,
+        preOrderId: '',
         poNumber: '',
         nomorRo: '',
-        preOrderId: '',
       }));
       return;
     }
 
     const selectedPo = approvedPos.find(
       (po) =>
-        (po.nomorPo && po.nomorPo === selVal) ||
-        (po.nomorPoCustomer && po.nomorPoCustomer === selVal) ||
-        po.id === selVal ||
-        (po.nomorRO && po.nomorRO === selVal)
+        String(po.id) === String(selId) ||
+        po.nomorRO === selId ||
+        po.nomorPo === selId
     );
 
-    if (!selectedPo) {
-      setFormData((prev) => ({ ...prev, poNumber: selVal }));
-      return;
-    }
+    if (!selectedPo) return;
 
     let newMatId = selectedPo.materialId;
     if (!newMatId && selectedPo.materialName) {
@@ -421,13 +411,13 @@ export default function SuratJalanPage() {
       );
       if (match) newMatId = match.id;
     }
-    const resolvedRo = selectedPo.nomorRO || selectedPo.nomorRo || (selectedPo ? `RO-${selectedPo.id}` : formData.nomorRo);
+    const resolvedRo = selectedPo.nomorRO || selectedPo.nomorRo || (generateNomorRO ? generateNomorRO(formData.customer || selectedPo.customer, preOrders, selectedPo.tanggal, customers) : '');
 
     setFormData((prev) => ({
       ...prev,
-      poNumber: selVal,
-      nomorRo: resolvedRo,
       preOrderId: selectedPo.id || '',
+      poNumber: selectedPo.nomorPo || selectedPo.nomorPoCustomer || '',
+      nomorRo: resolvedRo,
       materialId: newMatId || prev.materialId,
       isPpn: selectedPo.jenisWajibPajak === 'PKP',
       jenis: normalizeServiceType(selectedPo.jenisRO || selectedPo.jenis || prev.jenis || 'Jasa Angkut + Material'),
@@ -502,7 +492,6 @@ export default function SuratJalanPage() {
 
   const handleResetFormToBlank = () => {
     setFormData({
-      nomorSj: '',
       customer: '',
       poNumber: '',
       nomorRo: '',
@@ -532,26 +521,20 @@ export default function SuratJalanPage() {
       return;
     }
 
-    if (!formData.poNumber) {
-      addToast('Harap pilih Nomor PO yang valid dan telah disetujui (APPROVED).', 'error');
+    if (!formData.preOrderId && !formData.nomorRo) {
+      addToast('Harap pilih Referensi Pre Order / RO yang valid dan telah disetujui (APPROVED).', 'warning');
       return;
     }
 
     const currentPo = approvedPos.find(
       (po) =>
-        (po.nomorPo && po.nomorPo === formData.poNumber) ||
-        (po.nomorPoCustomer && po.nomorPoCustomer === formData.poNumber) ||
-        po.id === formData.poNumber ||
-        (po.nomorRO && (po.nomorRO === formData.poNumber || po.nomorRO === formData.nomorRo))
+        (formData.preOrderId && String(po.id) === String(formData.preOrderId)) ||
+        (formData.nomorRo && (po.nomorRO === formData.nomorRo || po.nomorRo === formData.nomorRo)) ||
+        (formData.poNumber && (po.nomorPo === formData.poNumber || po.nomorPoCustomer === formData.poNumber))
     );
 
     if (!currentPo || currentPo.status !== 'APPROVED') {
       addToast('Surat Jalan tidak dapat dibuat! Pre Order belum disetujui oleh Super Admin.', 'error');
-      return;
-    }
-
-    if (!formData.nomorSj) {
-      addToast('Nomor Surat Jalan wajib diisi.', 'warning');
       return;
     }
 
@@ -579,8 +562,11 @@ export default function SuratJalanPage() {
     }
 
     const selectedMat = materials.find((m) => m.id === formData.materialId);
-    const finalRoNumber = currentPo?.nomorRO || currentPo?.nomorRo || formData.nomorRo || `RO-${currentPo?.id}`;
-    const finalPoNumber = currentPo?.nomorPo || currentPo?.nomorPoCustomer || formData.poNumber;
+    const finalRoNumber = currentPo?.nomorRO || currentPo?.nomorRo || formData.nomorRo || (generateNomorRO ? generateNomorRO(formData.customer, preOrders, formData.tanggal, customers) : '');
+    const resolvedPo = currentPo?.nomorPo || currentPo?.nomorPoCustomer || formData.poNumber || null;
+    const finalPoNumber = resolvedPo && resolvedPo !== 'MENUNGGU SURAT JALAN PERTAMA' && String(resolvedPo).trim() !== ''
+      ? String(resolvedPo).trim().slice(0, 50)
+      : null;
     const finalJenis = normalizeServiceType(currentPo?.jenisRO || currentPo?.jenis || formData.jenis || 'Jasa Angkut + Material');
 
     createSuratJalan({
@@ -596,16 +582,15 @@ export default function SuratJalanPage() {
       driver: 'Supir Armada Terjadwal',
     });
 
-    addToast(`Surat Jalan ${formData.nomorSj} berhasil diterbitkan dan masuk ke Jurnal!`, 'success');
+    addToast('Surat Jalan (Good Issue) berhasil diterbitkan dan masuk ke Jurnal!', 'success');
     navigate('/rekapan');
   };
 
   return (
     <div className="w-full space-y-6 pb-6 select-none">
       {/* Top Header */}
-      <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b transition-colors ${
-        isDark ? 'border-[#24282C]' : 'border-slate-200'
-      }`}>
+      <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b transition-colors ${isDark ? 'border-[#24282C]' : 'border-slate-200'
+        }`}>
         <div className="flex items-center gap-2.5">
           <Button
             size="sm"
@@ -615,9 +600,8 @@ export default function SuratJalanPage() {
             title="Kembali ke Dashboard"
           />
           <div>
-            <h1 className={`text-base sm:text-lg font-bold tracking-tight flex items-center gap-2 ${
-              isDark ? 'text-white' : 'text-slate-900'
-            }`}>
+            <h1 className={`text-base sm:text-lg font-bold tracking-tight flex items-center gap-2 ${isDark ? 'text-white' : 'text-slate-900'
+              }`}>
               <span>Buat Good Issue (Surat Jalan)</span>
               <Badge size="xs" variant="primary">Pencatatan Ritase</Badge>
             </h1>
@@ -640,23 +624,19 @@ export default function SuratJalanPage() {
           </Button>
 
           {/* PPN Toggle Switch matching screenshot */}
-          <div className={`flex items-center gap-2 border px-3 py-1.5 rounded-md transition-colors ${
-            isDark ? 'bg-[#131517] border-[#24282C]' : 'bg-white border-slate-300 shadow-2xs'
-          }`}>
-            <span className={`text-[11px] font-mono font-medium ${
-              isDark ? 'text-neutral-300' : 'text-slate-700'
-            }`}>Format PPN:</span>
+          <div className={`flex items-center gap-2 border px-3 py-1.5 rounded-md transition-colors ${isDark ? 'bg-[#131517] border-[#24282C]' : 'bg-white border-slate-300 shadow-2xs'
+            }`}>
+            <span className={`text-[11px] font-mono font-medium ${isDark ? 'text-neutral-300' : 'text-slate-700'
+              }`}>Format PPN:</span>
             <button
               type="button"
               onClick={() => setFormData({ ...formData, isPpn: !formData.isPpn })}
-              className={`w-9 h-5 flex items-center rounded-full p-0.5 transition-colors cursor-pointer ${
-                formData.isPpn ? 'bg-[#F4511E]' : isDark ? 'bg-[#2A2E33]' : 'bg-slate-300'
-              }`}
+              className={`w-9 h-5 flex items-center rounded-full p-0.5 transition-colors cursor-pointer ${formData.isPpn ? 'bg-[#F4511E]' : isDark ? 'bg-[#2A2E33]' : 'bg-slate-300'
+                }`}
             >
               <div
-                className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${
-                  formData.isPpn ? 'translate-x-4' : 'translate-x-0'
-                }`}
+                className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${formData.isPpn ? 'translate-x-4' : 'translate-x-0'
+                  }`}
               />
             </button>
           </div>
@@ -692,7 +672,7 @@ export default function SuratJalanPage() {
           <div className="flex items-center gap-2">
             <CheckCircle2 className="w-4 h-4 text-[#F4511E] shrink-0" />
             <span>
-              Data terisi otomatis dari Pre Order: <strong>{formData.customer}</strong> &bull; [{formData.nomorRo || 'RO'}] &bull; No. PO: <strong>{formData.poNumber || 'DRAFT'}</strong>
+              Data terisi otomatis dari Pre Order: <strong>{formData.customer}</strong> &bull; [{formData.nomorRo || 'RO'}] &bull; No. PO: <strong>{formData.poNumber || 'Tanpa PO (Opsional)'}</strong>
             </span>
           </div>
           <span className="text-[11px] text-neutral-400 font-sans hidden sm:inline">
@@ -702,9 +682,8 @@ export default function SuratJalanPage() {
       )}
 
       {!isFromCreateGi && (
-        <div className={`p-3 rounded-xl border text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2 font-mono shadow-sm transition-colors ${
-          isDark ? 'bg-[#14171A] border-[#262A2E] text-neutral-400' : 'bg-slate-50 border-slate-200 text-slate-600'
-        }`}>
+        <div className={`p-3 rounded-xl border text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2 font-mono shadow-sm transition-colors ${isDark ? 'bg-[#14171A] border-[#262A2E] text-neutral-400' : 'bg-slate-50 border-slate-200 text-slate-600'
+          }`}>
           <div className="flex items-center gap-2">
             <FileText className="w-4 h-4 text-[#F4511E] shrink-0" />
             <span>
@@ -729,467 +708,476 @@ export default function SuratJalanPage() {
           <Card className="p-4 sm:p-5">
             <form onSubmit={handleSubmit} className="space-y-3.5">
               {/* Field 1: Pilih Customer */}
-            <Select
-              label="Pilih Customer"
-              icon={User}
-              required
-              searchPlaceholder="Cari nama atau kode customer..."
-              value={formData.customer}
-              onChange={(e) => handleCustomerChange(e.target.value)}
-            >
-              <option value="">-- Pilih Customer --</option>
-              {customerOptions.map((c) => (
-                <option key={c.id || c.name} value={c.name}>
-                  {c.kodePrefix ? `${c.kodePrefix} - ` : ''}{c.name}
-                </option>
-              ))}
-              {!customerOptions.some((c) => c.name === formData.customer) && formData.customer && (
-                <option value={formData.customer}>{formData.customer}</option>
-              )}
-            </Select>
-
-            {/* Field 2: Nomor PO Customer (Hanya PO Berstatus APPROVED) */}
-            <div className="space-y-1">
               <Select
-                label="Nomor PO Customer (Wajib Berstatus APPROVED)"
-                icon={Ticket}
+                label="Pilih Customer"
+                icon={User}
                 required
-                searchPlaceholder="Cari nomor RO, PO, atau material..."
-                value={formData.poNumber}
-                onChange={(e) => handlePoChange(e.target.value)}
+                searchPlaceholder="Cari nama atau kode customer..."
+                value={formData.customer}
+                onChange={(e) => handleCustomerChange(e.target.value)}
               >
-                {!formData.customer ? (
-                  <option value="">-- Pilih Customer Terlebih Dahulu --</option>
-                ) : customerApprovedPos.length === 0 ? (
-                  <option value="" disabled>
-                    -- Belum ada Pre Order disetujui (APPROVED) untuk customer ini --
-                  </option>
-                ) : (
-                  <>
-                    <option value="">-- Pilih Nomor PO --</option>
-                    {customerApprovedPos.map((po) => {
-                      const poVal = po.nomorPo || po.nomorPoCustomer || po.id;
-                      const roLabel = po.nomorRO || `RO-${po.id}`;
-                      const poDisplay = po.nomorPo || po.nomorPoCustomer;
-                      return (
-                        <option key={po.id} value={poVal}>
-                          [{roLabel}] {poDisplay ? `(PO: ${poDisplay})` : '(Draft Terverifikasi - PO Otomatis)'} - {po.customer} ({po.materialName || 'Material'})
-                        </option>
-                      );
-                    })}
-                  </>
-                )}
-              </Select>
-              {formData.customer && customerApprovedPos.length > 0 && formData.poNumber && (
-                <p className="text-[11px] text-emerald-400 font-mono flex items-center gap-1.5 pt-0.5">
-                  <CheckCircle2 className="w-3.5 h-3.5 shrink-0 text-emerald-400" />
-                  <span>Nomor PO otomatis terdeteksi dari RO berstatus APPROVED.</span>
-                </p>
-              )}
-              {formData.customer && customerApprovedPos.length === 0 && (
-                <p className="text-[11px] text-amber-400 font-mono flex items-center gap-1.5 pt-0.5">
-                  <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-                  <span>Customer ini belum memiliki Pre Order yang disetujui Super Admin.</span>
-                </p>
-              )}
-            </div>
-
-            {/* Field 3: Nomor Surat Jalan & Nomor RO */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <Input
-                label="Nomor Surat Jalan"
-                icon={Ticket}
-                required
-                placeholder="Contoh: 29699"
-                value={formData.isPpn && formData.nomorSj ? `PPN${formData.nomorSj}` : formData.nomorSj}
-                onChange={(e) =>
-                  setFormData({ ...formData, nomorSj: e.target.value.replace('PPN', '') })
-                }
-                className="font-mono font-bold"
-              />
-
-              <Input
-                label="Nomor RO"
-                icon={Ticket}
-                required
-                placeholder="Contoh: RO-2026-2745"
-                value={formData.nomorRo}
-                onChange={(e) => setFormData({ ...formData, nomorRo: e.target.value })}
-                className="font-mono"
-              />
-            </div>
-
-            {/* Row 4: Material & Jenis */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <Select
-                label="Material"
-                icon={Box}
-                required
-                searchPlaceholder="Cari jenis material..."
-                value={formData.materialId}
-                onChange={(e) => setFormData({ ...formData, materialId: e.target.value })}
-              >
-                <option value="">-- Pilih Material --</option>
-                {materials.map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {m.name} ({m.satuan}) - PPH {m.pphRate}%
+                <option value="">-- Pilih Customer --</option>
+                {customerOptions.map((c) => (
+                  <option key={c.id || c.name} value={c.name}>
+                    {c.kodePrefix ? `${c.kodePrefix} - ` : ''}{c.name}
                   </option>
                 ))}
+                {!customerOptions.some((c) => c.name === formData.customer) && formData.customer && (
+                  <option value={formData.customer}>{formData.customer}</option>
+                )}
               </Select>
 
+              {/* Field 2: Referensi Pre Order / RO (Wajib Berstatus APPROVED) */}
               <div className="space-y-1">
                 <Select
-                  label="Jenis Layanan"
-                  icon={Lock}
+                  label="Referensi Pre Order / RO (Wajib Berstatus APPROVED)"
+                  icon={Ticket}
                   required
-                  disabled={true}
-                  value={formData.jenis}
-                  onChange={(e) => setFormData({ ...formData, jenis: e.target.value })}
-                  title="Jenis Layanan dikunci otomatis sesuai kontrak Receive Order (RO)"
-                  className="cursor-not-allowed opacity-80"
+                  searchPlaceholder="Cari nomor RO, PO, atau material..."
+                  value={formData.preOrderId}
+                  onChange={(e) => handlePreOrderChange(e.target.value)}
                 >
-                  {!formData.jenis ? (
-                    <option value="">-- Terkunci Sesuai RO Terpilih --</option>
+                  {!formData.customer ? (
+                    <option value="">-- Pilih Customer Terlebih Dahulu --</option>
+                  ) : customerApprovedPos.length === 0 ? (
+                    <option value="" disabled>
+                      -- Belum ada Pre Order disetujui (APPROVED) untuk customer ini --
+                    </option>
                   ) : (
                     <>
-                      <option value="Jasa Angkut + Material">Jasa Angkut + Material</option>
-                      <option value="Material Curah Saja">Material Curah Saja</option>
-                      <option value="Jasa Angkut Saja">Jasa Angkut Saja</option>
-                      {!['Jasa Angkut + Material', 'Material Curah Saja', 'Jasa Angkut Saja'].includes(formData.jenis) && (
-                        <option value={formData.jenis}>{formData.jenis}</option>
-                      )}
+                      <option value="">-- Pilih Referensi RO / Pre Order --</option>
+                      {customerApprovedPos.map((po) => {
+                        const roLabel = po.nomorRO || po.nomorRo || (generateNomorRO ? generateNomorRO(po.customer, preOrders, po.tanggal, customers) : `RO-${po.id}`);
+                        const poDisplay = po.nomorPo || po.nomorPoCustomer;
+                        return (
+                          <option key={po.id} value={po.id}>
+                            [{roLabel}] {poDisplay ? `• PO: ${poDisplay}` : '• Tanpa PO (Opsional)'} - {po.customer} ({po.materialName || 'Material'})
+                          </option>
+                        );
+                      })}
                     </>
                   )}
                 </Select>
-                <p className="text-[11px] text-neutral-400 font-mono flex items-center gap-1.5 pt-0.5">
-                  <Lock className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                  <span>
-                    {formData.jenis
-                      ? `Terkunci: ${formData.jenis} (sesuai RO)`
-                      : 'Otomatis terkunci sesuai kontrak Receive Order (RO)'}
-                  </span>
-                </p>
-              </div>
-            </div>
-
-            {/* Row 5: Tanggal & Waktu */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <Input
-                label="Tanggal Good Issue"
-                icon={Calendar}
-                type="date"
-                required
-                value={formData.tanggal}
-                onChange={(e) => setFormData({ ...formData, tanggal: e.target.value })}
-              />
-
-              <Input
-                label="Waktu Muat"
-                icon={Clock}
-                type="time"
-                value={formData.waktu}
-                onChange={(e) => setFormData({ ...formData, waktu: e.target.value })}
-              />
-            </div>
-
-            {/* Row 6: Nomor Nota & Nomor Polisi */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <Input
-                label="Nomor Nota Pengambilan (Opsional)"
-                icon={FileText}
-                placeholder="Opsional (contoh: NT-88921)"
-                helperText="Kosongkan jika tidak ada nota pengambilan dari lokasi muat"
-                value={formData.nomorNota}
-                onChange={(e) => setFormData({ ...formData, nomorNota: e.target.value })}
-                className="font-mono"
-              />
-
-              <Select
-                label="Nomor Polisi Armada"
-                icon={Truck}
-                searchPlaceholder="Cari nopol atau tipe armada..."
-                value={formData.nomorPolisi}
-                onChange={(e) => handleArmadaChange(e.target.value)}
-                className="font-mono font-bold"
-              >
-                <option value="">-- Pilih Armada / Nopol --</option>
-                {armadaList.map((a) => (
-                  <option key={a.id} value={a.nopol}>
-                    {a.nopol} ({a.merk} - {a.kapasitas} m³)
-                  </option>
-                ))}
-              </Select>
-            </div>
-
-            {/* TRUCK DIMENSIONS SECTION (Screenshot 1) */}
-            <div className="pt-3 border-t border-[#24282C] space-y-3">
-              {/* Koreksi Tinggi Stepper */}
-              <div className="flex items-center justify-between p-2.5 rounded-md bg-[#181B1E] border border-[#2B3036]">
-                <div className="text-xs text-neutral-300 font-medium flex items-center">
-                  <span>Koreksi Tinggi (K):</span>
-                  <input
-                    type="number"
-                    placeholder="0"
-                    value={formData.koreksiTinggiCm === 0 ? '' : formData.koreksiTinggiCm}
-                    onChange={(e) =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        koreksiTinggiCm: e.target.value === '' ? 0 : Number(e.target.value),
-                      }))
-                    }
-                    style={{
-                      width: `${Math.max(1, String(formData.koreksiTinggiCm === 0 ? 0 : formData.koreksiTinggiCm).length)}ch`,
-                    }}
-                    className="ml-1.5 p-0 bg-transparent border-none text-white placeholder:text-white font-mono font-bold text-xs text-center focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                  />
-                  <span className="text-white font-mono font-bold ml-1">cm</span>
-                </div>
-
-                <div className="flex items-center gap-1">
-                  <Button
-                    size="xs"
-                    variant="secondary"
-                    icon={Minus}
-                    onClick={() => handleKoreksiChange(-5)}
-                    title="Kurangi 5 cm"
-                  />
-                  <Button
-                    size="xs"
-                    variant="secondary"
-                    icon={Plus}
-                    onClick={() => handleKoreksiChange(5)}
-                    title="Tambah 5 cm"
-                  />
-                </div>
+                {formData.customer && customerApprovedPos.length > 0 && formData.preOrderId && (
+                  <p className="text-[11px] text-emerald-400 font-mono flex items-center gap-1.5 pt-0.5">
+                    <CheckCircle2 className="w-3.5 h-3.5 shrink-0 text-emerald-400" />
+                    <span>Pre Order terverifikasi &bull; Berstatus APPROVED oleh Super Admin.</span>
+                  </p>
+                )}
+                {formData.customer && customerApprovedPos.length === 0 && (
+                  <p className="text-[11px] text-amber-400 font-mono flex items-center gap-1.5 pt-0.5">
+                    <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                    <span>Customer ini belum memiliki Pre Order yang disetujui Super Admin.</span>
+                  </p>
+                )}
               </div>
 
-              {/* Tinggi Hasil Koreksi (TK) Header from Screenshot 1 */}
-              <div className="text-xs font-semibold text-neutral-300 flex items-center justify-between">
-                <span>Tinggi Hasil Koreksi (TK):</span>
-                <span className="text-[#F4511E] font-mono font-bold text-sm">
-                  {kubikasi.tinggiHasilKoreksi} cm
-                </span>
-              </div>
-
-              {/* 3 Dimension Inputs: P, L, T */}
-              <div className="grid grid-cols-3 gap-2">
-                <div className="bg-[#181B1E] border border-[#2B3036] rounded-md p-2 text-center">
-                  <span className="block text-[10px] text-neutral-400 mb-0.5">Panjang (P) *</span>
-                  <div className="flex items-center justify-center gap-1 font-mono font-bold text-neutral-100 text-sm">
-                    <input
-                      type="number"
-                      placeholder="0"
-                      value={formData.panjangCm === '' ? '' : formData.panjangCm}
-                      onFocus={(e) => {
-                        if (e.target.value === '0') e.target.select();
-                      }}
-                      onChange={(e) => {
-                        const raw = e.target.value;
-                        const clean = raw === '' ? '' : raw.replace(/^0+(?=\d)/, '');
-                        setFormData({ ...formData, panjangCm: clean });
-                      }}
-                      className="w-16 bg-transparent text-center focus:outline-none border-b border-[#3E454D] focus:border-[#F4511E]"
-                    />
-                    <span className="text-[10px] text-neutral-500 font-normal">cm</span>
-                  </div>
-                </div>
-
-                <div className="bg-[#181B1E] border border-[#2B3036] rounded-md p-2 text-center">
-                  <span className="block text-[10px] text-neutral-400 mb-0.5">Lebar (L) *</span>
-                  <div className="flex items-center justify-center gap-1 font-mono font-bold text-neutral-100 text-sm">
-                    <input
-                      type="number"
-                      placeholder="0"
-                      value={formData.lebarCm === '' ? '' : formData.lebarCm}
-                      onFocus={(e) => {
-                        if (e.target.value === '0') e.target.select();
-                      }}
-                      onChange={(e) => {
-                        const raw = e.target.value;
-                        const clean = raw === '' ? '' : raw.replace(/^0+(?=\d)/, '');
-                        setFormData({ ...formData, lebarCm: clean });
-                      }}
-                      className="w-16 bg-transparent text-center focus:outline-none border-b border-[#3E454D] focus:border-[#F4511E]"
-                    />
-                    <span className="text-[10px] text-neutral-500 font-normal">cm</span>
-                  </div>
-                </div>
-
-                <div className="bg-[#181B1E] border border-[#2B3036] rounded-md p-2 text-center">
-                  <span className="block text-[10px] text-neutral-400 mb-0.5">Tinggi (T) *</span>
-                  <div className="flex items-center justify-center gap-1 font-mono font-bold text-neutral-100 text-sm">
-                    <input
-                      type="number"
-                      placeholder="0"
-                      value={formData.tinggiCm === '' ? '' : formData.tinggiCm}
-                      onFocus={(e) => {
-                        if (e.target.value === '0') e.target.select();
-                      }}
-                      onChange={(e) => {
-                        const raw = e.target.value;
-                        const clean = raw === '' ? '' : raw.replace(/^0+(?=\d)/, '');
-                        setFormData({ ...formData, tinggiCm: clean });
-                      }}
-                      className="w-16 bg-transparent text-center focus:outline-none border-b border-[#3E454D] focus:border-[#F4511E]"
-                    />
-                    <span className="text-[10px] text-neutral-500 font-normal">cm</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Results: Kubikasi Default & Akhir */}
-              <div className="grid grid-cols-2 gap-2 pt-1">
-                <div className={`border rounded-md p-2.5 transition-colors ${
-                  isDark ? 'bg-[#181B1E] border-[#2B3036]' : 'bg-slate-50 border-slate-200'
-                }`}>
-                  <span className={`block text-[10px] mb-0.5 ${isDark ? 'text-neutral-400' : 'text-slate-500'}`}>Kubikasi Default</span>
-                  <div className={`text-base font-bold font-mono ${isDark ? 'text-neutral-300' : 'text-slate-800'}`}>
-                    {kubikasi.volumeDefault} <span className={`text-[10px] font-normal ${isDark ? 'text-neutral-500' : 'text-slate-500'}`}>m³</span>
-                  </div>
-                </div>
-
-                <div className={`border rounded-md p-2.5 transition-colors ${
-                  isDark ? 'bg-[#1C1511] border-[#F4511E]/40' : 'bg-orange-50/70 border-orange-200'
-                }`}>
-                  <span className={`block text-[10px] mb-0.5 font-medium ${isDark ? 'text-orange-400' : 'text-orange-600'}`}>Kubikasi Akhir</span>
-                  <div className="text-base font-bold font-mono text-[#F4511E]">
-                    {kubikasi.volumeAkhir} <span className={`text-[10px] font-normal ${isDark ? 'text-orange-400' : 'text-orange-600'}`}>m³</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Upload Foto Surat Jalan */}
-            <div className="pt-2">
-              <label className={`block text-[11px] font-medium mb-1 flex items-center gap-1 ${
-                isDark ? 'text-neutral-400' : 'text-slate-600'
-              }`}>
-                <Camera className={`w-3.5 h-3.5 ${isDark ? 'text-neutral-500' : 'text-slate-400'}`} />
-                Foto Bukti Fisik Surat Jalan
-              </label>
-              <div className={`border border-dashed hover:border-[#F4511E] rounded-md p-3 text-center cursor-pointer transition-colors ${
-                isDark ? 'border-[#333940] bg-[#101214]' : 'border-slate-300 bg-slate-50'
-              }`}>
-                <input
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  id="foto-sj-input"
-                  onChange={handlePhotoUpload}
+              {/* Field 3: Nomor PO Customer (Disabled, Mengikuti Received Order) */}
+              <div>
+                <Input
+                  label="Nomor PO Customer (Otomatis dari Received Order)"
+                  icon={Ticket}
+                  disabled
+                  readOnly
+                  placeholder={
+                    formData.customer
+                      ? (formData.poNumber ? '' : 'Tanpa PO Customer (Kosong Sesuai Received Order)')
+                      : 'Pilih Customer & Pre Order terlebih dahulu'
+                  }
+                  value={formData.poNumber || ''}
+                  helperText={
+                    formData.poNumber
+                      ? `Nomor PO terkunci otomatis sesuai Received Order: ${formData.poNumber}`
+                      : formData.customer
+                        ? 'Tidak ada Nomor PO pada Received Order (dikosongkan).'
+                        : 'Pilih Customer & Pre Order terlebih dahulu untuk memuat Nomor PO.'
+                  }
+                  className="font-mono font-bold text-neutral-300 cursor-not-allowed select-all"
                 />
-                <label htmlFor="foto-sj-input" className="cursor-pointer block text-xs">
-                  {formData.fotoPreview ? (
-                    <div className="flex items-center justify-center gap-3">
-                      <img
-                        src={formData.fotoPreview}
-                        alt="Bukti SJ"
-                        className={`w-12 h-12 object-cover rounded border ${isDark ? 'border-[#333]' : 'border-slate-300'}`}
-                      />
-                      <div className="text-left font-mono text-xs">
-                        <span className="text-emerald-500 font-bold block">✓ {formData.fotoSuratJalan}</span>
-                        <span className={`text-[10px] ${isDark ? 'text-neutral-400' : 'text-slate-500'}`}>Klik untuk mengganti berkas</span>
-                      </div>
-                    </div>
-                  ) : (
-                    <span className={isDark ? 'text-neutral-400 hover:text-white' : 'text-slate-500 hover:text-slate-800'}>
-                      Ambil Foto / Unggah Bukti Fisik Surat Jalan
+              </div>
+
+              {/* Field 4: Nomor RO (Disabled, Terkunci Sesuai Pre Order Terpilih) */}
+              <div>
+                <Input
+                  label="Nomor RO (Terkunci Sesuai Pre Order Terpilih)"
+                  icon={Ticket}
+                  disabled
+                  readOnly
+                  placeholder={
+                    formData.customer
+                      ? "Pilih Pre Order / RO di atas untuk menampilkan Nomor RO"
+                      : "Pilih Customer & Pre Order terlebih dahulu"
+                  }
+                  value={formData.nomorRo}
+                  helperText={
+                    formData.nomorRo
+                      ? "Nomor RO terkunci dari Pre Order berstatus APPROVED yang dipilih."
+                      : formData.customer
+                        ? "Pilih Pre Order di atas untuk memuat Nomor RO"
+                        : "Pilih Customer & Pre Order terlebih dahulu untuk memuat Nomor RO"
+                  }
+                  className="font-mono font-bold text-[#F4511E] cursor-not-allowed select-all"
+                />
+              </div>
+
+              {/* Row 4: Material & Jenis */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <Select
+                  label="Material"
+                  icon={Box}
+                  required
+                  searchPlaceholder="Cari jenis material..."
+                  value={formData.materialId}
+                  onChange={(e) => setFormData({ ...formData, materialId: e.target.value })}
+                >
+                  <option value="">-- Pilih Material --</option>
+                  {materials.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.name} ({m.satuan}) - PPH {m.pphRate}%
+                    </option>
+                  ))}
+                </Select>
+
+                <div className="space-y-1">
+                  <Select
+                    label="Jenis Layanan"
+                    icon={Lock}
+                    required
+                    disabled={true}
+                    value={formData.jenis}
+                    onChange={(e) => setFormData({ ...formData, jenis: e.target.value })}
+                    title="Jenis Layanan dikunci otomatis sesuai kontrak Receive Order (RO)"
+                    className="cursor-not-allowed opacity-80"
+                  >
+                    {!formData.jenis ? (
+                      <option value="">-- Terkunci Sesuai RO Terpilih --</option>
+                    ) : (
+                      <>
+                        <option value="Jasa Angkut + Material">Jasa Angkut + Material</option>
+                        <option value="Material Curah Saja">Material Curah Saja</option>
+                        <option value="Jasa Angkut Saja">Jasa Angkut Saja</option>
+                        {!['Jasa Angkut + Material', 'Material Curah Saja', 'Jasa Angkut Saja'].includes(formData.jenis) && (
+                          <option value={formData.jenis}>{formData.jenis}</option>
+                        )}
+                      </>
+                    )}
+                  </Select>
+                  <p className="text-[11px] text-neutral-400 font-mono flex items-center gap-1.5 pt-0.5">
+                    <Lock className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                    <span>
+                      {formData.jenis
+                        ? `Terkunci: ${formData.jenis} (sesuai RO)`
+                        : 'Otomatis terkunci sesuai kontrak Receive Order (RO)'}
                     </span>
-                  )}
+                  </p>
+                </div>
+              </div>
+
+              {/* Row 5: Tanggal & Waktu */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <Input
+                  label="Tanggal Good Issue"
+                  icon={Calendar}
+                  type="date"
+                  required
+                  value={formData.tanggal}
+                  onChange={(e) => setFormData({ ...formData, tanggal: e.target.value })}
+                />
+
+                <Input
+                  label="Waktu Muat"
+                  icon={Clock}
+                  type="time"
+                  value={formData.waktu}
+                  onChange={(e) => setFormData({ ...formData, waktu: e.target.value })}
+                />
+              </div>
+
+              {/* Row 6: Nomor Nota & Nomor Polisi */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <Input
+                  label="Nomor Nota Pengambilan (Opsional)"
+                  icon={FileText}
+                  placeholder="Opsional (contoh: NT-88921)"
+                  helperText="Kosongkan jika tidak ada nota pengambilan dari lokasi muat"
+                  value={formData.nomorNota}
+                  onChange={(e) => setFormData({ ...formData, nomorNota: e.target.value })}
+                  className="font-mono"
+                />
+
+                <Select
+                  label="Nomor Polisi Armada"
+                  icon={Truck}
+                  searchPlaceholder="Cari nopol atau tipe armada..."
+                  value={formData.nomorPolisi}
+                  onChange={(e) => handleArmadaChange(e.target.value)}
+                  className="font-mono font-bold"
+                >
+                  <option value="">-- Pilih Armada / Nopol --</option>
+                  {armadaList.map((a) => (
+                    <option key={a.id} value={a.nopol}>
+                      {a.nopol} ({a.merk} - {a.kapasitas} m³)
+                    </option>
+                  ))}
+                </Select>
+              </div>
+
+              {/* TRUCK DIMENSIONS SECTION (Screenshot 1) */}
+              <div className="pt-3 border-t border-[#24282C] space-y-3">
+                {/* Koreksi Tinggi Stepper */}
+                <div className="flex items-center justify-between p-2.5 rounded-md bg-[#181B1E] border border-[#2B3036]">
+                  <div className="text-xs text-neutral-300 font-medium flex items-center">
+                    <span>Koreksi Tinggi (K):</span>
+                    <input
+                      type="number"
+                      placeholder="0"
+                      value={formData.koreksiTinggiCm === 0 ? '' : formData.koreksiTinggiCm}
+                      onChange={(e) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          koreksiTinggiCm: e.target.value === '' ? 0 : Number(e.target.value),
+                        }))
+                      }
+                      style={{
+                        width: `${Math.max(1, String(formData.koreksiTinggiCm === 0 ? 0 : formData.koreksiTinggiCm).length)}ch`,
+                      }}
+                      className="ml-1.5 p-0 bg-transparent border-none text-white placeholder:text-white font-mono font-bold text-xs text-center focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    />
+                    <span className="text-white font-mono font-bold ml-1">cm</span>
+                  </div>
+
+                  <div className="flex items-center gap-1">
+                    <Button
+                      size="xs"
+                      variant="secondary"
+                      icon={Minus}
+                      onClick={() => handleKoreksiChange(-5)}
+                      title="Kurangi 5 cm"
+                    />
+                    <Button
+                      size="xs"
+                      variant="secondary"
+                      icon={Plus}
+                      onClick={() => handleKoreksiChange(5)}
+                      title="Tambah 5 cm"
+                    />
+                  </div>
+                </div>
+
+                {/* Tinggi Hasil Koreksi (TK) Header from Screenshot 1 */}
+                <div className="text-xs font-semibold text-neutral-300 flex items-center justify-between">
+                  <span>Tinggi Hasil Koreksi (TK):</span>
+                  <span className="text-[#F4511E] font-mono font-bold text-sm">
+                    {kubikasi.tinggiHasilKoreksi} cm
+                  </span>
+                </div>
+
+                {/* 3 Dimension Inputs: P, L, T */}
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="bg-[#181B1E] border border-[#2B3036] rounded-md p-2 text-center">
+                    <span className="block text-[10px] text-neutral-400 mb-0.5">Panjang (P) *</span>
+                    <div className="flex items-center justify-center gap-1 font-mono font-bold text-neutral-100 text-sm">
+                      <input
+                        type="number"
+                        placeholder="0"
+                        value={formData.panjangCm === '' ? '' : formData.panjangCm}
+                        onFocus={(e) => {
+                          if (e.target.value === '0') e.target.select();
+                        }}
+                        onChange={(e) => {
+                          const raw = e.target.value;
+                          const clean = raw === '' ? '' : raw.replace(/^0+(?=\d)/, '');
+                          setFormData({ ...formData, panjangCm: clean });
+                        }}
+                        className="w-16 bg-transparent text-center focus:outline-none border-b border-[#3E454D] focus:border-[#F4511E]"
+                      />
+                      <span className="text-[10px] text-neutral-500 font-normal">cm</span>
+                    </div>
+                  </div>
+
+                  <div className="bg-[#181B1E] border border-[#2B3036] rounded-md p-2 text-center">
+                    <span className="block text-[10px] text-neutral-400 mb-0.5">Lebar (L) *</span>
+                    <div className="flex items-center justify-center gap-1 font-mono font-bold text-neutral-100 text-sm">
+                      <input
+                        type="number"
+                        placeholder="0"
+                        value={formData.lebarCm === '' ? '' : formData.lebarCm}
+                        onFocus={(e) => {
+                          if (e.target.value === '0') e.target.select();
+                        }}
+                        onChange={(e) => {
+                          const raw = e.target.value;
+                          const clean = raw === '' ? '' : raw.replace(/^0+(?=\d)/, '');
+                          setFormData({ ...formData, lebarCm: clean });
+                        }}
+                        className="w-16 bg-transparent text-center focus:outline-none border-b border-[#3E454D] focus:border-[#F4511E]"
+                      />
+                      <span className="text-[10px] text-neutral-500 font-normal">cm</span>
+                    </div>
+                  </div>
+
+                  <div className="bg-[#181B1E] border border-[#2B3036] rounded-md p-2 text-center">
+                    <span className="block text-[10px] text-neutral-400 mb-0.5">Tinggi (T) *</span>
+                    <div className="flex items-center justify-center gap-1 font-mono font-bold text-neutral-100 text-sm">
+                      <input
+                        type="number"
+                        placeholder="0"
+                        value={formData.tinggiCm === '' ? '' : formData.tinggiCm}
+                        onFocus={(e) => {
+                          if (e.target.value === '0') e.target.select();
+                        }}
+                        onChange={(e) => {
+                          const raw = e.target.value;
+                          const clean = raw === '' ? '' : raw.replace(/^0+(?=\d)/, '');
+                          setFormData({ ...formData, tinggiCm: clean });
+                        }}
+                        className="w-16 bg-transparent text-center focus:outline-none border-b border-[#3E454D] focus:border-[#F4511E]"
+                      />
+                      <span className="text-[10px] text-neutral-500 font-normal">cm</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Results: Kubikasi Default & Akhir */}
+                <div className="grid grid-cols-2 gap-2 pt-1">
+                  <div className={`border rounded-md p-2.5 transition-colors ${isDark ? 'bg-[#181B1E] border-[#2B3036]' : 'bg-slate-50 border-slate-200'
+                    }`}>
+                    <span className={`block text-[10px] mb-0.5 ${isDark ? 'text-neutral-400' : 'text-slate-500'}`}>Kubikasi Default</span>
+                    <div className={`text-base font-bold font-mono ${isDark ? 'text-neutral-300' : 'text-slate-800'}`}>
+                      {kubikasi.volumeDefault} <span className={`text-[10px] font-normal ${isDark ? 'text-neutral-500' : 'text-slate-500'}`}>m³</span>
+                    </div>
+                  </div>
+
+                  <div className={`border rounded-md p-2.5 transition-colors ${isDark ? 'bg-[#1C1511] border-[#F4511E]/40' : 'bg-orange-50/70 border-orange-200'
+                    }`}>
+                    <span className={`block text-[10px] mb-0.5 font-medium ${isDark ? 'text-orange-400' : 'text-orange-600'}`}>Kubikasi Akhir</span>
+                    <div className="text-base font-bold font-mono text-[#F4511E]">
+                      {kubikasi.volumeAkhir} <span className={`text-[10px] font-normal ${isDark ? 'text-orange-400' : 'text-orange-600'}`}>m³</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Upload Foto Surat Jalan */}
+              <div className="pt-2">
+                <label className={`block text-[11px] font-medium mb-1 flex items-center gap-1 ${isDark ? 'text-neutral-400' : 'text-slate-600'
+                  }`}>
+                  <Camera className={`w-3.5 h-3.5 ${isDark ? 'text-neutral-500' : 'text-slate-400'}`} />
+                  Foto Bukti Fisik Surat Jalan
                 </label>
+                <div className={`border border-dashed hover:border-[#F4511E] rounded-md p-3 text-center cursor-pointer transition-colors ${isDark ? 'border-[#333940] bg-[#101214]' : 'border-slate-300 bg-slate-50'
+                  }`}>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    id="foto-sj-input"
+                    onChange={handlePhotoUpload}
+                  />
+                  <label htmlFor="foto-sj-input" className="cursor-pointer block text-xs">
+                    {formData.fotoPreview ? (
+                      <div className="flex items-center justify-center gap-3">
+                        <img
+                          src={formData.fotoPreview}
+                          alt="Bukti SJ"
+                          className={`w-12 h-12 object-cover rounded border ${isDark ? 'border-[#333]' : 'border-slate-300'}`}
+                        />
+                        <div className="text-left font-mono text-xs">
+                          <span className="text-emerald-500 font-bold block">✓ {formData.fotoSuratJalan}</span>
+                          <span className={`text-[10px] ${isDark ? 'text-neutral-400' : 'text-slate-500'}`}>Klik untuk mengganti berkas</span>
+                        </div>
+                      </div>
+                    ) : (
+                      <span className={isDark ? 'text-neutral-400 hover:text-white' : 'text-slate-500 hover:text-slate-800'}>
+                        Ambil Foto / Unggah Bukti Fisik Surat Jalan
+                      </span>
+                    )}
+                  </label>
+                </div>
               </div>
-            </div>
-          </form>
-        </Card>
-      </div>
-
-      {/* Right Column (5 cols) - Technical Blueprint & Dispatch Summary (Follows page scroll, adjusts alongside left form) */}
-      <div className="lg:col-span-5 relative">
-        <div className="lg:sticky lg:top-4 space-y-3">
-          <TruckVisualizer
-            panjangCm={Number(formData.panjangCm) || 0}
-            lebarCm={Number(formData.lebarCm) || 0}
-            tinggiCm={Number(formData.tinggiCm) || 0}
-            koreksiCm={formData.koreksiTinggiCm}
-            onApplyPreset={handleApplyPreset}
-          />
-
-          <Card className={`p-4 space-y-3 shadow-md border transition-colors ${
-            isDark ? 'bg-[#14171A] border-[#22262A]' : 'bg-white border-slate-200'
-          }`}>
-            <div className={`flex items-center justify-between pb-2 border-b ${
-              isDark ? 'border-[#202326]' : 'border-slate-200'
-            }`}>
-              <div className={`flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider font-mono ${
-                isDark ? 'text-neutral-200' : 'text-slate-800'
-              }`}>
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
-                <span>Verifikasi Kiriman Harian</span>
-              </div>
-              <Badge size="xs" variant={formData.isPpn ? 'primary' : 'outline'}>
-                {formData.isPpn ? 'Format PPN' : 'Non-PPN'}
-              </Badge>
-            </div>
-
-            <div className="space-y-1.5 text-xs font-mono">
-              <div className={`flex justify-between py-1 border-b ${
-                isDark ? 'border-[#202326]' : 'border-slate-200'
-              }`}>
-                <span className={isDark ? 'text-neutral-500' : 'text-slate-500'}>Nopol Armada:</span>
-                <span className={`font-bold ${isDark ? 'text-neutral-200' : 'text-slate-900'}`}>{formData.nomorPolisi || '-'}</span>
-              </div>
-              <div className={`flex justify-between py-1 border-b ${
-                isDark ? 'border-[#202326]' : 'border-slate-200'
-              }`}>
-                <span className={isDark ? 'text-neutral-500' : 'text-slate-500'}>Customer:</span>
-                <span className={`truncate max-w-[180px] font-medium ${isDark ? 'text-neutral-200' : 'text-slate-900'}`} title={formData.customer}>{formData.customer || '-'}</span>
-              </div>
-              <div className={`flex justify-between py-1 border-b ${
-                isDark ? 'border-[#202326]' : 'border-slate-200'
-              }`}>
-                <span className={isDark ? 'text-neutral-500' : 'text-slate-500'}>No. PO:</span>
-                <span className={isDark ? 'text-neutral-300' : 'text-slate-700'}>{formData.poNumber || '-'}</span>
-              </div>
-              <div className={`flex justify-between py-1 border-b ${
-                isDark ? 'border-[#202326]' : 'border-slate-200'
-              }`}>
-                <span className={isDark ? 'text-neutral-500' : 'text-slate-500'}>Material:</span>
-                <span className={`font-semibold truncate max-w-[180px] ${isDark ? 'text-amber-400' : 'text-amber-600'}`}>
-                  {materials.find((m) => m.id === formData.materialId)?.name || '-'}
-                </span>
-              </div>
-              <div className={`flex justify-between py-2.5 px-3 border rounded-lg items-baseline font-mono mt-1 shadow-2xs ${
-                isDark ? 'border-[#F4511E]/30 bg-[#1C1511]' : 'border-orange-200 bg-orange-50/70'
-              }`}>
-                <span className={`font-semibold text-xs ${isDark ? 'text-neutral-200' : 'text-slate-800'}`}>Volume Riil Diterima:</span>
-                <span className="text-lg sm:text-xl font-black text-[#F4511E] tracking-tight">
-                  {formatVolume(kubikasi.volumeAkhir)}
-                </span>
-              </div>
-            </div>
-
-            <Button
-              type="button"
-              variant="primary"
-              size="md"
-              icon={Save}
-              onClick={handleSubmit}
-              disabled={!formData.poNumber || customerApprovedPos.length === 0 || isNavPoUnapproved}
-              className={`w-full cursor-pointer py-2.5 font-bold shadow-md shadow-[#F4511E]/20 transition-all ${
-                !formData.poNumber || customerApprovedPos.length === 0 || isNavPoUnapproved
-                  ? 'opacity-50 cursor-not-allowed border border-[#2B3037]'
-                  : 'hover:brightness-110 active:scale-[0.99]'
-              }`}
-              title={
-                !formData.poNumber || customerApprovedPos.length === 0 || isNavPoUnapproved
-                  ? 'Pre Order harus disetujui Super Admin (APPROVED) sebelum Surat Jalan dapat disimpan'
-                  : 'Simpan Good Issue'
-              }
-            >
-              Simpan Good Issue
-            </Button>
+            </form>
           </Card>
         </div>
-      </div>
+
+        {/* Right Column (5 cols) - Technical Blueprint & Dispatch Summary (Follows page scroll, adjusts alongside left form) */}
+        <div className="lg:col-span-5 relative">
+          <div className="lg:sticky lg:top-4 space-y-3">
+            <TruckVisualizer
+              panjangCm={Number(formData.panjangCm) || 0}
+              lebarCm={Number(formData.lebarCm) || 0}
+              tinggiCm={Number(formData.tinggiCm) || 0}
+              koreksiCm={formData.koreksiTinggiCm}
+              onApplyPreset={handleApplyPreset}
+            />
+
+            <Card className={`p-4 space-y-3 shadow-md border transition-colors ${isDark ? 'bg-[#14171A] border-[#22262A]' : 'bg-white border-slate-200'
+              }`}>
+              <div className={`flex items-center justify-between pb-2 border-b ${isDark ? 'border-[#202326]' : 'border-slate-200'
+                }`}>
+                <div className={`flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider font-mono ${isDark ? 'text-neutral-200' : 'text-slate-800'
+                  }`}>
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                  <span>Verifikasi Kiriman Harian</span>
+                </div>
+                <Badge size="xs" variant={formData.isPpn ? 'primary' : 'outline'}>
+                  {formData.isPpn ? 'Format PPN' : 'Non-PPN'}
+                </Badge>
+              </div>
+
+              <div className="space-y-1.5 text-xs font-mono">
+                <div className={`flex justify-between py-1 border-b ${isDark ? 'border-[#202326]' : 'border-slate-200'
+                  }`}>
+                  <span className={isDark ? 'text-neutral-500' : 'text-slate-500'}>Nopol Armada:</span>
+                  <span className={`font-bold ${isDark ? 'text-neutral-200' : 'text-slate-900'}`}>{formData.nomorPolisi || '-'}</span>
+                </div>
+                <div className={`flex justify-between py-1 border-b ${isDark ? 'border-[#202326]' : 'border-slate-200'
+                  }`}>
+                  <span className={isDark ? 'text-neutral-500' : 'text-slate-500'}>Customer:</span>
+                  <span className={`truncate max-w-[180px] font-medium ${isDark ? 'text-neutral-200' : 'text-slate-900'}`} title={formData.customer}>{formData.customer || '-'}</span>
+                </div>
+                <div className={`flex justify-between py-1 border-b ${isDark ? 'border-[#202326]' : 'border-slate-200'
+                  }`}>
+                  <span className={isDark ? 'text-neutral-500' : 'text-slate-500'}>No. PO:</span>
+                  <span className={isDark ? 'text-neutral-300' : 'text-slate-700'}>{formData.poNumber || '-'}</span>
+                </div>
+                <div className={`flex justify-between py-1 border-b ${isDark ? 'border-[#202326]' : 'border-slate-200'
+                  }`}>
+                  <span className={isDark ? 'text-neutral-500' : 'text-slate-500'}>Material:</span>
+                  <span className={`font-semibold truncate max-w-[180px] ${isDark ? 'text-amber-400' : 'text-amber-600'}`}>
+                    {materials.find((m) => m.id === formData.materialId)?.name || '-'}
+                  </span>
+                </div>
+                <div className={`flex justify-between py-2.5 px-3 border rounded-lg items-baseline font-mono mt-1 shadow-2xs ${isDark ? 'border-[#F4511E]/30 bg-[#1C1511]' : 'border-orange-200 bg-orange-50/70'
+                  }`}>
+                  <span className={`font-semibold text-xs ${isDark ? 'text-neutral-200' : 'text-slate-800'}`}>Volume Riil Diterima:</span>
+                  <span className="text-lg sm:text-xl font-black text-[#F4511E] tracking-tight">
+                    {formatVolume(kubikasi.volumeAkhir)}
+                  </span>
+                </div>
+              </div>
+
+              <Button
+                type="button"
+                variant="primary"
+                size="md"
+                icon={Save}
+                onClick={handleSubmit}
+                disabled={!formData.customer || !formData.preOrderId || customerApprovedPos.length === 0 || isNavPoUnapproved}
+                className={`w-full cursor-pointer py-2.5 font-bold shadow-md shadow-[#F4511E]/20 transition-all ${!formData.customer || !formData.preOrderId || customerApprovedPos.length === 0 || isNavPoUnapproved
+                  ? 'opacity-50 cursor-not-allowed border border-[#2B3037]'
+                  : 'hover:brightness-110 active:scale-[0.99]'
+                  }`}
+                title={
+                  !formData.customer || !formData.preOrderId || customerApprovedPos.length === 0 || isNavPoUnapproved
+                    ? 'Pre Order harus dipilih dan disetujui Super Admin (APPROVED) sebelum Surat Jalan dapat disimpan'
+                    : 'Simpan Good Issue'
+                }
+              >
+                Simpan Good Issue
+              </Button>
+            </Card>
+          </div>
+        </div>
       </div>
     </div>
   );

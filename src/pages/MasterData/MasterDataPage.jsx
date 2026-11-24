@@ -59,7 +59,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { useApp } from '../../context/AppContext';
 import { formatCurrency, formatVolume } from '../../utils/formatters';
-import { Button, Badge, Card, Input, Select, Modal, ViewToggle, SearchBar, Checkbox } from '../../components/ui';
+import { Button, Badge, Card, Input, Select, Modal, ViewToggle, SearchBar, Checkbox, IndeterminateCheckbox } from '../../components/ui';
 
 const staggerContainerVariants = {
   hidden: { opacity: 0 },

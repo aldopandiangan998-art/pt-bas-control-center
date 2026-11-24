@@ -8,7 +8,7 @@ import {
   Filter,
 } from 'lucide-react';
 import { formatCurrency } from '../../utils/formatters';
-import { Badge, Button } from '../../components/ui';
+import { Badge, Button, SearchBar } from '../../components/ui';
 import { useToast } from '../../context/ToastContext';
 import { useAuth } from '../../context/AuthContext';
 import { useApp } from '../../context/AppContext';
@@ -392,20 +392,14 @@ export default function LaporanPpnPage() {
               </p>
             </div>
 
-            <div className="relative w-full sm:w-72">
-              <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Cari Customer, Faktur, Invoice..."
-                className={`w-full pl-9 pr-3 py-1.5 rounded-xl border text-xs focus:outline-none transition-colors ${
-                  isDark
-                    ? 'bg-[#1A1D21] border-[#2E3339] text-white focus:border-[#F4511E]'
-                    : 'bg-white border-slate-200 text-slate-800 focus:border-[#F4511E]'
-                }`}
-              />
-            </div>
+            <SearchBar
+              containerClassName="w-full sm:w-72"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onClear={() => setSearchQuery('')}
+              placeholder="Cari Customer, Faktur, Invoice..."
+              size="sm"
+            />
           </div>
 
           {/* Table Content */}

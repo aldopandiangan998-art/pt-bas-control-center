@@ -29,7 +29,7 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { useApp } from '../../context/AppContext';
-import { Button, Badge, Card, Modal } from '../../components/ui';
+import { Button, Badge, Card, Modal, ViewToggle, SearchBar, Checkbox } from '../../components/ui';
 
 export default function ApprovalUserPage() {
   const navigate = useNavigate();
@@ -471,57 +471,19 @@ export default function ApprovalUserPage() {
           </button>
         </div>
 
-        {/* Search, Branch Filter & View Toggle */}
+        {/* Search & View Toggle */}
         <div className="flex items-center gap-2 flex-1 max-w-xl justify-end">
-          <div className="relative flex-1">
-            <Search className="w-4 h-4 text-neutral-500 absolute left-3 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder={language === 'en' ? 'Search name, email, or phone...' : 'Cari nama, email, atau telepon...'}
-              className="w-full pl-9 pr-8 py-1.5 bg-[#181B1E] border border-[#2A2E33] rounded-lg text-xs text-white placeholder:text-neutral-500 outline-none focus:border-[#F4511E]"
-            />
-            {searchQuery && (
-              <button
-                type="button"
-                onClick={() => setSearchQuery('')}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-white cursor-pointer"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
-            )}
-          </div>
+          <SearchBar
+            containerClassName="flex-1"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            onClear={() => setSearchQuery('')}
+            placeholder={language === 'en' ? 'Search name, email, or phone...' : 'Cari nama, email, atau telepon...'}
+            size="md"
+          />
 
           {/* View Mode Toggle: Grid vs List */}
-          <div className="flex items-center bg-[#1A1D20] border border-[#292D32] rounded-lg p-0.5 shrink-0 gap-0.5">
-            <button
-              type="button"
-              onClick={() => handleSetViewMode('grid')}
-              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-mono font-bold transition-all cursor-pointer ${
-                viewMode === 'grid'
-                  ? 'bg-[#F4511E] text-white shadow-xs'
-                  : 'text-neutral-400 hover:text-white hover:bg-white/5'
-              }`}
-              title={language === 'en' ? 'Grid / Cards View' : 'Tampilan Grid / Kartu'}
-            >
-              <LayoutGrid className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Grid</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => handleSetViewMode('list')}
-              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-mono font-bold transition-all cursor-pointer ${
-                viewMode === 'list'
-                  ? 'bg-[#F4511E] text-white shadow-xs'
-                  : 'text-neutral-400 hover:text-white hover:bg-white/5'
-              }`}
-              title={language === 'en' ? 'Table / List View' : 'Tampilan Tabel / List'}
-            >
-              <List className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">List</span>
-            </button>
-          </div>
+          <ViewToggle viewMode={viewMode} onChange={handleSetViewMode} />
         </div>
       </div>
 
@@ -763,16 +725,20 @@ export default function ApprovalUserPage() {
                 <thead>
                   <tr className="bg-[#181B1E] text-[11px] font-semibold text-neutral-400 uppercase tracking-wider border-b border-[#22262A]">
                     <th className="py-3 px-3 text-center w-10">
-                      <input
-                        type="checkbox"
-                        checked={
-                          filteredUsers.length > 0 &&
-                          filteredUsers.every((u) => selectedIds.has(u.id))
-                        }
-                        onChange={handleSelectAllPending}
-                        className="cursor-pointer"
-                        title={language === 'en' ? 'Select all on this page' : 'Pilih semua di halaman ini'}
-                      />
+                      <div className="flex items-center justify-center">
+                        <Checkbox
+                          checked={
+                            filteredUsers.length > 0 &&
+                            filteredUsers.every((u) => selectedIds.has(u.id))
+                          }
+                          indeterminate={
+                            filteredUsers.some((u) => selectedIds.has(u.id)) &&
+                            !filteredUsers.every((u) => selectedIds.has(u.id))
+                          }
+                          onChange={handleSelectAllPending}
+                          title={language === 'en' ? 'Select all on this page' : 'Pilih semua di halaman ini'}
+                        />
+                      </div>
                     </th>
                     <th className="py-3 px-4 min-w-[200px]">{language === 'en' ? 'Name & Email' : 'Nama & Email'}</th>
                     <th className="py-3 px-3 min-w-[130px]">{language === 'en' ? 'Role / Title' : 'Role / Jabatan'}</th>

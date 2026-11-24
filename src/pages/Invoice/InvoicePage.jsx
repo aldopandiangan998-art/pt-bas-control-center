@@ -38,7 +38,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useData } from '../../context/DataContext';
 import { useToast } from '../../context/ToastContext';
 import { groupInvoices, groupCheckState } from '../../utils/cashOutGrouping';
-import { Button, Modal, Card, Input, Select, Badge } from '../../components/ui';
+import { Button, Modal, Card, Input, Select, Badge, ViewToggle, SearchBar, Checkbox } from '../../components/ui';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // LocalStorage helpers
@@ -59,17 +59,12 @@ function lsSet(key, value) {
 // IndeterminateCheckbox
 // ─────────────────────────────────────────────────────────────────────────────
 function IndeterminateCheckbox({ checked, indeterminate, onChange, className = '' }) {
-  const ref = useRef(null);
-  useEffect(() => {
-    if (ref.current) ref.current.indeterminate = indeterminate;
-  }, [indeterminate]);
   return (
-    <input
-      ref={ref}
-      type="checkbox"
+    <Checkbox
       checked={checked}
+      indeterminate={indeterminate}
       onChange={onChange}
-      className={`cursor-pointer ${className}`}
+      className={className}
     />
   );
 }
@@ -926,39 +921,14 @@ export default function InvoicePage() {
           {/* ── Toolbar Row 2: grid/list toggle + group-by + sort + expand/collapse ── */}
           <div className="flex items-center gap-2 px-1 flex-wrap">
             {/* Grid / List View Toggle */}
-            <div className="flex items-center bg-[#1C1F24] border border-[#2A2E33] rounded-lg p-0.5">
-              <button
-                type="button"
-                onClick={() => setDisplayMode('list')}
-                className={`p-1.5 rounded-md transition-colors cursor-pointer ${
-                  displayMode === 'list'
-                    ? 'bg-[#F4511E] text-white shadow-sm'
-                    : 'text-neutral-400 hover:text-white'
-                }`}
-                title="Tampilan Tabel (List)"
-              >
-                <List className="w-3.5 h-3.5" />
-              </button>
-              <button
-                type="button"
-                onClick={() => setDisplayMode('grid')}
-                className={`p-1.5 rounded-md transition-colors cursor-pointer ${
-                  displayMode === 'grid'
-                    ? 'bg-[#F4511E] text-white shadow-sm'
-                    : 'text-neutral-400 hover:text-white'
-                }`}
-                title="Tampilan Grid"
-              >
-                <LayoutGrid className="w-3.5 h-3.5" />
-              </button>
-            </div>
+            <ViewToggle viewMode={displayMode} onChange={setDisplayMode} />
 
             {/* Group By dropdown */}
             <div className="relative">
               <select
                 value={groupBy}
                 onChange={(e) => setGroupBy(e.target.value)}
-                className="bg-[#1C1F24] border border-[#2A2E33] rounded-lg pl-2.5 pr-7 py-1.5 text-[11px] text-neutral-300 focus:outline-none focus:border-[#F4511E] appearance-none cursor-pointer"
+                className="bg-[#1C1F24] border border-[#2A2E33] rounded-xl pl-2.5 pr-7 py-2 text-xs font-mono text-neutral-300 focus:outline-none focus:border-[#F4511E] focus:ring-1 focus:ring-[#F4511E] appearance-none cursor-pointer"
                 title="Kelompokkan Berdasarkan"
               >
                 <option value="company">Perusahaan</option>
@@ -966,16 +936,16 @@ export default function InvoicePage() {
                 <option value="material">Material</option>
                 <option value="month">Bulan</option>
               </select>
-              <ChevronDown className="w-3 h-3 text-neutral-500 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <ChevronDown className="w-3.5 h-3.5 text-neutral-500 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
             </div>
 
             {/* Sort order */}
             <button
               type="button"
               onClick={() => setSortOrder((p) => (p === 'default' ? 'name' : 'default'))}
-              className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] border transition-colors cursor-pointer ${
+              className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-mono border transition-colors cursor-pointer ${
                 sortOrder === 'name'
-                  ? 'bg-[#F4511E]/10 text-[#F4511E] border-[#F4511E]/30'
+                  ? 'bg-[#F4511E]/10 text-[#F4511E] border-[#F4511E]/30 font-bold'
                   : 'bg-[#1C1F24] text-neutral-400 border-[#2A2E33] hover:text-white'
               }`}
               title={sortOrder === 'name' ? 'Urut: A–Z' : 'Urut: Prioritas'}
@@ -1007,26 +977,13 @@ export default function InvoicePage() {
           </div>
 
           {/* Search input — always visible */}
-          <div className="relative">
-            <Search className="w-4 h-4 text-neutral-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-            <input
-              type="text"
-              value={searchFilter}
-              onChange={(e) => setSearchFilter(e.target.value)}
-              placeholder="Ketik nomor invoice, customer, material..."
-              className="w-full bg-[#1C1F24] border border-[#2A2E33] focus:border-[#F4511E] rounded-xl pl-10 pr-9 py-2.5 text-xs text-white placeholder-neutral-500 focus:outline-none transition-colors"
-            />
-            {searchFilter && (
-              <button
-                type="button"
-                onClick={() => setSearchFilter('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-white p-1"
-                title="Hapus pencarian"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
-            )}
-          </div>
+          <SearchBar
+            value={searchFilter}
+            onChange={(e) => setSearchFilter(e.target.value)}
+            onClear={() => setSearchFilter('')}
+            placeholder="Ketik nomor invoice, customer, material..."
+            size="md"
+          />
 
           {/* Status filter chip */}
           {statusFilter !== 'ALL' && (

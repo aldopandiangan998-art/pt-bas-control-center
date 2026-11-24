@@ -41,7 +41,7 @@ import { useToast } from '../../context/ToastContext';
 import { useApp } from '../../context/AppContext';
 import { DEFAULT_MATERIALS } from '../../utils/constants';
 import { formatCurrency, formatVolume } from '../../utils/formatters';
-import { Button, Badge, Card, Modal } from '../../components/ui';
+import { Button, Badge, Card, Modal, ViewToggle, SearchBar, Checkbox } from '../../components/ui';
 import {
   RO_TYPES,
   ITEM_TYPES,
@@ -1293,35 +1293,26 @@ export default function PreOrderPage() {
               {/* Row 2: List/Grid toggle, Group dropdown, Prioritas, Buka/Tutup semua */}
               <div className="flex items-center gap-2 flex-wrap">
                 {/* View toggle */}
-                <div className="flex items-center bg-[#14171A] border border-[#24282F] rounded-lg p-0.5 shrink-0 gap-0.5">
-                  <button type="button" onClick={() => handleSetViewMode('list')}
-                    className={`flex items-center gap-1 px-2.5 py-1.5 rounded-md text-xs font-mono transition-all cursor-pointer ${viewMode === 'list' ? 'bg-[#F4511E] text-white font-bold' : 'text-neutral-400 hover:text-white hover:bg-white/5'}`}
-                    title="Tampilan List"
-                  ><List className="w-3.5 h-3.5" /></button>
-                  <button type="button" onClick={() => handleSetViewMode('grid')}
-                    className={`flex items-center gap-1 px-2.5 py-1.5 rounded-md text-xs font-mono transition-all cursor-pointer ${viewMode === 'grid' ? 'bg-[#F4511E] text-white font-bold' : 'text-neutral-400 hover:text-white hover:bg-white/5'}`}
-                    title="Tampilan Grid"
-                  ><LayoutGrid className="w-3.5 h-3.5" /></button>
-                </div>
+                <ViewToggle viewMode={viewMode} onChange={handleSetViewMode} />
 
                 {/* Group by: Perusahaan dropdown */}
                 <div className="relative">
                   <select
                     value={customerFilter}
                     onChange={(e) => setCustomerFilter(e.target.value)}
-                    className="bg-[#14171A] border border-[#24282F] rounded-lg pl-3 pr-7 py-1.5 text-xs font-mono text-neutral-200 focus:outline-none focus:border-[#F4511E] appearance-none cursor-pointer"
+                    className="bg-[#14171A] border border-[#24282F] rounded-xl pl-3 pr-7 py-2 text-xs font-mono text-neutral-200 focus:outline-none focus:border-[#F4511E] focus:ring-1 focus:ring-[#F4511E] appearance-none cursor-pointer"
                   >
                     <option value="ALL">Perusahaan</option>
                     {availableCustomerOptions.map((c) => (
                       <option key={c} value={c}>{c}</option>
                     ))}
                   </select>
-                  <ChevronDown className="w-3 h-3 text-neutral-400 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <ChevronDown className="w-3.5 h-3.5 text-neutral-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                 </div>
 
                 {/* Filter status (Prioritas) */}
                 <button type="button" onClick={() => setFilterOpen(!filterOpen)}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-mono transition-colors cursor-pointer ${filterOpen || hasActiveFilters ? 'border-[#F4511E] text-[#F4511E] bg-[#F4511E]/10' : 'border-[#24282F] text-neutral-300 hover:border-neutral-500 bg-[#14171A]'}`}
+                  className={`flex items-center gap-1.5 px-3 py-2 rounded-xl border text-xs font-mono transition-colors cursor-pointer ${filterOpen || hasActiveFilters ? 'border-[#F4511E] text-[#F4511E] bg-[#F4511E]/10' : 'border-[#24282F] text-neutral-300 hover:border-neutral-500 bg-[#14171A]'}`}
                 >
                   <ArrowUpDown className="w-3.5 h-3.5" />
                   <span>Prioritas</span>
@@ -1337,27 +1328,15 @@ export default function PreOrderPage() {
               </div>
 
               {/* Row 3: Search bar */}
-              <div className="relative">
-                <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none" />
-                <input
-                  ref={searchInputRef}
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Ketik nomor RO, nomor PO, nama customer, material..."
-                  className="w-full bg-[#14171A] border border-[#24282F] rounded-xl pl-10 pr-9 py-2.5 text-xs text-white placeholder-neutral-500 focus:outline-none focus:border-[#F4511E] font-mono transition-colors"
-                />
-                {searchQuery && (
-                  <button
-                    type="button"
-                    onClick={() => setSearchQuery('')}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-white p-0.5"
-                    title="Hapus pencarian"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                )}
-              </div>
+              <SearchBar
+                ref={searchInputRef}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onClear={() => setSearchQuery('')}
+                placeholder={language === 'en' ? 'Search RO number, PO number, customer, material...' : 'Ketik nomor RO, nomor PO, nama customer, material...'}
+                shortcut="/"
+                size="md"
+              />
             </div>
 
             {/* ── COLLAPSIBLE FILTER PANEL ── */}
@@ -1481,9 +1460,10 @@ export default function PreOrderPage() {
                       {/* ── Group Header Row ── */}
                       <div className="flex items-center gap-2 px-3 py-2.5 bg-[#14171B] border-b border-[#20242A]">
                         {/* Group select checkbox */}
-                        <button
-                          type="button"
-                          onClick={() => {
+                        <Checkbox
+                          checked={allGroupSelected}
+                          indeterminate={!allGroupSelected && someGroupSelected}
+                          onChange={() => {
                             const allIds = orders.map((o) => o.id);
                             setSelectedIds((prev) => {
                               const next = new Set(prev);
@@ -1492,16 +1472,8 @@ export default function PreOrderPage() {
                               return next;
                             });
                           }}
-                          className={`w-4 h-4 rounded border flex items-center justify-center transition-colors cursor-pointer shrink-0 ${
-                            allGroupSelected
-                              ? 'bg-[#F4511E] border-[#F4511E] text-white'
-                              : someGroupSelected
-                              ? 'bg-[#F4511E]/40 border-[#F4511E] text-white'
-                              : 'border-neutral-500 hover:border-neutral-300 bg-transparent'
-                          }`}
-                        >
-                          {(allGroupSelected || someGroupSelected) && <Check className="w-2.5 h-2.5 stroke-[3]" />}
-                        </button>
+                          title={allGroupSelected ? 'Batal pilih grup ini' : 'Pilih semua di grup ini'}
+                        />
 
                         {/* Collapse toggle */}
                         <button
@@ -1537,17 +1509,25 @@ export default function PreOrderPage() {
                             <thead>
                               <tr className="border-b border-[#1C2026] text-[10px] text-neutral-500 uppercase tracking-wider">
                                 <th className="w-8 px-3 py-2 text-center">
-                                  <input
-                                    type="checkbox"
+                                  <Checkbox
                                     checked={orders.length > 0 && orders.every((po) => selectedIds.has(po.id))}
+                                    indeterminate={!orders.every((po) => selectedIds.has(po.id)) && orders.some((po) => selectedIds.has(po.id))}
                                     onChange={() => {
                                       if (orders.every((po) => selectedIds.has(po.id))) {
-                                        setSelectedIds(new Set());
+                                        setSelectedIds((prev) => {
+                                          const next = new Set(prev);
+                                          orders.forEach((po) => next.delete(po.id));
+                                          return next;
+                                        });
                                       } else {
-                                        setSelectedIds(new Set(orders.map((po) => po.id)));
+                                        setSelectedIds((prev) => {
+                                          const next = new Set(prev);
+                                          orders.forEach((po) => next.add(po.id));
+                                          return next;
+                                        });
                                       }
                                     }}
-                                    title={language === 'en' ? 'Select all on this page' : 'Pilih semua'}
+                                    title={language === 'en' ? 'Select all in this group' : 'Pilih semua di grup ini'}
                                   />
                                 </th>
                                 <th className="px-3 py-2 text-left min-w-[90px]">Tanggal</th>

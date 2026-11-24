@@ -34,7 +34,7 @@ import { useData } from '../../context/DataContext';
 import { useToast } from '../../context/ToastContext';
 import { useApp } from '../../context/AppContext';
 import { formatCurrency, formatVolume, formatDate } from '../../utils/formatters';
-import { Button, Badge, Card, Modal } from '../../components/ui';
+import { Button, Badge, Card, Modal, SearchBar, Checkbox } from '../../components/ui';
 
 export default function ApprovalRoPage() {
   const navigate = useNavigate();
@@ -620,26 +620,14 @@ export default function ApprovalRoPage() {
         {/* ROW 2: DEDICATED SEARCH & RELEVANT FILTERS TOOLBAR */}
         <div className="p-3 sm:p-4 bg-[#111315]/70 flex flex-col md:flex-row items-stretch md:items-center gap-2.5">
           {/* Search Box with Clear Button */}
-          <div className="relative flex-1">
-            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Cari nomor RO, nomor PO, nama customer, atau jenis material..."
-              className="w-full bg-[#0E1012] border border-[#22262A] rounded-lg pl-9 pr-8 py-2 text-xs text-neutral-200 placeholder-neutral-500 focus:outline-none focus:border-[#F4511E] font-mono transition-colors"
-            />
-            {searchQuery && (
-              <button
-                type="button"
-                onClick={() => setSearchQuery('')}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-white p-0.5 cursor-pointer"
-                title="Hapus pencarian"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
-            )}
-          </div>
+          <SearchBar
+            containerClassName="flex-1"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            onClear={() => setSearchQuery('')}
+            placeholder={language === 'en' ? 'Search RO number, PO number, customer, material...' : 'Cari nomor RO, nomor PO, nama customer, atau jenis material...'}
+            size="md"
+          />
 
           <div className="flex flex-wrap sm:flex-nowrap items-center gap-2">
             {/* Filter Customer Dropdown */}
@@ -686,9 +674,9 @@ export default function ApprovalRoPage() {
               <label
                 className="flex items-center gap-2 text-neutral-300 hover:text-white px-2.5 py-1.5 rounded-lg bg-[#1C1F23] border border-[#2B3037] hover:border-neutral-500 transition-colors cursor-pointer select-none"
               >
-                <input
-                  type="checkbox"
+                <Checkbox
                   checked={selectedIds.size === filteredList.length && filteredList.length > 0}
+                  indeterminate={selectedIds.size > 0 && selectedIds.size < filteredList.length}
                   onChange={handleSelectAllPending}
                 />
                 <span>

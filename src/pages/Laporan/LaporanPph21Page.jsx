@@ -14,7 +14,7 @@ import {
   UserCheck,
 } from 'lucide-react';
 import { formatCurrency } from '../../utils/formatters';
-import { Badge, Button } from '../../components/ui';
+import { Badge, Button, SearchBar } from '../../components/ui';
 import { useToast } from '../../context/ToastContext';
 import { useAuth } from '../../context/AuthContext';
 import { useApp } from '../../context/AppContext';
@@ -484,20 +484,14 @@ export default function LaporanPph21Page() {
             </p>
           </div>
 
-          <div className="relative w-full sm:w-72">
-            <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Cari driver, NIK, BKK, atau bupot..."
-              className={`w-full pl-9 pr-3 py-1.5 rounded-lg border text-xs focus:outline-none focus:border-[#F4511E] ${
-                isDark
-                  ? 'bg-[#101214] border-[#2B3037] text-white placeholder-neutral-500'
-                  : 'bg-white border-slate-200 text-slate-900 placeholder-slate-400'
-              }`}
-            />
-          </div>
+          <SearchBar
+            containerClassName="w-full sm:w-72"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            onClear={() => setSearchQuery('')}
+            placeholder="Cari driver, NIK, BKK, atau bupot..."
+            size="sm"
+          />
         </div>
 
         {filteredRows.length === 0 ? (

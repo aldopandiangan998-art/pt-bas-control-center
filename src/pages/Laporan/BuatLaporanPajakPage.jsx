@@ -19,7 +19,7 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import { formatCurrency } from '../../utils/formatters';
-import { Badge, Button } from '../../components/ui';
+import { Badge, Button, SearchBar } from '../../components/ui';
 import { useToast } from '../../context/ToastContext';
 import { useAuth } from '../../context/AuthContext';
 import { useApp } from '../../context/AppContext';
@@ -564,20 +564,13 @@ export default function BuatLaporanPajakPage() {
             </div>
 
             {/* Quick Search Within Filtered Results */}
-            <div className="relative">
-              <Search className="w-4 h-4 text-neutral-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder={isPph23 ? 'Cari Vendor, Driver, No BKK, atau Bukti Potong...' : 'Cari Customer, No Faktur Pajak, atau Invoice...'}
-                className={`w-full rounded-xl pl-10 pr-4 py-2.5 text-xs transition-colors border ${
-                  isDark
-                    ? 'bg-[#16181B] border-[#24282C] text-white placeholder-neutral-500 focus:outline-none focus:border-[#F4511E]'
-                    : 'bg-white border-slate-300 text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#F4511E]'
-                }`}
-              />
-            </div>
+            <SearchBar
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onClear={() => setSearchQuery('')}
+              placeholder={isPph23 ? 'Cari Vendor, Driver, No BKK, atau Bukti Potong...' : 'Cari Customer, No Faktur Pajak, atau Invoice...'}
+              size="md"
+            />
 
             {/* Table of Filtered Tax Transactions */}
             <div className={`rounded-xl border overflow-hidden transition-colors ${

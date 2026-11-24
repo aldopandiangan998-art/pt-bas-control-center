@@ -24,7 +24,7 @@ import {
   Eye,
 } from 'lucide-react';
 import { formatCurrency, formatVolume } from '../../utils/formatters';
-import { Button, Badge, Card, Input, Select, Modal } from '../../components/ui';
+import { Button, Badge, Card, Input, Select, Modal, SearchBar, Checkbox } from '../../components/ui';
 import { useToast } from '../../context/ToastContext';
 import { useData } from '../../context/DataContext';
 
@@ -389,17 +389,15 @@ export default function RekapanPage() {
           </div>
 
           {/* Search Bar for RO */}
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-[#14171A] p-3 rounded-lg border border-[#24282C]">
-            <div className="relative w-full sm:w-80">
-              <Search className="w-4 h-4 text-neutral-500 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-              <input
-                type="text"
-                placeholder="Cari No. RO, Customer, PO, atau Material..."
-                value={roSearchQuery}
-                onChange={(e) => setRoSearchQuery(e.target.value)}
-                className="w-full bg-[#181B1E] border border-[#2D3339] rounded-md pl-9 pr-3 py-1.5 text-xs text-white placeholder-neutral-500 focus:outline-none focus:border-[#F4511E]"
-              />
-            </div>
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-[#14171A] p-3 rounded-xl border border-[#24282C]">
+            <SearchBar
+              containerClassName="w-full sm:w-80"
+              placeholder="Cari No. RO, Customer, PO, atau Material..."
+              value={roSearchQuery}
+              onChange={(e) => setRoSearchQuery(e.target.value)}
+              onClear={() => setRoSearchQuery('')}
+              size="sm"
+            />
             <div className="text-xs text-neutral-400 font-mono self-end sm:self-auto">
               Menampilkan {filteredReceivedOrders.length} dari {receivedOrders.length} Received Order
             </div>

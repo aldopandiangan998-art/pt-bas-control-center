@@ -413,6 +413,9 @@ export default function SuratJalanPage() {
       );
       if (match) newMatId = match.id;
     }
+    if (!newMatId && materials.length > 0) {
+      newMatId = materials[0].id;
+    }
     const resolvedRo = selectedPo.nomorRO || selectedPo.nomorRo || (generateNomorRO ? generateNomorRO(formData.customer || selectedPo.customer, preOrders, selectedPo.tanggal, customers) : '');
 
     setFormData((prev) => ({
@@ -573,8 +576,22 @@ export default function SuratJalanPage() {
       return;
     }
 
-    if (!formData.materialId) {
-      addToast('Harap pilih Jenis Material.', 'warning');
+    let activeMaterialId = formData.materialId;
+    if (!activeMaterialId && currentPo) {
+      activeMaterialId = currentPo.materialId;
+      if (!activeMaterialId && currentPo.materialName) {
+        const match = materials.find(
+          (m) => m.name.toLowerCase() === currentPo.materialName.toLowerCase()
+        );
+        if (match) activeMaterialId = match.id;
+      }
+      if (!activeMaterialId && materials.length > 0) {
+        activeMaterialId = materials[0].id;
+      }
+    }
+
+    if (!activeMaterialId) {
+      addToast('Harap pilih Pre Order / RO dengan data Material yang valid.', 'warning');
       return;
     }
 
@@ -596,7 +613,7 @@ export default function SuratJalanPage() {
       return;
     }
 
-    const selectedMat = materials.find((m) => m.id === formData.materialId);
+    const selectedMat = materials.find((m) => m.id === activeMaterialId);
     const finalRoNumber = currentPo?.nomorRO || currentPo?.nomorRo || formData.nomorRo || (generateNomorRO ? generateNomorRO(formData.customer, preOrders, formData.tanggal, customers) : '');
     const resolvedPo = currentPo?.nomorPo || currentPo?.nomorPoCustomer || formData.poNumber || null;
     const finalPoNumber = resolvedPo && resolvedPo !== 'MENUNGGU SURAT JALAN PERTAMA' && String(resolvedPo).trim() !== ''
@@ -606,6 +623,7 @@ export default function SuratJalanPage() {
 
     createSuratJalan({
       ...formData,
+      materialId: activeMaterialId,
       jenis: finalJenis,
       poNumber: finalPoNumber,
       nopol: formData.nomorPolisi,
@@ -859,21 +877,40 @@ export default function SuratJalanPage() {
 
               {/* Row 4: Material & Jenis */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <Select
-                  label="Material"
-                  icon={Box}
-                  required
-                  searchPlaceholder="Cari jenis material..."
-                  value={formData.materialId}
-                  onChange={(e) => setFormData({ ...formData, materialId: e.target.value })}
-                >
-                  <option value="">-- Pilih Material --</option>
-                  {materials.map((m) => (
-                    <option key={m.id} value={m.id}>
-                      {m.name} ({m.satuan}) - PPH {m.pphRate}%
-                    </option>
-                  ))}
-                </Select>
+                <div className="space-y-1">
+                  <Input
+                    label="Material"
+                    icon={Box}
+                    disabled
+                    readOnly
+                    placeholder={
+                      formData.customer
+                        ? "Pilih Pre Order / RO di atas untuk memuat Material"
+                        : "Pilih Customer & Pre Order terlebih dahulu"
+                    }
+                    value={
+                      materials.find((m) => String(m.id) === String(formData.materialId))
+                        ? `${materials.find((m) => String(m.id) === String(formData.materialId)).name} (${materials.find((m) => String(m.id) === String(formData.materialId)).satuan || 'm³'})`
+                        : (formData.materialId ? String(formData.materialId) : '')
+                    }
+                    helperText={
+                      formData.materialId
+                        ? "Material dikunci otomatis sesuai Received Order (RO) yang dipilih."
+                        : formData.customer
+                          ? "Pilih Pre Order di atas untuk memuat Material"
+                          : "Pilih Customer & Pre Order terlebih dahulu untuk memuat Material"
+                    }
+                    className="font-medium text-neutral-300 cursor-not-allowed select-all"
+                  />
+                  <p className="text-[11px] text-neutral-400 font-mono flex items-center gap-1.5 pt-0.5">
+                    <Lock className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                    <span>
+                      {materials.find((m) => String(m.id) === String(formData.materialId))
+                        ? `Terkunci: ${materials.find((m) => String(m.id) === String(formData.materialId))?.name} (sesuai RO)`
+                        : 'Otomatis terkunci sesuai kontrak Receive Order (RO)'}
+                    </span>
+                  </p>
+                </div>
 
                 <div className="space-y-1">
                   <Select

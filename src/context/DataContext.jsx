@@ -2359,12 +2359,22 @@ export function DataProvider({ children }) {
       const res = await fetch('/api/invoices/available-orders');
       if (res.ok) {
         const json = await res.json();
-        return json.data || [];
+        const rawOrders = json.data || [];
+        // Normalize field names so the UI can consistently use customerName / hargaSatuan
+        const normalized = rawOrders.map((o) => ({
+          ...o,
+          customerName: o.customerName || o.defaultCustomerName || o.customer || '-',
+          customerAddress: o.customerAddress || o.defaultCustomerAddress || '',
+          customerNpwp: o.customerNpwp || o.defaultCustomerNpwp || '',
+          hargaSatuan: Number(o.hargaSatuan || o.hargaJual || 0),
+          totalVolume: Number(o.totalVolume || 0),
+        }));
+        return { success: true, data: normalized };
       }
     } catch (err) {
       console.error('Failed to fetch available orders for Invoice:', err);
     }
-    return [];
+    return { success: false, data: [] };
   }, []);
 
   const createInvoice = async (invData) => {
@@ -2375,6 +2385,14 @@ export function DataProvider({ children }) {
     const newInvPayload = {
       ...invData,
       id,
+      // Ensure server-compatible field names for customer
+      customer: invData.customer || invData.customerName || invData.perusahaan || '-',
+      perusahaan: invData.perusahaan || invData.customerName || invData.customer || '-',
+      // Map form tax fields to server-compatible names
+      subtotalJasa: Number(invData.dpp || invData.subtotalJasa || 0),
+      ppnNominal: Number(invData.ppn || invData.ppnNominal || 0),
+      pphNominal: Number(invData.pph || invData.pphNominal || 0),
+      npwp: invData.npwp || invData.customerNpwp || '',
       kodeTransaksi: invData.kodeTransaksi || invData.nomorInvoice || `INV-${Date.now()}`,
       statusBayar: 'Belum Dibayar',
       status: 'pending_approval',

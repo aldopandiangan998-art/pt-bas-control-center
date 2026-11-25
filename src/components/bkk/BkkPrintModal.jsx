@@ -46,6 +46,10 @@ export default function BkkPrintModal({ isOpen, onClose, bkkItem }) {
   const { currentUser } = useAuth();
   const { fetchBkkPrintData, recordBkkPrint } = useData();
   const [printData, setPrintData] = useState(() => buildInitialPrintData(bkkItem));
+
+  // Business Rule: Printing only allowed after Superadmin approval
+  const statusStr = String(bkkItem?.status || printData?.status || '').toLowerCase();
+  const isApprovedForPrint = ['approved', 'pending_verification', 'revision_required', 'paid'].includes(statusStr) || bkkItem?.statusBayar === 'Lunas';
   const [loading, setLoading] = useState(false);
   const printAreaRef = useRef(null);
   const lastFetchedIdRef = useRef(null);
@@ -120,6 +124,9 @@ export default function BkkPrintModal({ isOpen, onClose, bkkItem }) {
   const createdTimestampFormatted = formatTimestamp(printData?.timestamp || bkkItem.timestamp || bkkItem.created_at);
 
   const handlePrint = () => {
+    if (!isApprovedForPrint) {
+      return;
+    }
     if (bkkItem?.id && recordBkkPrint) {
       recordBkkPrint(bkkItem.id);
     }
@@ -189,15 +196,29 @@ export default function BkkPrintModal({ isOpen, onClose, bkkItem }) {
           </div>
 
           <div className="flex items-center gap-2">
+            {!isApprovedForPrint && (
+              <div className="px-2.5 py-1 rounded-lg bg-amber-950/40 border border-amber-500/40 text-amber-300 text-xs flex items-center gap-1.5 font-medium">
+                <Lock className="w-3.5 h-3.5 text-amber-400" />
+                <span className="hidden md:inline">Menunggu Approval Superadmin</span>
+              </div>
+            )}
             <button
               type="button"
               onClick={handlePrint}
-              disabled={loading}
-              className="px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-xl bg-[#F4511E] hover:bg-[#E04418] text-white text-xs font-bold transition-all shadow-md shadow-[#F4511E]/20 flex items-center gap-2 cursor-pointer disabled:opacity-50"
-              title="Cetak Dokumen"
+              disabled={loading || !isApprovedForPrint}
+              className={`px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-xl text-white text-xs font-bold transition-all shadow-md flex items-center gap-2 ${
+                isApprovedForPrint
+                  ? 'bg-[#F4511E] hover:bg-[#E04418] shadow-[#F4511E]/20 cursor-pointer'
+                  : 'bg-neutral-800 text-neutral-400 border border-neutral-700 opacity-50 cursor-not-allowed shadow-none'
+              }`}
+              title={isApprovedForPrint ? 'Cetak Dokumen' : 'Pencetakan tidak diizinkan sebelum BKK disetujui Superadmin'}
             >
-              <Printer className="w-3.5 h-3.5" />
-              <span>Cetak Dokumen</span>
+              {isApprovedForPrint ? (
+                <Printer className="w-3.5 h-3.5" />
+              ) : (
+                <Lock className="w-3.5 h-3.5 text-amber-400" />
+              )}
+              <span>{isApprovedForPrint ? 'Cetak Dokumen' : 'Pencetakan Terkunci'}</span>
             </button>
             <button
               type="button"

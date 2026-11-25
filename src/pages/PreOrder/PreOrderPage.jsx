@@ -190,76 +190,7 @@ function mkDefaultForm() {
   };
 }
 
-const REFERENCE_PREORDERS = [
-  {
-    id: 1795062000001,
-    nomorRO: 'RO-LW-112026-001',
-    nomorPo: 'PO-LW-112026-001',
-    customer: 'PT LION WINGS',
-    tanggal: '2026-11-19',
-    materialName: 'SIRTU',
-    satuan: 'm³',
-    totalOrder: 2278.00,
-    terkirim: 69.88,
-    jenisRO: 'JASA ANGKUT + MATERIAL',
-    jenisPajak: 'PKP',
-    top: '14 hari',
-    hargaBeli: 50765,
-    hargaJual: 85000,
-    status: 'APPROVED',
-  },
-  {
-    id: 1795062166339,
-    nomorRO: 'RO-WS-112026-002',
-    nomorPo: 'PO-WS-112026-002',
-    customer: 'PT WINGS SURYA',
-    tanggal: '2026-11-19',
-    materialName: 'BASE COURSE',
-    satuan: 'm³',
-    totalOrder: 485.00,
-    terkirim: 32.5,
-    jenisRO: 'JASA ANGKUT + MATERIAL',
-    jenisPajak: 'PKP',
-    top: '14 hari',
-    hargaBeli: 40000,
-    hargaJual: 54500,
-    status: 'APPROVED',
-  },
-  {
-    id: 1795062530575,
-    nomorRO: 'RO-WS-112026-003',
-    nomorPo: 'PO-WS-112026-003',
-    customer: 'PT WINGS SURYA',
-    tanggal: '2026-11-19',
-    materialName: 'BASE COURSE',
-    satuan: 'm³',
-    totalOrder: 100.00,
-    terkirim: 32.5,
-    jenisRO: 'JASA ANGKUT + MATERIAL',
-    jenisPajak: 'PKP',
-    top: '14 hari',
-    hargaBeli: 25000,
-    hargaJual: 40330,
-    status: 'APPROVED',
-  },
-  {
-    id: 1795073959896,
-    nomorRO: 'RO-WS-112026-004',
-    nomorPo: 'PO-WS-112026-004',
-    customer: 'PT WINGS SURYA',
-    tanggal: '2026-11-19',
-    materialName: 'LIMESTONE',
-    satuan: 'm³',
-    totalOrder: 200.00,
-    terkirim: 97.5,
-    jenisRO: 'JASA ANGKUT + MATERIAL',
-    jenisPajak: 'PKP',
-    top: '14 hari',
-    hargaBeli: 39000,
-    hargaJual: 41999.87,
-    status: 'APPROVED',
-  },
-];
+// REFERENCE_PREORDERS removed — only real API data is used now.
 
 const formatNumber = (num) => {
   const val = Number(num) || 0;
@@ -493,10 +424,7 @@ export default function PreOrderPage() {
   const { addToast } = useToast();
 
   const safePreOrders = useMemo(() => {
-    if (Array.isArray(preOrders) && preOrders.length > 0) {
-      return preOrders;
-    }
-    return REFERENCE_PREORDERS;
+    return Array.isArray(preOrders) ? preOrders : [];
   }, [preOrders]);
 
   const [activeTab, setActiveTab] = useState('list');

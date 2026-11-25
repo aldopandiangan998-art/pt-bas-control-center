@@ -2388,6 +2388,14 @@ app.get('/api/bkk/:id/print-data', (req, res) => {
       return res.status(404).json({ success: false, message: `BKK ${id} tidak ditemukan.` });
     }
 
+    const currentStatus = String(bkk.status || '').toLowerCase().trim();
+    if (['pending_approval', 'menunggu_approval', 'rejected'].includes(currentStatus)) {
+      return res.status(403).json({
+        success: false,
+        message: 'Dokumen BKK belum dapat dicetak karena masih menunggu persetujuan Superadmin.',
+      });
+    }
+
     // Resolve Customer info
     let customerName = bkk.customer || bkk.perusahaan || '-';
     let customerRow = null;
@@ -2618,6 +2626,14 @@ app.post('/api/bkk/:id/record-print', (req, res) => {
     const bkk = db.prepare('SELECT id, kodeTransaksi, status FROM bkk WHERE id = ?').get(id);
     if (!bkk) {
       return res.status(404).json({ success: false, message: `BKK ${id} tidak ditemukan.` });
+    }
+
+    const currentStatus = String(bkk.status || '').toLowerCase().trim();
+    if (['pending_approval', 'menunggu_approval', 'rejected'].includes(currentStatus)) {
+      return res.status(403).json({
+        success: false,
+        message: 'Aktivitas cetak ditolak: BKK belum disetujui oleh Superadmin.',
+      });
     }
 
     const printer = (req.headers['x-user-name'] || req.headers['x-user-email'] || req.body?.printer || 'Admin').trim();
@@ -3214,6 +3230,7 @@ app.get('/api/invoices/available-orders', (req, res) => {
         j.satuan,
         j.hargaBeli,
         j.hargaJual,
+        j.hargaJual as hargaSatuan,
         j.nominalBeli,
         j.nominalJual,
         j.status as jurnalStatus,
@@ -3245,7 +3262,17 @@ app.get('/api/invoices/available-orders', (req, res) => {
       ORDER BY j.id DESC
     `).all();
 
-    res.json({ success: true, data: orders });
+    // Normalize output so that the frontend always has customerName and hargaSatuan
+    const normalizedOrders = orders.map((o) => ({
+      ...o,
+      customerName: o.customer || o.defaultCustomerName || '-',
+      customerAddress: o.customerAddress || o.defaultCustomerAddress || '',
+      customerNpwp: o.defaultCustomerNpwp || '',
+      hargaSatuan: Number(o.hargaSatuan || o.hargaJual || 0),
+      poNumber: o.poNumber || o.poNomorPo || null,
+    }));
+
+    res.json({ success: true, data: normalizedOrders });
   } catch (err) {
     console.error('Error fetching available orders for Invoices:', err);
     res.status(500).json({ success: false, message: err.message });

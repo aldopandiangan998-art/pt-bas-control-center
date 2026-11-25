@@ -1,98 +1,459 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useData } from '../../context/DataContext';
 import { useToast } from '../../context/ToastContext';
-import { Button, Modal, Card, Input, Select, Badge, ViewToggle, SearchBar, Checkbox, IndeterminateCheckbox } from '../../components/ui';
+
 import {
   FileText,
   Search,
   Plus,
-  RefreshCw,
+  RotateCw,
   Printer,
-  Upload,
   CheckCircle2,
   Clock,
   AlertTriangle,
-  XCircle,
-  FileCheck,
+  X,
   Building2,
-  ArrowRight,
-  TrendingUp,
-  DollarSign,
-  Layers,
-  ChevronRight,
-  ExternalLink,
-  ShieldCheck,
   Calendar,
+  ShieldCheck,
+  Info,
+  LayoutList,
+  LayoutGrid,
+  Filter,
   Sparkles,
-  Info
+  ArrowLeft,
+  Layers,
+  ChevronDown,
+  Receipt,
 } from 'lucide-react';
+import { Button } from '../../components/ui';
 import InvoicePrintModal from '../../components/invoice/InvoicePrintModal';
 import InvoiceDetailWorkflowModal from '../../components/invoice/InvoiceDetailWorkflowModal';
 
-const STATUS_CONFIG = {
-  draft: {
-    label: 'Draft',
-    bg: 'bg-zinc-800/80 text-zinc-300 border-zinc-700/60',
-    icon: Clock
-  },
-  pending_approval: {
-    label: 'Menunggu Approval',
-    bg: 'bg-amber-950/40 text-amber-400 border-amber-800/50',
-    icon: Clock
-  },
-  approved: {
-    label: 'Disetujui (Siap Cetak)',
-    bg: 'bg-blue-950/40 text-blue-400 border-blue-800/50',
-    icon: FileCheck
-  },
-  rejected: {
-    label: 'Ditolak',
-    bg: 'bg-rose-950/40 text-rose-400 border-rose-800/50',
-    icon: XCircle
-  },
-  pending_verification: {
-    label: 'Verifikasi TTD',
-    bg: 'bg-purple-950/40 text-purple-400 border-purple-800/50',
-    icon: ShieldCheck
-  },
-  revision_required: {
-    label: 'Revisi Berkas',
-    bg: 'bg-orange-950/40 text-orange-400 border-orange-800/50',
-    icon: AlertTriangle
-  },
-  paid: {
-    label: 'LUNAS',
-    bg: 'bg-emerald-950/40 text-emerald-400 border-emerald-800/50',
-    icon: CheckCircle2
-  }
-};
-
-const formatRupiah = (val) => {
+// ─────────────────────────────────────────────────────────────────────────────
+// Format Currency Helper
+// ─────────────────────────────────────────────────────────────────────────────
+const formatCurrency = (val) => {
   return new Intl.NumberFormat('id-ID', {
     style: 'currency',
     currency: 'IDR',
     minimumFractionDigits: 0,
-    maximumFractionDigits: 0
+    maximumFractionDigits: 0,
   }).format(val || 0);
 };
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Status Badge Helper (Matching BKK Pill Style)
+// ─────────────────────────────────────────────────────────────────────────────
+function getInvoiceStatusBadge(item) {
+  const s = String(item.status || 'draft').toLowerCase();
+  const isPaid = s === 'paid' || item.statusBayar === 'Lunas';
+  if (isPaid) {
+    return (
+      <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 text-[10px] font-mono font-bold shrink-0">
+        <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+        <span>LUNAS</span>
+      </span>
+    );
+  }
+  if (s === 'pending_verification') {
+    return (
+      <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-[#F4511E]/15 text-orange-400 border border-[#F4511E]/30 text-[10px] font-mono font-bold shrink-0">
+        <ShieldCheck className="w-3 h-3 text-orange-400" />
+        <span>VERIFIKASI</span>
+      </span>
+    );
+  }
+  if (s === 'revision_required') {
+    return (
+      <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-rose-500/15 text-rose-400 border border-rose-500/30 text-[10px] font-mono font-bold shrink-0">
+        <RotateCw className="w-3 h-3 text-rose-400" />
+        <span>REVISI TTD</span>
+      </span>
+    );
+  }
+  if (s === 'approved') {
+    return (
+      <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-blue-500/15 text-blue-400 border border-blue-500/30 text-[10px] font-mono font-bold shrink-0">
+        <Printer className="w-3 h-3 text-blue-400" />
+        <span>SIAP CETAK</span>
+      </span>
+    );
+  }
+  if (s === 'rejected') {
+    return (
+      <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-rose-500/15 text-rose-400 border border-rose-500/30 text-[10px] font-mono font-bold shrink-0">
+        <X className="w-3 h-3 text-rose-400" />
+        <span>DITOLAK</span>
+      </span>
+    );
+  }
+  if (s === 'pending_approval' || s === 'menunggu_approval') {
+    return (
+      <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-amber-500/15 text-amber-400 border border-amber-500/30 text-[10px] font-mono font-bold shrink-0">
+        <Clock className="w-3 h-3 text-amber-400" />
+        <span>APPROVAL</span>
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-neutral-800 text-neutral-300 border border-neutral-700 text-[10px] font-mono font-bold shrink-0">
+      <Clock className="w-3 h-3 text-neutral-400" />
+      <span>DRAFT</span>
+    </span>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// InvoiceCard (Balanced, Symmetrical Medium-Sized Layout matching CashOutCard)
+// ─────────────────────────────────────────────────────────────────────────────
+function InvoiceCard({ inv, onInfo, onPrint, viewMode = 'list' }) {
+  const normalizedStatus = (inv.status || 'draft').toLowerCase();
+  const isApprovedOrBeyond = ['approved', 'pending_verification', 'revision_required', 'paid'].includes(normalizedStatus);
+  const isPaid = normalizedStatus === 'paid' || inv.statusBayar === 'Lunas';
+  const statusBadge = getInvoiceStatusBadge(inv);
+
+  const docCode = inv.nomorInvoice || '-';
+  const customerName = inv.customerName || inv.customer || '-';
+  const volumeNum = Number(inv.volume ?? inv.totalVolume) || 0;
+  const formattedVolume = volumeNum.toFixed(2);
+  const satuan = 'm³';
+  const material = (inv.material || 'SIRTU')
+    .replace(/\s*\(Curah\)/i, '')
+    .replace(/\s*\(Padat\)/i, '');
+
+  const dateDisplay = inv.createdAt
+    ? new Date(inv.createdAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })
+    : inv.tanggal || '-';
+
+  const amountNet = Number(inv.totalTagihan || inv.nominal || inv.amount) || 0;
+  const amountFormatted = `IDR ${amountNet.toLocaleString('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+
+  const dppVal = Number(inv.dpp || (volumeNum * (inv.hargaSatuan || 0))) || 0;
+  const ppnVal = Number(inv.ppn) || 0;
+  const pphVal = Number(inv.pph) || 0;
+
+  // ── GRID VIEW CARD (Symmetrical, Equal-height, Clean proportions)
+  if (viewMode === 'grid') {
+    return (
+      <div
+        onClick={onInfo}
+        className="rounded-xl border border-[#22262B] hover:border-[#383E48] bg-[#121417] hover:bg-[#15171B] p-4 transition-all duration-200 select-none cursor-pointer flex flex-col justify-between group shadow-sm hover:shadow-md"
+      >
+        {/* Top Header: Code & Status */}
+        <div className="flex items-center justify-between gap-2 pb-3 border-b border-[#20242A]">
+          <div className="flex items-center gap-2 min-w-0">
+            <span
+              className="font-mono text-xs font-bold text-neutral-200 bg-[#181B1F] border border-[#282D34] px-2.5 py-1 rounded-md tracking-tight truncate"
+              title={docCode}
+            >
+              {docCode}
+            </span>
+            {inv.hasSignedDocument && (
+              <span
+                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-mono bg-[#181B1F] text-neutral-300 border border-[#282D34] shrink-0"
+                title="Berkas TTD Fisik Terunggah"
+              >
+                <ShieldCheck className="w-2.5 h-2.5 text-[#F4511E]" />
+                <span>TTD FISIK</span>
+              </span>
+            )}
+          </div>
+          <div className="shrink-0">{statusBadge}</div>
+        </div>
+
+        {/* Middle Body: Entity & Order Details */}
+        <div className="py-3.5 space-y-3 flex-1 flex flex-col justify-between">
+          <div>
+            <span className="text-[10px] font-mono uppercase tracking-wider text-neutral-500 block">
+              Pelanggan (Customer)
+            </span>
+            <div
+              className="font-bold text-sm text-white truncate group-hover:text-[#F4511E] transition-colors leading-snug mt-0.5"
+              title={customerName}
+            >
+              {customerName}
+            </div>
+            {inv.customerAddress && (
+              <div className="text-[11px] text-neutral-400 truncate mt-0.5" title={inv.customerAddress}>
+                {inv.customerAddress}
+              </div>
+            )}
+          </div>
+
+          {/* Symmetrical 2x2 Specs Grid */}
+          <div className="grid grid-cols-2 gap-2 font-mono text-xs pt-1">
+            <div className="bg-[#16191D] p-2 rounded-lg border border-[#22262B]">
+              <span className="text-[10px] text-neutral-500 block uppercase font-medium">Nomor RO</span>
+              <span className="text-neutral-200 font-semibold truncate block mt-0.5" title={inv.nomorRO || '-'}>
+                {inv.nomorRO || '-'}
+              </span>
+            </div>
+
+            <div className="bg-[#16191D] p-2 rounded-lg border border-[#22262B]">
+              <span className="text-[10px] text-neutral-500 block uppercase font-medium">Volume</span>
+              <span className="text-neutral-200 font-semibold truncate block mt-0.5" title={`${formattedVolume} ${satuan}`}>
+                {formattedVolume} {satuan}
+              </span>
+            </div>
+
+            <div className="bg-[#16191D] p-2 rounded-lg border border-[#22262B]">
+              <span className="text-[10px] text-neutral-500 block uppercase font-medium">Material</span>
+              <span className="text-neutral-200 font-semibold truncate block mt-0.5 uppercase" title={material || 'SIRTU'}>
+                {material || 'SIRTU'}
+              </span>
+            </div>
+
+            <div className="bg-[#16191D] p-2 rounded-lg border border-[#22262B]">
+              <span className="text-[10px] text-neutral-500 block uppercase font-medium">Tanggal</span>
+              <span className="text-neutral-200 font-semibold truncate block mt-0.5" title={dateDisplay}>
+                {dateDisplay}
+              </span>
+            </div>
+          </div>
+
+          {/* Tax summary chips (clean cohesive neutrals) */}
+          <div className="flex items-center gap-1.5 flex-wrap text-[10px] font-mono text-neutral-400 pt-1">
+            <span className="bg-[#16191D] px-2 py-0.5 rounded border border-[#22262B] text-neutral-300">
+              <span className="text-neutral-500">DPP:</span> {formatCurrency(dppVal)}
+            </span>
+            <span className="bg-[#16191D] px-2 py-0.5 rounded border border-[#22262B] text-neutral-300">
+              <span className="text-neutral-500">PPN:</span> +{formatCurrency(ppnVal)}
+            </span>
+            <span className="bg-[#16191D] px-2 py-0.5 rounded border border-[#22262B] text-neutral-300">
+              <span className="text-neutral-500">PPh:</span> -{formatCurrency(pphVal)}
+            </span>
+          </div>
+        </div>
+
+        {/* Bottom Footer: Amount & Actions */}
+        <div className="pt-3 border-t border-[#20242A] flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <span className="text-[10px] text-neutral-500 font-mono uppercase tracking-wider block">
+              Total Tagihan Net
+            </span>
+            <div className="text-base sm:text-lg font-black font-mono text-white tracking-tight leading-none mt-1 truncate">
+              {amountFormatted}
+            </div>
+          </div>
+
+          <div className="flex items-center gap-1.5 shrink-0">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                if (isApprovedOrBeyond) onPrint();
+              }}
+              disabled={!isApprovedOrBeyond}
+              className={`h-8 px-2.5 rounded-lg border text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer ${
+                isApprovedOrBeyond
+                  ? 'bg-[#181B1E] hover:bg-[#252A30] border-[#2A2E35] hover:border-neutral-500 text-neutral-300 hover:text-white'
+                  : 'bg-[#15171A] border-[#202327] text-neutral-600 cursor-not-allowed opacity-50'
+              }`}
+              title={isApprovedOrBeyond ? 'Cetak Faktur' : 'Perlu Approval Superadmin'}
+            >
+              <Printer className="w-3.5 h-3.5 text-[#F4511E]" />
+              <span className="hidden sm:inline">Cetak</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onInfo();
+              }}
+              className="h-8 px-3 rounded-lg bg-[#181B1E] hover:bg-[#252A30] border border-[#2A2E35] hover:border-neutral-500 text-neutral-300 hover:text-white text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+              title="Rincian Faktur Invoice"
+            >
+              <Info className="w-3.5 h-3.5 text-[#F4511E]" />
+              <span>Detail</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── LIST VIEW CARD (Balanced Architectural 2-Column Layout)
+  return (
+    <div
+      onClick={onInfo}
+      className="rounded-xl border border-[#22262B] hover:border-[#383E48] bg-[#121417] hover:bg-[#15171B] p-4 transition-all duration-200 select-none cursor-pointer group shadow-sm hover:shadow-md"
+    >
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+        {/* Left Section: Information & Specifications */}
+        <div className="min-w-0 flex-1 space-y-2.5">
+          {/* Row 1: Code + Status Badge + Date + Physical TTD */}
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <span className="font-mono text-xs font-bold text-neutral-200 bg-[#181B1F] border border-[#282D34] px-2.5 py-1 rounded-md tracking-tight">
+              {docCode}
+            </span>
+            {statusBadge}
+            <span className="inline-flex items-center gap-1 text-[11px] font-mono text-neutral-400">
+              <Calendar className="w-3 h-3 text-neutral-500" />
+              <span>{dateDisplay}</span>
+            </span>
+            {inv.hasSignedDocument && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-mono bg-[#181B1F] text-neutral-300 border border-[#282D34]">
+                <ShieldCheck className="w-3 h-3 text-[#F4511E]" />
+                <span>TTD FISIK</span>
+              </span>
+            )}
+          </div>
+
+          {/* Row 2: Customer Name */}
+          <div className="space-y-1">
+            <h3
+              className="font-bold text-sm sm:text-base text-white truncate max-w-xl group-hover:text-[#F4511E] transition-colors leading-snug"
+              title={customerName}
+            >
+              {customerName}
+            </h3>
+            {inv.customerAddress && (
+              <div className="flex items-center gap-1.5 text-xs text-neutral-400 truncate">
+                <Building2 className="w-3.5 h-3.5 text-neutral-500 shrink-0" />
+                <span className="truncate" title={inv.customerAddress}>{inv.customerAddress}</span>
+              </div>
+            )}
+          </div>
+
+          {/* Row 3: Standardized Badges for Order Specs (Matching BKK exactly) */}
+          <div className="flex items-center gap-2 flex-wrap text-xs font-mono">
+            <span className="inline-flex items-center gap-1.5 bg-[#16191D] border border-[#24282E] px-2.5 py-0.5 rounded-md text-neutral-300">
+              <span className="text-neutral-500">RO:</span>
+              <strong className="text-white font-semibold">{inv.nomorRO || '-'}</strong>
+            </span>
+
+            {inv.poNumber && inv.poNumber !== '-' && (
+              <span className="inline-flex items-center gap-1.5 bg-[#16191D] border border-[#24282E] px-2.5 py-0.5 rounded-md text-neutral-300">
+                <span className="text-neutral-500">PO:</span>
+                <strong className="text-white font-semibold">{inv.poNumber}</strong>
+              </span>
+            )}
+
+            <span className="inline-flex items-center gap-1.5 bg-[#16191D] border border-[#24282E] px-2.5 py-0.5 rounded-md text-neutral-300">
+              <span className="text-neutral-500">Vol:</span>
+              <strong className="text-white font-semibold">{formattedVolume} {satuan}</strong>
+            </span>
+
+            <span className="inline-flex items-center gap-1.5 bg-[#16191D] border border-[#24282E] px-2.5 py-0.5 rounded-md text-neutral-300 uppercase">
+              <span className="text-neutral-500">Mat:</span>
+              <strong className="text-white font-semibold">{material || 'SIRTU'}</strong>
+            </span>
+
+            <span className="inline-flex items-center gap-1.5 bg-[#16191D] border border-[#24282E] px-2.5 py-0.5 rounded-md text-neutral-300">
+              <span className="text-neutral-500">DPP:</span>
+              <strong className="text-white font-semibold">{formatCurrency(dppVal)}</strong>
+            </span>
+
+            <span className="inline-flex items-center gap-1.5 bg-[#16191D] border border-[#24282E] px-2.5 py-0.5 rounded-md text-neutral-300">
+              <span className="text-neutral-500">PPN:</span>
+              <strong className="text-white font-semibold">+{formatCurrency(ppnVal)}</strong>
+            </span>
+
+            <span className="inline-flex items-center gap-1.5 bg-[#16191D] border border-[#24282E] px-2.5 py-0.5 rounded-md text-neutral-300">
+              <span className="text-neutral-500">PPh:</span>
+              <strong className="text-white font-semibold">-{formatCurrency(pphVal)}</strong>
+            </span>
+          </div>
+        </div>
+
+        {/* Right Section: Amount & Action Buttons (Architectural Separation) */}
+        <div className="flex sm:flex-row lg:flex-col items-start sm:items-center lg:items-end justify-between lg:justify-center gap-3 pt-3 lg:pt-0 border-t lg:border-t-0 border-[#20242A] lg:border-l lg:border-[#20242A] lg:pl-6 shrink-0">
+          <div className="text-left lg:text-right">
+            <span className="text-[10px] text-neutral-500 uppercase font-mono tracking-wider block">
+              Total Tagihan Net
+            </span>
+            <div className="text-base sm:text-xl font-black font-mono text-white tracking-tight leading-none mt-1">
+              {amountFormatted}
+            </div>
+            <div className="text-[10px] text-neutral-400 font-mono mt-1">
+              Status:{' '}
+              <span className="text-neutral-200 font-medium">
+                {isPaid ? 'Lunas' : 'Belum Lunas'}
+              </span>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                if (isApprovedOrBeyond) onPrint();
+              }}
+              disabled={!isApprovedOrBeyond}
+              className={`h-8 px-3 rounded-lg border text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer ${
+                isApprovedOrBeyond
+                  ? 'bg-[#181B1E] hover:bg-[#252A30] border-[#2A2E35] hover:border-neutral-500 text-neutral-300 hover:text-white'
+                  : 'bg-[#15171A] border-[#202327] text-neutral-600 cursor-not-allowed opacity-50'
+              }`}
+              title={isApprovedOrBeyond ? 'Cetak Faktur Invoice Resmi' : 'Perlu Approval Superadmin sebelum cetak'}
+            >
+              <Printer className="w-3.5 h-3.5 text-[#F4511E]" />
+              <span>Cetak</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onInfo();
+              }}
+              className="h-8 px-3 rounded-lg bg-[#181B1E] hover:bg-[#252A30] border border-[#2A2E35] hover:border-neutral-500 text-neutral-300 hover:text-white text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+              title="Rincian Faktur Invoice"
+            >
+              <Info className="w-3.5 h-3.5 text-[#F4511E]" />
+              <span>Detail</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// InvoicePage Main Component
+// ─────────────────────────────────────────────────────────────────────────────
 export default function InvoicePage() {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const {
     invoiceList,
     fetchInvoices,
     fetchAvailableOrdersForInvoice,
-    createInvoice
+    createInvoice,
   } = useData();
+  const { addToast } = useToast();
 
   const [activeTab, setActiveTab] = useState('list'); // 'list' | 'create'
   const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('ALL'); // 'ALL' | 'PENDING' | 'APPROVED' | 'VERIFIKASI' | 'REVISI' | 'LUNAS'
   const [selectedInvoiceForModal, setSelectedInvoiceForModal] = useState(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [selectedInvoiceForPrint, setSelectedInvoiceForPrint] = useState(null);
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
+
+  // View mode state with localStorage persistence
+  const [viewMode, setViewMode] = useState(() => {
+    try {
+      return localStorage.getItem('invoice_view_mode') || 'list';
+    } catch {
+      return 'list';
+    }
+  });
+
+  const handleSetViewMode = (mode) => {
+    setViewMode(mode);
+    try {
+      localStorage.setItem('invoice_view_mode', mode);
+    } catch {}
+  };
 
   // Available completed orders for Invoice creation
   const [availableOrders, setAvailableOrders] = useState([]);
@@ -110,7 +471,7 @@ export default function InvoicePage() {
     bankAccount: '822-091-8888',
     accountName: 'PT BINTANG ANUGERAH SEJAHTERA',
     tempoHari: 14,
-    notes: ''
+    notes: '',
   });
 
   // Reload data
@@ -129,7 +490,14 @@ export default function InvoicePage() {
     try {
       const res = await fetchAvailableOrdersForInvoice();
       if (res.success) {
-        setAvailableOrders(res.data || []);
+        const orders = res.data || [];
+        setAvailableOrders(orders);
+        setSelectedOrder((prev) => {
+          if (prev && orders.some((o) => o.jurnalId === prev.jurnalId && o.nomorRO === prev.nomorRO)) {
+            return orders.find((o) => o.jurnalId === prev.jurnalId && o.nomorRO === prev.nomorRO);
+          }
+          return orders[0] || null;
+        });
       }
     } catch (err) {
       console.error('Failed to load available orders:', err);
@@ -138,64 +506,71 @@ export default function InvoicePage() {
     }
   };
 
-  // Stats calculation
-  const stats = useMemo(() => {
-    const list = invoiceList || [];
-    const totalCount = list.length;
-    const pendingApprovalCount = list.filter(i => (i.status || '').toLowerCase() === 'pending_approval' || (i.status || '').toLowerCase() === 'menunggu_approval').length;
-    const pendingVerifCount = list.filter(i => (i.status || '').toLowerCase() === 'pending_verification').length;
-    const paidCount = list.filter(i => (i.status || '').toLowerCase() === 'paid' || i.statusBayar === 'Lunas').length;
+  // Counts by status (matching BkkPage counts structure)
+  const counts = useMemo(() => {
+    let pending = 0;
+    let approved = 0;
+    let verification = 0;
+    let revision = 0;
+    let paid = 0;
 
-    const totalNominal = list.reduce((sum, item) => sum + (Number(item.totalTagihan) || Number(item.nominal) || 0), 0);
-    const paidNominal = list
-      .filter(i => (i.status || '').toLowerCase() === 'paid' || i.statusBayar === 'Lunas')
-      .reduce((sum, item) => sum + (Number(item.totalTagihan) || Number(item.nominal) || 0), 0);
-    const outstandingNominal = totalNominal - paidNominal;
+    invoiceList.forEach((inv) => {
+      const s = String(inv.status || '').toLowerCase();
+      if (s === 'paid' || inv.statusBayar === 'Lunas') paid++;
+      else if (s === 'pending_verification') verification++;
+      else if (s === 'revision_required') revision++;
+      else if (s === 'approved') approved++;
+      else if (s === 'pending_approval' || s === 'menunggu_approval') pending++;
+    });
 
     return {
-      totalCount,
-      pendingApprovalCount,
-      pendingVerifCount,
-      paidCount,
-      totalNominal,
-      paidNominal,
-      outstandingNominal
+      pending,
+      approved,
+      verification,
+      revision,
+      paid,
+      all: invoiceList.length,
     };
   }, [invoiceList]);
 
-  // Filtered invoices
+  // Filtered invoices (matching BkkPage filter logic)
   const filteredInvoices = useMemo(() => {
-    let result = invoiceList || [];
+    return invoiceList
+      .filter((inv) => {
+        // Free text search
+        const q = (searchQuery || '').toLowerCase().trim();
+        const matchSearch =
+          !q ||
+          (inv.nomorInvoice && inv.nomorInvoice.toLowerCase().includes(q)) ||
+          (inv.customerName && inv.customerName.toLowerCase().includes(q)) ||
+          (inv.customer && inv.customer.toLowerCase().includes(q)) ||
+          (inv.nomorRO && inv.nomorRO.toLowerCase().includes(q)) ||
+          (inv.poNumber && inv.poNumber.toLowerCase().includes(q)) ||
+          (inv.id && inv.id.toLowerCase().includes(q)) ||
+          (inv.material && inv.material.toLowerCase().includes(q));
 
-    if (statusFilter !== 'all') {
-      result = result.filter(inv => {
-        const s = (inv.status || 'draft').toLowerCase();
-        if (statusFilter === 'pending_approval') {
-          return s === 'pending_approval' || s === 'menunggu_approval';
-        }
-        if (statusFilter === 'paid') {
-          return s === 'paid' || inv.statusBayar === 'Lunas';
-        }
-        return s === statusFilter.toLowerCase();
-      });
-    }
+        // Status filter
+        const s = String(inv.status || '').toLowerCase();
+        const isPaid = s === 'paid' || inv.statusBayar === 'Lunas';
 
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
-      result = result.filter(inv => {
-        return (
-          (inv.nomorInvoice || '').toLowerCase().includes(q) ||
-          (inv.customerName || inv.customer || '').toLowerCase().includes(q) ||
-          (inv.nomorRO || '').toLowerCase().includes(q) ||
-          (inv.poNumber || '').toLowerCase().includes(q) ||
-          (inv.id || '').toLowerCase().includes(q)
-        );
-      });
-    }
+        const matchStatus =
+          statusFilter === 'ALL' ||
+          (statusFilter === 'PENDING' && (s === 'pending_approval' || s === 'menunggu_approval')) ||
+          (statusFilter === 'APPROVED' && s === 'approved') ||
+          (statusFilter === 'VERIFIKASI' && s === 'pending_verification') ||
+          (statusFilter === 'REVISI' && s === 'revision_required') ||
+          (statusFilter === 'LUNAS' && isPaid);
 
-    // Sort newest first
-    return [...result].sort((a, b) => new Date(b.createdAt || b.tanggal || 0) - new Date(a.createdAt || a.tanggal || 0));
+        return matchSearch && matchStatus;
+      })
+      .sort((a, b) => new Date(b.createdAt || b.tanggal || 0) - new Date(a.createdAt || a.tanggal || 0));
   }, [invoiceList, statusFilter, searchQuery]);
+
+  const handleResetList = () => {
+    setSearchQuery('');
+    setStatusFilter('ALL');
+    if (addToast) addToast('Filter daftar faktur berhasil di-reset', 'info');
+  };
 
   // Handle select order to invoice
   const handleSelectOrder = (order) => {
@@ -240,29 +615,46 @@ export default function InvoicePage() {
         jurnalId: selectedOrder.jurnalId,
         preOrderId: selectedOrder.preOrderId,
         nomorRO: selectedOrder.nomorRO,
-        poNumber: selectedOrder.poNumber,
+        poNumber: selectedOrder.poNumber || selectedOrder.poNomorPo,
+        // Server resolves by 'customer' and 'perusahaan', not 'customerName'
+        customer: selectedOrder.customerName,
+        perusahaan: selectedOrder.customerName,
         customerName: selectedOrder.customerName,
         customerAddress: selectedOrder.customerAddress,
         customerNpwp: selectedOrder.customerNpwp,
+        npwp: selectedOrder.customerNpwp,
+        customerId: selectedOrder.customerId,
         material: selectedOrder.material,
         volume: Number(selectedOrder.totalVolume) || 0,
         hargaSatuan: Number(selectedOrder.hargaSatuan) || 0,
+        // Tax calculations
+        subtotalJasa: formCalculations.dpp,
         dpp: formCalculations.dpp,
+        isPpn: formData.ppnPercent > 0,
+        tarifPpn: formData.ppnPercent,
+        ppnNominal: formCalculations.ppn,
         ppn: formCalculations.ppn,
+        tarifPph: formData.pphType === '2%' ? 2 : formData.pphType === '2.65%' ? 2.65 : 0,
+        pphNominal: formCalculations.pph,
         pph: formCalculations.pph,
         ppnPercent: formData.ppnPercent,
         pphPercent: formData.pphType === '2%' ? 2 : formData.pphType === '2.65%' ? 2.65 : 0,
         totalTagihan: formCalculations.netTotal,
+        amount: formCalculations.netTotal,
         tempoHari: Number(formData.tempoHari) || 14,
         bankName: formData.bankName,
         bankAccount: formData.bankAccount,
         accountName: formData.accountName,
-        notes: formData.notes
+        kirimKeRekening: `${formData.bankName} - ${formData.bankAccount} a/n ${formData.accountName}`,
+        rekeningAtasNama: formData.accountName,
+        notes: formData.notes,
       };
 
       const res = await createInvoice(payload);
       if (res.success) {
-        setCreateSuccessMsg(`Faktur Invoice #${res.data?.nomorInvoice || ''} berhasil dibuat dan otomatis dikunci menunggu Approval Superadmin.`);
+        setCreateSuccessMsg(
+          `Faktur Invoice #${res.data?.nomorInvoice || ''} berhasil dibuat dan otomatis dikunci menunggu Approval Superadmin.`
+        );
         setSelectedOrder(null);
         await fetchInvoices();
         setTimeout(() => {
@@ -290,591 +682,625 @@ export default function InvoicePage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0B0C0E] text-zinc-100 p-4 sm:p-6 lg:p-8">
-      {/* HEADER SECTION */}
-      <div className="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#22262B] pb-5">
-        <div>
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-orange-500/10 border border-orange-500/20 flex items-center justify-center text-[#F4511E]">
-              <FileText className="w-5 h-5" />
-            </div>
-            <div>
-              <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-white flex items-center gap-2">
-                Faktur Invoice Pelanggan
-                <span className="text-xs px-2 py-0.5 rounded-full bg-[#1A1D21] border border-[#2A2E35] text-zinc-400 font-mono">
-                  B2B Billing Workflow
-                </span>
-              </h1>
-              <p className="text-xs sm:text-sm text-zinc-400">
-                Penerbitan tagihan penagihan material, persetujuan bertingkat, verifikasi berkas tanda tangan fisik & pelunasan.
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* TOP CONTROLS & TABS */}
-        <div className="flex items-center gap-3">
+    <div className="space-y-4 w-full pb-32">
+      {/* ── TOP HEADER WITH TAB SWITCHER (Identical to BKK Page) ── */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#24282C]">
+        <div className="flex items-center gap-2.5">
           <button
+            type="button"
             onClick={() => {
-              fetchInvoices();
-              if (activeTab === 'create') loadAvailableOrders();
+              if (activeTab === 'create') {
+                setActiveTab('list');
+              } else if (window.history.length > 1) {
+                navigate(-1);
+              } else {
+                navigate('/');
+              }
             }}
-            className="p-2.5 rounded-lg bg-[#14171A] border border-[#22262B] text-zinc-400 hover:text-white hover:border-[#33383F] transition-all"
-            title="Refresh Data"
+            className="w-8 h-8 flex items-center justify-center rounded-full text-neutral-300 hover:text-white hover:bg-neutral-800 transition-colors cursor-pointer"
+            title="Kembali"
           >
-            <RefreshCw className="w-4 h-4" />
+            <ArrowLeft className="w-5 h-5" />
           </button>
-
-          <div className="flex bg-[#121417] p-1 rounded-xl border border-[#22262B]">
-            <button
-              onClick={() => setActiveTab('list')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all ${
-                activeTab === 'list'
-                  ? 'bg-[#F4511E] text-white shadow-lg shadow-orange-500/20'
-                  : 'text-zinc-400 hover:text-white'
-              }`}
-            >
-              <FileText className="w-4 h-4" />
-              Daftar Invoice
-              <span className="ml-1 px-1.5 py-0.2 rounded-full bg-black/30 text-[11px] font-mono">
-                {invoiceList.length}
-              </span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab('create')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all ${
-                activeTab === 'create'
-                  ? 'bg-[#F4511E] text-white shadow-lg shadow-orange-500/20'
-                  : 'text-zinc-400 hover:text-white'
-              }`}
-            >
-              <Plus className="w-4 h-4" />
-              Buat Invoice Baru
-            </button>
+          <div>
+            <h1 className="text-base sm:text-lg font-bold text-white tracking-tight">
+              {activeTab === 'list' ? 'Data Invoice' : 'Buat Invoice Baru'}
+            </h1>
+            <p className="text-[11px] text-neutral-400">
+              {activeTab === 'list'
+                ? 'Daftar tagihan material B2B, verifikasi berkas tanda tangan fisik & pelunasan'
+                : 'Formulir penerbitan faktur invoice dari order selesai 100%'}
+            </p>
           </div>
+        </div>
+
+        {/* Tab switcher: [Daftar Invoice (X)]  [+ Buat Invoice] */}
+        <div className="flex items-center gap-1.5 bg-[#131517] p-1 rounded-md border border-[#24282C] self-start sm:self-auto">
+          <Button
+            size="xs"
+            variant={activeTab === 'list' ? 'primary' : 'ghost'}
+            onClick={() => setActiveTab('list')}
+          >
+            Daftar Invoice ({invoiceList.length})
+          </Button>
+          <Button
+            size="xs"
+            variant={activeTab === 'create' ? 'primary' : 'ghost'}
+            icon={Plus}
+            onClick={() => setActiveTab('create')}
+          >
+            Buat Invoice
+          </Button>
         </div>
       </div>
 
-      {/* KPI METRIC CARDS - Visual style matching BKK Page */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <div className="bg-[#121417] border border-[#22262B] p-4 rounded-xl relative overflow-hidden">
-          <div className="flex items-center justify-between text-zinc-400 text-xs font-medium mb-1">
-            <span>Total Tagihan Diterbitkan</span>
-            <DollarSign className="w-4 h-4 text-emerald-400" />
-          </div>
-          <div className="text-xl sm:text-2xl font-bold font-mono text-white tracking-tight">
-            {formatRupiah(stats.totalNominal)}
-          </div>
-          <div className="mt-2 text-[11px] text-zinc-500 flex items-center justify-between">
-            <span>Total: {stats.totalCount} Faktur</span>
-            <span className="text-emerald-400/90 font-mono">Lunas: {stats.paidCount}</span>
-          </div>
-        </div>
-
-        <div className="bg-[#121417] border border-[#22262B] p-4 rounded-xl relative overflow-hidden">
-          <div className="flex items-center justify-between text-zinc-400 text-xs font-medium mb-1">
-            <span>Outstanding (Piutang)</span>
-            <TrendingUp className="w-4 h-4 text-orange-400" />
-          </div>
-          <div className="text-xl sm:text-2xl font-bold font-mono text-[#F4511E] tracking-tight">
-            {formatRupiah(stats.outstandingNominal)}
-          </div>
-          <div className="mt-2 text-[11px] text-zinc-500 flex items-center justify-between">
-            <span>Terbayar: {formatRupiah(stats.paidNominal)}</span>
-          </div>
-        </div>
-
-        <div className="bg-[#121417] border border-[#22262B] p-4 rounded-xl relative overflow-hidden">
-          <div className="flex items-center justify-between text-zinc-400 text-xs font-medium mb-1">
-            <span>Menunggu Approval</span>
-            <Clock className="w-4 h-4 text-amber-400" />
-          </div>
-          <div className="text-2xl font-bold font-mono text-amber-400">
-            {stats.pendingApprovalCount}
-          </div>
-          <div className="mt-2 text-[11px] text-zinc-500">
-            Perlu persetujuan Superadmin sebelum cetak
-          </div>
-        </div>
-
-        <div className="bg-[#121417] border border-[#22262B] p-4 rounded-xl relative overflow-hidden">
-          <div className="flex items-center justify-between text-zinc-400 text-xs font-medium mb-1">
-            <span>Verifikasi Dokumen Fisik</span>
-            <ShieldCheck className="w-4 h-4 text-purple-400" />
-          </div>
-          <div className="text-2xl font-bold font-mono text-purple-400">
-            {stats.pendingVerifCount}
-          </div>
-          <div className="mt-2 text-[11px] text-zinc-500">
-            Berkas TTD fisik terunggah menunggu cek
-          </div>
-        </div>
-      </div>
-
-      {/* TAB CONTENT: DAFTAR INVOICE */}
+      {/* ════════════════════════════════════════════════════════════════════════
+          VIEW 1 — DAFTAR INVOICE (List of Invoices - Visually Identical to BKK)
+         ════════════════════════════════════════════════════════════════════════ */}
       {activeTab === 'list' && (
-        <div className="space-y-4">
-          {/* SEARCH & FILTER BAR */}
-          <div className="bg-[#121417] border border-[#22262B] p-3 rounded-xl flex flex-col md:flex-row md:items-center justify-between gap-3">
-            <div className="relative flex-1">
-              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Cari nomor invoice, nama pelanggan, nomor RO, nomor PO..."
-                className="w-full bg-[#181B1F] border border-[#2A2E35] rounded-lg pl-9 pr-4 py-2 text-xs sm:text-sm text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-[#F4511E] transition-all"
-              />
-            </div>
+        <div className="space-y-3">
+          {/* ── Toolbar Row 1: count + icon buttons + viewMode ── */}
+          <div className="flex items-center justify-between px-1">
+            <span className="text-[11px] text-neutral-400 font-mono">
+              Total {filteredInvoices.length} Faktur Invoice
+            </span>
 
-            <div className="flex items-center gap-2 overflow-x-auto pb-1 md:pb-0">
-              <span className="text-xs text-zinc-500 whitespace-nowrap pl-1">Status:</span>
-              {[
-                { key: 'all', label: 'Semua' },
-                { key: 'pending_approval', label: 'Menunggu Approval' },
-                { key: 'approved', label: 'Siap Cetak' },
-                { key: 'pending_verification', label: 'Verifikasi TTD' },
-                { key: 'revision_required', label: 'Perlu Revisi' },
-                { key: 'paid', label: 'Lunas' }
-              ].map(f => (
+            <div className="flex items-center gap-1">
+              {/* Status cycle filter */}
+              <button
+                type="button"
+                onClick={() =>
+                  setStatusFilter((p) =>
+                    p === 'ALL'
+                      ? 'PENDING'
+                      : p === 'PENDING'
+                      ? 'APPROVED'
+                      : p === 'APPROVED'
+                      ? 'VERIFIKASI'
+                      : p === 'VERIFIKASI'
+                      ? 'REVISI'
+                      : p === 'REVISI'
+                      ? 'LUNAS'
+                      : 'ALL'
+                  )
+                }
+                className={`w-8 h-8 flex items-center justify-center rounded-full transition-colors cursor-pointer ${
+                  statusFilter !== 'ALL'
+                    ? 'bg-[#F4511E]/20 text-[#F4511E]'
+                    : 'text-neutral-300 hover:text-white hover:bg-neutral-800'
+                }`}
+                title={`Filter Status: ${statusFilter}`}
+              >
+                <Filter className="w-4 h-4" />
+              </button>
+
+              {/* Date button */}
+              <button
+                type="button"
+                onClick={() => {
+                  if (addToast) addToast('Pilih rentang tanggal faktur invoice', 'info');
+                }}
+                className="w-8 h-8 flex items-center justify-center rounded-full text-neutral-300 hover:text-white hover:bg-neutral-800 transition-colors cursor-pointer"
+                title="Rentang Tanggal"
+              >
+                <Calendar className="w-4 h-4" />
+              </button>
+
+              {/* Refresh */}
+              <button
+                type="button"
+                onClick={handleResetList}
+                className="w-8 h-8 flex items-center justify-center rounded-full text-neutral-300 hover:text-white hover:bg-neutral-800 transition-colors cursor-pointer"
+                title="Refresh Data"
+              >
+                <RotateCw className="w-4 h-4" />
+              </button>
+
+              {/* View Mode Toggle: List / Grid */}
+              <div className="flex items-center bg-[#131518] p-0.5 rounded-xl border border-[#25292E] gap-1 shadow-xs ml-1.5">
                 <button
-                  key={f.key}
-                  onClick={() => setStatusFilter(f.key)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all ${
-                    statusFilter === f.key
-                      ? 'bg-[#F4511E]/15 border border-[#F4511E] text-white'
-                      : 'bg-[#181B1F] border border-[#2A2E35] text-zinc-400 hover:text-zinc-200'
+                  type="button"
+                  onClick={() => handleSetViewMode('list')}
+                  className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer ${
+                    viewMode === 'list'
+                      ? 'bg-[#F4511E] text-white shadow-xs'
+                      : 'text-neutral-400 hover:text-white hover:bg-neutral-800/60'
                   }`}
+                  title="Tampilan List"
                 >
-                  {f.label}
+                  <LayoutList className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">List</span>
                 </button>
-              ))}
+                <button
+                  type="button"
+                  onClick={() => handleSetViewMode('grid')}
+                  className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer ${
+                    viewMode === 'grid'
+                      ? 'bg-[#F4511E] text-white shadow-xs'
+                      : 'text-neutral-400 hover:text-white hover:bg-neutral-800/60'
+                  }`}
+                  title="Tampilan Grid"
+                >
+                  <LayoutGrid className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Grid</span>
+                </button>
+              </div>
             </div>
           </div>
 
-          {/* INVOICE CARDS LIST - Matching BkkCard styling with high emphasis on amount, code, customer */}
+          {/* ── Search Input (Full width, matching BKK design) ── */}
+          <div className="relative">
+            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Ketik nomor invoice, customer, nomor RO, nomor PO..."
+              className="w-full bg-[#14171A] border border-[#24282E] rounded-xl pl-9 pr-8 py-2.5 text-xs text-white placeholder-neutral-500 focus:outline-none focus:border-[#F4511E]"
+            />
+            {searchQuery && (
+              <X
+                className="w-3.5 h-3.5 absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-white cursor-pointer"
+                onClick={() => setSearchQuery('')}
+              />
+            )}
+          </div>
+
+          {/* ── Status Chips (Identical to BKK Page) ── */}
+          <div className="flex items-center gap-1.5 px-1 overflow-x-auto pb-1">
+            <button
+              type="button"
+              onClick={() => setStatusFilter('ALL')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-mono font-bold transition-all cursor-pointer whitespace-nowrap ${
+                statusFilter === 'ALL'
+                  ? 'bg-[#F4511E] text-white shadow-sm'
+                  : 'bg-[#181B1E] text-neutral-400 hover:text-white border border-[#262A30]'
+              }`}
+            >
+              SEMUA ({counts.all})
+            </button>
+            <button
+              type="button"
+              onClick={() => setStatusFilter('PENDING')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-mono font-bold transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
+                statusFilter === 'PENDING'
+                  ? 'bg-[#F4511E] text-white shadow-sm'
+                  : 'bg-[#181B1E] text-neutral-400 hover:text-white border border-[#262A30]'
+              }`}
+            >
+              <Clock className="w-3.5 h-3.5" />
+              <span>APPROVAL ({counts.pending})</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setStatusFilter('APPROVED')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-mono font-bold transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
+                statusFilter === 'APPROVED'
+                  ? 'bg-[#F4511E] text-white shadow-sm'
+                  : 'bg-[#181B1E] text-neutral-400 hover:text-white border border-[#262A30]'
+              }`}
+            >
+              <Printer className="w-3.5 h-3.5" />
+              <span>SIAP CETAK ({counts.approved})</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setStatusFilter('VERIFIKASI')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-mono font-bold transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
+                statusFilter === 'VERIFIKASI'
+                  ? 'bg-[#F4511E] text-white shadow-sm'
+                  : 'bg-[#181B1E] text-neutral-400 hover:text-white border border-[#262A30]'
+              }`}
+            >
+              <ShieldCheck className="w-3.5 h-3.5" />
+              <span>VERIFIKASI ({counts.verification})</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setStatusFilter('REVISI')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-mono font-bold transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
+                statusFilter === 'REVISI'
+                  ? 'bg-[#F4511E] text-white shadow-sm'
+                  : 'bg-[#181B1E] text-neutral-400 hover:text-white border border-[#262A30]'
+              }`}
+            >
+              <RotateCw className="w-3.5 h-3.5" />
+              <span>REVISI ({counts.revision})</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setStatusFilter('LUNAS')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-mono font-bold transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
+                statusFilter === 'LUNAS'
+                  ? 'bg-[#F4511E] text-white shadow-sm'
+                  : 'bg-[#181B1E] text-neutral-400 hover:text-white border border-[#262A30]'
+              }`}
+            >
+              <CheckCircle2 className="w-3.5 h-3.5" />
+              <span>LUNAS ({counts.paid})</span>
+            </button>
+          </div>
+
+          {/* ── INVOICE CARDS CONTAINER (List or Grid) ── */}
           {filteredInvoices.length === 0 ? (
-            <div className="bg-[#121417] border border-[#22262B] rounded-xl p-12 text-center">
-              <FileText className="w-12 h-12 text-zinc-600 mx-auto mb-3" />
-              <h3 className="text-base font-semibold text-zinc-300">Tidak ada faktur invoice ditemukan</h3>
-              <p className="text-xs text-zinc-500 mt-1 max-w-sm mx-auto">
-                {searchQuery || statusFilter !== 'all'
-                  ? 'Coba sesuaikan kata kunci pencarian atau filter status yang dipilih.'
-                  : 'Belum ada faktur yang diterbitkan. Anda dapat membuat invoice dari Order / Jurnal yang telah selesai 100%.'}
+            <div className="p-8 text-center bg-[#121417] border border-[#20242A] rounded-2xl space-y-3 font-mono">
+              <FileText className="w-10 h-10 text-neutral-500 mx-auto" />
+              <div className="text-sm text-neutral-300 font-bold">
+                Tidak ada data Invoice yang sesuai filter
+              </div>
+              <p className="text-xs text-neutral-500">
+                Coba reset filter atau buat faktur invoice baru.
               </p>
-              {statusFilter === 'all' && !searchQuery && (
-                <button
+              <div className="flex items-center justify-center gap-2 mt-2">
+                <Button size="xs" variant="outline" onClick={handleResetList}>
+                  Reset Filter
+                </Button>
+                <Button
+                  size="xs"
+                  variant="primary"
+                  icon={Plus}
                   onClick={() => setActiveTab('create')}
-                  className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[#F4511E] hover:bg-[#d84315] text-white text-xs font-medium transition-all"
                 >
-                  <Plus className="w-4 h-4" /> Buat Invoice Baru
-                </button>
-              )}
+                  Buat Invoice
+                </Button>
+              </div>
             </div>
           ) : (
-            <div className="grid grid-cols-1 gap-3.5">
-              {filteredInvoices.map((inv) => {
-                const normalizedStatus = (inv.status || 'draft').toLowerCase();
-                const statusMeta = STATUS_CONFIG[normalizedStatus] || STATUS_CONFIG.draft;
-                const StatusIcon = statusMeta.icon;
-                const isApprovedOrBeyond = ['approved', 'pending_verification', 'revision_required', 'paid'].includes(normalizedStatus);
-                const isPaid = normalizedStatus === 'paid' || inv.statusBayar === 'Lunas';
-
-                return (
-                  <div
-                    key={inv.id || inv.nomorInvoice}
-                    className="bg-[#121417] border border-[#22262B] hover:border-[#32373E] rounded-xl p-4 sm:p-5 transition-all relative overflow-hidden group"
-                  >
-                    {/* Left Accent indicator */}
-                    <div
-                      className={`absolute left-0 top-0 bottom-0 w-1 ${
-                        isPaid
-                          ? 'bg-emerald-500'
-                          : normalizedStatus === 'pending_approval' || normalizedStatus === 'menunggu_approval'
-                          ? 'bg-amber-500'
-                          : normalizedStatus === 'pending_verification'
-                          ? 'bg-purple-500'
-                          : normalizedStatus === 'revision_required'
-                          ? 'bg-rose-500'
-                          : normalizedStatus === 'approved'
-                          ? 'bg-blue-500'
-                          : 'bg-zinc-600'
-                      }`}
-                    />
-
-                    <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-                      {/* Left: Invoice Identity & Details */}
-                      <div className="space-y-2 flex-1">
-                        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-                          <span className="font-mono text-sm sm:text-base font-bold text-white bg-[#1A1D21] px-2.5 py-0.5 rounded border border-[#2A2E35]">
-                            {inv.nomorInvoice}
-                          </span>
-                          <span
-                            className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-medium border ${statusMeta.bg}`}
-                          >
-                            <StatusIcon className="w-3 h-3" />
-                            {statusMeta.label}
-                          </span>
-                          {inv.hasSignedDocument && (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono bg-purple-950/40 text-purple-300 border border-purple-800/40">
-                              <ShieldCheck className="w-3 h-3" /> TTD Fisik Ada
-                            </span>
-                          )}
-                        </div>
-
-                        <div className="flex flex-wrap items-center gap-y-1 gap-x-4 text-xs text-zinc-300">
-                          <div className="flex items-center gap-1.5 font-medium text-white">
-                            <Building2 className="w-3.5 h-3.5 text-zinc-400" />
-                            <span className="text-zinc-100">{inv.customerName || inv.customer || 'Pelanggan'}</span>
-                          </div>
-                          <div className="text-zinc-500">•</div>
-                          <div className="text-zinc-400">
-                            RO: <span className="font-mono text-zinc-300">{inv.nomorRO || '-'}</span>
-                          </div>
-                          {inv.poNumber && (
-                            <>
-                              <div className="text-zinc-500">•</div>
-                              <div className="text-zinc-400">
-                                PO: <span className="font-mono text-zinc-300">{inv.poNumber}</span>
-                              </div>
-                            </>
-                          )}
-                          <div className="text-zinc-500">•</div>
-                          <div className="text-zinc-400">
-                            Vol: <span className="font-mono text-zinc-300">{inv.volume || inv.totalVolume || 0} m³</span>
-                          </div>
-                        </div>
-
-                        {/* Tax breakdown chips */}
-                        <div className="flex flex-wrap items-center gap-2 pt-1 text-[11px] text-zinc-400">
-                          <span className="bg-[#181B1F] px-2 py-0.5 rounded border border-[#262A30] font-mono">
-                            DPP: {formatRupiah(inv.dpp || (inv.volume * inv.hargaSatuan) || 0)}
-                          </span>
-                          <span className="bg-[#181B1F] px-2 py-0.5 rounded border border-[#262A30] font-mono">
-                            PPN 11%: {formatRupiah(inv.ppn || 0)}
-                          </span>
-                          <span className="bg-[#181B1F] px-2 py-0.5 rounded border border-[#262A30] font-mono">
-                            PPh: {formatRupiah(inv.pph || 0)}
-                          </span>
-                          <span className="text-zinc-500 text-[10px] ml-1">
-                            Tgl: {new Date(inv.createdAt || inv.tanggal || Date.now()).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Right: Net Amount (Major visual emphasis) & Action Buttons */}
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between lg:justify-end gap-4 border-t lg:border-t-0 border-[#22262B] pt-3 lg:pt-0">
-                        <div className="text-left sm:text-right">
-                          <div className="text-[10px] uppercase tracking-wider text-zinc-400 font-medium">
-                            Nilai Bersih Tagihan (Net)
-                          </div>
-                          <div className="text-lg sm:text-2xl font-extrabold font-mono text-[#10B981] tracking-tight">
-                            {formatRupiah(inv.totalTagihan || inv.nominal || 0)}
-                          </div>
-                          <div className="text-[10px] text-zinc-500">
-                            Status Bayar:{' '}
-                            <span className={isPaid ? 'text-emerald-400 font-semibold' : 'text-amber-400'}>
-                              {isPaid ? 'Lunas' : 'Belum Lunas'}
-                            </span>
-                          </div>
-                        </div>
-
-                        {/* Actions */}
-                        <div className="flex items-center gap-2">
-                          {/* Print Button (Only if approved by Superadmin) */}
-                          <button
-                            onClick={() => openPrintModal(inv)}
-                            disabled={!isApprovedOrBeyond}
-                            title={
-                              isApprovedOrBeyond
-                                ? 'Cetak Faktur Invoice Resmi'
-                                : 'Faktur harus disetujui Superadmin terlebih dahulu sebelum dapat dicetak'
-                            }
-                            className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-all ${
-                              isApprovedOrBeyond
-                                ? 'bg-[#181B1F] hover:bg-[#20242A] border border-[#2E333B] text-zinc-200 hover:text-white'
-                                : 'bg-[#15171A] border border-[#202327] text-zinc-600 cursor-not-allowed opacity-60'
-                            }`}
-                          >
-                            <Printer className="w-3.5 h-3.5 text-blue-400" />
-                            <span>Cetak</span>
-                          </button>
-
-                          {/* Workflow / Detail / Upload Modal */}
-                          <button
-                            type="button"
-                            onClick={() => openDetailModal(inv)}
-                            className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-[#F4511E] hover:bg-[#d84315] text-white text-xs font-semibold shadow-md shadow-orange-500/10 transition-all cursor-pointer"
-                            title="Buka rincian lengkap invoice & unggah berkas tanda tangan fisik"
-                          >
-                            <FileText className="w-3.5 h-3.5" />
-                            <span>Invoice Details</span>
-                            <ArrowRight className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
+            <div
+              className={
+                viewMode === 'grid'
+                  ? 'grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3.5'
+                  : 'space-y-3'
+              }
+            >
+              {filteredInvoices.map((inv) => (
+                <InvoiceCard
+                  key={inv.id || inv.nomorInvoice}
+                  inv={inv}
+                  onInfo={() => openDetailModal(inv)}
+                  onPrint={() => openPrintModal(inv)}
+                  viewMode={viewMode}
+                />
+              ))}
             </div>
           )}
         </div>
       )}
 
-      {/* TAB CONTENT: BUAT INVOICE BARU (Manual Creation strictly after 100% completion) */}
+      {/* ════════════════════════════════════════════════════════════════════════
+          VIEW 2 — BUAT INVOICE BARU (Clean, Balanced & Symmetrical 2-Column Console)
+         ════════════════════════════════════════════════════════════════════════ */}
       {activeTab === 'create' && (
-        <div className="space-y-6 max-w-5xl">
-          {/* Information Banner */}
-          <div className="bg-[#121417] border border-[#22262B] p-4 rounded-xl flex items-start gap-3">
-            <Info className="w-5 h-5 text-blue-400 shrink-0 mt-0.5" />
-            <div className="text-xs sm:text-sm text-zinc-300">
-              <span className="font-semibold text-white">Aturan Workflow Penerbitan Faktur Invoice:</span>
-              <p className="text-zinc-400 text-xs mt-0.5">
-                Sesuai SOP PT Bintang Anugerah Sejahtera, faktur tagihan hanya dapat diterbitkan apabila seluruh volume pengiriman pada Order / Jurnal telah tercapai 100% (Completed). Setelah invoice dibuat, status terkunci otomatis ke <span className="text-amber-400 font-mono">Menunggu Approval Superadmin</span> sebelum dapat dicetak dan ditandatangani.
-              </p>
-            </div>
-          </div>
-
-          {/* Messages */}
+        <div className="space-y-4 max-w-5xl mx-auto">
+          {/* Status Messages */}
           {createSuccessMsg && (
-            <div className="bg-emerald-950/40 border border-emerald-800/60 p-4 rounded-xl flex items-center gap-3 text-emerald-300 text-sm">
-              <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
+            <div className="bg-emerald-950/40 border border-emerald-800/60 px-4 py-3 rounded-xl flex items-center gap-3 text-emerald-300 text-xs">
+              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
               <span>{createSuccessMsg}</span>
             </div>
           )}
           {createErrorMsg && (
-            <div className="bg-rose-950/40 border border-rose-800/60 p-4 rounded-xl flex items-center gap-3 text-rose-300 text-sm">
-              <AlertTriangle className="w-5 h-5 text-rose-400 shrink-0" />
+            <div className="bg-rose-950/40 border border-rose-800/60 px-4 py-3 rounded-xl flex items-center gap-3 text-rose-300 text-xs">
+              <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
               <span>{createErrorMsg}</span>
             </div>
           )}
 
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            {/* Step 1: Select Available Completed Order */}
-            <div className="lg:col-span-5 space-y-3">
-              <div className="flex items-center justify-between">
-                <label className="text-xs font-semibold text-zinc-300 uppercase tracking-wider flex items-center gap-1.5">
-                  <span className="h-5 w-5 rounded-full bg-[#F4511E] text-white flex items-center justify-center text-[10px]">1</span>
-                  Pilih Order Selesai 100%
-                </label>
-                <button
-                  type="button"
-                  onClick={loadAvailableOrders}
-                  className="text-xs text-orange-400 hover:text-orange-300 flex items-center gap-1"
-                >
-                  <RefreshCw className="w-3 h-3" /> Refresh
-                </button>
+          {/* If No Available Orders */}
+          {!isLoadingAvailable && availableOrders.length === 0 ? (
+            <div className="max-w-md mx-auto py-12 px-6 bg-[#131518] border border-[#24282E] rounded-2xl text-center space-y-4 my-6">
+              <div className="w-12 h-12 rounded-full bg-neutral-900 border border-neutral-800 flex items-center justify-center mx-auto text-neutral-500">
+                <CheckCircle2 className="w-6 h-6 text-emerald-500" />
               </div>
-
-              {isLoadingAvailable ? (
-                <div className="bg-[#121417] border border-[#22262B] p-8 rounded-xl text-center text-zinc-400 text-xs">
-                  <RefreshCw className="w-5 h-5 animate-spin mx-auto mb-2 text-orange-400" />
-                  Memeriksa order & jurnal pengiriman yang telah selesai...
-                </div>
-              ) : availableOrders.length === 0 ? (
-                <div className="bg-[#121417] border border-[#22262B] p-6 rounded-xl text-center text-zinc-400 text-xs">
-                  <Layers className="w-8 h-8 text-zinc-600 mx-auto mb-2" />
-                  <div className="font-medium text-zinc-300">Tidak ada order yang siap ditagihkan</div>
-                  <div className="text-[11px] text-zinc-500 mt-1">
-                    Semua order selesai sudah memiliki faktur invoice, atau belum ada order yang mencapai 100% pengiriman trip.
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-2 max-h-[460px] overflow-y-auto pr-1">
-                  {availableOrders.map((ord) => {
-                    const isSelected = selectedOrder?.jurnalId === ord.jurnalId && selectedOrder?.nomorRO === ord.nomorRO;
-                    return (
-                      <div
-                        key={`${ord.jurnalId}-${ord.nomorRO}`}
-                        onClick={() => handleSelectOrder(ord)}
-                        className={`p-3.5 rounded-xl border cursor-pointer transition-all ${
-                          isSelected
-                            ? 'bg-[#F4511E]/10 border-[#F4511E] shadow-md shadow-orange-500/10'
-                            : 'bg-[#121417] border-[#22262B] hover:border-[#333840]'
-                        }`}
-                      >
-                        <div className="flex items-center justify-between mb-1.5">
-                          <span className="font-mono text-xs font-bold text-white bg-[#1A1D21] px-2 py-0.5 rounded border border-[#2A2E35]">
-                            RO: {ord.nomorRO}
-                          </span>
-                          <span className="text-[10px] font-semibold text-emerald-400 bg-emerald-950/40 border border-emerald-800/40 px-2 py-0.5 rounded-full">
-                            100% Completed
-                          </span>
-                        </div>
-                        <div className="font-medium text-xs text-zinc-200 truncate">
-                          {ord.customerName}
-                        </div>
-                        <div className="text-[11px] text-zinc-400 flex items-center gap-2 mt-1">
-                          <span>{ord.material}</span>
-                          <span>•</span>
-                          <span className="font-mono text-zinc-300">{ord.totalVolume} m³</span>
-                          <span>•</span>
-                          <span className="font-mono text-zinc-300">{formatRupiah(ord.hargaSatuan)}/m³</span>
-                        </div>
-                        {ord.poNumber && (
-                          <div className="text-[10px] text-zinc-500 font-mono mt-1">
-                            PO: {ord.poNumber}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
+              <div className="space-y-1">
+                <h3 className="text-sm font-bold text-white">Semua Order Telah Ditagihkan</h3>
+                <p className="text-xs text-neutral-400 leading-relaxed">
+                  Tidak ada order selesai yang menunggu penerbitan invoice saat ini. Faktur baru dapat dibuat ketika ada pesanan yang mencapai 100% pengiriman.
+                </p>
+              </div>
+              <Button size="xs" variant="outline" onClick={() => setActiveTab('list')}>
+                Lihat Daftar Invoice
+              </Button>
             </div>
-
-            {/* Step 2: Invoice Creation Form */}
-            <div className="lg:col-span-7">
-              <form onSubmit={handleCreateSubmit} className="bg-[#121417] border border-[#22262B] rounded-xl p-5 space-y-4">
-                <label className="text-xs font-semibold text-zinc-300 uppercase tracking-wider flex items-center gap-1.5">
-                  <span className="h-5 w-5 rounded-full bg-[#F4511E] text-white flex items-center justify-center text-[10px]">2</span>
-                  Rincian Penagihan & Pajak
-                </label>
-
-                {!selectedOrder ? (
-                  <div className="p-8 text-center text-zinc-500 text-xs border border-dashed border-[#2A2E35] rounded-xl">
-                    Silakan pilih salah satu Order yang siap ditagihkan di panel sebelah kiri.
-                  </div>
-                ) : (
-                  <>
-                    {/* Selected Order Summary Card */}
-                    <div className="bg-[#181B1F] border border-[#2A2E35] p-3.5 rounded-xl space-y-2">
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="text-zinc-400">Pelanggan:</span>
-                        <span className="font-semibold text-white">{selectedOrder.customerName}</span>
+          ) : (
+            <form onSubmit={handleCreateSubmit}>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch">
+                {/* ── KOLOM 1: DATA PESANAN & PENGIRIMAN ── */}
+                <div className="bg-[#131518] border border-[#24282E] rounded-2xl p-4 sm:p-5 flex flex-col justify-between space-y-4 shadow-sm">
+                  <div className="space-y-4">
+                    {/* Header Kolom 1 */}
+                    <div className="pb-3 border-b border-[#22262B] flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Building2 className="w-4 h-4 text-[#F4511E]" />
+                        <h2 className="text-xs sm:text-sm font-bold text-white tracking-tight">
+                          Sumber Pesanan (RO)
+                        </h2>
                       </div>
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="text-zinc-400">Nomor RO / PO:</span>
-                        <span className="font-mono text-zinc-200">{selectedOrder.nomorRO} {selectedOrder.poNumber ? `(${selectedOrder.poNumber})` : ''}</span>
-                      </div>
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="text-zinc-400">Material & Volume:</span>
-                        <span className="font-medium text-zinc-200">{selectedOrder.material} — {selectedOrder.totalVolume} m³</span>
-                      </div>
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="text-zinc-400">Harga Satuan:</span>
-                        <span className="font-mono text-zinc-200">{formatRupiah(selectedOrder.hargaSatuan)} / m³</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-semibold">
+                          100% Selesai Kirim
+                        </span>
+                        <button
+                          type="button"
+                          onClick={loadAvailableOrders}
+                          disabled={isLoadingAvailable}
+                          className="w-6 h-6 rounded-md bg-[#181B1E] border border-[#2A2E35] flex items-center justify-center text-neutral-400 hover:text-white transition-colors cursor-pointer"
+                          title="Refresh data order"
+                        >
+                          <RotateCw className={`w-3 h-3 ${isLoadingAvailable ? 'animate-spin text-[#F4511E]' : ''}`} />
+                        </button>
                       </div>
                     </div>
 
-                    {/* Tax Settings */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {/* Order Selector */}
+                    <div className="space-y-1.5">
+                      <label className="text-[11px] font-medium text-neutral-400">
+                        Pilih Pesanan Selesai
+                      </label>
+                      <div className="relative">
+                        <select
+                          value={selectedOrder ? `${selectedOrder.jurnalId}|${selectedOrder.nomorRO}` : ''}
+                          disabled={isLoadingAvailable}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            if (!val) {
+                              setSelectedOrder(null);
+                              return;
+                            }
+                            const [jId, ro] = val.split('|');
+                            const found = availableOrders.find((o) => o.jurnalId === jId && o.nomorRO === ro);
+                            if (found) handleSelectOrder(found);
+                          }}
+                          className="w-full bg-[#181B1E] text-white text-xs font-medium rounded-xl px-3 py-2.5 border border-[#2B3037] focus:outline-none focus:border-[#F4511E] appearance-none pr-8 cursor-pointer truncate"
+                        >
+                          {availableOrders.map((ord) => (
+                            <option key={`${ord.jurnalId}-${ord.nomorRO}`} value={`${ord.jurnalId}|${ord.nomorRO}`}>
+                              {ord.nomorRO} • {ord.customerName} ({ord.totalVolume} m³)
+                            </option>
+                          ))}
+                        </select>
+                        <ChevronDown className="w-4 h-4 text-neutral-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                      </div>
+
+                      {/* Quick Pills if multiple orders */}
+                      {availableOrders.length > 1 && (
+                        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 pt-0.5">
+                          {availableOrders.map((ord) => {
+                            const isSel = selectedOrder?.jurnalId === ord.jurnalId && selectedOrder?.nomorRO === ord.nomorRO;
+                            return (
+                              <button
+                                key={`${ord.jurnalId}-${ord.nomorRO}`}
+                                type="button"
+                                onClick={() => handleSelectOrder(ord)}
+                                className={`px-2.5 py-1 rounded-lg text-[10px] font-mono transition-all cursor-pointer whitespace-nowrap shrink-0 border ${
+                                  isSel
+                                    ? 'bg-[#F4511E]/15 border-[#F4511E] text-[#F4511E] font-bold'
+                                    : 'bg-[#181B1E] border-[#2A2E35] text-neutral-400 hover:text-white'
+                                }`}
+                              >
+                                {ord.nomorRO} ({ord.totalVolume} m³)
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Order Details Specification Sheet */}
+                    {selectedOrder && (
+                      <div className="space-y-2.5">
+                        {/* Customer Card */}
+                        <div className="p-3 bg-[#181B1E] border border-[#262A30] rounded-xl space-y-1">
+                          <span className="text-[10px] font-mono text-neutral-400 uppercase tracking-wider block">
+                            Pelanggan (Customer)
+                          </span>
+                          <div className="text-xs font-bold text-white">{selectedOrder.customerName}</div>
+                          {selectedOrder.customerNpwp && (
+                            <div className="text-[11px] font-mono text-neutral-400 flex items-center gap-1.5 pt-0.5">
+                              <span className="text-neutral-500">NPWP:</span>
+                              <span>{selectedOrder.customerNpwp}</span>
+                            </div>
+                          )}
+                          {selectedOrder.customerAddress && (
+                            <div className="text-[11px] text-neutral-400 truncate">
+                              {selectedOrder.customerAddress}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Specs 2x2 Grid */}
+                        <div className="grid grid-cols-2 gap-2">
+                          <div className="p-2.5 bg-[#181B1E] border border-[#262A30] rounded-xl space-y-0.5">
+                            <span className="text-[10px] text-neutral-400 block">Nomor RO</span>
+                            <div className="font-mono text-xs font-bold text-white truncate">
+                              {selectedOrder.nomorRO}
+                            </div>
+                          </div>
+                          <div className="p-2.5 bg-[#181B1E] border border-[#262A30] rounded-xl space-y-0.5">
+                            <span className="text-[10px] text-neutral-400 block">Nomor PO</span>
+                            <div className="font-mono text-xs font-bold text-neutral-200 truncate">
+                              {selectedOrder.poNumber || '-'}
+                            </div>
+                          </div>
+                          <div className="p-2.5 bg-[#181B1E] border border-[#262A30] rounded-xl space-y-0.5">
+                            <span className="text-[10px] text-neutral-400 block">Material</span>
+                            <div className="text-xs font-medium text-neutral-200 truncate">
+                              {selectedOrder.material}
+                            </div>
+                          </div>
+                          <div className="p-2.5 bg-[#181B1E] border border-[#262A30] rounded-xl space-y-0.5">
+                            <span className="text-[10px] text-neutral-400 block">Volume Terkirim</span>
+                            <div className="font-mono text-xs font-bold text-white">
+                              {selectedOrder.totalVolume} m³
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Subtotal DPP Bar at bottom of Left Card */}
+                  {selectedOrder && (
+                    <div className="p-3 bg-[#181B1E] border border-[#262A30] rounded-xl flex items-center justify-between">
                       <div>
-                        <label className="block text-xs text-zinc-400 mb-1">Tarif PPN (%)</label>
+                        <div className="text-[10px] text-neutral-400">Harga Satuan</div>
+                        <div className="font-mono text-xs text-neutral-300 font-semibold">
+                          {formatCurrency(selectedOrder.hargaSatuan)} <span className="text-[10px] font-normal text-neutral-500">/ m³</span>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-[10px] text-neutral-400">Subtotal DPP</div>
+                        <div className="font-mono text-sm font-bold text-[#F4511E]">
+                          {formatCurrency(formCalculations.dpp)}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* ── KOLOM 2: RINCIAN FAKTUR, PAJAK & PERHITUNGAN ── */}
+                <div className="bg-[#131518] border border-[#24282E] rounded-2xl p-4 sm:p-5 flex flex-col justify-between space-y-4 shadow-sm">
+                  <div className="space-y-3.5">
+                    {/* Header Kolom 2 */}
+                    <div className="pb-3 border-b border-[#22262B] flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <FileText className="w-4 h-4 text-[#F4511E]" />
+                        <h2 className="text-xs sm:text-sm font-bold text-white tracking-tight">
+                          Rincian Faktur & Pajak
+                        </h2>
+                      </div>
+                      <span className="text-[10px] font-mono text-neutral-400">
+                        Termin: {formData.tempoHari} Hari
+                      </span>
+                    </div>
+
+                    {/* Tax Dropdowns (2 Cols) */}
+                    <div className="grid grid-cols-2 gap-2.5">
+                      <div className="space-y-1">
+                        <label className="text-[11px] font-medium text-neutral-400">Tarif PPN</label>
                         <select
                           value={formData.ppnPercent}
                           onChange={(e) => setFormData({ ...formData, ppnPercent: Number(e.target.value) })}
-                          className="w-full bg-[#181B1F] border border-[#2A2E35] rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:border-[#F4511E]"
+                          className="w-full bg-[#181B1E] border border-[#2B3037] rounded-xl px-3 py-2 text-xs text-neutral-200 focus:outline-none focus:border-[#F4511E] cursor-pointer"
                         >
-                          <option value={11}>PPN 11% (Standar UU HPP)</option>
-                          <option value={12}>PPN 12%</option>
-                          <option value={0}>0% (Bebas PPN / Non-PKP)</option>
+                          <option value={11}>11% (Standar)</option>
+                          <option value={12}>12%</option>
+                          <option value={0}>0% (Non-PPN)</option>
                         </select>
                       </div>
 
-                      <div>
-                        <label className="block text-xs text-zinc-400 mb-1">Tarif PPh 23 (%)</label>
+                      <div className="space-y-1">
+                        <label className="text-[11px] font-medium text-neutral-400">Tarif PPh 23</label>
                         <select
                           value={formData.pphType}
                           onChange={(e) => setFormData({ ...formData, pphType: e.target.value })}
-                          className="w-full bg-[#181B1F] border border-[#2A2E35] rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:border-[#F4511E]"
+                          className="w-full bg-[#181B1E] border border-[#2B3037] rounded-xl px-3 py-2 text-xs text-neutral-200 focus:outline-none focus:border-[#F4511E] cursor-pointer"
                         >
-                          <option value="2%">PPh 23 (2% - Ber-NPWP)</option>
-                          <option value="2.65%">PPh 23 (2.65% - Khusus)</option>
-                          <option value="none">0% (Tanpa Potongan PPh)</option>
+                          <option value="2%">2% (Ber-NPWP)</option>
+                          <option value="2.65%">2.65% (Khusus)</option>
+                          <option value="none">0% (Tanpa PPh)</option>
                         </select>
                       </div>
                     </div>
 
-                    {/* Due Date & Bank Details */}
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                      <div>
-                        <label className="block text-xs text-zinc-400 mb-1">Jatuh Tempo (Hari)</label>
+                    {/* Due Date & Bank Account (2 Cols) */}
+                    <div className="grid grid-cols-3 gap-2.5">
+                      <div className="space-y-1 col-span-1">
+                        <label className="text-[11px] font-medium text-neutral-400">Tempo (Hari)</label>
                         <input
                           type="number"
                           value={formData.tempoHari}
                           onChange={(e) => setFormData({ ...formData, tempoHari: e.target.value })}
-                          className="w-full bg-[#181B1F] border border-[#2A2E35] rounded-lg px-3 py-2 text-xs font-mono text-zinc-200 focus:outline-none focus:border-[#F4511E]"
                           min="1"
+                          className="w-full bg-[#181B1E] border border-[#2B3037] rounded-xl px-3 py-2 text-xs font-mono text-neutral-200 focus:outline-none focus:border-[#F4511E]"
                         />
                       </div>
-                      <div className="sm:col-span-2">
-                        <label className="block text-xs text-zinc-400 mb-1">Rekening Pembayaran PT BAS</label>
+
+                      <div className="space-y-1 col-span-2">
+                        <label className="text-[11px] font-medium text-neutral-400">Rekening Tujuan</label>
                         <input
                           type="text"
                           value={formData.bankAccount}
                           onChange={(e) => setFormData({ ...formData, bankAccount: e.target.value })}
-                          className="w-full bg-[#181B1F] border border-[#2A2E35] rounded-lg px-3 py-2 text-xs font-mono text-zinc-200 focus:outline-none focus:border-[#F4511E]"
+                          className="w-full bg-[#181B1E] border border-[#2B3037] rounded-xl px-3 py-2 text-xs font-mono text-neutral-200 focus:outline-none focus:border-[#F4511E]"
                         />
                       </div>
                     </div>
 
-                    {/* Calculated Amounts Breakdown */}
-                    <div className="bg-[#16181C] border border-[#262A30] p-4 rounded-xl space-y-2">
-                      <div className="flex items-center justify-between text-xs text-zinc-400">
-                        <span>Dasar Pengenaan Pajak (DPP):</span>
-                        <span className="font-mono text-zinc-200 font-semibold">{formatRupiah(formCalculations.dpp)}</span>
-                      </div>
-                      <div className="flex items-center justify-between text-xs text-zinc-400">
-                        <span>PPN ({formData.ppnPercent}%):</span>
-                        <span className="font-mono text-emerald-400">+ {formatRupiah(formCalculations.ppn)}</span>
-                      </div>
-                      <div className="flex items-center justify-between text-xs text-zinc-400">
-                        <span>PPh ({formData.pphType}):</span>
-                        <span className="font-mono text-rose-400">- {formatRupiah(formCalculations.pph)}</span>
-                      </div>
-                      <div className="border-t border-[#262A30] pt-2 flex items-center justify-between">
-                        <span className="text-xs font-bold text-white uppercase tracking-wider">Total Bersih Ditagihkan (Net):</span>
-                        <span className="text-lg font-bold font-mono text-[#10B981]">{formatRupiah(formCalculations.netTotal)}</span>
-                      </div>
-                    </div>
-
-                    {/* Notes */}
-                    <div>
-                      <label className="block text-xs text-zinc-400 mb-1">Catatan Tagihan (Opsional)</label>
-                      <textarea
-                        rows="2"
+                    {/* Notes (Optional) */}
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-medium text-neutral-400">Catatan Tagihan (Opsional)</label>
+                      <input
+                        type="text"
                         value={formData.notes}
                         onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                        placeholder="Contoh: Pembayaran mohon mencantumkan nomor invoice pada berita transfer..."
-                        className="w-full bg-[#181B1F] border border-[#2A2E35] rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:border-[#F4511E]"
+                        placeholder="Contoh: Berita transfer nomor invoice..."
+                        className="w-full bg-[#181B1E] border border-[#2B3037] rounded-xl px-3 py-2 text-xs text-neutral-200 focus:outline-none focus:border-[#F4511E]"
                       />
                     </div>
 
-                    {/* Submit Button */}
-                    <div className="pt-2 flex items-center justify-end gap-3">
-                      <button
-                        type="button"
-                        onClick={() => setSelectedOrder(null)}
-                        className="px-4 py-2 rounded-lg bg-[#181B1F] border border-[#2A2E35] text-xs font-medium text-zinc-400 hover:text-white"
-                      >
-                        Batal
-                      </button>
-                      <button
-                        type="submit"
-                        disabled={createSubmitting}
-                        className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-[#F4511E] hover:bg-[#d84315] disabled:opacity-50 text-white text-xs font-semibold shadow-lg shadow-orange-500/20 transition-all"
-                      >
-                        {createSubmitting ? (
-                          <>
-                            <RefreshCw className="w-4 h-4 animate-spin" />
-                            <span>Menerbitkan Faktur...</span>
-                          </>
-                        ) : (
-                          <>
-                            <Sparkles className="w-4 h-4" />
-                            <span>Terbitkan Faktur & Kunci Approval</span>
-                          </>
-                        )}
-                      </button>
+                    {/* Net Calculation Summary */}
+                    <div className="p-3.5 bg-[#181B1E] border border-[#262A30] rounded-xl space-y-2">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-neutral-400">Dasar Pengenaan Pajak (DPP)</span>
+                        <span className="font-mono text-neutral-200 font-semibold">
+                          {formatCurrency(formCalculations.dpp)}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-neutral-400">PPN ({formData.ppnPercent}%)</span>
+                        <span className="font-mono text-emerald-400 font-medium">
+                          + {formatCurrency(formCalculations.ppn)}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-neutral-400">PPh 23 ({formData.pphType})</span>
+                        <span className="font-mono text-rose-400 font-medium">
+                          - {formatCurrency(formCalculations.pph)}
+                        </span>
+                      </div>
+                      <div className="border-t border-[#262A30] pt-2 flex items-center justify-between">
+                        <span className="text-xs font-bold text-white uppercase tracking-wider">
+                          Total Tagihan (Net)
+                        </span>
+                        <span className="text-base font-bold font-mono text-white tracking-tight">
+                          {formatCurrency(formCalculations.netTotal)}
+                        </span>
+                      </div>
                     </div>
-                  </>
-                )}
-              </form>
-            </div>
-          </div>
+                  </div>
+
+                  {/* Actions Footer */}
+                  <div className="pt-2 flex items-center justify-end gap-2.5">
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('list')}
+                      className="px-4 py-2.5 rounded-xl bg-[#181B1E] border border-[#2B3037] text-xs font-medium text-neutral-300 hover:text-white hover:bg-neutral-800 transition-colors cursor-pointer"
+                    >
+                      Batal
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={createSubmitting || !selectedOrder}
+                      className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#F4511E] hover:bg-[#d84315] disabled:opacity-50 text-white text-xs font-semibold shadow-lg shadow-orange-500/20 transition-all cursor-pointer"
+                    >
+                      {createSubmitting ? (
+                        <>
+                          <RotateCw className="w-3.5 h-3.5 animate-spin" />
+                          <span>Menerbitkan...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="w-3.5 h-3.5" />
+                          <span>Terbitkan Faktur</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </form>
+          )}
         </div>
       )}
 

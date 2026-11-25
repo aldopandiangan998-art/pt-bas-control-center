@@ -736,26 +736,6 @@ export default function SuratJalanPage() {
         </div>
       )}
 
-      {!isFromCreateGi && (
-        <div className={`p-3 rounded-xl border text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2 font-mono shadow-sm transition-colors ${isDark ? 'bg-[#14171A] border-[#262A2E] text-neutral-400' : 'bg-slate-50 border-slate-200 text-slate-600'
-          }`}>
-          <div className="flex items-center gap-2">
-            <FileText className="w-4 h-4 text-[#F4511E] shrink-0" />
-            <span>
-              Formulir Surat Jalan Default Kosong. Silakan pilih Customer &amp; PO yang telah disetujui, atau buat langsung melalui tombol <strong>"Buat Surat Jalan GI"</strong> di halaman Pre Order.
-            </span>
-          </div>
-          <Button
-            size="xs"
-            variant="ghost"
-            onClick={() => navigate('/pre-orders')}
-            className="text-[#F4511E] hover:text-white border border-[#F4511E]/30 shrink-0 cursor-pointer"
-          >
-            Buka Pre Order &rarr;
-          </Button>
-        </div>
-      )}
-
       {/* Main 2-Column Responsive Layout (Bounded Grid for Clean Sticky Behavior) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
         {/* Left Form Column (7 cols) - Replicating Screenshot 1 */}
@@ -1217,9 +1197,6 @@ export default function SuratJalanPage() {
                     <div className={`text-base font-bold font-mono ${isDark ? 'text-neutral-300' : 'text-slate-800'}`}>
                       {kubikasi.volumeDefault} <span className={`text-[10px] font-normal ${isDark ? 'text-neutral-500' : 'text-slate-500'}`}>m³</span>
                     </div>
-                    <span className="text-[10px] text-neutral-500 font-mono block mt-0.5">
-                      P &times; L &times; T (Tetap / Default)
-                    </span>
                   </div>
 
                   <div className={`border rounded-md p-2.5 transition-colors ${isDark ? 'bg-[#1C1511] border-[#F4511E]/40' : 'bg-orange-50/70 border-orange-200'
@@ -1235,9 +1212,6 @@ export default function SuratJalanPage() {
                     <div className="text-base font-bold font-mono text-[#F4511E]">
                       {kubikasi.volumeAkhir} <span className={`text-[10px] font-normal ${isDark ? 'text-orange-400' : 'text-orange-600'}`}>m³</span>
                     </div>
-                    <span className="text-[10px] text-neutral-400 font-mono block mt-0.5">
-                      P &times; L &times; TK ({kubikasi.tinggiHasilKoreksi} cm)
-                    </span>
                   </div>
                 </div>
               </div>

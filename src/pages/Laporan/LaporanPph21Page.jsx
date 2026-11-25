@@ -38,97 +38,6 @@ export const getDefaultDateRange = () => {
   return { startDate, endDate };
 };
 
-// Fallback dataset for Article 21 Income Tax (PPh 21 - Driver & Staff Wages / Honorarium)
-// Dynamically anchored to current month/year to guarantee auto-populated data on opening
-export const getDefaultPph21Data = (yearInput, monthInput) => {
-  const now = new Date();
-  const y = yearInput || now.getFullYear();
-  const m = monthInput || String(now.getMonth() + 1).padStart(2, '0');
-
-  return [
-    {
-      id: `PPH21-${y}${m}-001`,
-      tanggal: `${y}-${m}-12`,
-      noBuktiPotong: `BUPOT-21/BAS/${y}/${m}/001`,
-      noBkk: `BKK/${y}/${m}/0042`,
-      vendor: 'SUMARNO (Driver Tronton Hino)',
-      penerima: 'SUMARNO',
-      npwpNik: '3525041008800002',
-      objekPajak: 'Upah Driver Ritase Material Tambang',
-      kategori: 'Pegawai Tidak Tetap / Tenaga Lepas',
-      tarif: 2.5,
-      dpp: 8500000,
-      potonganPph: 212500,
-      nettoBkk: 8287500,
-      statusBupot: 'TERBIT',
-    },
-    {
-      id: `PPH21-${y}${m}-002`,
-      tanggal: `${y}-${m}-10`,
-      noBuktiPotong: `BUPOT-21/BAS/${y}/${m}/002`,
-      noBkk: `BKK/${y}/${m}/0043`,
-      vendor: 'UKHY DIAN (Driver Armada Tambang)',
-      penerima: 'UKHY DIAN',
-      npwpNik: '3525011204850003',
-      objekPajak: 'Upah Pengemudi Tambang Limestone',
-      kategori: 'Pegawai Tidak Tetap / Tenaga Lepas',
-      tarif: 2.5,
-      dpp: 12400000,
-      potonganPph: 310000,
-      nettoBkk: 12090000,
-      statusBupot: 'TERBIT',
-    },
-    {
-      id: `PPH21-${y}${m}-003`,
-      tanggal: `${y}-${m}-08`,
-      noBuktiPotong: `BUPOT-21/BAS/${y}/${m}/003`,
-      noBkk: `BKK/${y}/${m}/0044`,
-      vendor: 'BAMBANG HERMANTO (Mekanik Alat Berat)',
-      penerima: 'BAMBANG HERMANTO',
-      npwpNik: '3525081405820001',
-      objekPajak: 'Jasa Tenaga Lepas Perawatan Dump Truck',
-      kategori: 'Tenaga Ahli / Jasa Lepas',
-      tarif: 5.0,
-      dpp: 6500000,
-      potonganPph: 325000,
-      nettoBkk: 6175000,
-      statusBupot: 'TERBIT',
-    },
-    {
-      id: `PPH21-${y}${m}-004`,
-      tanggal: `${y}-${m}-05`,
-      noBuktiPotong: `BUPOT-21/BAS/${y}/${m}/004`,
-      noBkk: `BKK/${y}/${m}/0045`,
-      vendor: 'SUWANDI (Checker Quarry Manyar)',
-      penerima: 'SUWANDI',
-      npwpNik: '3525021907860004',
-      objekPajak: 'Honorarium Pengawas & Checker Quarry',
-      kategori: 'Pegawai Tidak Tetap / Tenaga Lepas',
-      tarif: 2.5,
-      dpp: 4800000,
-      potonganPph: 120000,
-      nettoBkk: 4680000,
-      statusBupot: 'TERBIT',
-    },
-    {
-      id: `PPH21-${y}${m}-005`,
-      tanggal: `${y}-${m}-02`,
-      noBuktiPotong: `BUPOT-21/BAS/${y}/${m}/005`,
-      noBkk: `BKK/${y}/${m}/0046`,
-      vendor: 'AGUS PRASETYO (Driver Dump Truck)',
-      penerima: 'AGUS PRASETYO',
-      npwpNik: '3525032109880005',
-      objekPajak: 'Upah Pengemudi Angkut Sirtu Urug',
-      kategori: 'Pegawai Tidak Tetap / Tenaga Lepas',
-      tarif: 2.5,
-      dpp: 7200000,
-      potonganPph: 180000,
-      nettoBkk: 7020000,
-      statusBupot: 'TERBIT',
-    },
-  ];
-};
-
 // Card view component for PPh 21 Grid Mode
 function Pph21GridCard({ row, idx, isDark, isSelected, onToggleSelect }) {
   return (
@@ -317,10 +226,10 @@ export default function LaporanPph21Page() {
     }
   }, [searchParams, location.state]);
 
-  // Execution state: initialized with dynamic fallback data so data is auto-populated immediately
+  // Execution state
   const [loading, setLoading] = useState(false);
-  const [reportData, setReportData] = useState(() => getDefaultPph21Data());
-  const [hasApplied, setHasApplied] = useState(true);
+  const [reportData, setReportData] = useState([]);
+  const [hasApplied, setHasApplied] = useState(false);
 
   // Validation
   const isInvalidDateRange = Boolean(startDate && endDate && endDate < startDate);
@@ -343,34 +252,21 @@ export default function LaporanPph21Page() {
       });
 
       if (!res.ok) {
-        // Fallback to local dataset on error
-        const y = activeStart.slice(0, 4);
-        const m = activeStart.slice(5, 7);
-        const allData = getDefaultPph21Data(y, m);
-        const filtered = allData.filter((item) => item.tanggal >= activeStart && item.tanggal <= activeEnd);
-        setReportData(filtered.length > 0 ? filtered : allData);
+        setReportData([]);
         setHasApplied(true);
         return;
       }
 
-      const json = await res.json();
-      if (json.success && Array.isArray(json.data) && json.data.length > 0) {
+      const json = await res.json().catch(() => ({}));
+      if (json.success && Array.isArray(json.data)) {
         setReportData(json.data);
       } else {
-        const y = activeStart.slice(0, 4);
-        const m = activeStart.slice(5, 7);
-        const allData = getDefaultPph21Data(y, m);
-        const filtered = allData.filter((item) => item.tanggal >= activeStart && item.tanggal <= activeEnd);
-        setReportData(filtered.length > 0 ? filtered : allData);
+        setReportData([]);
       }
       setHasApplied(true);
     } catch (err) {
-      console.warn('API error, falling back to local dataset:', err.message);
-      const y = activeStart.slice(0, 4);
-      const m = activeStart.slice(5, 7);
-      const allData = getDefaultPph21Data(y, m);
-      const filtered = allData.filter((item) => item.tanggal >= activeStart && item.tanggal <= activeEnd);
-      setReportData(filtered.length > 0 ? filtered : allData);
+      console.warn('API error loading PPh 21 report:', err.message);
+      setReportData([]);
       setHasApplied(true);
     } finally {
       setLoading(false);

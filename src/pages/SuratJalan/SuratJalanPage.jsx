@@ -24,9 +24,9 @@ import {
 import { useData } from '../../context/DataContext';
 import { useToast } from '../../context/ToastContext';
 import { useApp } from '../../context/AppContext';
-import { calculateKubikasi, formatVolume } from '../../utils/formatters';
+import { calculateKubikasi, formatVolume, getWibDateString, getWibTimeString } from '../../utils/formatters';
 import TruckVisualizer, { getTruckClassification } from '../../components/common/TruckVisualizer';
-import { Button, Badge, Card, Input, Select } from '../../components/ui';
+import { Button, Badge, Card, Input, Select, Modal } from '../../components/ui';
 
 export default function SuratJalanPage() {
   const navigate = useNavigate();
@@ -170,12 +170,18 @@ export default function SuratJalanPage() {
     }
   }
 
+  // Modal state for locked journal with scheduled GI
+  const [unlockModalOpen, setUnlockModalOpen] = useState(false);
+  const [conflictPayload, setConflictPayload] = useState(null);
+  const [conflictData, setConflictData] = useState(null);
+  const [submittingUnlock, setSubmittingUnlock] = useState(false);
+
   // Form state: ALL FIELDS ARE BLANK BY DEFAULT unless user navigated via "Create GI Waybill"
   const [formData, setFormData] = useState(() => {
+    const todayStr = getWibDateString();
     if (isFromCreateGi) {
       const defaultArmada = armadaList[0] || {};
-      const now = new Date();
-      const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+      const timeStr = getWibTimeString();
 
       return {
         customer: targetCustomer,
@@ -184,7 +190,9 @@ export default function SuratJalanPage() {
         preOrderId: targetPreOrderId,
         materialId: targetMaterialId,
         jenis: normalizeServiceType(preOrderState.jenis || matchedPo?.jenisRO || matchedPo?.jenis || 'Jasa Angkut + Material'),
-        tanggal: now.toISOString().split('T')[0],
+        tanggalDibuat: todayStr,
+        tanggalJadwal: todayStr,
+        tanggal: todayStr,
         waktu: timeStr,
         nomorNota: preOrderState.nomorNota || '',
         nomorPolisi: defaultArmada.nopol || 'W 9821 UB',
@@ -206,7 +214,9 @@ export default function SuratJalanPage() {
       preOrderId: '',
       materialId: '',
       jenis: '',
-      tanggal: '',
+      tanggalDibuat: todayStr,
+      tanggalJadwal: todayStr,
+      tanggal: todayStr,
       waktu: '',
       nomorNota: '',
       nomorPolisi: '',
@@ -232,6 +242,45 @@ export default function SuratJalanPage() {
       });
   }, [approvedPos, formData.customer, customers]);
 
+  const currentPo = useMemo(() => {
+    return approvedPos.find(
+      (po) =>
+        (formData.preOrderId && String(po.id) === String(formData.preOrderId)) ||
+        (formData.nomorRo && (po.nomorRO === formData.nomorRo || po.nomorRo === formData.nomorRo)) ||
+        (formData.poNumber && (po.nomorPo === formData.poNumber || po.nomorPoCustomer === formData.poNumber))
+    );
+  }, [approvedPos, formData.preOrderId, formData.nomorRo, formData.poNumber]);
+
+  const selectableMaterials = useMemo(() => {
+    if (!currentPo) return materials;
+    const isJasaOnly = String(currentPo.jenisRO || '').toUpperCase().includes('JASA ANGKUT SAJA');
+    const poItems = currentPo.items || [];
+    if (poItems.length > 0) {
+      const relevantItems = isJasaOnly
+        ? poItems
+        : poItems.filter((it) => (it.itemType || '').toUpperCase() !== 'JASA_ANGKUT');
+      const allowedNames = new Set(
+        relevantItems.map((it) => (it.nama || it.name || '').toUpperCase().trim()).filter(Boolean)
+      );
+      if (currentPo.materialName) allowedNames.add(currentPo.materialName.toUpperCase().trim());
+      const filtered = materials.filter(
+        (m) =>
+          allowedNames.has((m.name || '').toUpperCase().trim()) ||
+          (currentPo.materialId && String(m.id) === String(currentPo.materialId))
+      );
+      return filtered.length > 0 ? filtered : materials;
+    }
+    if (currentPo.materialId || currentPo.materialName) {
+      const filtered = materials.filter(
+        (m) =>
+          String(m.id) === String(currentPo.materialId) ||
+          (m.name || '').toUpperCase().trim() === (currentPo.materialName || '').toUpperCase().trim()
+      );
+      return filtered.length > 0 ? filtered : materials;
+    }
+    return materials;
+  }, [currentPo, materials]);
+
   // Sync state if location.state changes
   useEffect(() => {
     if (location.state?.fromCreateGi || location.state?.fromPreOrder || location.state?.customer) {
@@ -246,8 +295,8 @@ export default function SuratJalanPage() {
       }
 
       const defaultArmada = armadaList[0] || {};
-      const now = new Date();
-      const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+      const todayStr = getWibDateString();
+      const timeStr = getWibTimeString();
 
       setFormData((prev) => ({
         ...prev,
@@ -257,7 +306,9 @@ export default function SuratJalanPage() {
         preOrderId: location.state.preOrderId || prev.preOrderId,
         materialId: targetMat || prev.materialId,
         jenis: normalizeServiceType(location.state.jenis || prev.jenis || 'Jasa Angkut + Material'),
-        tanggal: prev.tanggal || now.toISOString().split('T')[0],
+        tanggalDibuat: todayStr,
+        tanggalJadwal: prev.tanggalJadwal || todayStr,
+        tanggal: todayStr,
         waktu: prev.waktu || timeStr,
         nomorNota: prev.nomorNota || location.state.nomorNota || '',
         nomorPolisi: prev.nomorPolisi || defaultArmada.nopol || 'W 9821 UB',
@@ -321,9 +372,8 @@ export default function SuratJalanPage() {
 
     const targetPo = matchingPos[0];
     const defaultArmada = armadaList[0] || {};
-    const now = new Date();
-    const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-    const todayStr = now.toISOString().split('T')[0];
+    const timeStr = getWibTimeString();
+    const todayStr = getWibDateString();
 
     if (targetPo) {
       const detectedPoVal = targetPo.nomorPo || targetPo.nomorPoCustomer || '';
@@ -348,7 +398,9 @@ export default function SuratJalanPage() {
         preOrderId: targetPo.id || '',
         materialId: newMatId || prev.materialId,
         isPpn: targetPo.jenisWajibPajak === 'PKP',
-        tanggal: prev.tanggal || todayStr,
+        tanggalDibuat: todayStr,
+        tanggalJadwal: prev.tanggalJadwal || todayStr,
+        tanggal: todayStr,
         waktu: prev.waktu || timeStr,
         nomorNota: prev.nomorNota || '',
         jenis: normalizeServiceType(targetPo.jenisRO || targetPo.jenis || prev.jenis || 'Jasa Angkut + Material'),
@@ -529,6 +581,7 @@ export default function SuratJalanPage() {
   };
 
   const handleResetFormToBlank = () => {
+    const todayStr = getWibDateString();
     setFormData({
       customer: '',
       poNumber: '',
@@ -536,7 +589,9 @@ export default function SuratJalanPage() {
       preOrderId: '',
       materialId: '',
       jenis: '',
-      tanggal: '',
+      tanggalDibuat: todayStr,
+      tanggalJadwal: todayStr,
+      tanggal: todayStr,
       waktu: '',
       nomorNota: '',
       nomorPolisi: '',
@@ -551,7 +606,28 @@ export default function SuratJalanPage() {
     addToast('Formulir dikosongkan.', 'info');
   };
 
-  const handleSubmit = (e) => {
+  const handleConfirmScheduledUnlock = async () => {
+    if (!conflictPayload) return;
+    setSubmittingUnlock(true);
+    try {
+      const res = await createSuratJalan({
+        ...conflictPayload,
+        unlockScheduled: true,
+      });
+      if (res?.success !== false) {
+        setUnlockModalOpen(false);
+        navigate('/rekapan');
+      } else {
+        addToast(res?.message || 'Gagal menerbitkan Surat Jalan', 'error');
+      }
+    } catch (err) {
+      addToast(err?.message || 'Gagal membuka kunci Jurnal', 'error');
+    } finally {
+      setSubmittingUnlock(false);
+    }
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
     if (!formData.customer) {
@@ -563,13 +639,6 @@ export default function SuratJalanPage() {
       addToast('Harap pilih Referensi Pre Order / RO yang valid dan telah disetujui (APPROVED).', 'warning');
       return;
     }
-
-    const currentPo = approvedPos.find(
-      (po) =>
-        (formData.preOrderId && String(po.id) === String(formData.preOrderId)) ||
-        (formData.nomorRo && (po.nomorRO === formData.nomorRo || po.nomorRo === formData.nomorRo)) ||
-        (formData.poNumber && (po.nomorPo === formData.poNumber || po.nomorPoCustomer === formData.poNumber))
-    );
 
     if (!currentPo || currentPo.status !== 'APPROVED') {
       addToast('Surat Jalan tidak dapat dibuat! Pre Order belum disetujui oleh Super Admin.', 'error');
@@ -595,8 +664,8 @@ export default function SuratJalanPage() {
       return;
     }
 
-    if (!formData.tanggal) {
-      addToast('Harap isi Tanggal Good Issue.', 'warning');
+    if (!formData.tanggalJadwal) {
+      addToast('Harap isi Tanggal Jadwal Pengiriman (GI).', 'warning');
       return;
     }
 
@@ -621,7 +690,11 @@ export default function SuratJalanPage() {
       : null;
     const finalJenis = normalizeServiceType(currentPo?.jenisRO || currentPo?.jenis || formData.jenis || 'Jasa Angkut + Material');
 
-    createSuratJalan({
+    const todayStr = getWibDateString();
+    const tglDibuat = formData.tanggalDibuat || todayStr;
+    const tglJadwal = formData.tanggalJadwal || tglDibuat;
+
+    const payload = {
       ...formData,
       materialId: activeMaterialId,
       jenis: finalJenis,
@@ -635,10 +708,26 @@ export default function SuratJalanPage() {
       volumeAkhir: kubikasi.volumeAkhir,
       klasifikasiDefault: selectedArmadaClassification?.name || null,
       driver: 'Supir Armada Terjadwal',
-    });
+      tanggalDibuat: tglDibuat,
+      tanggalJadwal: tglJadwal,
+      tanggal: tglDibuat,
+    };
 
-    addToast('Surat Jalan (Good Issue) berhasil diterbitkan dan masuk ke Jurnal!', 'success');
-    navigate('/rekapan');
+    try {
+      const res = await createSuratJalan(payload);
+      if (res?.requiresUnlock) {
+        setConflictPayload(payload);
+        setConflictData(res.conflictData);
+        setUnlockModalOpen(true);
+        return;
+      }
+
+      if (res?.success !== false) {
+        navigate('/rekapan');
+      }
+    } catch (err) {
+      addToast(err?.message || 'Gagal menerbitkan Surat Jalan.', 'error');
+    }
   };
 
   return (
@@ -927,15 +1016,26 @@ export default function SuratJalanPage() {
                 </div>
               </div>
 
-              {/* Row 5: Tanggal & Waktu */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {/* Row 5: Tanggal Input Sistem, Tanggal Jadwal & Waktu */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <Input
-                  label="Tanggal Good Issue"
+                  label="Tanggal Input Sistem (Dibuat)"
+                  icon={Calendar}
+                  type="date"
+                  disabled
+                  value={formData.tanggalDibuat}
+                  helperText="Terkunci hari ini (menentukan buku Jurnal)"
+                  className="cursor-not-allowed opacity-80"
+                />
+
+                <Input
+                  label="Tanggal Jadwal Pengiriman (GI)"
                   icon={Calendar}
                   type="date"
                   required
-                  value={formData.tanggal}
-                  onChange={(e) => setFormData({ ...formData, tanggal: e.target.value })}
+                  value={formData.tanggalJadwal}
+                  onChange={(e) => setFormData({ ...formData, tanggalJadwal: e.target.value })}
+                  helperText="Tanggal aktual jadwal kirim (terpisah dari tanggal GI dibuat)"
                 />
 
                 <Input
@@ -1346,6 +1446,48 @@ export default function SuratJalanPage() {
           </div>
         </div>
       </div>
+
+      {/* ======================================================== */}
+      {/* MODAL: UNLOCK JURNAL UNTUK GI TERJADWAL */}
+      {/* ======================================================== */}
+      <Modal
+        isOpen={unlockModalOpen}
+        onClose={() => setUnlockModalOpen(false)}
+        title="Konfirmasi Buka Kunci Jurnal Terjadwal"
+        subtitle="Jurnal untuk tanggal input sistem ini telah dikunci (LOCKED)"
+      >
+        <div className="p-4 space-y-4">
+          <div className="p-3 bg-amber-500/10 border border-amber-500/25 rounded-lg flex items-start gap-3 text-amber-300 text-xs">
+            <Lock className="w-5 h-5 shrink-0 mt-0.5" />
+            <div className="space-y-1">
+              <div className="font-bold">Jurnal Tanggal Input Sistem Sudah Terkunci (LOCKED)</div>
+              <p className="text-neutral-300">
+                Jurnal untuk tanggal pembuatan GI (<strong>{conflictData?.tanggalDibuat}</strong>) berstatus <strong>LOCKED</strong>. Penambahan GI reguler ditolak, namun Surat Jalan ini memiliki jadwal pengiriman di masa depan (<strong>{conflictData?.tanggalJadwal}</strong>).
+              </p>
+              <p className="text-neutral-400">
+                Sesuai aturan pengecualian GI terjadwal (Bagian D), sistem dapat membuka kunci sementara secara atomik untuk mendaftarkan GI terjadwal ini, lalu langsung mengunci kembali Jurnal secara otomatis beserta jejak audit (audit log).
+              </p>
+            </div>
+          </div>
+
+          <div className="pt-3 border-t border-[#24282C] flex justify-end gap-2">
+            <Button
+              variant="ghost"
+              onClick={() => setUnlockModalOpen(false)}
+            >
+              Batal
+            </Button>
+            <Button
+              variant="primary"
+              isLoading={submittingUnlock}
+              onClick={handleConfirmScheduledUnlock}
+              className="bg-amber-600 hover:bg-amber-700 text-white"
+            >
+              Buka Kunci Sementara & Simpan GI
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

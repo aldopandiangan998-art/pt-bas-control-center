@@ -22,85 +22,6 @@ import DateRangeFilter from '../../components/laporan/DateRangeFilter';
 import ReportFilterCard from '../../components/laporan/ReportFilterCard';
 import ReportEmptyState from '../../components/laporan/ReportEmptyState';
 
-// Fallback initial dataset (synced with DB seed)
-const DEFAULT_PPN_DATA = [
-  {
-    id: 'PPN-202611-001',
-    tanggal: '2026-11-12',
-    nomorFakturPajak: '010.002-26.00000089',
-    nomorInvoice: 'INV/BAS/2026/11/001',
-    customer: 'PT CHIYODA INTERNATIONAL INDONESIA',
-    npwp: '01.345.678.9-054.000',
-    material: 'Batu Split 1-2 (Proyek Smelter Freeport)',
-    dpp: 42500000,
-    tarifPpn: 11,
-    ppn: 4675000,
-    amount: 47175000,
-    statusFaktur: 'APPROVED DJP',
-    statusBayar: 'Lunas',
-  },
-  {
-    id: 'PPN-202611-002',
-    tanggal: '2026-11-10',
-    nomorFakturPajak: '010.002-26.00000090',
-    nomorInvoice: 'INV/BAS/2026/11/002',
-    customer: 'PT WASKITA BETON PRECAST TBK',
-    npwp: '01.889.123.4-051.000',
-    material: 'Sirtu Urug Pilihan (Tol KLBM Ruas Bunder)',
-    dpp: 38000000,
-    tarifPpn: 11,
-    ppn: 4180000,
-    amount: 42180000,
-    statusFaktur: 'APPROVED DJP',
-    statusBayar: 'Belum Dibayar',
-  },
-  {
-    id: 'PPN-202611-003',
-    tanggal: '2026-11-08',
-    nomorFakturPajak: '010.002-26.00000091',
-    nomorInvoice: 'INV/BAS/2026/11/003',
-    customer: 'PT SEMEN INDONESIA (PERSERO) TBK',
-    npwp: '01.001.654.2-052.000',
-    material: 'Limestone Super Cor (Tuban Hub)',
-    dpp: 24500000,
-    tarifPpn: 11,
-    ppn: 2695000,
-    amount: 27195000,
-    statusFaktur: 'APPROVED DJP',
-    statusBayar: 'Lunas',
-  },
-  {
-    id: 'PPN-202611-004',
-    tanggal: '2026-11-05',
-    nomorFakturPajak: '010.002-26.00000092',
-    nomorInvoice: 'INV/BAS/2026/11/004',
-    customer: 'LION WINGS, PT',
-    npwp: '01.222.333.4-053.000',
-    material: 'Sirtu Curah Cuci (Pondasi KIG)',
-    dpp: 19371600,
-    tarifPpn: 11,
-    ppn: 2130876,
-    amount: 21502476,
-    statusFaktur: 'APPROVED DJP',
-    statusBayar: 'Belum Dibayar',
-  },
-  {
-    id: 'PPN-202611-005',
-    tanggal: '2026-11-03',
-    nomorFakturPajak: '010.002-26.00000093',
-    nomorInvoice: 'INV/BAS/2026/11/005',
-    customer: 'WINGS SURYA, PT',
-    npwp: '01.777.888.9-055.000',
-    material: 'Base Course A (Dermaga Pelabuhan Manyar)',
-    dpp: 8200000,
-    tarifPpn: 11,
-    ppn: 902000,
-    amount: 9102000,
-    statusFaktur: 'APPROVED DJP',
-    statusBayar: 'Lunas',
-  },
-];
-
 // Helper to calculate current month start & end dates in YYYY-MM-DD format
 const getDefaultDateRange = () => {
   const now = new Date();
@@ -336,20 +257,16 @@ export default function LaporanPpnPage() {
         throw new Error(errJson.message || `Gagal memuat laporan PPN (${res.status})`);
       }
 
-      const json = await res.json();
+      const json = await res.json().catch(() => ({}));
       if (json.success && Array.isArray(json.data)) {
         setReportData(json.data);
       } else {
-        // Fallback filter local
-        const filtered = DEFAULT_PPN_DATA.filter((item) => item.tanggal >= start && item.tanggal <= end);
-        setReportData(filtered);
+        setReportData([]);
       }
       setHasApplied(true);
     } catch (err) {
-      console.warn('API error, falling back to local dataset:', err.message);
-      // Fallback locally
-      const filtered = DEFAULT_PPN_DATA.filter((item) => item.tanggal >= start && item.tanggal <= end);
-      setReportData(filtered);
+      console.warn('API error loading PPN report:', err.message);
+      setReportData([]);
       setHasApplied(true);
     } finally {
       setLoading(false);

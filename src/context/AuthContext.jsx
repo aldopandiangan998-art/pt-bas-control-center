@@ -239,12 +239,15 @@ export function AuthProvider({ children }) {
           };
         }
 
-        // Enforce auto-role determination based on email
-        const autoRole = determineRoleByEmail(cleanEmail);
+        // Preserve database/stored role (only root superadmin is locked to superadmin)
+        const isRootSuperAdmin = user.id === 'usr-1' || cleanEmail === 'superadmin@ptbas.co.id';
+        const resolvedRole = isRootSuperAdmin
+          ? 'superadmin'
+          : (String(user.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'superadmin' ? 'superadmin' : 'admin');
         const resolvedUser = {
           ...user,
-          role: autoRole.role,
-          roleLabel: autoRole.roleLabel,
+          role: resolvedRole,
+          roleLabel: resolvedRole === 'superadmin' ? 'Super Admin' : 'Admin',
         };
         setCurrentUser(resolvedUser);
         return { success: true, user: resolvedUser };

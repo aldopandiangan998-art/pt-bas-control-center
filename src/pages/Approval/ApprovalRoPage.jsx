@@ -126,7 +126,7 @@ export default function ApprovalRoPage() {
   };
   const isApprovedStatus = (s) => {
     const val = String(s || '').toUpperCase().trim();
-    return val === 'APPROVED' || val === 'DISETUJUI';
+    return val === 'APPROVED' || val === 'DISETUJUI' || val === 'SELESAI_KIRIM' || val === 'SELESAI' || val === 'COMPLETED';
   };
   const isRejectedStatus = (s) => {
     const val = String(s || '').toUpperCase().trim();
@@ -371,8 +371,13 @@ export default function ApprovalRoPage() {
     if (!deleteModalData || isDeleting) return;
     setIsDeleting(true);
     try {
-      if (deletePreOrder) await deletePreOrder(deleteModalData.id);
-      addToast(`Received Order ${deleteModalData.nomorRO || deleteModalData.nomorRo || deleteModalData.id} berhasil dihapus.`, 'success');
+      if (deletePreOrder) {
+        const res = await deletePreOrder(deleteModalData.id);
+        if (res && res.success === false) {
+          setIsDeleting(false);
+          return;
+        }
+      }
       setDeleteModalData(null);
     } catch (err) {
       console.error('Error deleting RO:', err);

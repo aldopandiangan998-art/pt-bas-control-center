@@ -18,6 +18,8 @@ import {
   AlertCircle,
   RotateCcw,
   Lock,
+  ChevronUp,
+  ChevronDown,
 } from 'lucide-react';
 import { useData } from '../../context/DataContext';
 import { useToast } from '../../context/ToastContext';
@@ -468,10 +470,35 @@ export default function SuratJalanPage() {
   }, [formData.panjangCm, formData.lebarCm, formData.tinggiCm]);
 
   const handleKoreksiChange = (delta) => {
-    setFormData((prev) => ({
-      ...prev,
-      koreksiTinggiCm: (Number(prev.koreksiTinggiCm) || 0) + delta,
-    }));
+    setFormData((prev) => {
+      const current = Number(prev.koreksiTinggiCm) || 0;
+      return {
+        ...prev,
+        koreksiTinggiCm: current + delta,
+      };
+    });
+  };
+
+  const handleKoreksiInputChange = (e) => {
+    const val = e.target.value;
+    if (val === '' || val === '-' || val === '+') {
+      setFormData((prev) => ({ ...prev, koreksiTinggiCm: val }));
+      return;
+    }
+    if (/^[+-]?\d*$/.test(val)) {
+      setFormData((prev) => ({ ...prev, koreksiTinggiCm: val }));
+    }
+  };
+
+  const handleKoreksiInputBlur = () => {
+    setFormData((prev) => {
+      const raw = prev.koreksiTinggiCm;
+      if (raw === '' || raw === '-' || raw === '+') {
+        return { ...prev, koreksiTinggiCm: 0 };
+      }
+      const num = Number(raw);
+      return { ...prev, koreksiTinggiCm: isNaN(num) ? 0 : num };
+    });
   };
 
   const handleApplyPreset = (p, l, t) => {
@@ -934,49 +961,72 @@ export default function SuratJalanPage() {
 
               {/* TRUCK DIMENSIONS SECTION (Screenshot 1) */}
               <div className="pt-3 border-t border-[#24282C] space-y-3">
-                {/* Koreksi Tinggi Stepper */}
-                <div className="flex items-center justify-between p-2.5 rounded-md bg-[#181B1E] border border-[#2B3036]">
-                  <div className="text-xs text-neutral-300 font-medium flex items-center">
-                    <span>Koreksi Tinggi (K):</span>
-                    <input
-                      type="number"
-                      placeholder="0"
-                      value={formData.koreksiTinggiCm === 0 ? '' : formData.koreksiTinggiCm}
-                      onChange={(e) =>
-                        setFormData((prev) => ({
-                          ...prev,
-                          koreksiTinggiCm: e.target.value === '' ? 0 : Number(e.target.value),
-                        }))
-                      }
-                      style={{
-                        width: `${Math.max(1, String(formData.koreksiTinggiCm === 0 ? 0 : formData.koreksiTinggiCm).length)}ch`,
-                      }}
-                      className="ml-1.5 p-0 bg-transparent border-none text-white placeholder:text-white font-mono font-bold text-xs text-center focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                    />
-                    <span className="text-white font-mono font-bold ml-1">cm</span>
+                {/* Koreksi Tinggi: Manual Entry, Underline & Up/Down Arrows */}
+                <div className={`flex items-center justify-between p-2.5 sm:p-3 rounded-xl border transition-colors ${
+                  isDark ? 'bg-[#181B1E] border-[#2B3036]' : 'bg-slate-50 border-slate-200'
+                }`}>
+                  <div className="flex items-center gap-3">
+                    <span className={`text-xs font-semibold ${isDark ? 'text-neutral-300' : 'text-slate-700'}`}>
+                      Koreksi Tinggi:
+                    </span>
+                    <div className="flex items-center font-mono font-bold">
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        placeholder="0"
+                        value={formData.koreksiTinggiCm === undefined || formData.koreksiTinggiCm === null ? '' : formData.koreksiTinggiCm}
+                        onFocus={(e) => {
+                          if (e.target.value === '0') e.target.select();
+                        }}
+                        onChange={handleKoreksiInputChange}
+                        onBlur={handleKoreksiInputBlur}
+                        className={`w-16 bg-transparent text-center font-mono font-bold text-xs sm:text-sm focus:outline-none border-b-2 transition-colors ${
+                          isDark
+                            ? 'text-white border-[#3E454D] focus:border-[#F4511E]'
+                            : 'text-slate-900 border-slate-400 focus:border-[#F4511E]'
+                        }`}
+                        title="Koreksi Tinggi dalam cm (bisa ketik manual positif atau negatif, misal: -5, 10)"
+                      />
+                      <span className={`font-mono font-bold text-xs ml-1 ${isDark ? 'text-neutral-400' : 'text-slate-500'}`}>cm</span>
+                    </div>
                   </div>
 
-                  <div className="flex items-center gap-1">
-                    <Button
-                      size="xs"
-                      variant="secondary"
-                      icon={Minus}
-                      onClick={() => handleKoreksiChange(-5)}
-                      title="Kurangi 5 cm"
-                    />
-                    <Button
-                      size="xs"
-                      variant="secondary"
-                      icon={Plus}
+                  {/* Toggle Mechanism: Up and Down Arrows */}
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
                       onClick={() => handleKoreksiChange(5)}
-                      title="Tambah 5 cm"
-                    />
+                      className={`p-1.5 sm:p-2 rounded-lg border flex items-center justify-center transition-all cursor-pointer ${
+                        isDark
+                          ? 'bg-[#22262B] border-[#2E343C] text-neutral-200 hover:text-white hover:bg-[#2A3037] active:scale-95'
+                          : 'bg-white border-slate-300 text-slate-700 hover:text-slate-900 hover:bg-slate-100 active:scale-95 shadow-xs'
+                      }`}
+                      title="Tambah 5 cm (Koreksi Naik)"
+                      aria-label="Koreksi Naik"
+                    >
+                      <ChevronUp className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleKoreksiChange(-5)}
+                      className={`p-1.5 sm:p-2 rounded-lg border flex items-center justify-center transition-all cursor-pointer ${
+                        isDark
+                          ? 'bg-[#22262B] border-[#2E343C] text-neutral-200 hover:text-white hover:bg-[#2A3037] active:scale-95'
+                          : 'bg-white border-slate-300 text-slate-700 hover:text-slate-900 hover:bg-slate-100 active:scale-95 shadow-xs'
+                      }`}
+                      title="Kurangi 5 cm (Koreksi Turun)"
+                      aria-label="Koreksi Turun"
+                    >
+                      <ChevronDown className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                    </button>
                   </div>
                 </div>
 
-                {/* Tinggi Hasil Koreksi (TK) Header from Screenshot 1 */}
-                <div className="text-xs font-semibold text-neutral-300 flex items-center justify-between">
-                  <span>Tinggi Hasil Koreksi (TK):</span>
+                {/* Tinggi Hasil Koreksi Header */}
+                <div className={`text-xs font-semibold flex items-center justify-between px-1 ${
+                  isDark ? 'text-neutral-300' : 'text-slate-700'
+                }`}>
+                  <span>Tinggi Hasil Koreksi:</span>
                   <span className="text-[#F4511E] font-mono font-bold text-sm">
                     {kubikasi.tinggiHasilKoreksi} cm
                   </span>
@@ -1006,7 +1056,7 @@ export default function SuratJalanPage() {
                       : isDark ? 'bg-[#181B1E] border-[#2B3036]' : 'bg-white border-slate-300'
                   }`}>
                     <span className="block text-[10px] text-neutral-400 mb-0.5 flex items-center justify-center gap-1">
-                      <span>Panjang (P) *</span>
+                      <span>Panjang *</span>
                       {formData.nomorPolisi && <Lock className="w-2.5 h-2.5 text-amber-500/80" />}
                     </span>
                     <div className="flex items-center justify-center gap-1 font-mono font-bold text-neutral-100 text-sm">
@@ -1025,8 +1075,12 @@ export default function SuratJalanPage() {
                           const clean = raw === '' ? '' : raw.replace(/^0+(?=\d)/, '');
                           setFormData({ ...formData, panjangCm: clean });
                         }}
-                        className={`w-16 bg-transparent text-center focus:outline-none border-b border-[#3E454D] ${
-                          formData.nomorPolisi ? 'cursor-not-allowed text-neutral-400 opacity-80' : 'focus:border-[#F4511E]'
+                        className={`w-16 bg-transparent text-center focus:outline-none border-b-2 transition-colors ${
+                          formData.nomorPolisi
+                            ? 'cursor-not-allowed text-neutral-400 opacity-80 border-[#3E454D]'
+                            : isDark
+                              ? 'text-white border-[#3E454D] focus:border-[#F4511E]'
+                              : 'text-slate-900 border-slate-400 focus:border-[#F4511E]'
                         }`}
                         title={formData.nomorPolisi ? 'Dimensi panjang bak otomatis diatur dari armada terdaftar' : 'Masukkan panjang bak (cm)'}
                       />
@@ -1040,7 +1094,7 @@ export default function SuratJalanPage() {
                       : isDark ? 'bg-[#181B1E] border-[#2B3036]' : 'bg-white border-slate-300'
                   }`}>
                     <span className="block text-[10px] text-neutral-400 mb-0.5 flex items-center justify-center gap-1">
-                      <span>Lebar (L) *</span>
+                      <span>Lebar *</span>
                       {formData.nomorPolisi && <Lock className="w-2.5 h-2.5 text-amber-500/80" />}
                     </span>
                     <div className="flex items-center justify-center gap-1 font-mono font-bold text-neutral-100 text-sm">
@@ -1059,8 +1113,12 @@ export default function SuratJalanPage() {
                           const clean = raw === '' ? '' : raw.replace(/^0+(?=\d)/, '');
                           setFormData({ ...formData, lebarCm: clean });
                         }}
-                        className={`w-16 bg-transparent text-center focus:outline-none border-b border-[#3E454D] ${
-                          formData.nomorPolisi ? 'cursor-not-allowed text-neutral-400 opacity-80' : 'focus:border-[#F4511E]'
+                        className={`w-16 bg-transparent text-center focus:outline-none border-b-2 transition-colors ${
+                          formData.nomorPolisi
+                            ? 'cursor-not-allowed text-neutral-400 opacity-80 border-[#3E454D]'
+                            : isDark
+                              ? 'text-white border-[#3E454D] focus:border-[#F4511E]'
+                              : 'text-slate-900 border-slate-400 focus:border-[#F4511E]'
                         }`}
                         title={formData.nomorPolisi ? 'Dimensi lebar bak otomatis diatur dari armada terdaftar' : 'Masukkan lebar bak (cm)'}
                       />
@@ -1074,7 +1132,7 @@ export default function SuratJalanPage() {
                       : isDark ? 'bg-[#181B1E] border-[#2B3036]' : 'bg-white border-slate-300'
                   }`}>
                     <span className="block text-[10px] text-neutral-400 mb-0.5 flex items-center justify-center gap-1">
-                      <span>Tinggi (T) *</span>
+                      <span>Tinggi *</span>
                       {formData.nomorPolisi && <Lock className="w-2.5 h-2.5 text-amber-500/80" />}
                     </span>
                     <div className="flex items-center justify-center gap-1 font-mono font-bold text-neutral-100 text-sm">
@@ -1093,8 +1151,12 @@ export default function SuratJalanPage() {
                           const clean = raw === '' ? '' : raw.replace(/^0+(?=\d)/, '');
                           setFormData({ ...formData, tinggiCm: clean });
                         }}
-                        className={`w-16 bg-transparent text-center focus:outline-none border-b border-[#3E454D] ${
-                          formData.nomorPolisi ? 'cursor-not-allowed text-neutral-400 opacity-80' : 'focus:border-[#F4511E]'
+                        className={`w-16 bg-transparent text-center focus:outline-none border-b-2 transition-colors ${
+                          formData.nomorPolisi
+                            ? 'cursor-not-allowed text-neutral-400 opacity-80 border-[#3E454D]'
+                            : isDark
+                              ? 'text-white border-[#3E454D] focus:border-[#F4511E]'
+                              : 'text-slate-900 border-slate-400 focus:border-[#F4511E]'
                         }`}
                         title={formData.nomorPolisi ? 'Dimensi tinggi bak otomatis diatur dari armada terdaftar' : 'Masukkan tinggi bak (cm)'}
                       />

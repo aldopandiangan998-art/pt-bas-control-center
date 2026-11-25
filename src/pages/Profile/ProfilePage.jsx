@@ -35,6 +35,13 @@ export default function ProfilePage() {
   const { addToast } = useToast();
   const { isDark, language } = useApp();
 
+  // Sync document title
+  useEffect(() => {
+    document.title = language === 'en'
+      ? 'Account Profile and Security | PT BAS Control Center'
+      : 'Profil Akun & Keamanan | PT BAS Control Center';
+  }, [language]);
+
   // Avatar upload state & ref
   const fileInputRef = useRef(null);
   const [avatarUploading, setAvatarUploading] = useState(false);
@@ -338,7 +345,7 @@ export default function ProfilePage() {
                 }`}
             >
               <User className="w-5 h-5 text-[#F4511E]" />
-              <span>{language === 'en' ? 'User Account Profile' : 'Profil Akun Pengguna'}</span>
+              <span>{language === 'en' ? 'Account Profile and Security' : 'Profil Akun & Keamanan'}</span>
             </h1>
             <Badge size="xs" variant={isSuperAdmin ? 'primary' : 'success'} dot>
               {isSuperAdmin ? 'Super Admin' : 'Admin'}
@@ -346,8 +353,8 @@ export default function ProfilePage() {
           </div>
           <p className={`text-xs ${isDark ? 'text-neutral-400' : 'text-slate-500'}`}>
             {language === 'en'
-              ? 'Manage operational identity data, date of birth, gender, contact, and password security'
-              : 'Kelola data identitas operasional, tanggal lahir, jenis kelamin, kontak, dan keamanan kata sandi'}
+              ? 'Manage operational identity data, personal info, login password, and account security'
+              : 'Kelola data identitas operasional, data pribadi, kata sandi login, dan keamanan akun'}
           </p>
         </div>
       </div>
@@ -432,40 +439,14 @@ export default function ProfilePage() {
                 {isSuperAdmin ? 'Super Admin' : (language === 'en' ? 'Operational Admin' : 'Admin Operasional')}
               </span>
             </div>
-            <div className={`text-xs font-mono mt-0.5 ${isDark ? 'text-neutral-400' : 'text-slate-500'}`}>
-              {currentUser?.email || '-'}
-            </div>
-            <div className="flex items-center gap-2 mt-2 flex-wrap text-xs">
-              <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg font-mono text-[11px] ${isDark ? 'bg-black/30 border border-white/5 text-neutral-300' : 'bg-slate-100 text-slate-700'}`}>
-                <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
-                <span>{language === 'en' ? 'Assignment:' : 'Penugasan:'} {currentUser?.branch && !currentUser.branch.includes('Site [') ? currentUser.branch : 'Hub Gresik'}</span>
-              </span>
-              <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg font-mono text-[11px] ${isDark ? 'bg-black/30 border border-white/5 text-neutral-300' : 'bg-slate-100 text-slate-700'}`}>
-                <User className="w-3.5 h-3.5 text-blue-400" />
-                <span>{language === 'en' ? 'Gender:' : 'Gender:'} {currentUser?.gender || (language === 'en' ? 'Male' : 'Laki-laki')}</span>
-              </span>
-              <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg font-mono text-[11px] ${isDark ? 'bg-black/30 border border-white/5 text-neutral-300' : 'bg-slate-100 text-slate-700'}`}>
-                <Calendar className="w-3.5 h-3.5 text-amber-400" />
-                <span>{language === 'en' ? 'DOB:' : 'Tgl Lahir:'} {currentUser?.birth_date || '-'}</span>
-              </span>
-              <span className="text-emerald-500 font-semibold flex items-center gap-1 font-mono text-[11px] pl-1">
+            <div className={`text-xs font-mono mt-0.5 flex items-center gap-2 flex-wrap ${isDark ? 'text-neutral-400' : 'text-slate-500'}`}>
+              <span>{currentUser?.email || '-'}</span>
+              <span>&bull;</span>
+              <span className="text-emerald-500 font-semibold flex items-center gap-1 text-[11px]">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                 <span>{language === 'en' ? 'Authenticated Session' : 'Sesi Terautentikasi'}</span>
               </span>
             </div>
-          </div>
-        </div>
-
-        <div
-          className={`md:border-l pl-0 md:pl-5 font-mono text-left md:text-right shrink-0 ${isDark ? 'border-[#22262A]' : 'border-slate-200'
-            }`}
-        >
-          <div className="text-[10px] text-neutral-500 uppercase tracking-wider">
-            {language === 'en' ? 'User Account ID' : 'ID Akun Pengguna'}
-          </div>
-          <div className="text-sm font-bold text-[#F4511E]">{currentUser?.id || 'usr-1'}</div>
-          <div className={`text-[10px] mt-0.5 ${isDark ? 'text-neutral-400' : 'text-slate-500'}`}>
-            Role: {currentUser?.role || (isSuperAdmin ? 'superadmin' : 'admin')}
           </div>
         </div>
       </div>

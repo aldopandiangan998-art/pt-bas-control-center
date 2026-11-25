@@ -187,7 +187,7 @@ export default function UserProfileModal({ isOpen, onClose, initialTab = 'profil
             </div>
             <div>
               <h2 className={`text-sm font-bold tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                Profil Akun {isSuperAdmin ? 'Super Admin' : 'Pengguna'}
+                Profil Akun & Keamanan {isSuperAdmin ? 'Super Admin' : 'Pengguna'}
               </h2>
               <p className={`text-[11px] ${isDark ? 'text-neutral-400' : 'text-slate-500'}`}>
                 Kelola data identitas operasional, tanggal lahir, jenis kelamin, dan keamanan sandi
@@ -277,26 +277,11 @@ export default function UserProfileModal({ isOpen, onClose, initialTab = 'profil
                 <div className={`text-xs font-mono mt-0.5 ${isDark ? 'text-neutral-400' : 'text-slate-500'}`}>
                   {currentUser?.email}
                 </div>
-                <div className={`text-[10px] mt-1.5 flex items-center gap-2 flex-wrap ${isDark ? 'text-neutral-400' : 'text-slate-600'}`}>
-                  <span className="flex items-center gap-1">
-                    <ShieldCheck className="w-3 h-3 text-emerald-500" />
-                    <span>Penugasan: {currentUser?.branch && !currentUser.branch.includes('Site [') ? currentUser.branch : 'Hub Gresik'}</span>
-                  </span>
-                  <span>•</span>
-                  <span>{currentUser?.gender || 'Laki-laki'}</span>
-                  {currentUser?.birth_date && (
-                    <>
-                      <span>•</span>
-                      <span>Lahir: {currentUser.birth_date}</span>
-                    </>
-                  )}
+                <div className="text-[10px] mt-1 text-emerald-500 font-semibold flex items-center gap-1 font-mono">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  <span>Sesi Terautentikasi</span>
                 </div>
               </div>
-            </div>
-
-            <div className={`text-right sm:border-l pl-0 sm:pl-3 font-mono ${isDark ? 'border-[#1F2C40]' : 'border-slate-200'}`}>
-              <div className="text-[10px] text-neutral-500 uppercase">ID Pengguna</div>
-              <div className="text-xs font-bold text-[#F4511E]">{currentUser?.id || 'usr-1'}</div>
             </div>
           </div>
 

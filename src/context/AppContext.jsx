@@ -15,7 +15,7 @@ export const translations = {
     masterData: 'Master Data',
     approval: 'Persetujuan',
     settings: 'Pengaturan',
-    profile: 'Profil Akun',
+    profile: 'Profil Akun & Keamanan',
     logout: 'Keluar',
 
     // Settings page
@@ -58,7 +58,7 @@ export const translations = {
     masterData: 'Master Data',
     approval: 'Approval',
     settings: 'Settings',
-    profile: 'Account Profile',
+    profile: 'Account Profile and Security',
     logout: 'Sign Out',
 
     // Settings page

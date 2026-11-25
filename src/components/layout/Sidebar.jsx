@@ -530,7 +530,7 @@ export default function Sidebar() {
                       ? 'bg-gradient-to-r from-[#181B1E] to-[#14171A] border-[#22262A] hover:from-[#1D2125] hover:to-[#181B1E]'
                       : 'bg-gradient-to-r from-orange-50/80 to-slate-50 border-slate-200 hover:from-orange-100/90 hover:to-slate-100'
                   }`}
-                  title="Klik untuk membuka Halaman Profil Akun"
+                  title={language === 'en' ? 'Click to open Account Profile and Security' : 'Klik untuk membuka Halaman Profil Akun & Keamanan'}
                 >
                   <div className="flex items-center gap-2.5">
                     <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-[#F4511E] to-[#FF7043] text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-md overflow-hidden">
@@ -608,7 +608,7 @@ export default function Sidebar() {
 
                 {/* Dropdown Action Menu */}
                 <div className="p-1.5 space-y-0.5 text-xs">
-                  {/* Buka Halaman Profil Akun */}
+                  {/* Buka Halaman Profil Akun dan Keamanan */}
                   <button
                     type="button"
                     onClick={() => {
@@ -625,35 +625,10 @@ export default function Sidebar() {
                     <User className="w-4 h-4 text-[#F4511E] shrink-0" />
                     <div>
                       <div className="font-bold text-[11px]">
-                        {language === 'en' ? 'Open Account Profile' : 'Buka Halaman Profil Akun'}
+                        {language === 'en' ? 'Account Profile and Security' : 'Profil Akun & Keamanan'}
                       </div>
                       <div className={`text-[10px] ${isDark ? 'text-neutral-400' : 'text-slate-500'}`}>
-                        {language === 'en' ? 'Full name, DOB, gender, contact' : 'Nama lengkap, tgl lahir, gender, kontak'}
-                      </div>
-                    </div>
-                  </button>
-
-                  {/* Ubah Kata Sandi */}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setProfileDropdownOpen(false);
-                      navigate('/profile?tab=password');
-                      closeMobileSidebar();
-                    }}
-                    className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl transition-colors cursor-pointer text-left ${
-                      isDark
-                        ? 'hover:bg-[#1D2125] text-neutral-200 hover:text-white'
-                        : 'hover:bg-slate-100 text-slate-700 hover:text-slate-900'
-                    }`}
-                  >
-                    <KeyRound className="w-4 h-4 text-amber-500 shrink-0" />
-                    <div>
-                      <div className="font-bold text-[11px]">
-                        {language === 'en' ? 'Change Password & Security' : 'Ubah Sandi & Keamanan'}
-                      </div>
-                      <div className={`text-[10px] ${isDark ? 'text-neutral-400' : 'text-slate-500'}`}>
-                        {language === 'en' ? 'New password & Option B verification' : 'Kata sandi baru & verifikasi Opsi B'}
+                        {language === 'en' ? 'Personal data, contact, password & security' : 'Data pribadi, kontak, kata sandi & keamanan'}
                       </div>
                     </div>
                   </button>
@@ -709,7 +684,7 @@ export default function Sidebar() {
                     closeMobileSidebar();
                   }}
                   className="flex items-center gap-2.5 min-w-0 cursor-pointer group flex-1"
-                  title={language === 'en' ? 'Click to open Account Profile Page' : 'Klik untuk membuka Halaman Profil Akun'}
+                  title={language === 'en' ? 'Click to open Account Profile and Security' : 'Klik untuk membuka Halaman Profil Akun & Keamanan'}
                 >
                   <div className={`w-7 h-7 rounded-full border flex items-center justify-center text-[10px] font-bold shrink-0 shadow-xs transition-colors overflow-hidden ${
                     isProfileActive
@@ -817,7 +792,7 @@ export default function Sidebar() {
                       ? 'border-[#F4511E] bg-slate-100 text-slate-800 scale-105'
                       : 'border-slate-300 bg-white text-slate-700 hover:border-orange-400'
                 }`}
-                title={language === 'en' ? `Account Profile: ${currentUser?.name || 'User'} (Click to open profile)` : `Profil Akun: ${currentUser?.name || 'Pengguna'} (Klik untuk buka halaman profil)`}
+                title={language === 'en' ? `Account Profile and Security: ${currentUser?.name || 'User'} (Click to open)` : `Profil Akun & Keamanan: ${currentUser?.name || 'Pengguna'} (Klik untuk buka halaman)`}
               >
                 {currentUser?.avatar ? (
                   <img

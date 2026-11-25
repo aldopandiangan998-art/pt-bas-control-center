@@ -24,19 +24,32 @@ import {
   Eye,
   X,
   Filter,
+  Lock,
+  AlertCircle,
 } from 'lucide-react';
 import { formatCurrency, formatVolume } from '../../utils/formatters';
 import { Button, Badge, Card, Input, Select, Modal, SearchBar, Checkbox } from '../../components/ui';
 import { useToast } from '../../context/ToastContext';
 import { useData } from '../../context/DataContext';
 
+function getJournalPendingSjs(rek, suratJalanList = []) {
+  if (!rek || rek.statusLock === 'LOCKED') return [];
+  return (suratJalanList || []).filter(
+    (sj) =>
+      sj.jurnalId === rek.id ||
+      (((rek.preOrderId && String(sj.preOrderId) === String(rek.preOrderId)) ||
+        (rek.nomorRO && sj.nomorRO === rek.nomorRO)) &&
+        (sj.tanggalDibuat || sj.tanggal) === rek.tanggal)
+  );
+}
+
 export default function RekapanPage() {
   const navigate = useNavigate();
   const { addToast } = useToast();
-  const { rekapanList, preOrders, customers, generateNomorRO, materials } = useData();
+  const { rekapanList, preOrders, suratJalanList, customers, generateNomorRO, materials, lockJurnal, fetchJurnalAuditLogs } = useData();
 
-  // Active view tab: 'orders' (Detail Received Order & Realisasi SJ) | 'ledger' (Buku Besar Jurnal GI)
-  const [activeTab, setActiveTab] = useState('orders');
+  // Active view tab: 'ledger' (Buku Besar Jurnal GI) | 'orders' (Detail Received Order & Realisasi SJ)
+  const [activeTab, setActiveTab] = useState('ledger');
 
   // Unified Filter & Search States across both tabs
   const [searchQuery, setSearchQuery] = useState('');
@@ -51,6 +64,42 @@ export default function RekapanPage() {
   // Selected Order for Waybills Modal Dialog (Popup Window)
   const [selectedOrderForModal, setSelectedOrderForModal] = useState(null);
   const [expandedCardIds, setExpandedCardIds] = useState(new Set());
+
+  // Jurnal Lock & Audit Trail States
+  const [lockingId, setLockingId] = useState(null);
+  const [auditModalOpen, setAuditModalOpen] = useState(false);
+  const [auditLogs, setAuditLogs] = useState([]);
+  const [loadingAudit, setLoadingAudit] = useState(false);
+  const [selectedJurnalForAudit, setSelectedJurnalForAudit] = useState(null);
+
+  const handleLockJurnal = async (jurnalId) => {
+    if (!window.confirm('Kunci Jurnal ini?\n\nSemua Surat Jalan (GI) pada tanggal input jurnal ini akan disegel/dikunci. Setelah LOCKED, GI baru pada tanggal yang sama ditolak kecuali GI terjadwal masa depan (Bagian D).')) {
+      return;
+    }
+    setLockingId(jurnalId);
+    try {
+      await lockJurnal(jurnalId);
+    } catch (err) {
+      // Error toast is already handled by DataContext.lockJurnal
+    } finally {
+      setLockingId(null);
+    }
+  };
+
+  const handleOpenAuditTrail = async (jurnalId, jurnalLabel) => {
+    setSelectedJurnalForAudit({ id: jurnalId, label: jurnalLabel });
+    setAuditModalOpen(true);
+    setLoadingAudit(true);
+    try {
+      const logs = await fetchJurnalAuditLogs(jurnalId);
+      setAuditLogs(logs || []);
+    } catch (err) {
+      console.error('Failed to fetch audit logs:', err);
+      setAuditLogs([]);
+    } finally {
+      setLoadingAudit(false);
+    }
+  };
 
   const toggleExpand = (id) => {
     setExpandedCardIds((prev) => {
@@ -93,10 +142,13 @@ export default function RekapanPage() {
       if (q) {
         const terms = q.split(/\s+/).filter(Boolean);
 
-        const sjDetails = Array.isArray(item.suratJalanDetails) ? item.suratJalanDetails : [];
+        const sjDetails = Array.isArray(item.suratJalanDetails) && item.suratJalanDetails.length > 0
+          ? item.suratJalanDetails
+          : getJournalPendingSjs(item, suratJalanList);
         const sjText = sjDetails
           .map((d) => [
             String(d.nomorSuratJalan || d.noSJ || d.id || ''),
+            String(d.material || ''),
             String(d.nomorPolisi || d.nopol || ''),
             String(d.driver || d.sopir || ''),
             String(d.supplier || d.quarry || ''),
@@ -148,7 +200,7 @@ export default function RekapanPage() {
 
       return true;
     });
-  }, [rekapanList, customerFilter, materialFilter, taxFilter, statusFilter, startDate, endDate, searchQuery]);
+  }, [rekapanList, suratJalanList, customerFilter, materialFilter, taxFilter, statusFilter, startDate, endDate, searchQuery]);
 
   // Aggregated calculations for Jurnal GI
   const stats = useMemo(() => {
@@ -165,9 +217,9 @@ export default function RekapanPage() {
     const list = [];
     const seenRos = new Set();
 
-    // Prioritize approved preOrders and match with live journals
-    const approvedPos = (preOrders || []).filter((p) => p.status === 'APPROVED');
-    for (const po of approvedPos) {
+    // Prioritize approved / closed preOrders and aggregate across all daily journals & SJs
+    const activePos = (preOrders || []).filter((p) => ['APPROVED', 'SELESAI_KIRIM', 'SELESAI', 'COMPLETED'].includes(String(p.status || '').toUpperCase()));
+    for (const po of activePos) {
       const finalRo = po.nomorRO || (generateNomorRO ? generateNomorRO(po.customer, preOrders, po.tanggal, customers) : '');
       seenRos.add(finalRo);
 
@@ -181,32 +233,40 @@ export default function RekapanPage() {
       const matName = po.materialName || firstItem.nama || 'SIRTU';
       const targetVol = Number(po.totalOrder || firstItem.kuantitas || 0);
 
-      // Match journal
-      const matchedJurnal = (rekapanList || []).find((r) => r.nomorRO === finalRo || r.preOrderId === po.id);
-      const details = Array.isArray(matchedJurnal?.suratJalanDetails) ? matchedJurnal.suratJalanDetails : [];
+      const matchedJournals = (rekapanList || []).filter((r) => r.nomorRO === finalRo || r.preOrderId === po.id);
+      const firstJurnal = matchedJournals[0] || null;
+      const hasLockedJurnal = matchedJournals.some((r) => r.statusLock === 'LOCKED');
+
+      const roSjs = (suratJalanList || []).filter(
+        (sj) => (po.id && String(sj.preOrderId) === String(po.id)) || (finalRo && sj.nomorRO === finalRo)
+      );
+      const lockedDetails = matchedJournals.flatMap((j) =>
+        Array.isArray(j.suratJalanDetails) ? j.suratJalanDetails : []
+      );
+      const details = roSjs.length > 0 ? roSjs : lockedDetails;
       const currentVol = details.length > 0
         ? Number(details.reduce((sum, d) => sum + (Number(d.volumeAkhir) || 0), 0).toFixed(2))
-        : Number(po.terkirim || matchedJurnal?.totalVolume || 0);
-      const currentSj = details.length > 0 ? details.length : Number(matchedJurnal?.totalSj || 0);
+        : Number(po.terkirim || matchedJournals.reduce((s, j) => s + (Number(j.totalVolume) || 0), 0) || 0);
+      const currentSj = details.length > 0 ? details.length : matchedJournals.reduce((s, j) => s + (Number(j.totalSj) || 0), 0);
       const sisaVolume = Math.max(0, Number((targetVol - currentVol).toFixed(2)));
-      // Delivery progress measured EXCLUSIVELY by total delivered cubic volume (m³)
-      const isCompleted = targetVol > 0 && currentVol >= targetVol;
+      const isCompleted = po.status === 'SELESAI_KIRIM' || (targetVol > 0 && currentVol >= targetVol);
 
       list.push({
-        id: matchedJurnal?.id || `RO-SYNC-${po.id}`,
+        id: firstJurnal?.id || `RO-SYNC-${po.id}`,
         nomorRO: finalRo,
         preOrderId: po.id,
-        poNumber: po.nomorPo || matchedJurnal?.poNumber || 'MENUNGGU SURAT JALAN PERTAMA',
+        poNumber: po.nomorPo || firstJurnal?.poNumber || 'MENUNGGU SURAT JALAN PERTAMA',
         customer: po.customer,
-        customerAddress: po.customerAddress || matchedJurnal?.customerAddress || '',
+        customerAddress: po.customerAddress || firstJurnal?.customerAddress || '',
         material: matName,
         satuan: po.satuan || 'm3',
-        tanggal: po.tanggal || matchedJurnal?.tanggal,
+        tanggal: po.tanggal || firstJurnal?.tanggal,
         isPpn: po.jenisWajibPajak === 'PKP',
         targetVolume: targetVol,
         totalSj: currentSj,
         totalVolume: currentVol,
         sisaVolume,
+        hasLockedJurnal,
         status: isCompleted ? 'Selesai Kirim' : (currentVol > 0 || currentSj > 0 ? 'Dalam Pengiriman' : 'Siap Kirim'),
         suratJalanDetails: details,
         hargaBeli: Number(po.hargaBeli || firstItem.hargaBeli || 0),
@@ -452,6 +512,18 @@ export default function RekapanPage() {
           <div className="flex items-center gap-1 bg-[#16181B] p-1 rounded-lg border border-[#24282C]">
             <button
               type="button"
+              onClick={() => setActiveTab('ledger')}
+              className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer ${
+                activeTab === 'ledger'
+                  ? 'bg-[#F4511E] text-white shadow-sm'
+                  : 'text-neutral-400 hover:text-white'
+              }`}
+            >
+              <Layers className="w-3.5 h-3.5" />
+              <span>Buku Besar Jurnal GI ({filteredData.length})</span>
+            </button>
+            <button
+              type="button"
               onClick={() => setActiveTab('orders')}
               className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer ${
                 activeTab === 'orders'
@@ -461,18 +533,6 @@ export default function RekapanPage() {
             >
               <Truck className="w-3.5 h-3.5" />
               <span>Detail Received Order ({receivedOrders.length})</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab('ledger')}
-              className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer ${
-                activeTab === 'ledger'
-                  ? 'bg-[#F4511E] text-white shadow-sm'
-                  : 'text-neutral-400 hover:text-white'
-              }`}
-            >
-              <Layers className="w-3.5 h-3.5" />
-              <span>Buku Besar Rekapan ({filteredData.length})</span>
             </button>
           </div>
 
@@ -839,7 +899,7 @@ export default function RekapanPage() {
               <p className="text-xs text-neutral-500 max-w-md mx-auto">
                 {hasActiveFilters
                   ? 'Silakan coba ubah kata kunci atau hapus filter yang sedang aktif.'
-                  : 'Pastikan Pre-Order telah disetujui (APPROVED) agar nomor RO dan ringkasan jurnal otomatis diterbitkan.'}
+                  : 'Belum ada Received Order berstatus APPROVED untuk dimonitor.'}
               </p>
               {hasActiveFilters && (
                 <Button size="sm" variant="ghost" icon={RotateCcw} onClick={handleResetFilters} className="mx-auto">
@@ -917,8 +977,10 @@ export default function RekapanPage() {
                             onClick={() => {
                               navigate('/surat-jalan', {
                                 state: {
+                                  fromPreOrder: true,
                                   preOrderId: ro.preOrderId,
                                   nomorRO: ro.nomorRO,
+                                  nomorRo: ro.nomorRO,
                                   nomorPo: ro.poNumber,
                                   customer: ro.customer,
                                   materialName: ro.material,
@@ -934,7 +996,15 @@ export default function RekapanPage() {
                             size="xs"
                             variant="outline"
                             icon={FileText}
+                            disabled={!ro.hasLockedJurnal}
                             onClick={() => {
+                              if (!ro.hasLockedJurnal) {
+                                addToast(
+                                  `Order ${ro.nomorRO || ro.id} belum memiliki Jurnal berstatus LOCKED. Kunci minimal 1 Jurnal harian sebelum membuat Invoice.`,
+                                  'error'
+                                );
+                                return;
+                              }
                               navigate('/invoices', {
                                 state: {
                                   order: ro,
@@ -944,10 +1014,18 @@ export default function RekapanPage() {
                               });
                               addToast(`Membuka form Input Invoice untuk ${ro.nomorRO}`, 'info');
                             }}
-                            className="border-[#2D3339] hover:border-[#F4511E] text-white font-medium cursor-pointer"
-                            title="Buat Faktur Tagihan Invoice"
+                            className={
+                              !ro.hasLockedJurnal
+                                ? 'opacity-40 cursor-not-allowed border-neutral-800 text-neutral-500'
+                                : 'border-[#2D3339] hover:border-[#F4511E] text-white font-medium cursor-pointer'
+                            }
+                            title={
+                              !ro.hasLockedJurnal
+                                ? 'Minimal 1 Jurnal harus dikunci (LOCKED) sebelum Invoice dapat dibuat.'
+                                : 'Buat Faktur Tagihan Invoice'
+                            }
                           >
-                            Input Invoice
+                            Input Invoice {!ro.hasLockedJurnal && '(Terkunci)'}
                           </Button>
                           <Button
                             size="xs"
@@ -1111,7 +1189,7 @@ export default function RekapanPage() {
               <p className="text-xs text-neutral-500 max-w-md mx-auto">
                 {hasActiveFilters
                   ? 'Silakan coba ubah kata kunci pencarian atau sesuaikan filter pelanggan/tanggal.'
-                  : 'Data rekapan otomatis terbentuk saat surat jalan diterbitkan.'}
+                  : 'Jurnal GI harian otomatis dibuat saat Surat Jalan (GI) pertama pada tanggal tersebut diterbitkan (bukan saat RO disetujui).'}
               </p>
               {hasActiveFilters && (
                 <Button size="sm" variant="ghost" icon={RotateCcw} onClick={handleResetFilters} className="mx-auto">
@@ -1124,12 +1202,33 @@ export default function RekapanPage() {
               {filteredData.map((rek) => {
                 const isExpanded = expandedCardIds.has(rek.id);
                 const details = Array.isArray(rek.suratJalanDetails) ? rek.suratJalanDetails : [];
+                const pendingSjs = getJournalPendingSjs(rek, suratJalanList);
+                const journalSjs = rek.statusLock === 'LOCKED' ? details : pendingSjs;
+                const pendingMatSummary = rek.statusLock !== 'LOCKED' && pendingSjs.length > 0
+                  ? Object.values(
+                      pendingSjs.reduce((acc, sj) => {
+                        const mat = sj.material || rek.material || 'MATERIAL';
+                        if (!acc[mat]) acc[mat] = { material: mat, ritase: 0, volume: 0 };
+                        acc[mat].ritase += 1;
+                        acc[mat].volume = Number((acc[mat].volume + (Number(sj.volumeAkhir) || 0)).toFixed(2));
+                        return acc;
+                      }, {})
+                    )
+                  : [];
                 const targetVol = Number(rek.targetVolume) || 0;
                 const currentVol = Number(rek.totalVolume) || 0;
                 const fulfillmentPct = targetVol > 0
                   ? Math.min(100, Math.round((currentVol / targetVol) * 100))
                   : (currentVol > 0 ? 100 : 0);
                 const isCompleted = targetVol > 0 && currentVol >= targetVol;
+                const hasLockedJurnal =
+                  rek.statusLock === 'LOCKED' ||
+                  (rekapanList || []).some(
+                    (r) =>
+                      r.statusLock === 'LOCKED' &&
+                      ((rek.preOrderId && r.preOrderId === rek.preOrderId) ||
+                        (rek.nomorRO && r.nomorRO === rek.nomorRO))
+                  );
 
                 return (
                   <motion.div
@@ -1172,6 +1271,17 @@ export default function RekapanPage() {
                             >
                               {rek.status || 'Siap Kirim'}
                             </Badge>
+                            {rek.statusLock === 'LOCKED' ? (
+                              <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 font-mono">
+                                <Lock className="w-3 h-3" />
+                                <span>LOCKED</span>
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded bg-amber-500/15 text-amber-400 border border-amber-500/30 font-mono">
+                                <AlertCircle className="w-3 h-3" />
+                                <span>OPEN</span>
+                              </span>
+                            )}
                           </div>
 
                           <div className="text-sm font-bold text-white flex items-center gap-2">
@@ -1180,13 +1290,40 @@ export default function RekapanPage() {
                             <span className="text-amber-400 font-semibold">{rek.material}</span>
                           </div>
 
+                          {(() => {
+                            let summaryItems = [];
+                            if (typeof rek.itemsSummary === 'string') {
+                              try { summaryItems = JSON.parse(rek.itemsSummary); } catch (e) { summaryItems = []; }
+                            } else if (Array.isArray(rek.itemsSummary)) {
+                              summaryItems = rek.itemsSummary;
+                            }
+                            const displaySummary = summaryItems.length > 0 ? summaryItems : pendingMatSummary;
+                            if (displaySummary.length > 1) {
+                              return (
+                                <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
+                                  <span className="text-[10px] text-neutral-400 font-mono">
+                                    {rek.statusLock === 'LOCKED' ? 'Katalog Material:' : 'Material (Menunggu Lock):'}
+                                  </span>
+                                  {displaySummary.map((sm, sIdx) => (
+                                    <span key={sIdx} className="text-[10px] bg-neutral-900 border border-neutral-700 text-amber-300 px-2 py-0.5 rounded font-mono">
+                                      {sm.material}: {formatVolume(sm.volume, sm.satuan || 'm3')} ({sm.ritase ?? sm.count ?? 0} GI)
+                                    </span>
+                                  ))}
+                                </div>
+                              );
+                            }
+                            return null;
+                          })()}
+
                           <div className="text-xs text-neutral-400 font-mono flex items-center gap-2 flex-wrap">
                             <span className="bg-[#1C1F22] px-1.5 py-0.5 rounded text-neutral-300">
                               PO: {rek.poNumber || 'DRAFT (Menunggu SJ 1)'}
                             </span>
                             <span>&bull;</span>
                             <span className="text-white font-medium">
-                              {details.length || rek.totalSj} Good Issue (Surat Jalan)
+                              {rek.statusLock === 'LOCKED'
+                                ? `${details.length || rek.totalSj} Good Issue (Terkunci)`
+                                : `${pendingSjs.length} Good Issue (Menunggu Lock)`}
                             </span>
                             <span>&bull;</span>
                             <span>
@@ -1226,26 +1363,58 @@ export default function RekapanPage() {
 
                           {/* Operational Shortcuts & Modal Button */}
                           <div className="flex items-center gap-1.5 mt-1 pt-1.5 border-t border-[#22262A] w-full sm:w-auto justify-end flex-wrap">
+                            {rek.statusLock !== 'LOCKED' && (
+                              <Button
+                                size="xs"
+                                variant="warning"
+                                icon={Lock}
+                                isLoading={lockingId === rek.id}
+                                onClick={() => handleLockJurnal(rek.id)}
+                                className="bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer"
+                                title="Kunci Jurnal (Lock) dan segel seluruh Surat Jalan hari ini"
+                              >
+                                Kunci Jurnal (Lock)
+                              </Button>
+                            )}
+                            <Button
+                              size="xs"
+                              variant="outline"
+                              icon={Clock}
+                              onClick={() => handleOpenAuditTrail(rek.id, rek.nomorRO || rek.id)}
+                              className="border-[#2D3339] hover:border-amber-500 text-neutral-300 hover:text-white cursor-pointer"
+                              title="Lihat riwayat audit Lock/Unlock jurnal ini"
+                            >
+                              Audit Log
+                            </Button>
                             <Button
                               size="xs"
                               variant="outline"
                               icon={FileText}
                               onClick={() => {
-                                const matched = receivedOrders.find((r) => r.id === rek.id || r.nomorRO === rek.nomorRO) || rek;
-                                setSelectedOrderForModal(matched);
+                                const journalTotalVol = rek.statusLock === 'LOCKED'
+                                  ? currentVol
+                                  : Number(journalSjs.reduce((sum, d) => sum + (Number(d.volumeAkhir) || 0), 0).toFixed(2));
+                                setSelectedOrderForModal({
+                                  ...rek,
+                                  isJournalScoped: true,
+                                  hasLockedJurnal,
+                                  suratJalanDetails: journalSjs,
+                                  totalSj: journalSjs.length,
+                                  totalVolume: journalTotalVol,
+                                });
                               }}
                               className="border-[#2D3339] hover:border-[#F4511E] text-white cursor-pointer"
                             >
-                              Daftar SJ ({details.length})
+                              Daftar SJ ({journalSjs.length})
                             </Button>
                             <Button
                               size="xs"
                               variant="outline"
-                              disabled={!isCompleted}
+                              disabled={!hasLockedJurnal}
                               onClick={() => {
-                                if (!isCompleted) {
+                                if (!hasLockedJurnal) {
                                   addToast(
-                                    `Order ${rek.nomorRO || rek.id} belum selesai kirim (${currentVol}/${targetVol} m³). BKK hanya dapat dibuat setelah pesanan 100% selesai dikirim.`,
+                                    `Order ${rek.nomorRO || rek.id} belum memiliki Jurnal berstatus LOCKED. Kunci minimal 1 Jurnal harian sebelum membuat BKK.`,
                                     'error'
                                   );
                                   return;
@@ -1254,23 +1423,31 @@ export default function RekapanPage() {
                                 addToast(`Beralih ke kas keluar BKK untuk ${rek.nomorRO || rek.id}`, 'info');
                               }}
                               className={
-                                !isCompleted
+                                !hasLockedJurnal
                                   ? 'opacity-40 cursor-not-allowed border-neutral-800 text-neutral-500 hover:border-neutral-800 hover:text-neutral-500'
                                   : 'cursor-pointer'
                               }
                               title={
-                                !isCompleted
-                                  ? `Pengiriman belum selesai (${currentVol}/${targetVol} m³). BKK dikunci.`
+                                !hasLockedJurnal
+                                  ? 'Minimal 1 Jurnal harus dikunci (LOCKED) sebelum BKK dapat dibuat.'
                                   : 'Proses ke Bukti Kas Keluar'
                               }
                             >
-                              Ke BKK {!isCompleted && '(Terkunci)'}
+                              Ke BKK {!hasLockedJurnal && '(Terkunci)'}
                             </Button>
                             <Button
                               size="xs"
                               variant="primary"
                               icon={FileText}
+                              disabled={!hasLockedJurnal}
                               onClick={() => {
+                                if (!hasLockedJurnal) {
+                                  addToast(
+                                    `Order ${rek.nomorRO || rek.id} belum memiliki Jurnal berstatus LOCKED. Kunci minimal 1 Jurnal harian sebelum membuat Invoice.`,
+                                    'error'
+                                  );
+                                  return;
+                                }
                                 navigate('/invoices', {
                                   state: {
                                     order: rek,
@@ -1280,10 +1457,18 @@ export default function RekapanPage() {
                                 });
                                 addToast(`Membuka form Input Invoice untuk ${rek.nomorRO || rek.id}`, 'info');
                               }}
-                              title="Terbitkan Faktur Tagihan Invoice Customer"
-                              className="bg-[#F4511E] hover:bg-[#ff6b3d] text-white font-semibold cursor-pointer"
+                              title={
+                                !hasLockedJurnal
+                                  ? 'Minimal 1 Jurnal harus dikunci (LOCKED) sebelum Invoice dapat dibuat.'
+                                  : 'Terbitkan Faktur Tagihan Invoice Customer'
+                              }
+                              className={
+                                !hasLockedJurnal
+                                  ? 'opacity-40 cursor-not-allowed bg-neutral-800 text-neutral-500'
+                                  : 'bg-[#F4511E] hover:bg-[#ff6b3d] text-white font-semibold cursor-pointer'
+                              }
                             >
-                              Input Invoice
+                              Input Invoice {!hasLockedJurnal && '(Terkunci)'}
                             </Button>
                           </div>
                         </div>
@@ -1303,9 +1488,17 @@ export default function RekapanPage() {
       <Modal
         isOpen={Boolean(selectedOrderForModal)}
         onClose={() => setSelectedOrderForModal(null)}
-        title={`Daftar Surat Jalan — ${selectedOrderForModal?.nomorRO || ''}`}
-        subtitle={`${selectedOrderForModal?.customer || ''} • Material: ${selectedOrderForModal?.material || ''} • No. PO: ${selectedOrderForModal?.poNumber || 'DRAFT'}`}
-        maxWidth="max-w-4xl"
+        title={
+          selectedOrderForModal?.isJournalScoped
+            ? `Daftar Surat Jalan Jurnal — ${selectedOrderForModal?.id || ''}`
+            : `Daftar Surat Jalan — ${selectedOrderForModal?.nomorRO || ''}`
+        }
+        subtitle={
+          selectedOrderForModal?.isJournalScoped
+            ? `RO: ${selectedOrderForModal?.nomorRO || ''} • Tanggal GI: ${selectedOrderForModal?.tanggal || '-'} • Status: ${selectedOrderForModal?.statusLock || 'OPEN'} • ${selectedOrderForModal?.customer || ''}`
+            : `${selectedOrderForModal?.customer || ''} • Material: ${selectedOrderForModal?.material || ''} • No. PO: ${selectedOrderForModal?.poNumber || 'DRAFT'}`
+        }
+        maxWidth="max-w-5xl"
       >
         {selectedOrderForModal && (
           <div className="space-y-4 p-4 text-xs font-sans">
@@ -1384,9 +1577,10 @@ export default function RekapanPage() {
                     <tr className="bg-[#181B1E] text-[11px] text-neutral-400 uppercase tracking-wider border-b border-[#22262A]">
                       <th className="py-2.5 px-3 text-center w-14">No. GI</th>
                       <th className="py-2.5 px-3">ID GI (DO)</th>
+                      <th className="py-2.5 px-3">Material</th>
                       <th className="py-2.5 px-3">Nopol Armada</th>
-                      <th className="py-2.5 px-3">Sopir / Driver</th>
-                      <th className="py-2.5 px-3">Tanggal &amp; Waktu</th>
+                      <th className="py-2.5 px-3">Tgl GI (Dibuat) &amp; Waktu</th>
+                      <th className="py-2.5 px-3">Jadwal Kirim</th>
                       <th className="py-2.5 px-3">No. Nota Timbangan</th>
                       <th className="py-2.5 px-3">Dimensi Bak (P&times;L&times;T)</th>
                       <th className="py-2.5 px-3 text-right">Volume Riil</th>
@@ -1402,14 +1596,17 @@ export default function RekapanPage() {
                         <td className="py-2.5 px-3 font-bold text-white">
                           #{sj.id}
                         </td>
+                        <td className="py-2.5 px-3 text-amber-300 font-semibold">
+                          {sj.material || selectedOrderForModal.material || '-'}
+                        </td>
                         <td className="py-2.5 px-3 text-neutral-300 font-medium">
                           {sj.nopol}
                         </td>
-                        <td className="py-2.5 px-3 text-neutral-400">
-                          {sj.driver}
+                        <td className="py-2.5 px-3 text-neutral-300">
+                          {sj.tanggalDibuat || sj.tanggal} <span className="text-neutral-500">{sj.waktu || ''}</span>
                         </td>
-                        <td className="py-2.5 px-3 text-neutral-400">
-                          {sj.tanggal} <span className="text-neutral-500">{sj.waktu || ''}</span>
+                        <td className="py-2.5 px-3 text-sky-300">
+                          {sj.tanggalJadwal || sj.tanggalDibuat || sj.tanggal || '-'}
                         </td>
                         <td className="py-2.5 px-3 text-neutral-400">
                           {sj.nomorNota || '-'}
@@ -1458,8 +1655,16 @@ export default function RekapanPage() {
                   size="sm"
                   variant="outline"
                   icon={FileText}
+                  disabled={!selectedOrderForModal.hasLockedJurnal}
                   onClick={() => {
                     const ro = selectedOrderForModal;
+                    if (!ro.hasLockedJurnal) {
+                      addToast(
+                        `Order ${ro.nomorRO || ro.id} belum memiliki Jurnal berstatus LOCKED. Kunci minimal 1 Jurnal harian sebelum membuat Invoice.`,
+                        'error'
+                      );
+                      return;
+                    }
                     setSelectedOrderForModal(null);
                     navigate('/invoices', {
                       state: {
@@ -1470,8 +1675,16 @@ export default function RekapanPage() {
                     });
                     addToast(`Membuka form Input Invoice untuk ${ro.nomorRO}`, 'info');
                   }}
-                  className="h-9 px-3.5 text-xs border-[#2D3339] hover:border-[#F4511E] text-neutral-200 hover:text-white font-medium cursor-pointer flex-1 sm:flex-none justify-center whitespace-nowrap"
-                  title="Form Input Invoice untuk order ini"
+                  className={`h-9 px-3.5 text-xs border-[#2D3339] font-medium flex-1 sm:flex-none justify-center whitespace-nowrap ${
+                    !selectedOrderForModal.hasLockedJurnal
+                      ? 'opacity-40 cursor-not-allowed text-neutral-500'
+                      : 'hover:border-[#F4511E] text-neutral-200 hover:text-white cursor-pointer'
+                  }`}
+                  title={
+                    !selectedOrderForModal.hasLockedJurnal
+                      ? 'Minimal 1 Jurnal harus dikunci (LOCKED) sebelum Invoice dapat dibuat.'
+                      : 'Form Input Invoice untuk order ini'
+                  }
                 >
                   Input
                 </Button>
@@ -1525,6 +1738,81 @@ export default function RekapanPage() {
             </div>
           </div>
         )}
+      </Modal>
+
+      {/* ======================================================== */}
+      {/* MODAL: AUDIT TRAIL JURNAL */}
+      {/* ======================================================== */}
+      <Modal
+        isOpen={auditModalOpen}
+        onClose={() => setAuditModalOpen(false)}
+        title={`Audit Trail Jurnal - ${selectedJurnalForAudit?.label || selectedJurnalForAudit?.id}`}
+        subtitle="Riwayat aktivitas Kunci (Lock) dan Buka Kunci (Unlock) Jurnal"
+      >
+        <div className="p-4 space-y-4">
+          {loadingAudit ? (
+            <div className="py-8 text-center text-neutral-400 font-mono text-xs">
+              Memuat log audit Jurnal...
+            </div>
+          ) : auditLogs.length === 0 ? (
+            <div className="py-8 text-center text-neutral-500 font-mono text-xs">
+              Belum ada catatan aktivitas audit pada Jurnal ini.
+            </div>
+          ) : (
+            <div className="max-h-[60vh] overflow-y-auto space-y-2.5 font-mono text-xs">
+              {auditLogs.map((log) => (
+                <div
+                  key={log.id}
+                  className="p-3 rounded-lg border border-[#24282C] bg-[#14171A] space-y-1.5"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
+                      log.action === 'LOCK' || log.action === 'AUTO_RELOCK'
+                        ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
+                        : 'bg-amber-500/15 text-amber-400 border border-amber-500/30'
+                    }`}>
+                      {log.action}
+                    </span>
+                    <span className="text-[11px] text-neutral-500">
+                      {log.timestamp}
+                    </span>
+                  </div>
+
+                  <div className="text-neutral-300">
+                    Oleh: <strong className="text-white">{log.actorName || log.actor || 'System'}</strong>
+                    {log.actorRole && (
+                      <span className="ml-1.5 text-[10px] text-neutral-400">({log.actorRole})</span>
+                    )}
+                  </div>
+
+                  {log.reason && (
+                    <div className="text-neutral-400 text-[11px]">
+                      Alasan: <span className="italic text-neutral-300">{log.reason}</span>
+                    </div>
+                  )}
+
+                  {(log.details || log.changesSummary) && (
+                    <div className="text-[10px] text-neutral-400 bg-neutral-900/50 p-1.5 rounded break-all">
+                      Detail: {typeof (log.details || log.changesSummary) === 'string'
+                        ? (log.details || log.changesSummary)
+                        : JSON.stringify(log.details || log.changesSummary)}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="pt-3 border-t border-[#24282C] flex justify-end">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setAuditModalOpen(false)}
+            >
+              Tutup
+            </Button>
+          </div>
+        </div>
       </Modal>
     </div>
   );

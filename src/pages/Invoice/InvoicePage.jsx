@@ -1,5 +1,5 @@
-import { useState, useMemo, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useMemo, useEffect, useRef } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useData } from '../../context/DataContext';
 import { useToast } from '../../context/ToastContext';
@@ -47,61 +47,53 @@ const formatCurrency = (val) => {
 // Status Badge Helper (Matching BKK Pill Style)
 // ─────────────────────────────────────────────────────────────────────────────
 function getInvoiceStatusBadge(item) {
+  const isV2 = item.version === 2 || item.isRevision === 1;
   const s = String(item.status || 'draft').toLowerCase();
   const isPaid = s === 'paid' || item.statusBayar === 'Lunas';
-  if (isPaid) {
-    return (
-      <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 text-[10px] font-mono font-bold shrink-0">
-        <CheckCircle2 className="w-3 h-3 text-emerald-400" />
-        <span>LUNAS</span>
-      </span>
-    );
-  }
-  if (s === 'pending_verification') {
-    return (
-      <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-[#F4511E]/15 text-orange-400 border border-[#F4511E]/30 text-[10px] font-mono font-bold shrink-0">
-        <ShieldCheck className="w-3 h-3 text-orange-400" />
-        <span>VERIFIKASI</span>
-      </span>
-    );
-  }
-  if (s === 'revision_required') {
-    return (
-      <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-rose-500/15 text-rose-400 border border-rose-500/30 text-[10px] font-mono font-bold shrink-0">
-        <RotateCw className="w-3 h-3 text-rose-400" />
-        <span>REVISI TTD</span>
-      </span>
-    );
-  }
-  if (s === 'approved') {
-    return (
-      <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-blue-500/15 text-blue-400 border border-blue-500/30 text-[10px] font-mono font-bold shrink-0">
-        <Printer className="w-3 h-3 text-blue-400" />
-        <span>SIAP CETAK</span>
-      </span>
-    );
-  }
-  if (s === 'rejected') {
-    return (
-      <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-rose-500/15 text-rose-400 border border-rose-500/30 text-[10px] font-mono font-bold shrink-0">
-        <X className="w-3 h-3 text-rose-400" />
-        <span>DITOLAK</span>
-      </span>
-    );
-  }
-  if (s === 'pending_approval' || s === 'menunggu_approval') {
-    return (
-      <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-amber-500/15 text-amber-400 border border-amber-500/30 text-[10px] font-mono font-bold shrink-0">
-        <Clock className="w-3 h-3 text-amber-400" />
-        <span>APPROVAL</span>
-      </span>
-    );
-  }
   return (
-    <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-neutral-800 text-neutral-300 border border-neutral-700 text-[10px] font-mono font-bold shrink-0">
-      <Clock className="w-3 h-3 text-neutral-400" />
-      <span>DRAFT</span>
-    </span>
+    <div className="flex items-center gap-1.5 flex-wrap">
+      {isV2 && (
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-purple-500/20 text-purple-300 border border-purple-500/40 text-[10px] font-mono font-bold shrink-0" title={`Adendum revisi selisih pengiriman final (Parent: ${item.parentDocId || '-'})`}>
+          <span>V2 ADENDUM</span>
+        </span>
+      )}
+      {isPaid ? (
+        <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 text-[10px] font-mono font-bold shrink-0">
+          <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+          <span>LUNAS</span>
+        </span>
+      ) : s === 'pending_verification' ? (
+        <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-[#F4511E]/15 text-orange-400 border border-[#F4511E]/30 text-[10px] font-mono font-bold shrink-0">
+          <ShieldCheck className="w-3 h-3 text-orange-400" />
+          <span>VERIFIKASI</span>
+        </span>
+      ) : s === 'revision_required' ? (
+        <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-rose-500/15 text-rose-400 border border-rose-500/30 text-[10px] font-mono font-bold shrink-0">
+          <RotateCw className="w-3 h-3 text-rose-400" />
+          <span>REVISI TTD</span>
+        </span>
+      ) : s === 'approved' ? (
+        <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-blue-500/15 text-blue-400 border border-blue-500/30 text-[10px] font-mono font-bold shrink-0">
+          <Printer className="w-3 h-3 text-blue-400" />
+          <span>SIAP CETAK</span>
+        </span>
+      ) : s === 'rejected' ? (
+        <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-rose-500/15 text-rose-400 border border-rose-500/30 text-[10px] font-mono font-bold shrink-0">
+          <X className="w-3 h-3 text-rose-400" />
+          <span>DITOLAK</span>
+        </span>
+      ) : s === 'pending_approval' || s === 'menunggu_approval' ? (
+        <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-amber-500/15 text-amber-400 border border-amber-500/30 text-[10px] font-mono font-bold shrink-0">
+          <Clock className="w-3 h-3 text-amber-400" />
+          <span>APPROVAL</span>
+        </span>
+      ) : (
+        <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-neutral-800 text-neutral-300 border border-neutral-700 text-[10px] font-mono font-bold shrink-0">
+          <Clock className="w-3 h-3 text-neutral-400" />
+          <span>DRAFT</span>
+        </span>
+      )}
+    </div>
   );
 }
 
@@ -146,16 +138,21 @@ function InvoiceCard({ inv, onInfo, onPrint, viewMode = 'list' }) {
       >
         {/* Top Header: Code & Status */}
         <div className="flex items-center justify-between gap-2 pb-3 border-b border-[#20242A]">
-          <div className="flex items-center gap-2 min-w-0">
+          <div className="flex flex-col gap-0.5 min-w-0">
             <span
               className="font-mono text-xs font-bold text-neutral-200 bg-[#181B1F] border border-[#282D34] px-2.5 py-1 rounded-md tracking-tight truncate"
               title={docCode}
             >
               {docCode}
             </span>
+            {inv.parentDocId && (
+              <span className="text-[10px] text-purple-400 font-mono truncate" title={`Adendum selisih dari: ${inv.parentDocId}`}>
+                &rarr; Induk: {inv.parentDocId}
+              </span>
+            )}
             {inv.hasSignedDocument && (
               <span
-                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-mono bg-[#181B1F] text-neutral-300 border border-[#282D34] shrink-0"
+                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-mono bg-[#181B1F] text-neutral-300 border border-[#282D34] shrink-0 w-fit"
                 title="Berkas TTD Fisik Terunggah"
               >
                 <ShieldCheck className="w-2.5 h-2.5 text-[#F4511E]" />
@@ -292,6 +289,11 @@ function InvoiceCard({ inv, onInfo, onPrint, viewMode = 'list' }) {
             <span className="font-mono text-xs font-bold text-neutral-200 bg-[#181B1F] border border-[#282D34] px-2.5 py-1 rounded-md tracking-tight">
               {docCode}
             </span>
+            {inv.parentDocId && (
+              <span className="text-[10px] text-purple-400 font-mono" title={`Adendum selisih dari: ${inv.parentDocId}`}>
+                (Induk: {inv.parentDocId})
+              </span>
+            )}
             {statusBadge}
             <span className="inline-flex items-center gap-1 text-[11px] font-mono text-neutral-400">
               <Calendar className="w-3 h-3 text-neutral-500" />
@@ -422,6 +424,7 @@ function InvoiceCard({ inv, onInfo, onPrint, viewMode = 'list' }) {
 // ─────────────────────────────────────────────────────────────────────────────
 export default function InvoicePage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
   const {
     invoiceList,
@@ -431,7 +434,12 @@ export default function InvoicePage() {
   } = useData();
   const { addToast } = useToast();
 
-  const [activeTab, setActiveTab] = useState('list'); // 'list' | 'create'
+  const [activeTab, setActiveTab] = useState(() => {
+    if (location.state?.activeTab === 'create' || location.state?.fromRekapan) {
+      return location.state?.activeTab || 'create';
+    }
+    return 'list';
+  }); // 'list' | 'create'
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL'); // 'ALL' | 'PENDING' | 'APPROVED' | 'VERIFIKASI' | 'REVISI' | 'LUNAS'
   const [selectedInvoiceForModal, setSelectedInvoiceForModal] = useState(null);
@@ -492,9 +500,19 @@ export default function InvoicePage() {
       if (res.success) {
         const orders = res.data || [];
         setAvailableOrders(orders);
+        const navOrder = location.state?.order;
         setSelectedOrder((prev) => {
           if (prev && orders.some((o) => o.jurnalId === prev.jurnalId && o.nomorRO === prev.nomorRO)) {
             return orders.find((o) => o.jurnalId === prev.jurnalId && o.nomorRO === prev.nomorRO);
+          }
+          if (navOrder) {
+            const matchedNav = orders.find(
+              (o) =>
+                (navOrder.nomorRO && o.nomorRO === navOrder.nomorRO) ||
+                (navOrder.preOrderId && o.preOrderId === navOrder.preOrderId) ||
+                (navOrder.id && o.jurnalId === navOrder.id)
+            );
+            if (matchedNav) return matchedNav;
           }
           return orders[0] || null;
         });

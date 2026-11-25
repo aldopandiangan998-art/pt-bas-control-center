@@ -28,93 +28,6 @@ import DateRangeFilter from '../../components/laporan/DateRangeFilter';
 import ReportFilterCard from '../../components/laporan/ReportFilterCard';
 import ReportEmptyState from '../../components/laporan/ReportEmptyState';
 
-// Fallback dataset generator for PPh 23
-export const getDefaultPph23Data = (yearInput, monthInput) => {
-  const now = new Date();
-  const y = yearInput || now.getFullYear();
-  const m = monthInput || String(now.getMonth() + 1).padStart(2, '0');
-
-  return [
-    {
-      id: `PPH-${y}${m}-001`,
-      tanggal: `${y}-${m}-11`,
-      noBuktiPotong: `BUPOT-23/BAS/${y}/${m}/001`,
-      noBkk: `BKK/${y}/${m}/0042`,
-      vendor: 'UKHY DIAN',
-      npwpNik: '3525011204850003',
-      objekPajak: 'Jasa Angkut Material Tambang',
-      kategori: 'Jasa Angkut (2.0%)',
-      tarif: 2.0,
-      dpp: 15407100,
-      potonganPph: 308142,
-      nettoBkk: 15098958,
-      statusBupot: 'TERBIT',
-    },
-    {
-      id: `PPH-${y}${m}-002`,
-      tanggal: `${y}-${m}-09`,
-      noBuktiPotong: `BUPOT-23/BAS/${y}/${m}/002`,
-      noBkk: `BKK/${y}/${m}/0043`,
-      vendor: 'PT. TENANG JAYA SEJAHTERA',
-      npwpNik: '02.451.980.1-604.000',
-      objekPajak: 'Bahan Galian Non-Logam (Limestone Padat)',
-      kategori: 'Galian Tambang Padat (2.65%)',
-      tarif: 2.65,
-      dpp: 22800000,
-      potonganPph: 604200,
-      nettoBkk: 22195800,
-      statusBupot: 'TERBIT',
-    },
-    {
-      id: `PPH-${y}${m}-003`,
-      tanggal: `${y}-${m}-07`,
-      noBuktiPotong: `BUPOT-23/BAS/${y}/${m}/003`,
-      noBkk: `BKK/${y}/${m}/0044`,
-      vendor: 'PT SOYO APIK',
-      npwpNik: '03.112.445.6-601.000',
-      objekPajak: 'Jasa Angkut Sirtu Gresik-Manyar',
-      kategori: 'Jasa Angkut (2.0%)',
-      tarif: 2.0,
-      dpp: 18416450,
-      potonganPph: 368329,
-      nettoBkk: 18048121,
-      statusBupot: 'TERBIT',
-    },
-    {
-      id: `PPH-${y}${m}-004`,
-      tanggal: `${y}-${m}-05`,
-      noBuktiPotong: `BUPOT-23/BAS/${y}/${m}/004`,
-      noBkk: `BKK/${y}/${m}/0045`,
-      vendor: 'PAK TEGUH (BARU)',
-      npwpNik: '01.992.331.0-602.000',
-      objekPajak: 'Batu Boulder Pondasi (Tambang Padat)',
-      kategori: 'Galian Tambang Padat (2.65%)',
-      tarif: 2.65,
-      dpp: 12500000,
-      potonganPph: 331250,
-      nettoBkk: 12168750,
-      statusBupot: 'TERBIT',
-    },
-    {
-      id: `PPH-${y}${m}-005`,
-      tanggal: `${y}-${m}-02`,
-      noBuktiPotong: `BUPOT-23/BAS/${y}/${m}/005`,
-      noBkk: `BKK/${y}/${m}/0046`,
-      vendor: 'UKHY DIAN',
-      npwpNik: '3525041008800002',
-      objekPajak: 'Jasa Angkut Abu Batu Tuban-Gresik',
-      kategori: 'Jasa Angkut (2.0%)',
-      tarif: 2.0,
-      dpp: 7800000,
-      potonganPph: 156000,
-      nettoBkk: 7644000,
-      statusBupot: 'TERBIT',
-    },
-  ];
-};
-
-const DEFAULT_PPH23_DATA = getDefaultPph23Data();
-
 // Helper to calculate current month start & end dates in YYYY-MM-DD format
 export const getDefaultDateRange = () => {
   const now = new Date();
@@ -317,8 +230,8 @@ export default function LaporanPph23Page() {
 
   // Execution state
   const [loading, setLoading] = useState(false);
-  const [reportData, setReportData] = useState(DEFAULT_PPH23_DATA);
-  const [hasApplied, setHasApplied] = useState(true);
+  const [reportData, setReportData] = useState([]);
+  const [hasApplied, setHasApplied] = useState(false);
 
   // Validation
   const isInvalidDateRange = Boolean(startDate && endDate && endDate < startDate);
@@ -341,33 +254,21 @@ export default function LaporanPph23Page() {
       });
 
       if (!res.ok) {
-        const y = start.slice(0, 4);
-        const m = start.slice(5, 7);
-        const allData = getDefaultPph23Data(y, m);
-        const filtered = allData.filter((item) => item.tanggal >= start && item.tanggal <= end);
-        setReportData(filtered.length > 0 ? filtered : allData);
+        setReportData([]);
         setHasApplied(true);
         return;
       }
 
-      const json = await res.json();
-      if (json.success && Array.isArray(json.data) && json.data.length > 0) {
+      const json = await res.json().catch(() => ({}));
+      if (json.success && Array.isArray(json.data)) {
         setReportData(json.data);
       } else {
-        const y = start.slice(0, 4);
-        const m = start.slice(5, 7);
-        const allData = getDefaultPph23Data(y, m);
-        const filtered = allData.filter((item) => item.tanggal >= start && item.tanggal <= end);
-        setReportData(filtered.length > 0 ? filtered : allData);
+        setReportData([]);
       }
       setHasApplied(true);
     } catch (err) {
-      console.warn('API error, falling back to local dataset:', err.message);
-      const y = start.slice(0, 4);
-      const m = start.slice(5, 7);
-      const allData = getDefaultPph23Data(y, m);
-      const filtered = allData.filter((item) => item.tanggal >= start && item.tanggal <= end);
-      setReportData(filtered.length > 0 ? filtered : allData);
+      console.warn('API error loading PPh 23 report:', err.message);
+      setReportData([]);
       setHasApplied(true);
     } finally {
       setLoading(false);

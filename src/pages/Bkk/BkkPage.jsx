@@ -52,53 +52,48 @@ function BinaryIcon({ className = 'text-neutral-500' }) {
 // Status Badge Helper
 // ─────────────────────────────────────────────────────────────────────────────
 function getBkkStatusBadge(item) {
+  const isV2 = item.version === 2 || item.isRevision === 1;
   const s = String(item.status || '').toLowerCase();
   const isPaid = s === 'paid' || item.statusBayar === 'Lunas';
-  if (isPaid) {
-    return (
-      <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 text-[10px] font-mono font-bold shrink-0">
-        <CheckCircle2 className="w-3 h-3 text-emerald-400" />
-        <span>LUNAS</span>
-      </span>
-    );
-  }
-  if (s === 'pending_verification') {
-    return (
-      <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-[#F4511E]/15 text-orange-400 border border-[#F4511E]/30 text-[10px] font-mono font-bold shrink-0">
-        <ShieldCheck className="w-3 h-3 text-orange-400" />
-        <span>VERIFIKASI</span>
-      </span>
-    );
-  }
-  if (s === 'revision_required') {
-    return (
-      <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-rose-500/15 text-rose-400 border border-rose-500/30 text-[10px] font-mono font-bold shrink-0">
-        <RotateCw className="w-3 h-3 text-rose-400" />
-        <span>REVISI TTD</span>
-      </span>
-    );
-  }
-  if (s === 'approved') {
-    return (
-      <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-blue-500/15 text-blue-400 border border-blue-500/30 text-[10px] font-mono font-bold shrink-0">
-        <Printer className="w-3 h-3 text-blue-400" />
-        <span>SIAP CETAK</span>
-      </span>
-    );
-  }
-  if (s === 'rejected') {
-    return (
-      <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-rose-500/15 text-rose-400 border border-rose-500/30 text-[10px] font-mono font-bold shrink-0">
-        <X className="w-3 h-3 text-rose-400" />
-        <span>DITOLAK</span>
-      </span>
-    );
-  }
   return (
-    <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-amber-500/15 text-amber-400 border border-amber-500/30 text-[10px] font-mono font-bold shrink-0">
-      <Lock className="w-3 h-3 text-amber-400" />
-      <span>TERKUNCI</span>
-    </span>
+    <div className="flex items-center gap-1.5 flex-wrap">
+      {isV2 && (
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-purple-500/20 text-purple-300 border border-purple-500/40 text-[10px] font-mono font-bold shrink-0" title={`Adendum revisi selisih pengiriman final (Parent: ${item.parentDocId || '-'})`}>
+          <span>V2 ADENDUM</span>
+        </span>
+      )}
+      {isPaid ? (
+        <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 text-[10px] font-mono font-bold shrink-0">
+          <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+          <span>LUNAS</span>
+        </span>
+      ) : s === 'pending_verification' ? (
+        <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-[#F4511E]/15 text-orange-400 border border-[#F4511E]/30 text-[10px] font-mono font-bold shrink-0">
+          <ShieldCheck className="w-3 h-3 text-orange-400" />
+          <span>VERIFIKASI</span>
+        </span>
+      ) : s === 'revision_required' ? (
+        <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-rose-500/15 text-rose-400 border border-rose-500/30 text-[10px] font-mono font-bold shrink-0">
+          <RotateCw className="w-3 h-3 text-rose-400" />
+          <span>REVISI TTD</span>
+        </span>
+      ) : s === 'approved' ? (
+        <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-blue-500/15 text-blue-400 border border-blue-500/30 text-[10px] font-mono font-bold shrink-0">
+          <Printer className="w-3 h-3 text-blue-400" />
+          <span>SIAP CETAK</span>
+        </span>
+      ) : s === 'rejected' ? (
+        <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-rose-500/15 text-rose-400 border border-rose-500/30 text-[10px] font-mono font-bold shrink-0">
+          <X className="w-3 h-3 text-rose-400" />
+          <span>DITOLAK</span>
+        </span>
+      ) : (
+        <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-amber-500/15 text-amber-400 border border-amber-500/30 text-[10px] font-mono font-bold shrink-0">
+          <Lock className="w-3 h-3 text-amber-400" />
+          <span>TERKUNCI</span>
+        </span>
+      )}
+    </div>
   );
 }
 
@@ -135,13 +130,18 @@ function CashOutCard({ item, onDelete, onInfo, canDelete = true, viewMode = 'lis
       >
         {/* Top Header: Code & Status */}
         <div className="flex items-center justify-between gap-2 pb-3 border-b border-[#20242A]">
-          <div className="flex items-center gap-2 min-w-0">
+          <div className="flex flex-col gap-0.5 min-w-0">
             <span
               className="font-mono text-xs font-bold text-neutral-200 bg-[#181B1F] border border-[#282D34] px-2.5 py-1 rounded-md tracking-tight truncate"
               title={docCode}
             >
               {docCode}
             </span>
+            {item.parentDocId && (
+              <span className="text-[10px] text-purple-400 font-mono truncate" title={`Adendum selisih dari: ${item.parentDocId}`}>
+                &rarr; Induk: {item.parentDocId}
+              </span>
+            )}
           </div>
           <div className="shrink-0">{statusBadge}</div>
         </div>
@@ -266,6 +266,11 @@ function CashOutCard({ item, onDelete, onInfo, canDelete = true, viewMode = 'lis
             <span className="font-mono text-xs font-bold text-neutral-200 bg-[#181B1F] border border-[#282D34] px-2.5 py-1 rounded-md tracking-tight">
               {docCode}
             </span>
+            {item.parentDocId && (
+              <span className="text-[10px] text-purple-400 font-mono" title={`Adendum selisih dari: ${item.parentDocId}`}>
+                (Induk: {item.parentDocId})
+              </span>
+            )}
             {statusBadge}
             <span className="inline-flex items-center gap-1 text-[11px] font-mono text-neutral-400">
               <Calendar className="w-3 h-3 text-neutral-500" />
@@ -446,7 +451,7 @@ export default function BkkPage() {
       const filtered = (orders || []).filter((o) => {
         return !currentBkkList.some(
           (b) =>
-            b.status !== 'REJECTED' &&
+            String(b.status || '').toUpperCase() !== 'REJECTED' &&
             ((o.nomorRO && b.nomorRO === o.nomorRO) ||
               (o.poNumber && o.poNumber !== '-' && b.poNumber === o.poNumber) ||
               (o.jurnalId && b.jurnalId === o.jurnalId) ||
@@ -485,19 +490,20 @@ export default function BkkPage() {
     );
   }, [availableOrders, rekapanList, formRoNumber, formPoNumber]);
 
-  // Business Rule Validation 1: Check if current order is completed 100%
+  // Business Rule Validation 1: Check if order has >= 1 LOCKED Jurnal (or is in availableOrders)
   const isCurrentOrderCompleted = useMemo(() => {
     if (!formRoNumber) return false;
     const inAvailable = availableOrders.find((r) => r.nomorRO === formRoNumber);
     if (inAvailable) return true;
 
-    if (!currentMatchedJournal) return false;
-    const tot = Number(currentMatchedJournal.totalVolume || 0);
-    const tgt = Number(currentMatchedJournal.targetVolume || 0);
-    const status = String(currentMatchedJournal.status || '').toUpperCase();
-    if (status === 'SELESAI' || status === 'COMPLETED') return true;
-    return tgt > 0 ? tot >= tgt : tot > 0;
-  }, [availableOrders, formRoNumber, currentMatchedJournal]);
+    return (rekapanList || []).some(
+      (r) =>
+        r.statusLock === 'LOCKED' &&
+        ((formRoNumber && r.nomorRO === formRoNumber) ||
+          (formPreOrderId && r.preOrderId === formPreOrderId) ||
+          (formJurnalId && r.id === formJurnalId))
+    );
+  }, [availableOrders, rekapanList, formRoNumber, formPreOrderId, formJurnalId]);
 
   // Business Rule Validation 2: Check if duplicate BKK already exists
   const existingOrderBkk = useMemo(() => {
@@ -505,7 +511,7 @@ export default function BkkPage() {
     return (
       (bkkList || []).find(
         (b) =>
-          b.status !== 'REJECTED' &&
+          String(b.status || '').toUpperCase() !== 'REJECTED' &&
           ((formRoNumber && b.nomorRO && b.nomorRO === formRoNumber) ||
             (formPoNumber && formPoNumber !== '-' && b.poNumber === formPoNumber) ||
             (formJurnalId && b.jurnalId === formJurnalId) ||
@@ -578,16 +584,28 @@ export default function BkkPage() {
     if (location.state?.order && !locationOrderHandledRef.current) {
       locationOrderHandledRef.current = true;
       const o = location.state.order;
+      const contractVol = Number(o.targetVolume || o.totalOrder || o.totalVolume || 0);
+      const unitHarga = Number(o.hargaBeli || 0);
       if (o.nomorRO) setFormRoNumber(o.nomorRO);
       if (o.poNumber) setFormPoNumber(o.poNumber);
       if (o.material) setFormMaterial(o.material);
-      if (o.totalVolume) setFormVolume(Number(o.totalVolume) || 0);
-      if (o.hargaBeli) setFormHargaBeli(Number(o.hargaBeli) || 0);
-      if (o.nominalBeli || (o.totalVolume && o.hargaBeli)) {
-        setFormAmount(Number(o.nominalBeli) || Math.round((Number(o.totalVolume) || 0) * (Number(o.hargaBeli) || 0)));
+      if (contractVol > 0) setFormVolume(contractVol);
+      if (unitHarga > 0) setFormHargaBeli(unitHarga);
+      if (contractVol > 0 && unitHarga > 0) {
+        setFormAmount(Math.round(contractVol * unitHarga));
+      } else if (o.nominalBeli) {
+        setFormAmount(Number(o.nominalBeli) || 0);
       }
       if (o.id) setFormJurnalId(o.id);
       if (o.preOrderId) setFormPreOrderId(o.preOrderId);
+
+      const matchedPo = (preOrders || []).find(
+        (p) => (o.preOrderId && String(p.id) === String(o.preOrderId)) || (o.nomorRO && p.nomorRO === o.nomorRO)
+      );
+      const resolvedSupId = o.supplierId || matchedPo?.supplierId;
+      if (resolvedSupId) {
+        setFormSupplierId(resolvedSupId);
+      }
 
       if (o.customer) {
         const c = customers.find((x) => x.name.toLowerCase().includes(o.customer.toLowerCase()));
@@ -597,7 +615,7 @@ export default function BkkPage() {
         setActiveTab('create');
       }
     }
-  }, [location.state, customers]);
+  }, [location.state, customers, preOrders]);
 
   // Selected entities derived
   const selectedCustomer = useMemo(() => {
@@ -716,7 +734,7 @@ export default function BkkPage() {
 
     if (!isCurrentOrderCompleted) {
       addToast(
-        'Gagal: Order belum selesai dikirim. Sesuai alur bisnis PT BAS, BKK hanya dapat dibuat setelah kuantitas pengiriman 100% terpenuhi berdasarkan Rekapan Jurnal.',
+        'Gagal: Minimal harus ada 1 Jurnal harian yang berstatus LOCKED untuk Order ini sebelum BKK dapat dibuat.',
         'error'
       );
       return;
@@ -893,7 +911,17 @@ export default function BkkPage() {
                 type="button"
                 onClick={() =>
                   setStatusFilter((p) =>
-                    p === 'ALL' ? 'BELUM_BAYAR' : p === 'BELUM_BAYAR' ? 'LUNAS' : 'ALL'
+                    p === 'ALL'
+                      ? 'PENDING'
+                      : p === 'PENDING'
+                      ? 'APPROVED'
+                      : p === 'APPROVED'
+                      ? 'VERIFIKASI'
+                      : p === 'VERIFIKASI'
+                      ? 'REVISI'
+                      : p === 'REVISI'
+                      ? 'LUNAS'
+                      : 'ALL'
                   )
                 }
                 className={`w-8 h-8 flex items-center justify-center rounded-full transition-colors cursor-pointer ${statusFilter !== 'ALL'

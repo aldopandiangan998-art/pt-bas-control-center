@@ -128,4 +128,32 @@ export function formatDateTimeWib(dateObj = new Date()) {
   return `${day}/${month}/${year} ${hours}:${minutes}:${seconds} WIB`;
 }
 
+/**
+ * Return current/given date formatted as YYYY-MM-DD in WIB (Asia/Jakarta, UTC+7)
+ */
+export function getWibDateString(dateInput = new Date()) {
+  const d = dateInput instanceof Date ? dateInput : new Date(dateInput);
+  if (isNaN(d.getTime())) return '';
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Jakarta',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(d);
+}
+
+/**
+ * Return current/given time formatted as HH:mm in WIB (Asia/Jakarta, UTC+7)
+ */
+export function getWibTimeString(dateInput = new Date()) {
+  const d = dateInput instanceof Date ? dateInput : new Date(dateInput);
+  if (isNaN(d.getTime())) return '';
+  return new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Asia/Jakarta',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).format(d);
+}
+
 

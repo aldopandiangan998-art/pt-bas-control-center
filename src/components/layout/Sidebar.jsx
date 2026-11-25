@@ -81,7 +81,10 @@ export default function Sidebar() {
   // Pending BKK counter for notification badge
   const pendingBkkCount = useMemo(() => {
     if (!isSuperAdmin || !bkkList) return 0;
-    return bkkList.filter((b) => b.status === 'MENUNGGU_APPROVAL').length;
+    return bkkList.filter((b) => {
+      const s = String(b.status || '').toLowerCase();
+      return s === 'pending_approval' || s === 'menunggu_approval' || s === 'pending_verification';
+    }).length;
   }, [bkkList, isSuperAdmin]);
 
   // Pending Invoice counter for Super Admin badge (Awaiting Approval or Document Verification)

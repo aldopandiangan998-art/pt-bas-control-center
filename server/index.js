@@ -11,6 +11,7 @@ import {
   getItemType,
   validateRoItems,
 } from './roRules.js';
+import { getWibDateString, aggregateJournalWaybills } from './journalUtils.js';
 
 let nodemailer = null;
 try {
@@ -85,7 +86,7 @@ export function generateNomorRO(custNameOrObj, date = new Date()) {
   const prefix = getCustomerPrefix(custNameOrObj);
 
   const rows = db.prepare(`
-    SELECT nomorRO FROM pre_orders WHERE nomorRO IS NOT NULL
+    SELECT nomorRO FROM received_order WHERE nomorRO IS NOT NULL
     UNION
     SELECT nomorRO FROM surat_jalan WHERE nomorRO IS NOT NULL
     UNION
@@ -118,9 +119,9 @@ export function generatePoNumber(custNameOrObj, date = new Date()) {
   const prefix = getCustomerPrefix(custNameOrObj);
 
   const rows = db.prepare(`
-    SELECT nomorPo as poNum FROM pre_orders WHERE nomorPo IS NOT NULL
+    SELECT nomorPo as poNum FROM received_order WHERE nomorPo IS NOT NULL
     UNION
-    SELECT nomorPoCustomer as poNum FROM pre_orders WHERE nomorPoCustomer IS NOT NULL
+    SELECT nomorPoCustomer as poNum FROM received_order WHERE nomorPoCustomer IS NOT NULL
     UNION
     SELECT poNumber as poNum FROM surat_jalan WHERE poNumber IS NOT NULL
     UNION
@@ -168,14 +169,6 @@ function determineRoleByEmail(email) {
   if (!email) return { role: 'admin', roleLabel: 'Admin' };
   const cleanEmail = email.trim().toLowerCase();
 
-  // rainorchesta@gmail.com explicitly has the Admin role
-  if (cleanEmail === 'rainorchesta@gmail.com') {
-    return {
-      role: 'admin',
-      roleLabel: 'Admin',
-    };
-  }
-
   const superAdminList = [
     'superadmin@ptbas.co.id',
     'direksi@ptbas.co.id',
@@ -206,23 +199,14 @@ function verifySuperAdminPermission(req, res, actionName = 'menghapus data') {
   const emailHeader = (req.headers['x-user-email'] || req.query.user_email || '').toLowerCase().trim();
   const idHeader = (req.headers['x-user-id'] || req.query.user_id || '').trim();
 
-  // Jika eksplisit menyatakan role admin murni, tolak langsung
-  if (cleanRole === 'admin') {
-    res.status(403).json({
-      success: false,
-      message: `Akses ditolak: Pengguna dengan role Admin tidak memiliki wewenang untuk ${actionName}. Hanya Super Admin yang diizinkan.`
-    });
-    return false;
-  }
-
   // Jika menyertakan identitas (email atau id), verifikasi validitas akun dan role di database
   if (emailHeader || idHeader) {
     try {
       const user = db.prepare('SELECT id, email, role, aktif FROM users WHERE id = ? OR LOWER(email) = ?').get(idHeader || '', emailHeader || '');
       if (user) {
-        const autoRole = determineRoleByEmail(user.email);
         const userCleanRole = String(user.role || '').toLowerCase().replace(/[\s_-]+/g, '');
-        const isSuper = userCleanRole === 'superadmin' || autoRole.role === 'superadmin' || userCleanRole === 'direktur' || userCleanRole === 'direksi';
+        const isRootSuperAdmin = user.id === 'usr-1' || user.email?.toLowerCase() === 'superadmin@ptbas.co.id';
+        const isSuper = isRootSuperAdmin || userCleanRole === 'superadmin' || userCleanRole === 'direktur' || userCleanRole === 'direksi';
         if (!isSuper || user.aktif !== 1) {
           res.status(403).json({
             success: false,
@@ -242,19 +226,18 @@ function verifySuperAdminPermission(req, res, actionName = 'menghapus data') {
     return true;
   }
 
-  // Email matching superadmin list
-  // rainorchesta@gmail.com explicitly has the Admin role
-  if (emailHeader === 'rainorchesta@gmail.com') {
-    res.status(403).json({
-      success: false,
-      message: `Akses ditolak: Akun rainorchesta@gmail.com memiliki wewenang Admin dan tidak memiliki hak akses Super Admin untuk ${actionName}.`
-    });
-    return false;
-  }
-
   const superAdminList = ['superadmin@ptbas.co.id', 'direksi@ptbas.co.id', 'david.rusiah@ptbas.co.id'];
   if (superAdminList.includes(emailHeader) || emailHeader.startsWith('superadmin')) {
     return true;
+  }
+
+  // Jika eksplisit menyatakan role admin murni, tolak langsung
+  if (cleanRole === 'admin') {
+    res.status(403).json({
+      success: false,
+      message: `Akses ditolak: Pengguna dengan role Admin tidak memiliki wewenang untuk ${actionName}. Hanya Super Admin yang diizinkan.`
+    });
+    return false;
   }
 
   // Default: tolak jika tidak ada bukti hak Super Admin yang sah
@@ -330,16 +313,33 @@ app.post('/api/auth/login', (req, res) => {
     });
   }
 
-  // Sinkronisasi role otomatis sesuai kriteria email
-  const autoRole = determineRoleByEmail(cleanEmail);
-  if (user.role !== autoRole.role || user.roleLabel !== autoRole.roleLabel) {
-    db.prepare('UPDATE users SET role = ?, roleLabel = ? WHERE id = ?').run(
-      autoRole.role,
-      autoRole.roleLabel,
-      user.id
-    );
-    user.role = autoRole.role;
-    user.roleLabel = autoRole.roleLabel;
+  // Pertahankan role dari database (hasil pengaturan Super Admin di User Management)
+  // Hanya akun root superadmin@ptbas.co.id yang terkunci sebagai Super Admin
+  if (user.id === 'usr-1' || cleanEmail === 'superadmin@ptbas.co.id') {
+    if (user.role !== 'superadmin' || user.roleLabel !== 'Super Admin') {
+      db.prepare('UPDATE users SET role = ?, roleLabel = ? WHERE id = ?').run(
+        'superadmin',
+        'Super Admin',
+        user.id
+      );
+      user.role = 'superadmin';
+      user.roleLabel = 'Super Admin';
+    }
+  } else {
+    const normalizedDbRole =
+      String(user.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'superadmin'
+        ? 'superadmin'
+        : 'admin';
+    const normalizedLabel = normalizedDbRole === 'superadmin' ? 'Super Admin' : 'Admin';
+    if (user.role !== normalizedDbRole || user.roleLabel !== normalizedLabel) {
+      db.prepare('UPDATE users SET role = ?, roleLabel = ? WHERE id = ?').run(
+        normalizedDbRole,
+        normalizedLabel,
+        user.id
+      );
+      user.role = normalizedDbRole;
+      user.roleLabel = normalizedLabel;
+    }
   }
 
   const { password: _, ...safeUser } = user;
@@ -884,7 +884,36 @@ app.get('/api/master/materials', (req, res) => {
   }
   query += ' ORDER BY name ASC';
   const materials = db.prepare(query).all();
-  res.json(materials);
+
+  // Enrich with active suppliers from supplier_materials mapping
+  try {
+    const mappings = db.prepare(`
+      SELECT sm.materialId, sm.supplierId, sm.hargaBeliDefault, s.name as supplierName, s.idProgram
+      FROM supplier_materials sm
+      JOIN suppliers s ON sm.supplierId = s.id
+      WHERE sm.aktif = 1 AND s.aktif = 1
+      ORDER BY s.name ASC
+    `).all();
+    const mapByMat = {};
+    for (const m of mappings) {
+      if (!mapByMat[m.materialId]) mapByMat[m.materialId] = [];
+      mapByMat[m.materialId].push({
+        id: m.supplierId,
+        supplierId: m.supplierId,
+        name: m.supplierName,
+        idProgram: m.idProgram,
+        hargaBeliDefault: m.hargaBeliDefault,
+      });
+    }
+    const enriched = materials.map((m) => ({
+      ...m,
+      suppliers: mapByMat[m.id] || [],
+    }));
+    return res.json(enriched);
+  } catch (err) {
+    console.warn('Error enriching materials with suppliers:', err);
+    res.json(materials);
+  }
 });
 
 app.post('/api/master/materials', (req, res) => {
@@ -925,31 +954,84 @@ app.patch('/api/master/materials/:id/toggle', (req, res) => {
 });
 
 app.delete('/api/master/materials/:id', (req, res) => {
-  db.prepare('DELETE FROM materials WHERE id = ?').run(req.params.id);
+  const { id } = req.params;
+  try { db.prepare('DELETE FROM supplier_materials WHERE materialId = ?').run(id); } catch (e) {}
+  db.prepare('DELETE FROM materials WHERE id = ?').run(id);
   res.json({ success: true });
 });
 
 // 2. Suppliers
 app.get('/api/master/suppliers', (req, res) => {
   const suppliers = db.prepare('SELECT * FROM suppliers ORDER BY name ASC').all();
-  res.json(suppliers);
+
+  // Enrich each supplier with their assigned materials summary
+  try {
+    const mappings = db.prepare(`
+      SELECT sm.supplierId, sm.materialId, sm.hargaBeliDefault, m.name as materialName, m.category, m.defaultUnit
+      FROM supplier_materials sm
+      JOIN materials m ON sm.materialId = m.id
+      WHERE sm.aktif = 1 AND m.aktif = 1
+      ORDER BY m.name ASC
+    `).all();
+    const mapBySup = {};
+    for (const m of mappings) {
+      if (!mapBySup[m.supplierId]) mapBySup[m.supplierId] = [];
+      mapBySup[m.supplierId].push({
+        id: m.materialId,
+        materialId: m.materialId,
+        name: m.materialName,
+        category: m.category,
+        defaultUnit: m.defaultUnit,
+        hargaBeliDefault: m.hargaBeliDefault,
+      });
+    }
+    const enriched = suppliers.map((s) => ({
+      ...s,
+      materials: mapBySup[s.id] || [],
+    }));
+    return res.json(enriched);
+  } catch (err) {
+    console.warn('Error enriching suppliers with materials:', err);
+    res.json(suppliers);
+  }
 });
 
 app.post('/api/master/suppliers', (req, res) => {
-  const { name, idProgram, penerima, telepon, pkp = 1, bank = 'BCA', noRekening, rekeningAtasNama } = req.body;
-  const id = `sup-${Date.now()}`;
+  const { name, idProgram, penerima, telepon, pkp = 1, bank = 'BCA', noRekening, rekeningAtasNama, materialIds, materials } = req.body;
+  const id = req.body.id || `sup-${Date.now()}`;
 
   db.prepare(`
     INSERT INTO suppliers (id, name, idProgram, penerima, telepon, pkp, bank, noRekening, rekeningAtasNama, aktif)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
   `).run(id, name, idProgram, penerima, telepon, pkp ? 1 : 0, bank, noRekening, rekeningAtasNama);
 
+  // Sync materials if provided
+  const targetMaterials = materials || (materialIds || []).map((mId) => ({ materialId: mId }));
+  if (Array.isArray(targetMaterials) && targetMaterials.length > 0) {
+    const insertMat = db.prepare(`
+      INSERT INTO supplier_materials (id, supplierId, materialId, hargaBeliDefault, aktif, created_at)
+      VALUES (?, ?, ?, ?, 1, ?)
+      ON CONFLICT(supplierId, materialId) DO UPDATE SET
+        hargaBeliDefault = excluded.hargaBeliDefault,
+        aktif = 1
+    `);
+    const now = new Date().toISOString();
+    for (const item of targetMaterials) {
+      const matId = item.materialId || item.id;
+      const defaultPrice =
+        item.hargaBeliDefault !== undefined
+          ? Number(item.hargaBeliDefault)
+          : db.prepare('SELECT beli FROM materials WHERE id = ?').get(matId)?.beli || 0;
+      insertMat.run(`sm-${id}-${matId}`, id, matId, defaultPrice, now);
+    }
+  }
+
   res.status(201).json({ success: true, id });
 });
 
 app.put('/api/master/suppliers/:id', (req, res) => {
   const { id } = req.params;
-  const { name, idProgram, penerima, telepon, pkp = 1, bank = 'BCA', noRekening, rekeningAtasNama, aktif } = req.body;
+  const { name, idProgram, penerima, telepon, pkp = 1, bank = 'BCA', noRekening, rekeningAtasNama, aktif, materialIds, materials } = req.body;
   const current = db.prepare('SELECT id, aktif FROM suppliers WHERE id = ?').get(id);
   if (!current) return res.status(404).json({ message: 'Supplier not found' });
 
@@ -958,6 +1040,28 @@ app.put('/api/master/suppliers/:id', (req, res) => {
     SET name = ?, idProgram = ?, penerima = ?, telepon = ?, pkp = ?, bank = ?, noRekening = ?, rekeningAtasNama = ?, aktif = ?
     WHERE id = ?
   `).run(name, idProgram, penerima, telepon, pkp ? 1 : 0, bank, noRekening, rekeningAtasNama, aktif !== undefined ? (aktif ? 1 : 0) : current.aktif, id);
+
+  // Sync materials if provided
+  const targetMaterials = materials || (materialIds ? materialIds.map((mId) => ({ materialId: mId })) : null);
+  if (Array.isArray(targetMaterials)) {
+    db.prepare('UPDATE supplier_materials SET aktif = 0 WHERE supplierId = ?').run(id);
+    const insertMat = db.prepare(`
+      INSERT INTO supplier_materials (id, supplierId, materialId, hargaBeliDefault, aktif, created_at)
+      VALUES (?, ?, ?, ?, 1, ?)
+      ON CONFLICT(supplierId, materialId) DO UPDATE SET
+        hargaBeliDefault = excluded.hargaBeliDefault,
+        aktif = 1
+    `);
+    const now = new Date().toISOString();
+    for (const item of targetMaterials) {
+      const matId = item.materialId || item.id;
+      const defaultPrice =
+        item.hargaBeliDefault !== undefined
+          ? Number(item.hargaBeliDefault)
+          : db.prepare('SELECT beli FROM materials WHERE id = ?').get(matId)?.beli || 0;
+      insertMat.run(`sm-${id}-${matId}`, id, matId, defaultPrice, now);
+    }
+  }
 
   res.json({ success: true });
 });
@@ -973,8 +1077,95 @@ app.patch('/api/master/suppliers/:id/toggle', (req, res) => {
 });
 
 app.delete('/api/master/suppliers/:id', (req, res) => {
-  db.prepare('DELETE FROM suppliers WHERE id = ?').run(req.params.id);
+  const { id } = req.params;
+  try { db.prepare('DELETE FROM supplier_materials WHERE supplierId = ?').run(id); } catch (e) {}
+  db.prepare('DELETE FROM suppliers WHERE id = ?').run(id);
   res.json({ success: true });
+});
+
+// Supplier-Material Mapping Routes
+app.get('/api/master/suppliers/:id/materials', (req, res) => {
+  try {
+    const { id } = req.params;
+    const supplier = db.prepare('SELECT id FROM suppliers WHERE id = ?').get(id);
+    if (!supplier) {
+      return res.status(404).json({ success: false, message: `Supplier ${id} tidak ditemukan.` });
+    }
+    const rows = db.prepare(`
+      SELECT sm.id as mappingId, sm.supplierId, sm.materialId, sm.hargaBeliDefault, sm.aktif,
+             m.name, m.category, m.pphRate, m.defaultUnit, m.beli, m.jual
+      FROM supplier_materials sm
+      JOIN materials m ON sm.materialId = m.id
+      WHERE sm.supplierId = ?
+        AND sm.aktif = 1
+        AND m.aktif = 1
+        AND COALESCE(LOWER(m.category), '') != 'jasa'
+        AND UPPER(m.name) NOT LIKE '%JASA ANGKUT%'
+      ORDER BY m.name ASC
+    `).all(id);
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+app.post('/api/master/suppliers/:id/materials', (req, res) => {
+  try {
+    const { id } = req.params;
+    const supplier = db.prepare('SELECT id FROM suppliers WHERE id = ?').get(id);
+    if (!supplier) {
+      return res.status(404).json({ success: false, message: `Supplier ${id} tidak ditemukan.` });
+    }
+
+    const { materialIds, items, replaceFull } = req.body || {};
+    const now = new Date().toISOString();
+
+    const insertOrUpdate = db.prepare(`
+      INSERT INTO supplier_materials (id, supplierId, materialId, hargaBeliDefault, aktif, created_at)
+      VALUES (?, ?, ?, ?, 1, ?)
+      ON CONFLICT(supplierId, materialId) DO UPDATE SET
+        hargaBeliDefault = excluded.hargaBeliDefault,
+        aktif = 1
+    `);
+
+    const list = Array.isArray(items)
+      ? items
+      : Array.isArray(materialIds)
+        ? materialIds.map((mId) => ({ materialId: mId }))
+        : [];
+
+    db.exec('BEGIN');
+    try {
+      if (replaceFull) {
+        db.prepare('UPDATE supplier_materials SET aktif = 0 WHERE supplierId = ?').run(id);
+      }
+
+      for (const item of list) {
+        const matId = item?.materialId || item?.id;
+        if (!matId) continue;
+        const matRow = db.prepare('SELECT id, beli FROM materials WHERE id = ?').get(matId);
+        if (!matRow) continue;
+
+        const hasExplicitPrice =
+          item.hargaBeliDefault !== undefined &&
+          item.hargaBeliDefault !== null &&
+          item.hargaBeliDefault !== '';
+        const defaultPrice = hasExplicitPrice
+          ? Number(item.hargaBeliDefault) || 0
+          : (Number(matRow.beli) || 0);
+        const mapId = `sm-${id}-${matId}`;
+        insertOrUpdate.run(mapId, id, matId, defaultPrice, now);
+      }
+      db.exec('COMMIT');
+    } catch (txErr) {
+      db.exec('ROLLBACK');
+      throw txErr;
+    }
+
+    res.json({ success: true, message: 'Supplier material mapping berhasil disimpan', count: list.length });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
 });
 
 // 3. Customers
@@ -1281,9 +1472,9 @@ app.delete('/api/master/currencies/:id', (req, res) => {
 // TRANSACTIONS ROUTES
 // ==========================================
 
-// Pre Orders
+// Pre Orders (Received Order)
 app.get('/api/pre-orders', (req, res) => {
-  const pos = db.prepare('SELECT * FROM pre_orders ORDER BY tanggal DESC, id DESC').all();
+  const pos = db.prepare('SELECT * FROM received_order ORDER BY tanggal DESC, id DESC').all();
   const parsed = pos.map((po) => {
     let items = po.items;
     if (typeof items === 'string') {
@@ -1314,7 +1505,40 @@ app.post('/api/pre-orders', (req, res) => {
       rawItems = b.items;
     }
 
-    // 1. Strict validation based on jenisRO (aligned with centralized roRules)
+    // 1. Strict validation based on jenisRO & Supplier Material Catalog
+    if (b.supplierId && jenisRO !== RO_TYPES.JASA_ANGKUT_SAJA) {
+      const allowedMaterials = db
+        .prepare(`
+          SELECT sm.materialId
+          FROM supplier_materials sm
+          JOIN materials m ON sm.materialId = m.id
+          WHERE sm.supplierId = ?
+            AND sm.aktif = 1
+            AND m.aktif = 1
+            AND COALESCE(LOWER(m.category), '') != 'jasa'
+            AND UPPER(m.name) NOT LIKE '%JASA ANGKUT%'
+        `)
+        .all(b.supplierId)
+        .map((m) => String(m.materialId));
+
+      if (allowedMaterials.length === 0) {
+        return res.status(422).json({
+          success: false,
+          message: 'Supplier yang dipilih belum memiliki katalog material aktif di Master Data. Silakan atur Katalog Material Supplier terlebih dahulu.',
+        });
+      }
+
+      const invalidItems = rawItems.filter(
+        (it) => !it.isAutoGenerated && getItemType(it) === ITEM_TYPES.MATERIAL && (!it.materialId || !allowedMaterials.includes(String(it.materialId)))
+      );
+      if (invalidItems.length > 0) {
+        return res.status(422).json({
+          success: false,
+          message: `Material ${invalidItems.map((i) => i.nama || i.materialName).join(', ')} tidak terdaftar pada katalog supplier yang dipilih!`,
+        });
+      }
+    }
+
     if (jenisRO === RO_TYPES.MATERIAL_SAJA) {
       const hasJasa = rawItems.some((it) => getItemType(it) === ITEM_TYPES.JASA_ANGKUT);
       if (hasJasa) {
@@ -1455,21 +1679,22 @@ app.post('/api/pre-orders', (req, res) => {
       b.hubungkanNomorPoMaterial ? String(b.hubungkanNomorPoMaterial).trim().slice(0, 50) : null,
       b.satuanJasaAngkut ?? b.satuan ?? 'm³',
       customerId,
+      b.supplierId || null,
     ].map((val) => (val === undefined ? null : val));
 
     db.prepare(`
-      INSERT OR REPLACE INTO pre_orders (
+      INSERT OR REPLACE INTO received_order (
         id, nomorPo, customer, customerAddress, materialId, materialName,
         materialCategory, pphRate, satuan, totalOrder, terkirim, hargaJual,
         hargaBeli, tanggal, top, status, createdBy, approvedBy, approvedAt,
         rejectionReason, items, nomorRO, jenisRO, jenis, mataUang,
-        jenisWajibPajak, nomorPoCustomer, hubungkanNomorPoMaterial, satuanJasaAngkut, customerId
+        jenisWajibPajak, nomorPoCustomer, hubungkanNomorPoMaterial, satuanJasaAngkut, customerId, supplierId
       ) VALUES (
         ?, ?, ?, ?, ?, ?,
         ?, ?, ?, ?, ?, ?,
         ?, ?, ?, ?, ?, ?, ?,
         ?, ?, ?, ?, ?, ?,
-        ?, ?, ?, ?, ?
+        ?, ?, ?, ?, ?, ?
       )
     `).run(...params);
 
@@ -1479,6 +1704,7 @@ app.post('/api/pre-orders', (req, res) => {
       customer: b.customer ?? '',
       customerAddress,
       customerId,
+      supplierId: b.supplierId || null,
       materialId: firstMaterial.materialId ?? b.materialId ?? '',
       materialName: firstMaterial.nama ?? b.materialName ?? '',
       materialCategory: firstMaterial.category ?? b.materialCategory ?? 'Curah',
@@ -1514,16 +1740,18 @@ app.post('/api/pre-orders', (req, res) => {
 });
 
 app.patch('/api/pre-orders/:id/approve', (req, res) => {
+  if (!verifySuperAdminPermission(req, res, 'menyetujui Received Order')) return;
+
   const { approver = 'David Rusiah (Direktur)' } = req.body;
   const now = new Date().toISOString().replace('T', ' ').substring(0, 16);
   
   db.prepare(`
-    UPDATE pre_orders
+    UPDATE received_order
     SET status = 'APPROVED', approvedBy = ?, approvedAt = ?, rejectionReason = NULL
     WHERE id = ?
   `).run(approver, now, req.params.id);
 
-  const po = db.prepare('SELECT * FROM pre_orders WHERE id = ?').get(req.params.id);
+  const po = db.prepare('SELECT * FROM received_order WHERE id = ?').get(req.params.id);
   if (!po) {
     return res.status(404).json({ success: false, message: 'Pre Order tidak ditemukan' });
   }
@@ -1537,70 +1765,12 @@ app.patch('/api/pre-orders/:id/approve', (req, res) => {
   let finalNomorRO = po.nomorRO;
   if (!finalNomorRO) {
     finalNomorRO = generateNomorRO(po.customer, po.tanggal ? new Date(po.tanggal) : new Date());
-    db.prepare('UPDATE pre_orders SET nomorRO = ? WHERE id = ?').run(finalNomorRO, po.id);
+    db.prepare('UPDATE received_order SET nomorRO = ? WHERE id = ?').run(finalNomorRO, po.id);
     po.nomorRO = finalNomorRO;
   }
 
-  // Otomatis buat Jurnal GI (Ringkasan Jurnal) untuk nomor RO pre-order ini jika belum ada
-  let existingJurnal = db.prepare('SELECT * FROM jurnal_gi WHERE preOrderId = ? OR nomorRO = ?').get(po.id, finalNomorRO);
-  
-  let jurnalId = existingJurnal?.id;
-  if (!existingJurnal) {
-    jurnalId = `REK-${new Date().toISOString().slice(0, 7).replace('-', '')}-${String(Date.now()).slice(-4)}`;
-    const firstItem = parsedItems[0] || {};
-    const matName = po.materialName || firstItem.nama || 'SIRTU';
-    const targetVol = Number(po.totalOrder || firstItem.kuantitas || 0);
-    const hBeli = Number(po.hargaBeli || firstItem.hargaBeli || 0);
-    const hJual = Number(po.hargaJual || firstItem.hargaJual || 0);
-    const isPpn = po.jenisWajibPajak === 'PKP' ? 1 : 0;
-    const targetTrips = po.satuan === 'rit' ? Math.max(1, targetVol) : 0;
-    const nowIso = new Date().toISOString();
-
-    db.prepare(`
-      INSERT INTO jurnal_gi (
-        id, nomorRO, preOrderId, poNumber, customer, customerAddress,
-        material, isPpn, tanggal, totalSj, targetRitase, totalVolume,
-        targetVolume, satuan, hargaBeli, hargaJual, nominalBeli,
-        nominalJual, status, suratJalanDetails, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(
-      jurnalId,
-      finalNomorRO,
-      po.id,
-      po.nomorPo || 'MENUNGGU SURAT JALAN PERTAMA',
-      po.customer,
-      po.customerAddress || '',
-      matName,
-      isPpn,
-      po.tanggal || nowIso.split('T')[0],
-      0,
-      targetTrips,
-      0,
-      targetVol,
-      po.satuan || 'm3',
-      hBeli,
-      hJual,
-      0,
-      0,
-      'Siap Kirim',
-      JSON.stringify([]),
-      nowIso,
-      nowIso
-    );
-    existingJurnal = db.prepare('SELECT * FROM jurnal_gi WHERE id = ?').get(jurnalId);
-  }
-
-  let sjDetails = [];
-  if (existingJurnal?.suratJalanDetails) {
-    try {
-      sjDetails = typeof existingJurnal.suratJalanDetails === 'string'
-        ? JSON.parse(existingJurnal.suratJalanDetails)
-        : (existingJurnal.suratJalanDetails || []);
-    } catch (e) {
-      sjDetails = [];
-    }
-  }
-
+  // Workflow baru: Jangan membuat Jurnal GI kosong saat Approve RO.
+  // Jurnal harian dibuat otomatis saat Surat Jalan pertama pada hari tersebut diterbitkan.
   try {
     syncBkkAndInvoices();
   } catch (e) {}
@@ -1608,21 +1778,21 @@ app.patch('/api/pre-orders/:id/approve', (req, res) => {
   res.json({
     success: true,
     data: { ...po, nomorRO: finalNomorRO, items: parsedItems },
-    jurnalId,
-    jurnal: existingJurnal ? { ...existingJurnal, suratJalanDetails: sjDetails } : null,
-    message: `Pre Order ${finalNomorRO} disetujui dan Ringkasan Jurnal (Jurnal GI) otomatis dibuat.`
+    message: `Pre Order ${finalNomorRO} disetujui dan siap dibuatkan Surat Jalan (Jurnal harian terbentuk otomatis saat Surat Jalan pertama dibuat).`
   });
 });
 
 app.patch('/api/pre-orders/:id/reject', (req, res) => {
+  if (!verifySuperAdminPermission(req, res, 'menolak Received Order')) return;
+
   const { reason = 'Margin di bawah batas minimum' } = req.body;
   db.prepare(`
-    UPDATE pre_orders
+    UPDATE received_order
     SET status = 'REJECTED', rejectionReason = ?
     WHERE id = ?
   `).run(reason, req.params.id);
 
-  const updated = db.prepare('SELECT * FROM pre_orders WHERE id = ?').get(req.params.id);
+  const updated = db.prepare('SELECT * FROM received_order WHERE id = ?').get(req.params.id);
   if (updated && updated.items) {
     try { updated.items = JSON.parse(updated.items); } catch (e) { updated.items = []; }
   }
@@ -1635,7 +1805,7 @@ app.patch('/api/pre-orders/:id/customer-po', (req, res) => {
     const { id } = req.params;
     const { poNumber, syncWaybills = true, updatedBy = 'Admin' } = req.body;
 
-    const po = db.prepare('SELECT * FROM pre_orders WHERE id = ?').get(id);
+    const po = db.prepare('SELECT * FROM received_order WHERE id = ?').get(id);
     if (!po) {
       return res.status(404).json({ success: false, message: 'Received Order tidak ditemukan' });
     }
@@ -1693,7 +1863,7 @@ app.patch('/api/pre-orders/:id/customer-po', (req, res) => {
       syncedBkkCount = bkkResult.changes || 0;
     }
 
-    const updated = db.prepare('SELECT * FROM pre_orders WHERE id = ?').get(id);
+    const updated = db.prepare('SELECT * FROM received_order WHERE id = ?').get(id);
     if (updated && updated.items) {
       try { updated.items = JSON.parse(updated.items); } catch (e) { updated.items = []; }
     }
@@ -1726,18 +1896,266 @@ app.delete('/api/pre-orders/:id', (req, res) => {
   if (!verifySuperAdminPermission(req, res, 'menghapus Received Order')) return;
   try {
     const { id } = req.params;
-    const po = db.prepare('SELECT * FROM pre_orders WHERE id = ?').get(id);
-    if (!po) return res.status(404).json({ success: false, message: 'Pre Order not found' });
+    const cleanId = String(id).trim();
 
-    db.prepare('DELETE FROM invoices WHERE preOrderId = ? OR (nomorRO IS NOT NULL AND nomorRO = ?)').run(id, po.nomorRO || '');
-    db.prepare('DELETE FROM bkk WHERE preOrderId = ? OR (nomorRO IS NOT NULL AND nomorRO = ?)').run(id, po.nomorRO || '');
-    db.prepare('DELETE FROM jurnal_gi WHERE preOrderId = ? OR (nomorRO IS NOT NULL AND nomorRO = ?)').run(id, po.nomorRO || '');
-    db.prepare('DELETE FROM surat_jalan WHERE preOrderId = ? OR (nomorRO IS NOT NULL AND nomorRO = ?)').run(id, po.nomorRO || '');
-    db.prepare('DELETE FROM pre_orders WHERE id = ?').run(id);
+    // Look up in received_order by string id, numeric id, or nomorRO
+    let po = db.prepare('SELECT * FROM received_order WHERE id = ? OR nomorRO = ?').get(cleanId, cleanId);
+    if (!po && !isNaN(Number(cleanId))) {
+      po = db.prepare('SELECT * FROM received_order WHERE id = ?').get(Number(cleanId));
+    }
+
+    const nomorRO = po?.nomorRO || cleanId;
+    const targetId = po?.id ?? cleanId;
+
+    // Use standard SQLite transaction
+    db.exec('BEGIN');
+    let resPoChanges = 0;
+    try {
+      // 1. Cascade delete BKK documents, audit logs, and BKK rows
+      try {
+        const linkedBkk = db.prepare('SELECT id FROM bkk WHERE preOrderId = ? OR preOrderId = ? OR (nomorRO IS NOT NULL AND nomorRO = ?)').all(targetId, cleanId, nomorRO);
+        for (const b of linkedBkk) {
+          try { db.prepare('DELETE FROM bkk_documents WHERE bkkId = ?').run(b.id); } catch (e) {}
+          try { db.prepare('DELETE FROM bkk_audit_logs WHERE bkkId = ?').run(b.id); } catch (e) {}
+        }
+        db.prepare('DELETE FROM bkk WHERE preOrderId = ? OR preOrderId = ? OR (nomorRO IS NOT NULL AND nomorRO = ?)').run(targetId, cleanId, nomorRO);
+      } catch (e) {
+        console.warn('Error cascading BKK delete:', e.message);
+      }
+
+      // 2. Cascade delete Invoice documents, audit logs, and Invoice rows
+      try {
+        const linkedInvoices = db.prepare('SELECT id FROM invoices WHERE preOrderId = ? OR preOrderId = ? OR (nomorRO IS NOT NULL AND nomorRO = ?)').all(targetId, cleanId, nomorRO);
+        for (const inv of linkedInvoices) {
+          try { db.prepare('DELETE FROM invoice_documents WHERE invoiceId = ?').run(inv.id); } catch (e) {}
+          try { db.prepare('DELETE FROM invoice_audit_logs WHERE invoiceId = ?').run(inv.id); } catch (e) {}
+        }
+        db.prepare('DELETE FROM invoices WHERE preOrderId = ? OR preOrderId = ? OR (nomorRO IS NOT NULL AND nomorRO = ?)').run(targetId, cleanId, nomorRO);
+      } catch (e) {
+        console.warn('Error cascading invoice delete:', e.message);
+      }
+
+      // 3. Cascade delete Jurnal GI audit logs and Jurnal GI rows
+      try {
+        const linkedJournals = db.prepare('SELECT id FROM jurnal_gi WHERE preOrderId = ? OR preOrderId = ? OR (nomorRO IS NOT NULL AND nomorRO = ?)').all(targetId, cleanId, nomorRO);
+        for (const j of linkedJournals) {
+          try { db.prepare('DELETE FROM jurnal_audit_logs WHERE jurnalId = ?').run(j.id); } catch (e) {}
+        }
+        db.prepare('DELETE FROM jurnal_gi WHERE preOrderId = ? OR preOrderId = ? OR (nomorRO IS NOT NULL AND nomorRO = ?)').run(targetId, cleanId, nomorRO);
+      } catch (e) {
+        console.warn('Error cascading jurnal delete:', e.message);
+      }
+
+      // 4. Cascade delete Surat Jalan rows
+      try {
+        db.prepare('DELETE FROM surat_jalan WHERE preOrderId = ? OR preOrderId = ? OR (nomorRO IS NOT NULL AND nomorRO = ?)').run(targetId, cleanId, nomorRO);
+      } catch (e) {
+        console.warn('Error cascading surat_jalan delete:', e.message);
+      }
+
+      // 5. Delete from received_order table
+      const resPo = db.prepare('DELETE FROM received_order WHERE id = ? OR id = ? OR (nomorRO IS NOT NULL AND nomorRO = ?)').run(targetId, cleanId, nomorRO);
+      resPoChanges = resPo.changes;
+
+      db.exec('COMMIT');
+    } catch (txErr) {
+      db.exec('ROLLBACK');
+      throw txErr;
+    }
 
     res.json({
       success: true,
-      message: `Pre Order ${po.nomorRO || id} beserta ringkasan jurnal dan surat jalan terkait berhasil dihapus.`
+      deleted: resPoChanges > 0 || po != null,
+      message: `Pre Order ${nomorRO || targetId} beserta ringkasan jurnal dan surat jalan terkait berhasil dihapus.`
+    });
+  } catch (err) {
+    console.error('Error deleting pre-order:', err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// Close Pre-Order (Tutup RO / Selesai Order) with automatic delivery recalculation & V2 revision for paid docs
+app.patch('/api/pre-orders/:id/close', (req, res) => {
+  try {
+    const { id } = req.params;
+    const actorName = req.headers['x-user-name'] || 'Admin';
+    const nowIso = new Date().toISOString();
+
+    const po = db.prepare('SELECT * FROM received_order WHERE id = ?').get(id);
+    if (!po) return res.status(404).json({ success: false, message: 'Pre Order tidak ditemukan' });
+
+    // 1. Calculate actual cumulative volume of all GIs under this RO
+    const actualDeliveries = db.prepare(`
+      SELECT material, SUM(volumeAkhir) as totalRealVolume, COUNT(id) as totalRitase
+      FROM surat_jalan 
+      WHERE preOrderId = ? OR (nomorRO IS NOT NULL AND nomorRO = ?)
+      GROUP BY material
+    `).all(po.id, po.nomorRO);
+
+    const totalRealVolume = Number(
+      actualDeliveries.reduce((sum, d) => sum + (Number(d.totalRealVolume) || 0), 0).toFixed(2)
+    );
+
+    // Update status received_order & related journals
+    db.prepare("UPDATE received_order SET status = 'SELESAI_KIRIM', terkirim = ? WHERE id = ?").run(totalRealVolume, po.id);
+    db.prepare(`
+      UPDATE jurnal_gi
+      SET status = 'Selesai Kirim', updated_at = ?
+      WHERE preOrderId = ? OR (nomorRO IS NOT NULL AND nomorRO = ?)
+    `).run(nowIso, po.id, po.nomorRO || '');
+
+    // 2. Fetch primary active invoice (isRevision = 0 or NULL, non-REJECTED)
+    const inv = db.prepare(`
+      SELECT * FROM invoices
+      WHERE (preOrderId = ? OR (nomorRO IS NOT NULL AND nomorRO = ?))
+        AND UPPER(COALESCE(status, '')) != 'REJECTED'
+        AND (isRevision = 0 OR isRevision IS NULL)
+      ORDER BY created_at DESC LIMIT 1
+    `).get(po.id, po.nomorRO || '');
+    let invSyncResult = 'NONE';
+    if (inv) {
+      const isPaid = inv.statusBayar === 'Lunas' || inv.status === 'paid';
+      const orderVolume = Number(inv.volume || po.totalOrder || 0);
+      const isVolumeDifferent = Math.abs(orderVolume - totalRealVolume) > 0.01;
+
+      if (!isPaid) {
+        // Document unpaid -> Update V1 directly to real cumulative volume
+        const hJual = Number(inv.hargaSatuan || po.hargaJual || 0);
+        const newDpp = Math.round(totalRealVolume * hJual);
+        const newPpn = inv.tarifPpn ? Math.round((newDpp * inv.tarifPpn) / 100) : 0;
+        const newPph = inv.tarifPph ? Math.round((newDpp * inv.tarifPph) / 100) : 0;
+        const newAmount = newDpp + newPpn - newPph;
+
+        db.prepare(`
+          UPDATE invoices
+          SET volume = ?, subtotalJasa = ?, dpp = ?, ppnNominal = ?, ppn = ?,
+              pphNominal = ?, pph = ?, amount = ?, updated_at = ?
+          WHERE id = ?
+        `).run(totalRealVolume, newDpp, newDpp, newPpn, newPpn, newPph, newPph, newAmount, nowIso, inv.id);
+
+        invSyncResult = 'UPDATED_V1';
+      } else if (isVolumeDifferent) {
+        const existingV2 = db.prepare('SELECT id FROM invoices WHERE parentDocId = ? AND isRevision = 1').get(inv.id);
+        if (existingV2) {
+          invSyncResult = 'V2_ALREADY_EXISTS';
+        } else {
+        // Document ALREADY PAID and there is a volume difference -> Generate Version 2 (V2 / Addendum)
+        const deltaVolume = Number((totalRealVolume - orderVolume).toFixed(2));
+        const hJual = Number(inv.hargaSatuan || po.hargaJual || 0);
+        const deltaDpp = Math.round(deltaVolume * hJual);
+        const deltaPpn = inv.tarifPpn ? Math.round((deltaDpp * inv.tarifPpn) / 100) : 0;
+        const deltaPph = inv.tarifPph ? Math.round((deltaDpp * inv.tarifPph) / 100) : 0;
+        const deltaAmount = deltaDpp + deltaPpn - deltaPph;
+
+        const v2Id = `inv-v2-${Date.now()}`;
+        const v2Kode = `${inv.kodeTransaksi}-V2`;
+        const v2Nomor = inv.nomorInvoice ? `${inv.nomorInvoice}-V2` : null;
+
+        db.prepare(`
+          INSERT INTO invoices (
+            id, kodeTransaksi, nomorInvoice, nomorFakturPajak, nomorRO, preOrderId,
+            jurnalId, poNumber, customerId, supplierId, perusahaan, customer,
+            customerAddress, npwp, material, materialType, jenis, volume, satuan,
+            hargaSatuan, subtotalJasa, dpp, tarifPpn, ppnNominal, ppn, tarifPph,
+            pphNominal, pph, amount, statusBayar, statusFaktur, tanggal, waktu,
+            timestamp, periode, version, parentDocId, isRevision, status, createdBy,
+            created_at, updated_at
+          ) VALUES (
+            ?, ?, ?, ?, ?, ?,
+            ?, ?, ?, ?, ?, ?,
+            ?, ?, ?, ?, ?, ?, ?,
+            ?, ?, ?, ?, ?, ?, ?,
+            ?, ?, ?, 'Belum Dibayar', 'APPROVED DJP', ?, '10:00',
+            ?, 'Penyesuaian Selisih Selesai Order', 2, ?, 1, 'pending_approval', ?,
+            ?, ?
+          )
+        `).run(
+          v2Id, v2Kode, v2Nomor, inv.nomorFakturPajak ? `${inv.nomorFakturPajak}-REV` : null, inv.nomorRO, inv.preOrderId,
+          inv.jurnalId, inv.poNumber, inv.customerId, inv.supplierId, inv.perusahaan, inv.customer,
+          inv.customerAddress, inv.npwp, inv.material, inv.materialType, inv.jenis, deltaVolume, inv.satuan || 'm3',
+          hJual, deltaDpp, deltaDpp, inv.tarifPpn || 11, deltaPpn, deltaPpn, inv.tarifPph || 0,
+          deltaPph, deltaPph, deltaAmount, nowIso.split('T')[0],
+          nowIso, inv.id, actorName,
+          nowIso, nowIso
+        );
+
+        invSyncResult = 'CREATED_V2';
+        }
+      }
+    }
+
+    // 3. Fetch primary active BKK (isRevision = 0 or NULL, non-REJECTED)
+    const bkk = db.prepare(`
+      SELECT * FROM bkk
+      WHERE (preOrderId = ? OR (nomorRO IS NOT NULL AND nomorRO = ?))
+        AND UPPER(COALESCE(status, '')) != 'REJECTED'
+        AND (isRevision = 0 OR isRevision IS NULL)
+      ORDER BY created_at DESC LIMIT 1
+    `).get(po.id, po.nomorRO || '');
+    let bkkSyncResult = 'NONE';
+    if (bkk) {
+      const isPaid = bkk.statusBayar === 'Lunas' || bkk.status === 'paid';
+      const orderVolume = Number(bkk.volume || po.totalOrder || 0);
+      const isVolumeDifferent = Math.abs(orderVolume - totalRealVolume) > 0.01;
+
+      if (!isPaid) {
+        // Document unpaid -> Update V1 directly to real cumulative volume
+        const hBeli = Number(bkk.hargaSatuan || po.hargaBeli || 0);
+        const newAmount = Math.round(totalRealVolume * hBeli);
+
+        db.prepare(`
+          UPDATE bkk
+          SET volume = ?, kubikasi = ?, amount = ?, updated_at = ?
+          WHERE id = ?
+        `).run(totalRealVolume, totalRealVolume, newAmount, nowIso, bkk.id);
+
+        bkkSyncResult = 'UPDATED_V1';
+      } else if (isVolumeDifferent) {
+        const existingBkkV2 = db.prepare('SELECT id FROM bkk WHERE parentDocId = ? AND isRevision = 1').get(bkk.id);
+        if (existingBkkV2) {
+          bkkSyncResult = 'V2_ALREADY_EXISTS';
+        } else {
+        // Document ALREADY PAID and there is a volume difference -> Generate Version 2 (V2 / Addendum)
+        const deltaVolume = Number((totalRealVolume - orderVolume).toFixed(2));
+        const hBeli = Number(bkk.hargaSatuan || po.hargaBeli || 0);
+        const deltaAmount = Math.round(deltaVolume * hBeli);
+
+        const v2Id = `bkk-v2-${Date.now()}`;
+        const v2Kode = `${bkk.kodeTransaksi}-V2`;
+
+        db.prepare(`
+          INSERT INTO bkk (
+            id, kodeTransaksi, nomorRO, preOrderId, jurnalId, poNumber,
+            supplierId, customerId, perusahaan, subDetail, penerima, material,
+            jenis, ritaseCount, kubikasi, volume, satuan, hargaSatuan, amount,
+            statusBayar, status, tanggal, timestamp, periode, version, parentDocId,
+            isRevision, createdBy, created_at, updated_at
+          ) VALUES (
+            ?, ?, ?, ?, ?, ?,
+            ?, ?, ?, ?, ?, ?,
+            ?, ?, ?, ?, ?, ?, ?,
+            'Belum Dibayar', 'pending_approval', ?, ?, 'Penyesuaian Selisih Selesai Order', 2, ?,
+            1, ?, ?, ?
+          )
+        `).run(
+          v2Id, v2Kode, bkk.nomorRO, bkk.preOrderId, bkk.jurnalId, bkk.poNumber,
+          bkk.supplierId, bkk.customerId, bkk.perusahaan, `Selisih Volume Akhir (${deltaVolume} ${bkk.satuan})`, bkk.penerima, bkk.material,
+          bkk.jenis, 0, deltaVolume, deltaVolume, bkk.satuan || 'm3', hBeli, deltaAmount,
+          nowIso.split('T')[0], nowIso, bkk.id,
+          actorName, nowIso, nowIso
+        );
+
+        bkkSyncResult = 'CREATED_V2';
+        }
+      }
+    }
+
+    res.json({
+      success: true,
+      message: `Pre Order ${po.nomorRO || id} resmi ditutup. Volume fisik riil terkirim: ${totalRealVolume} m³.`,
+      totalRealVolume,
+      invSyncResult,
+      bkkSyncResult,
     });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -1756,6 +2174,12 @@ app.get('/api/jurnal-gi', (req, res) => {
     } catch (e) {
       details = [];
     }
+    let summary = [];
+    try {
+      summary = typeof j.itemsSummary === 'string' ? JSON.parse(j.itemsSummary) : (j.itemsSummary || []);
+    } catch (e) {
+      summary = [];
+    }
     return {
       ...j,
       isPpn: Boolean(j.isPpn),
@@ -1767,18 +2191,174 @@ app.get('/api/jurnal-gi', (req, res) => {
       hargaJual: Number(j.hargaJual || 0),
       nominalBeli: Number(j.nominalBeli || 0),
       nominalJual: Number(j.nominalJual || 0),
+      itemsSummary: Array.isArray(summary) ? summary : [],
       suratJalanDetails: Array.isArray(details) ? details : [],
     };
   });
   res.json(formatted);
 });
 
-// Delete Jurnal GI / Rekapan (e.g. for orphan records or administrative reset)
+// Delete Jurnal GI / Rekapan (Superadmin Only)
 app.delete('/api/jurnal-gi/:id', (req, res) => {
+  if (!verifySuperAdminPermission(req, res, 'menghapus Jurnal GI')) return;
   try {
     const { id } = req.params;
     db.prepare('DELETE FROM jurnal_gi WHERE id = ?').run(id);
     res.json({ success: true, message: `Jurnal ${id} berhasil dihapus.` });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// Helper to sweep and seal all Surat Jalan for a given Jurnal GI
+function buildJournalSweepData(jurnal) {
+  const sjs = db.prepare(`
+    SELECT * FROM surat_jalan
+    WHERE jurnalId = ?
+       OR (
+         (
+           (preOrderId IS NOT NULL AND CAST(preOrderId AS TEXT) = CAST(? AS TEXT))
+           OR (nomorRO IS NOT NULL AND nomorRO != '' AND nomorRO = ?)
+         )
+         AND COALESCE(tanggalDibuat, tanggal) = ?
+       )
+    ORDER BY COALESCE(tanggalDibuat, tanggal) ASC, waktu ASC, id ASC
+  `).all(jurnal.id, String(jurnal.preOrderId || ''), jurnal.nomorRO || '', jurnal.tanggal || '');
+
+  for (const sj of sjs) {
+    if (sj.jurnalId !== jurnal.id) {
+      db.prepare('UPDATE surat_jalan SET jurnalId = ? WHERE id = ?').run(jurnal.id, sj.id);
+    }
+  }
+
+  let po = null;
+  if (jurnal.preOrderId) {
+    po = db.prepare('SELECT * FROM received_order WHERE CAST(id AS TEXT) = CAST(? AS TEXT)').get(String(jurnal.preOrderId));
+  }
+  if (!po && jurnal.nomorRO) {
+    po = db.prepare('SELECT * FROM received_order WHERE nomorRO = ?').get(jurnal.nomorRO);
+  }
+  const allMaterials = db.prepare('SELECT * FROM materials').all();
+
+  const cumulativeRow = db.prepare(`
+    SELECT COALESCE(SUM(volumeAkhir), 0) as cumVol
+    FROM surat_jalan
+    WHERE (preOrderId IS NOT NULL AND CAST(preOrderId AS TEXT) = CAST(? AS TEXT))
+       OR (nomorRO IS NOT NULL AND nomorRO != '' AND nomorRO = ?)
+  `).get(String(jurnal.preOrderId || ''), jurnal.nomorRO || '');
+  const cumulativeVol = Number((cumulativeRow?.cumVol || 0).toFixed(2));
+
+  const agg = aggregateJournalWaybills({
+    sjs,
+    jurnal,
+    po,
+    materialsList: allMaterials,
+    cumulativeVol,
+  });
+
+  return {
+    sjs,
+    ...agg,
+    cumulativeVol,
+  };
+}
+
+// Lock Jurnal GI (Manual Seal by Admin: sweeps all SJs created on this date for this RO)
+app.put('/api/jurnal-gi/:id/lock', (req, res) => {
+  try {
+    const { id } = req.params;
+    const actorName = req.headers['x-user-name'] || 'Admin';
+    const actorId = req.headers['x-user-id'] || null;
+    const actorRole = req.headers['x-user-role'] || 'admin';
+    const nowIso = new Date().toISOString();
+
+    const jurnal = db.prepare('SELECT * FROM jurnal_gi WHERE id = ?').get(id);
+    if (!jurnal) return res.status(404).json({ success: false, message: 'Jurnal tidak ditemukan' });
+
+    if (jurnal.statusLock === 'LOCKED') {
+      return res.status(400).json({
+        success: false,
+        message: 'Jurnal ini sudah berstatus LOCKED. Tidak dapat dikunci ulang.',
+      });
+    }
+
+    const swept = buildJournalSweepData(jurnal);
+    if (swept.totalSj === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Jurnal belum dapat dikunci karena belum ada Surat Jalan pada tanggal ini.',
+      });
+    }
+
+    const logId = `log-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+    db.exec('BEGIN');
+    try {
+      db.prepare(`
+        UPDATE jurnal_gi
+        SET statusLock = 'LOCKED', material = ?, totalSj = ?, totalVolume = ?, nominalBeli = ?, nominalJual = ?,
+            status = ?, itemsSummary = ?, suratJalanDetails = ?, updated_at = ?
+        WHERE id = ?
+      `).run(
+        swept.materialLabel,
+        swept.totalSj,
+        swept.totalVolume,
+        swept.nominalBeli,
+        swept.nominalJual,
+        swept.status,
+        JSON.stringify(swept.itemsSummary),
+        JSON.stringify(swept.suratJalanDetails),
+        nowIso,
+        id
+      );
+
+      db.prepare(`
+        INSERT INTO jurnal_audit_logs (id, jurnalId, action, actorId, actorName, actorRole, reason, details, timestamp, created_at)
+        VALUES (?, ?, 'LOCK', ?, ?, ?, 'Kunci Jurnal Harian & Tarik Seluruh Surat Jalan', ?, ?, ?)
+      `).run(
+        logId,
+        id,
+        actorId,
+        actorName,
+        actorRole,
+        JSON.stringify({ totalSj: swept.totalSj, totalVolume: swept.totalVolume, itemsSummary: swept.itemsSummary }),
+        nowIso,
+        nowIso
+      );
+      db.exec('COMMIT');
+    } catch (txErr) {
+      db.exec('ROLLBACK');
+      throw txErr;
+    }
+
+    res.json({
+      success: true,
+      message: `Jurnal berhasil dikunci (LOCKED) dengan ${swept.totalSj} Surat Jalan (${swept.totalVolume} m³).`,
+      statusLock: 'LOCKED',
+      material: swept.materialLabel,
+      totalSj: swept.totalSj,
+      totalVolume: swept.totalVolume,
+      itemsSummary: swept.itemsSummary,
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// Standalone manual Unlock is blocked: a LOCKED Journal cannot remain OPEN.
+// Temporary unlock is handled atomically inside POST /api/surat-jalan only when an incoming scheduled GI has tanggalJadwal > tanggalDibuat.
+app.put('/api/jurnal-gi/:id/unlock', (req, res) => {
+  return res.status(403).json({
+    success: false,
+    message: 'Akses Unlock ditolak: Jurnal yang sudah dikunci (LOCKED) tidak dapat dibuka kembali secara manual. Pembukaan kunci sementara hanya diproses otomatis saat input Surat Jalan terjadwal (tanggalJadwal > tanggalDibuat).',
+  });
+});
+
+// Get Audit Trail for Jurnal GI
+app.get('/api/jurnal-gi/:id/audit-trail', (req, res) => {
+  try {
+    const { id } = req.params;
+    const logs = db.prepare('SELECT * FROM jurnal_audit_logs WHERE jurnalId = ? ORDER BY timestamp DESC').all(id);
+    res.json(logs);
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
@@ -1791,287 +2371,373 @@ app.get('/api/surat-jalan', (req, res) => {
 });
 
 app.post('/api/surat-jalan', (req, res) => {
-  const {
-    id: customId,
-    poNumber,
-    customer,
-    material,
-    nopol,
-    nomorPolisi,
-    driver,
-    tanggal,
-    waktu,
-    nomorNota,
-    isPpn,
-    panjangCm,
-    lebarCm,
-    tinggiCm,
-    koreksiTinggiCm = 0,
-    volumeAkhir,
-    status = 'Selesai',
-    nomorRo,
-    nomorRO,
-    jurnalId,
-    preOrderId,
-  } = req.body;
+  try {
+    const {
+      id: customId,
+      poNumber,
+      customer,
+      material,
+      nopol,
+      nomorPolisi,
+      driver,
+      waktu,
+      nomorNota,
+      isPpn,
+      panjangCm = 0,
+      lebarCm = 0,
+      tinggiCm = 0,
+      koreksiTinggiCm = 0,
+      volumeAkhir,
+      status = 'Selesai',
+      nomorRo,
+      nomorRO,
+      preOrderId,
+    } = req.body;
 
-  const finalNopol = nopol || nomorPolisi || 'W 9821 UB';
-  const finalVolume = Number(volumeAkhir) || 0;
-  const inputRo = nomorRO || nomorRo;
+    const finalNopol = nopol || nomorPolisi || 'W 9821 UB';
+    const finalVolume = Number(volumeAkhir) || 0;
+    const inputRo = nomorRO || nomorRo;
 
-  // 1. Validasi PO Approval: Pre-Order HARUS sudah berstatus APPROVED
-  let targetPo = null;
-  if (preOrderId) {
-    targetPo = db.prepare('SELECT * FROM pre_orders WHERE id = ?').get(preOrderId);
-  }
-  if (!targetPo && inputRo) {
-    targetPo = db.prepare('SELECT * FROM pre_orders WHERE nomorRO = ?').get(inputRo);
-  }
-  if (!targetPo && poNumber) {
-    targetPo = db.prepare('SELECT * FROM pre_orders WHERE nomorPo = ? OR id = ?').get(poNumber, poNumber);
-  }
-  if (!targetPo && customer) {
-    targetPo = db.prepare("SELECT * FROM pre_orders WHERE customer = ? AND status = 'APPROVED' ORDER BY id DESC LIMIT 1").get(customer);
-  }
+    const isDraftOrId = (str) => {
+      if (!str) return true;
+      const s = String(str).trim();
+      return s === '' || s === 'MENUNGGU SURAT JALAN PERTAMA' || s.startsWith('PO-DRAFT-') || /^\d{10,}$/.test(s);
+    };
 
-  if (targetPo && targetPo.status !== 'APPROVED') {
-    return res.status(400).json({
-      success: false,
-      message: `Surat Jalan ditolak: Pre Order ${targetPo.nomorRO || targetPo.id} untuk ${targetPo.customer} belum disetujui (APPROVED) oleh Super Admin!`
-    });
-  }
+    // 1. Validasi PO Approval: Received Order HARUS ada dan berstatus APPROVED
+    let targetPo = null;
+    if (preOrderId) {
+      targetPo = db.prepare('SELECT * FROM received_order WHERE CAST(id AS TEXT) = CAST(? AS TEXT)').get(String(preOrderId));
+    }
+    if (!targetPo && inputRo) {
+      targetPo = db.prepare('SELECT * FROM received_order WHERE nomorRO = ?').get(inputRo);
+    }
+    if (!targetPo && poNumber && !isDraftOrId(poNumber)) {
+      targetPo = db.prepare('SELECT * FROM received_order WHERE nomorPo = ? OR nomorPoCustomer = ?').get(poNumber, poNumber);
+    }
 
-  const finalNomorRo = targetPo?.nomorRO || inputRo || generateNomorRO(customer, tanggal ? new Date(tanggal) : new Date());
-  const id = customId || null;
+    if (!targetPo) {
+      return res.status(400).json({
+        success: false,
+        message: 'Surat Jalan ditolak: Received Order (RO) yang valid tidak ditemukan. Surat Jalan hanya dapat dibuat dari RO berstatus APPROVED.',
+      });
+    }
 
-  // Handle Optional PO Numbering (VARCHAR up to 50 chars)
-  const isDraftOrId = (str) => {
-    if (!str) return true;
-    const s = String(str).trim();
-    return s === '' || s === 'MENUNGGU SURAT JALAN PERTAMA' || s.startsWith('PO-DRAFT-') || /^\d{10,}$/.test(s);
-  };
+    if (targetPo.status !== 'APPROVED') {
+      return res.status(400).json({
+        success: false,
+        message: `Surat Jalan ditolak: Received Order ${targetPo.nomorRO || targetPo.id} untuk ${targetPo.customer} masih berstatus ${targetPo.status} (wajib APPROVED).`,
+      });
+    }
 
-  let finalPoNum = null;
-  if (!isDraftOrId(poNumber) && poNumber !== String(targetPo?.id)) {
-    finalPoNum = String(poNumber).trim().slice(0, 50);
-  } else if (targetPo?.nomorPo && !isDraftOrId(targetPo.nomorPo)) {
-    finalPoNum = String(targetPo.nomorPo).trim().slice(0, 50);
-  } else if (req.body?.autoGeneratePo) {
-    finalPoNum = generatePoNumber(customer, tanggal ? new Date(tanggal) : new Date());
-  }
+    const finalNomorRo = targetPo.nomorRO || inputRo || generateNomorRO(targetPo.customer, new Date());
+    const finalCustomer = targetPo.customer || customer;
+    const finalMaterial = material || targetPo.materialName || 'SIRTU';
+    const id = customId || null;
 
-  if (targetPo) {
-    const newTerkirim = Number(((targetPo.terkirim || 0) + finalVolume).toFixed(2));
-    db.prepare('UPDATE pre_orders SET terkirim = ?, nomorPo = ?, nomorRO = ? WHERE id = ?').run(
-      newTerkirim,
-      finalPoNum,
-      finalNomorRo,
-      targetPo.id
-    );
-  }
+    // GI creation date is strictly server WIB today; scheduled delivery date is stored separately
+    const finalTanggalDibuat = getWibDateString();
+    const rawJadwal = req.body.tanggalJadwal ? String(req.body.tanggalJadwal).slice(0, 10) : finalTanggalDibuat;
+    const finalTanggalJadwal = /^\d{4}-\d{2}-\d{2}$/.test(rawJadwal) ? rawJadwal : finalTanggalDibuat;
 
-  // 2. CARI ATAU BUAT JURNAL GI (RINGKASAN JURNAL) TERKAIT
-  let jurnal = null;
-  if (jurnalId) {
-    jurnal = db.prepare('SELECT * FROM jurnal_gi WHERE id = ?').get(jurnalId);
-  }
-  if (!jurnal && targetPo) {
-    jurnal = db.prepare('SELECT * FROM jurnal_gi WHERE preOrderId = ? OR (nomorRO IS NOT NULL AND nomorRO = ?)').get(targetPo.id, finalNomorRo);
-  }
-  if (!jurnal && inputRo) {
-    jurnal = db.prepare('SELECT * FROM jurnal_gi WHERE nomorRO = ?').get(inputRo);
-  }
-  if (!jurnal && finalPoNum && !finalPoNum.startsWith('PO-DRAFT-')) {
-    jurnal = db.prepare('SELECT * FROM jurnal_gi WHERE poNumber = ?').get(finalPoNum);
-  }
+    let finalPoNum = null;
+    if (!isDraftOrId(poNumber) && String(poNumber) !== String(targetPo.id)) {
+      finalPoNum = String(poNumber).trim().slice(0, 50);
+    } else if (targetPo.nomorPo && !isDraftOrId(targetPo.nomorPo)) {
+      finalPoNum = String(targetPo.nomorPo).trim().slice(0, 50);
+    } else if (req.body?.autoGeneratePo) {
+      finalPoNum = generatePoNumber(finalCustomer, new Date());
+    }
 
-  // Jika jurnal belum ada untuk PO ini, otomatis buat jurnal baru
-  if (!jurnal) {
-    const newJrnId = `REK-${new Date().toISOString().slice(0, 7).replace('-', '')}-${String(Date.now()).slice(-4)}`;
-    const targetVol = targetPo ? Number(targetPo.totalOrder || 0) : finalVolume;
-    const hBeli = targetPo ? Number(targetPo.hargaBeli || 0) : 40000;
-    const hJual = targetPo ? Number(targetPo.hargaJual || 0) : 50000;
-    const isPpnFlag = targetPo ? (targetPo.jenisWajibPajak === 'PKP' ? 1 : 0) : (isPpn ? 1 : 0);
-    const targetTrips = targetPo?.satuan === 'rit' ? Math.max(1, targetVol) : 0;
+    // 2. CARI JURNAL GI BERDASARKAN (RO + TANGGAL DIBUAT GI)
+    let jurnal = db.prepare(`
+      SELECT * FROM jurnal_gi
+      WHERE (
+        (preOrderId IS NOT NULL AND CAST(preOrderId AS TEXT) = CAST(? AS TEXT))
+        OR (nomorRO IS NOT NULL AND nomorRO != '' AND nomorRO = ?)
+      )
+        AND tanggal = ?
+      LIMIT 1
+    `).get(String(targetPo.id), finalNomorRo, finalTanggalDibuat);
+
+    // 3. Evaluasi jika Jurnal berstatus LOCKED (Section C.8 & Section D)
+    let didUnlockForScheduled = false;
+    if (jurnal && jurnal.statusLock === 'LOCKED') {
+      const isScheduledFuture = finalTanggalJadwal > finalTanggalDibuat;
+      if (!isScheduledFuture) {
+        return res.status(400).json({
+          success: false,
+          message: `Jurnal untuk RO ${finalNomorRo} pada tanggal ${finalTanggalDibuat} sudah berstatus LOCKED. Penambahan Surat Jalan baru ditolak (hanya GI terjadwal masa depan yang diizinkan membuka kunci sementara).`,
+        });
+      }
+
+      if (!req.body.unlockScheduled) {
+        return res.status(409).json({
+          success: false,
+          requiresUnlock: true,
+          jurnalId: jurnal.id,
+          jurnalTanggal: jurnal.tanggal,
+          tanggalDibuat: finalTanggalDibuat,
+          tanggalJadwal: finalTanggalJadwal,
+          message: `Jurnal tanggal ${finalTanggalDibuat} telah berstatus LOCKED. Surat Jalan ini terjadwal untuk ${finalTanggalJadwal}. Buka kunci Jurnal sementara untuk memasukkan GI terjadwal ini?`,
+        });
+      }
+
+      didUnlockForScheduled = true;
+    }
+
     const nowIso = new Date().toISOString();
+    const actorName = req.headers['x-user-name'] || 'Admin';
+    const actorId = req.headers['x-user-id'] || null;
+    const actorRole = req.headers['x-user-role'] || 'admin';
+    let newId = null;
+    let updatedJurnal = null;
 
-    db.prepare(`
-      INSERT INTO jurnal_gi (
-        id, nomorRO, preOrderId, poNumber, customer, customerAddress, material,
-        isPpn, tanggal, totalSj, targetRitase, totalVolume, targetVolume, satuan,
-        hargaBeli, hargaJual, nominalBeli, nominalJual, status, suratJalanDetails,
-        created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(
-      newJrnId,
-      finalNomorRo,
-      targetPo?.id || null,
-      finalPoNum,
-      customer,
-      targetPo?.customerAddress || '',
-      material,
-      isPpnFlag,
-      tanggal,
-      0,
-      targetTrips,
-      0,
-      targetVol,
-      targetPo?.satuan || 'm3',
-      hBeli,
-      hJual,
-      0,
-      0,
-      'Siap Kirim',
-      JSON.stringify([]),
-      nowIso,
-      nowIso
-    );
-    jurnal = db.prepare('SELECT * FROM jurnal_gi WHERE id = ?').get(newJrnId);
+    db.exec('BEGIN');
+    try {
+      if (didUnlockForScheduled) {
+        const unlockLogId = `log-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+        db.prepare(`
+          INSERT INTO jurnal_audit_logs (id, jurnalId, action, actorId, actorName, actorRole, reason, details, timestamp, created_at)
+          VALUES (?, ?, 'UNLOCK', ?, ?, ?, ?, ?, ?, ?)
+        `).run(
+          unlockLogId,
+          jurnal.id,
+          actorId,
+          actorName,
+          actorRole,
+          `Buka Kunci Sementara untuk GI Terjadwal (${finalTanggalJadwal})`,
+          JSON.stringify({ tanggalDibuat: finalTanggalDibuat, tanggalJadwal: finalTanggalJadwal, nopol: finalNopol, material: finalMaterial }),
+          nowIso,
+          nowIso
+        );
+      }
+
+      // Create new OPEN Journal on the first GI for (RO, finalTanggalDibuat)
+      if (!jurnal) {
+        let newJrnId = `REK-${finalTanggalDibuat.slice(0, 7).replace('-', '')}-${String(Date.now()).slice(-4)}`;
+        while (db.prepare('SELECT id FROM jurnal_gi WHERE id = ?').get(newJrnId)) {
+          newJrnId = `REK-${finalTanggalDibuat.slice(0, 7).replace('-', '')}-${Math.floor(1000 + Math.random() * 9000)}`;
+        }
+        const targetVol = Number(targetPo.totalOrder || 0);
+        const hBeli = Number(targetPo.hargaBeli || 0);
+        const hJual = Number(targetPo.hargaJual || 0);
+        const isPpnFlag = targetPo.jenisWajibPajak === 'PKP' ? 1 : 0;
+        const targetTrips = targetPo.satuan === 'rit' ? Math.max(1, targetVol) : 0;
+
+        db.prepare(`
+          INSERT INTO jurnal_gi (
+            id, nomorRO, preOrderId, poNumber, customer, customerAddress, material,
+            isPpn, tanggal, totalSj, targetRitase, totalVolume, targetVolume, satuan,
+            hargaBeli, hargaJual, nominalBeli, nominalJual, status, statusLock, itemsSummary, suratJalanDetails,
+            created_at, updated_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'OPEN', '[]', ?, ?, ?)
+        `).run(
+          newJrnId,
+          finalNomorRo,
+          targetPo.id,
+          finalPoNum,
+          finalCustomer,
+          targetPo.customerAddress || '',
+          targetPo.materialName || finalMaterial,
+          isPpnFlag,
+          finalTanggalDibuat,
+          0,
+          targetTrips,
+          0,
+          targetVol,
+          targetPo.satuan || 'm3',
+          hBeli,
+          hJual,
+          0,
+          0,
+          'Dalam Pengiriman',
+          JSON.stringify([]),
+          nowIso,
+          nowIso
+        );
+        jurnal = db.prepare('SELECT * FROM jurnal_gi WHERE id = ?').get(newJrnId);
+      }
+
+      // Insert Surat Jalan linked to this daily Journal
+      let insertInfo;
+      if (id && !isNaN(Number(id))) {
+        insertInfo = db.prepare(`
+          INSERT INTO surat_jalan (
+            id, poNumber, nomorRO, jurnalId, preOrderId, customer,
+            material, nopol, driver, tanggal, waktu, nomorNota, isPpn,
+            panjangCm, lebarCm, tinggiCm, koreksiTinggiCm, volumeAkhir, status,
+            tanggalDibuat, tanggalJadwal
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `).run(
+          Number(id),
+          finalPoNum,
+          jurnal.nomorRO || finalNomorRo,
+          jurnal.id,
+          targetPo.id,
+          finalCustomer,
+          finalMaterial,
+          finalNopol,
+          driver || 'Supir Armada Terjadwal',
+          finalTanggalDibuat,
+          waktu || '09:00',
+          nomorNota || '',
+          isPpn ? 1 : 0,
+          Number(panjangCm) || 0,
+          Number(lebarCm) || 0,
+          Number(tinggiCm) || 0,
+          Number(koreksiTinggiCm) || 0,
+          finalVolume,
+          status,
+          finalTanggalDibuat,
+          finalTanggalJadwal
+        );
+      } else {
+        insertInfo = db.prepare(`
+          INSERT INTO surat_jalan (
+            poNumber, nomorRO, jurnalId, preOrderId, customer,
+            material, nopol, driver, tanggal, waktu, nomorNota, isPpn,
+            panjangCm, lebarCm, tinggiCm, koreksiTinggiCm, volumeAkhir, status,
+            tanggalDibuat, tanggalJadwal
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `).run(
+          finalPoNum,
+          jurnal.nomorRO || finalNomorRo,
+          jurnal.id,
+          targetPo.id,
+          finalCustomer,
+          finalMaterial,
+          finalNopol,
+          driver || 'Supir Armada Terjadwal',
+          finalTanggalDibuat,
+          waktu || '09:00',
+          nomorNota || '',
+          isPpn ? 1 : 0,
+          Number(panjangCm) || 0,
+          Number(lebarCm) || 0,
+          Number(tinggiCm) || 0,
+          Number(koreksiTinggiCm) || 0,
+          finalVolume,
+          status,
+          finalTanggalDibuat,
+          finalTanggalJadwal
+        );
+      }
+
+      const insertedRow = db.prepare('SELECT id FROM surat_jalan WHERE rowid = ?').get(insertInfo.lastInsertRowid);
+      newId = Number(insertedRow?.id || insertInfo.lastInsertRowid);
+
+      // Recompute received_order.terkirim from actual surat_jalan records
+      const sumRow = db.prepare('SELECT COALESCE(SUM(volumeAkhir), 0) as totalVol FROM surat_jalan WHERE CAST(preOrderId AS TEXT) = CAST(? AS TEXT) OR (nomorRO IS NOT NULL AND nomorRO = ?)').get(String(targetPo.id), finalNomorRo);
+      const actualTerkirim = Number((sumRow?.totalVol || 0).toFixed(2));
+      db.prepare('UPDATE received_order SET terkirim = ?, nomorPo = ?, nomorRO = ? WHERE id = ?').run(
+        actualTerkirim,
+        finalPoNum,
+        finalNomorRo,
+        targetPo.id
+      );
+
+      updatedJurnal = jurnal;
+      if (didUnlockForScheduled) {
+        const swept = buildJournalSweepData(jurnal);
+        const relockLogId = `log-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+        db.prepare(`
+          INSERT INTO jurnal_audit_logs (id, jurnalId, action, actorId, actorName, actorRole, reason, details, timestamp, created_at)
+          VALUES (?, ?, 'LOCK', ?, ?, ?, 'Kunci Kembali Jurnal Setelah GI Terjadwal Masuk', ?, ?, ?)
+        `).run(relockLogId, jurnal.id, actorId, actorName, actorRole, JSON.stringify({ sjId: newId, totalSj: swept.totalSj, itemsSummary: swept.itemsSummary }), nowIso, nowIso);
+
+        db.prepare(`
+          UPDATE jurnal_gi
+          SET material = ?, totalSj = ?, totalVolume = ?, nominalBeli = ?, nominalJual = ?,
+              poNumber = ?, status = ?, statusLock = 'LOCKED', itemsSummary = ?, suratJalanDetails = ?, updated_at = ?
+          WHERE id = ?
+        `).run(
+          swept.materialLabel,
+          swept.totalSj,
+          swept.totalVolume,
+          swept.nominalBeli,
+          swept.nominalJual,
+          finalPoNum,
+          swept.status,
+          JSON.stringify(swept.itemsSummary),
+          JSON.stringify(swept.suratJalanDetails),
+          nowIso,
+          jurnal.id
+        );
+
+        updatedJurnal = {
+          ...jurnal,
+          material: swept.materialLabel,
+          totalSj: swept.totalSj,
+          totalVolume: swept.totalVolume,
+          nominalBeli: swept.nominalBeli,
+          nominalJual: swept.nominalJual,
+          status: swept.status,
+          statusLock: 'LOCKED',
+          itemsSummary: swept.itemsSummary,
+          poNumber: finalPoNum,
+          suratJalanDetails: swept.suratJalanDetails,
+          updated_at: nowIso,
+        };
+      } else {
+        if (finalPoNum && finalPoNum !== jurnal.poNumber) {
+          db.prepare('UPDATE jurnal_gi SET poNumber = ?, updated_at = ? WHERE id = ?').run(finalPoNum, nowIso, jurnal.id);
+          updatedJurnal = { ...jurnal, poNumber: finalPoNum, updated_at: nowIso };
+        }
+        updatedJurnal = {
+          ...updatedJurnal,
+          isPpn: Boolean(updatedJurnal.isPpn),
+          itemsSummary: [],
+          suratJalanDetails: [],
+        };
+      }
+
+      db.exec('COMMIT');
+    } catch (txErr) {
+      db.exec('ROLLBACK');
+      throw txErr;
+    }
+
+    const sjItemDesc = {
+      id: newId,
+      poNumber: finalPoNum,
+      nomorRO: jurnal.nomorRO || finalNomorRo,
+      jurnalId: jurnal.id,
+      customer: finalCustomer,
+      material: finalMaterial,
+      nopol: finalNopol,
+      driver: driver || 'Supir Armada Terjadwal',
+      tanggal: finalTanggalDibuat,
+      tanggalDibuat: finalTanggalDibuat,
+      tanggalJadwal: finalTanggalJadwal,
+      waktu: waktu || '09:00',
+      nomorNota: nomorNota || '',
+      panjangCm: Number(panjangCm) || 0,
+      lebarCm: Number(lebarCm) || 0,
+      tinggiCm: Number(tinggiCm) || 0,
+      koreksiTinggiCm: Number(koreksiTinggiCm) || 0,
+      volumeAkhir: finalVolume,
+      status: status || 'Selesai',
+    };
+
+    try {
+      syncBkkAndInvoices();
+    } catch (e) {}
+
+    res.status(201).json({
+      success: true,
+      id: newId,
+      jurnalId: jurnal.id,
+      data: sjItemDesc,
+      jurnal: updatedJurnal,
+      message: didUnlockForScheduled
+        ? `Surat Jalan Terjadwal #${newId} berhasil disimpan dan Jurnal ${jurnal.id} otomatis dikunci kembali.`
+        : `Surat Jalan #${newId} berhasil disimpan dan ditautkan ke Jurnal ${jurnal.id} (OPEN, menunggu Lock Admin).`
+    });
+  } catch (err) {
+    console.error('Error creating Surat Jalan:', err);
+    res.status(500).json({ success: false, message: err.message });
   }
-
-  // 3. Simpan Surat Jalan lengkap dengan relasi nomorRO, jurnalId, dan preOrderId
-  let insertInfo;
-  if (id && !isNaN(Number(id))) {
-    insertInfo = db.prepare(`
-      INSERT INTO surat_jalan (
-        id, poNumber, nomorRO, jurnalId, preOrderId, customer,
-        material, nopol, driver, tanggal, waktu, nomorNota, isPpn,
-        panjangCm, lebarCm, tinggiCm, koreksiTinggiCm, volumeAkhir, status
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(
-      Number(id),
-      finalPoNum,
-      jurnal.nomorRO || finalNomorRo,
-      jurnal.id,
-      targetPo?.id || preOrderId || null,
-      customer,
-      material,
-      finalNopol,
-      driver || 'Supir Armada Terjadwal',
-      tanggal,
-      waktu || '09:00',
-      nomorNota || '',
-      isPpn ? 1 : 0,
-      panjangCm,
-      lebarCm,
-      tinggiCm,
-      koreksiTinggiCm,
-      finalVolume,
-      status
-    );
-  } else {
-    insertInfo = db.prepare(`
-      INSERT INTO surat_jalan (
-        poNumber, nomorRO, jurnalId, preOrderId, customer,
-        material, nopol, driver, tanggal, waktu, nomorNota, isPpn,
-        panjangCm, lebarCm, tinggiCm, koreksiTinggiCm, volumeAkhir, status
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(
-      finalPoNum,
-      jurnal.nomorRO || finalNomorRo,
-      jurnal.id,
-      targetPo?.id || preOrderId || null,
-      customer,
-      material,
-      finalNopol,
-      driver || 'Supir Armada Terjadwal',
-      tanggal,
-      waktu || '09:00',
-      nomorNota || '',
-      isPpn ? 1 : 0,
-      panjangCm,
-      lebarCm,
-      tinggiCm,
-      koreksiTinggiCm,
-      finalVolume,
-      status
-    );
-  }
-
-  const insertedRow = db.prepare('SELECT id FROM surat_jalan WHERE rowid = ?').get(insertInfo.lastInsertRowid);
-  const newId = Number(insertedRow?.id || insertInfo.lastInsertRowid);
-
-  // 4. Masukkan rincian/deskripsi Surat Jalan ke Jurnal Summary (jurnal_gi)
-  let sjDetails = [];
-  try {
-    sjDetails = typeof jurnal.suratJalanDetails === 'string' ? JSON.parse(jurnal.suratJalanDetails) : (jurnal.suratJalanDetails || []);
-  } catch (e) {
-    sjDetails = [];
-  }
-
-  const sjItemDesc = {
-    id: newId,
-    poNumber: finalPoNum,
-    nomorRO: jurnal.nomorRO || finalNomorRo,
-    jurnalId: jurnal.id,
-    customer,
-    material,
-    nopol: finalNopol,
-    driver: driver || 'Supir Armada Terjadwal',
-    tanggal,
-    waktu: waktu || '09:00',
-    nomorNota: nomorNota || '',
-    panjangCm: Number(panjangCm) || 0,
-    lebarCm: Number(lebarCm) || 0,
-    tinggiCm: Number(tinggiCm) || 0,
-    koreksiTinggiCm: Number(koreksiTinggiCm) || 0,
-    volumeAkhir: finalVolume,
-    status: status || 'Selesai',
-  };
-
-  const filteredDetails = sjDetails.filter((d) => d.id !== newId);
-  filteredDetails.push(sjItemDesc);
-
-  const updatedTotalSj = filteredDetails.length;
-  const updatedTotalVolume = Number(filteredDetails.reduce((sum, d) => sum + (Number(d.volumeAkhir) || 0), 0).toFixed(2));
-  const updatedNominalBeli = Math.round(updatedTotalVolume * (Number(jurnal.hargaBeli) || 0));
-  const updatedNominalJual = Math.round(updatedTotalVolume * (Number(jurnal.hargaJual) || 0));
-  const targetVol = Number(jurnal.targetVolume) || 0;
-  const isVolumeMet = targetVol > 0 && updatedTotalVolume >= targetVol;
-  const newJurnalStatus = isVolumeMet ? 'Selesai Kirim' : 'Dalam Pengiriman';
-  const nowIso = new Date().toISOString();
-
-  db.prepare(`
-    UPDATE jurnal_gi
-    SET totalSj = ?, totalVolume = ?, nominalBeli = ?, nominalJual = ?,
-        poNumber = ?, status = ?, suratJalanDetails = ?, updated_at = ?
-    WHERE id = ?
-  `).run(
-    updatedTotalSj,
-    updatedTotalVolume,
-    updatedNominalBeli,
-    updatedNominalJual,
-    finalPoNum,
-    newJurnalStatus,
-    JSON.stringify(filteredDetails),
-    nowIso,
-    jurnal.id
-  );
-
-  const updatedJurnal = {
-    ...jurnal,
-    totalSj: updatedTotalSj,
-    totalVolume: updatedTotalVolume,
-    nominalBeli: updatedNominalBeli,
-    nominalJual: updatedNominalJual,
-    status: newJurnalStatus,
-    poNumber: finalPoNum,
-    suratJalanDetails: filteredDetails,
-    updated_at: nowIso,
-  };
-
-  try {
-    syncBkkAndInvoices();
-  } catch (e) {}
-
-  res.status(201).json({
-    success: true,
-    id: newId,
-    jurnalId: jurnal.id,
-    data: sjItemDesc,
-    jurnal: updatedJurnal,
-    message: `Surat Jalan #${newId} berhasil disimpan dan otomatis masuk ke Ringkasan Jurnal ${jurnal.nomorRO}.`
-  });
 });
 
 // ==========================================
@@ -2140,20 +2806,21 @@ app.get('/api/bkk/available-orders', (req, res) => {
   try {
     const orders = db.prepare(`
       SELECT 
-        j.id as jurnalId,
-        j.nomorRO,
-        j.poNumber,
-        j.preOrderId,
-        j.customer,
-        j.customerAddress,
-        j.material,
-        j.totalVolume,
-        j.targetVolume,
-        j.satuan,
-        j.hargaBeli,
-        j.hargaJual,
-        j.nominalBeli,
-        j.status as jurnalStatus,
+        COALESCE(MAX(CASE WHEN j.statusLock = 'LOCKED' THEN j.id END), MAX(j.id)) as jurnalId,
+        COALESCE(p.nomorRO, MAX(j.nomorRO)) as nomorRO,
+        COALESCE(p.nomorPo, MAX(j.poNumber)) as poNumber,
+        COALESCE(p.id, MAX(j.preOrderId)) as preOrderId,
+        COALESCE(p.customer, MAX(j.customer)) as customer,
+        COALESCE(p.customerAddress, MAX(j.customerAddress)) as customerAddress,
+        COALESCE(p.materialName, MAX(j.material)) as material,
+        COALESCE(p.totalOrder, MAX(j.totalVolume)) as totalVolume,
+        COALESCE(p.totalOrder, MAX(j.targetVolume)) as targetVolume,
+        COALESCE(p.satuan, MAX(j.satuan)) as satuan,
+        COALESCE(p.hargaBeli, MAX(j.hargaBeli)) as hargaBeli,
+        COALESCE(p.hargaJual, MAX(j.hargaJual)) as hargaJual,
+        ROUND(COALESCE(p.totalOrder, MAX(j.totalVolume)) * COALESCE(p.hargaBeli, MAX(j.hargaBeli))) as nominalBeli,
+        MAX(j.status) as jurnalStatus,
+        'LOCKED' as statusLock,
         p.id as poId,
         p.nomorPo as poNomorPo,
         p.nomorRO as poNomorRO,
@@ -2166,21 +2833,21 @@ app.get('/api/bkk/available-orders', (req, res) => {
         s.rekeningAtasNama as defaultSupplierRekeningAtasNama,
         s.penerima as defaultSupplierPenerima
       FROM jurnal_gi j
-      LEFT JOIN pre_orders p ON (j.preOrderId = p.id OR j.nomorRO = p.nomorRO)
+      LEFT JOIN received_order p ON (j.preOrderId = p.id OR j.nomorRO = p.nomorRO)
       LEFT JOIN suppliers s ON (p.supplierId = s.id)
-      WHERE j.targetVolume > 0 
-        AND j.totalVolume >= j.targetVolume
-        AND NOT EXISTS (
-          SELECT 1 FROM bkk b 
-          WHERE (
-            (b.nomorRO IS NOT NULL AND b.nomorRO != '' AND b.nomorRO = j.nomorRO)
-            OR (b.jurnalId IS NOT NULL AND b.jurnalId != '' AND b.jurnalId = j.id)
-            OR (b.preOrderId IS NOT NULL AND b.preOrderId != '' AND b.preOrderId = j.preOrderId)
-            OR (b.poNumber IS NOT NULL AND b.poNumber != '' AND b.poNumber != '-' AND b.poNumber = j.poNumber)
-          )
-          AND b.status NOT IN ('REJECTED')
+      WHERE j.statusLock = 'LOCKED'
+      AND NOT EXISTS (
+        SELECT 1 FROM bkk b 
+        WHERE (
+          (b.nomorRO IS NOT NULL AND b.nomorRO != '' AND b.nomorRO = COALESCE(p.nomorRO, j.nomorRO))
+          OR (b.preOrderId IS NOT NULL AND b.preOrderId != '' AND b.preOrderId = p.id)
+          OR (b.jurnalId IS NOT NULL AND b.jurnalId != '' AND b.jurnalId = j.id)
         )
-      ORDER BY j.id DESC
+        AND UPPER(COALESCE(b.status, '')) != 'REJECTED'
+        AND (b.isRevision = 0 OR b.isRevision IS NULL)
+      )
+      GROUP BY COALESCE(p.id, j.nomorRO, j.id)
+      ORDER BY MAX(j.id) DESC
     `).all();
 
     res.json({ success: true, data: orders });
@@ -2190,7 +2857,7 @@ app.get('/api/bkk/available-orders', (req, res) => {
   }
 });
 
-// Admin creates BKK manually (Only after Order is fully completed based on Journal Recap)
+// Admin creates BKK manually (After minimal 1 Jurnal is LOCKED, takes data akhir RO)
 app.post('/api/bkk', (req, res) => {
   const bkkData = req.body;
   const nowIso = new Date().toISOString();
@@ -2209,16 +2876,15 @@ app.post('/api/bkk', (req, res) => {
 
   let po = null;
   if (bkkData.preOrderId) {
-    po = db.prepare('SELECT * FROM pre_orders WHERE id = ?').get(bkkData.preOrderId);
+    po = db.prepare('SELECT * FROM received_order WHERE id = ?').get(bkkData.preOrderId);
   }
   if (!po && jurnal?.preOrderId) {
-    po = db.prepare('SELECT * FROM pre_orders WHERE id = ?').get(jurnal.preOrderId);
+    po = db.prepare('SELECT * FROM received_order WHERE id = ?').get(jurnal.preOrderId);
   }
   if (!po && bkkData.nomorRO) {
-    po = db.prepare('SELECT * FROM pre_orders WHERE nomorRO = ?').get(bkkData.nomorRO);
+    po = db.prepare('SELECT * FROM received_order WHERE nomorRO = ?').get(bkkData.nomorRO);
   }
 
-  // 2. CRITICAL BUSINESS RULE: Verify Order is fully completed based on actual delivery recap
   if (!jurnal && !po) {
     return res.status(400).json({
       success: false,
@@ -2226,27 +2892,22 @@ app.post('/api/bkk', (req, res) => {
     });
   }
 
-  const targetVol = Number(jurnal?.targetVolume || po?.totalOrder || 0);
+  // 2. CRITICAL BUSINESS RULE: Verify at least 1 LOCKED journal exists for this Order
+  const lockedJurnal = db.prepare(`
+    SELECT id FROM jurnal_gi 
+    WHERE (preOrderId = ? OR (nomorRO IS NOT NULL AND nomorRO = ?))
+      AND statusLock = 'LOCKED'
+    LIMIT 1
+  `).get(po?.id || jurnal?.preOrderId || '', po?.nomorRO || jurnal?.nomorRO || '');
 
-  // Compute actual delivered volume from waybills (surat_jalan)
-  const sjList = db.prepare(`
-    SELECT volumeAkhir FROM surat_jalan
-    WHERE (jurnalId IS NOT NULL AND jurnalId = ?)
-       OR (nomorRO IS NOT NULL AND nomorRO = ?)
-       OR (preOrderId IS NOT NULL AND preOrderId = ?)
-  `).all(jurnal?.id || '', jurnal?.nomorRO || bkkData.nomorRO || '', po?.id || '');
-
-  const actualDeliveredVol = Number(sjList.reduce((sum, s) => sum + (Number(s.volumeAkhir) || 0), 0).toFixed(2));
-  const finalDelivered = actualDeliveredVol > 0 ? actualDeliveredVol : Number(jurnal?.totalVolume || po?.terkirim || 0);
-
-  if (targetVol <= 0 || finalDelivered < targetVol) {
+  if (!lockedJurnal) {
     return res.status(400).json({
       success: false,
-      message: `Gagal membuat BKK: Order belum selesai dikirim. Realisasi pengiriman (${finalDelivered} m³) belum memenuhi target kuantitas pesanan (${targetVol} m³) berdasarkan data Rekapan Jurnal.`,
+      message: 'Gagal membuat BKK: Belum ada Jurnal harian yang berstatus LOCKED untuk Order ini. Minimal harus ada 1 Jurnal berstatus LOCKED sebagai bukti progres fisik.',
     });
   }
 
-  // 3. CRITICAL BUSINESS RULE: Prevent duplicate BKK creation
+  // 3. CRITICAL BUSINESS RULE: Prevent duplicate BKK creation (1 RO = 1 BKK)
   const refRo = jurnal?.nomorRO || bkkData.nomorRO || po?.nomorRO || null;
   const refJurnalId = jurnal?.id || bkkData.jurnalId || null;
   const refPoId = po?.id || bkkData.preOrderId || null;
@@ -2254,18 +2915,17 @@ app.post('/api/bkk', (req, res) => {
 
   const existingBkk = db.prepare(`
     SELECT id, kodeTransaksi, status FROM bkk
-    WHERE ((jurnalId IS NOT NULL AND jurnalId != '' AND jurnalId = ?) 
-        OR (nomorRO IS NOT NULL AND nomorRO != '' AND nomorRO = ?) 
+    WHERE ((nomorRO IS NOT NULL AND nomorRO != '' AND nomorRO = ?) 
         OR (preOrderId IS NOT NULL AND preOrderId != '' AND preOrderId = ?)
-        OR (poNumber IS NOT NULL AND poNumber != '' AND poNumber != '-' AND poNumber = ?))
+        OR (jurnalId IS NOT NULL AND jurnalId != '' AND jurnalId = ?))
       AND status NOT IN ('REJECTED')
-    LIMIT 1
-  `).get(refJurnalId || '', refRo || '', refPoId || '', refPoNumber || '');
+      AND (isRevision = 0 OR isRevision IS NULL)
+  `).get(refRo, refPoId, refJurnalId);
 
   if (existingBkk) {
     return res.status(400).json({
       success: false,
-      message: `BKK untuk Order ini sudah pernah dibuat (${existingBkk.kodeTransaksi || existingBkk.id}, Status: ${existingBkk.status}). Sistem mencegah pembuatan BKK duplikat.`,
+      message: `Gagal membuat BKK: 1 RO hanya memiliki 1 BKK. Dokumen BKK (${existingBkk.kodeTransaksi}) untuk Order ini sudah pernah dibuat.`,
     });
   }
 
@@ -2287,8 +2947,15 @@ app.post('/api/bkk', (req, res) => {
   const finalSupplierName = supplierRow?.name || bkkData.perusahaan || 'SUPPLIER';
   const finalPenerima = supplierRow?.penerima || bkkData.penerima || finalSupplierName;
 
-  // 5. Volume, Unit Price, and Amount resolution from verified journal recap
-  const finalVolume = Number(bkkData.volume) > 0 ? Number(bkkData.volume) : finalDelivered;
+  // 5. Volume, Unit Price, and Amount resolution from RO contract / journal recap
+  const sjList = db.prepare(`
+    SELECT * FROM surat_jalan
+    WHERE (preOrderId IS NOT NULL AND preOrderId = ?)
+       OR (nomorRO IS NOT NULL AND nomorRO != '' AND nomorRO = ?)
+       OR (jurnalId IS NOT NULL AND jurnalId != '' AND jurnalId = ?)
+  `).all(po?.id || refPoId || '', refRo || '', refJurnalId || '');
+  const fallbackVol = Number(po?.totalOrder || jurnal?.targetVolume || jurnal?.totalVolume || 0);
+  const finalVolume = Number(bkkData.volume) > 0 ? Number(bkkData.volume) : fallbackVol;
   const hargaBeli = Number(bkkData.hargaSatuan) > 0 ? Number(bkkData.hargaSatuan) : Number(jurnal?.hargaBeli || po?.hargaBeli || 0);
   const finalAmount = Number(bkkData.amount) > 0 ? Number(bkkData.amount) : Math.round(finalVolume * hargaBeli);
   const ritCount = sjList.length > 0 ? sjList.length : Number(jurnal?.totalSj || bkkData.ritaseCount || 1);
@@ -2470,9 +3137,11 @@ app.get('/api/bkk/:id/print-data', (req, res) => {
       }];
     }
 
-    // Totals
-    const totalVolume = Number(dailyTransactions.reduce((acc, curr) => acc + curr.volume, 0).toFixed(2));
-    const totalAmount = dailyTransactions.reduce((acc, curr) => acc + curr.subtotal, 0) || Number(bkk.amount);
+    // Totals (prefer authoritative BKK contract/document volume & amount so full-RO BKK matches approval & payment)
+    const giTotalVolume = Number(dailyTransactions.reduce((acc, curr) => acc + curr.volume, 0).toFixed(2));
+    const giTotalAmount = dailyTransactions.reduce((acc, curr) => acc + curr.subtotal, 0);
+    const totalVolume = Number(bkk.volume ?? bkk.kubikasi ?? giTotalVolume) || giTotalVolume;
+    const totalAmount = Number(bkk.amount) || giTotalAmount;
 
     // Parse rekening info
     let bankName = bkk.supplierBank || 'BCA';
@@ -3218,22 +3887,23 @@ app.get('/api/invoices/available-orders', (req, res) => {
   try {
     const orders = db.prepare(`
       SELECT 
-        j.id as jurnalId,
-        j.nomorRO,
-        j.poNumber,
-        j.preOrderId,
-        j.customer,
-        j.customerAddress,
-        j.material,
-        j.totalVolume,
-        j.targetVolume,
-        j.satuan,
-        j.hargaBeli,
-        j.hargaJual,
-        j.hargaJual as hargaSatuan,
-        j.nominalBeli,
-        j.nominalJual,
-        j.status as jurnalStatus,
+        COALESCE(MAX(CASE WHEN j.statusLock = 'LOCKED' THEN j.id END), MAX(j.id)) as jurnalId,
+        COALESCE(p.nomorRO, MAX(j.nomorRO)) as nomorRO,
+        COALESCE(p.nomorPo, MAX(j.poNumber)) as poNumber,
+        COALESCE(p.id, MAX(j.preOrderId)) as preOrderId,
+        COALESCE(p.customer, MAX(j.customer)) as customer,
+        COALESCE(p.customerAddress, MAX(j.customerAddress)) as customerAddress,
+        COALESCE(p.materialName, MAX(j.material)) as material,
+        COALESCE(p.totalOrder, MAX(j.totalVolume)) as totalVolume,
+        COALESCE(p.totalOrder, MAX(j.targetVolume)) as targetVolume,
+        COALESCE(p.satuan, MAX(j.satuan)) as satuan,
+        COALESCE(p.hargaBeli, MAX(j.hargaBeli)) as hargaBeli,
+        COALESCE(p.hargaJual, MAX(j.hargaJual)) as hargaJual,
+        COALESCE(p.hargaJual, MAX(j.hargaJual)) as hargaSatuan,
+        ROUND(COALESCE(p.totalOrder, MAX(j.totalVolume)) * COALESCE(p.hargaBeli, MAX(j.hargaBeli))) as nominalBeli,
+        ROUND(COALESCE(p.totalOrder, MAX(j.totalVolume)) * COALESCE(p.hargaJual, MAX(j.hargaJual))) as nominalJual,
+        MAX(j.status) as jurnalStatus,
+        'LOCKED' as statusLock,
         p.id as poId,
         p.nomorPo as poNomorPo,
         p.nomorRO as poNomorRO,
@@ -3245,21 +3915,21 @@ app.get('/api/invoices/available-orders', (req, res) => {
         c.npwp as defaultCustomerNpwp,
         c.telepon as defaultCustomerTelepon
       FROM jurnal_gi j
-      LEFT JOIN pre_orders p ON (j.preOrderId = p.id OR j.nomorRO = p.nomorRO)
+      LEFT JOIN received_order p ON (j.preOrderId = p.id OR j.nomorRO = p.nomorRO)
       LEFT JOIN customers c ON (p.customerId = c.id OR j.customer = c.name)
-      WHERE j.targetVolume > 0 
-        AND j.totalVolume >= j.targetVolume
-        AND NOT EXISTS (
-          SELECT 1 FROM invoices i 
-          WHERE (
-            (i.nomorRO IS NOT NULL AND i.nomorRO != '' AND i.nomorRO = j.nomorRO)
-            OR (i.jurnalId IS NOT NULL AND i.jurnalId != '' AND i.jurnalId = j.id)
-            OR (i.preOrderId IS NOT NULL AND i.preOrderId != '' AND i.preOrderId = j.preOrderId)
-            OR (i.poNumber IS NOT NULL AND i.poNumber != '' AND i.poNumber != '-' AND i.poNumber = j.poNumber)
-          )
-          AND i.status NOT IN ('REJECTED')
+      WHERE j.statusLock = 'LOCKED'
+      AND NOT EXISTS (
+        SELECT 1 FROM invoices i 
+        WHERE (
+          (i.nomorRO IS NOT NULL AND i.nomorRO != '' AND i.nomorRO = COALESCE(p.nomorRO, j.nomorRO))
+          OR (i.preOrderId IS NOT NULL AND i.preOrderId != '' AND i.preOrderId = p.id)
+          OR (i.jurnalId IS NOT NULL AND i.jurnalId != '' AND i.jurnalId = j.id)
         )
-      ORDER BY j.id DESC
+        AND UPPER(COALESCE(i.status, '')) != 'REJECTED'
+        AND (i.isRevision = 0 OR i.isRevision IS NULL)
+      )
+      GROUP BY COALESCE(p.id, j.nomorRO, j.id)
+      ORDER BY MAX(j.id) DESC
     `).all();
 
     // Normalize output so that the frontend always has customerName and hargaSatuan
@@ -3279,7 +3949,7 @@ app.get('/api/invoices/available-orders', (req, res) => {
   }
 });
 
-// Admin creates Invoice manually (Only after Order is fully completed based on Journal Recap)
+// Admin creates Invoice manually (After minimal 1 Jurnal is LOCKED, takes data akhir RO)
 app.post('/api/invoices', (req, res) => {
   const invData = req.body;
   const nowIso = new Date().toISOString();
@@ -3298,16 +3968,15 @@ app.post('/api/invoices', (req, res) => {
 
   let po = null;
   if (invData.preOrderId) {
-    po = db.prepare('SELECT * FROM pre_orders WHERE id = ?').get(invData.preOrderId);
+    po = db.prepare('SELECT * FROM received_order WHERE id = ?').get(invData.preOrderId);
   }
   if (!po && jurnal?.preOrderId) {
-    po = db.prepare('SELECT * FROM pre_orders WHERE id = ?').get(jurnal.preOrderId);
+    po = db.prepare('SELECT * FROM received_order WHERE id = ?').get(jurnal.preOrderId);
   }
   if (!po && invData.nomorRO) {
-    po = db.prepare('SELECT * FROM pre_orders WHERE nomorRO = ?').get(invData.nomorRO);
+    po = db.prepare('SELECT * FROM received_order WHERE nomorRO = ?').get(invData.nomorRO);
   }
 
-  // 2. CRITICAL BUSINESS RULE: Verify Order is fully completed based on actual delivery recap
   if (!jurnal && !po) {
     return res.status(400).json({
       success: false,
@@ -3315,27 +3984,22 @@ app.post('/api/invoices', (req, res) => {
     });
   }
 
-  const targetVol = Number(jurnal?.targetVolume || po?.totalOrder || 0);
+  // 2. CRITICAL BUSINESS RULE: Verify at least 1 LOCKED journal exists for this Order
+  const lockedJurnal = db.prepare(`
+    SELECT id FROM jurnal_gi 
+    WHERE (preOrderId = ? OR (nomorRO IS NOT NULL AND nomorRO = ?))
+      AND statusLock = 'LOCKED'
+    LIMIT 1
+  `).get(po?.id || jurnal?.preOrderId || '', po?.nomorRO || jurnal?.nomorRO || '');
 
-  // Compute actual delivered volume from waybills (surat_jalan)
-  const sjList = db.prepare(`
-    SELECT volumeAkhir FROM surat_jalan
-    WHERE (jurnalId IS NOT NULL AND jurnalId = ?)
-       OR (nomorRO IS NOT NULL AND nomorRO = ?)
-       OR (preOrderId IS NOT NULL AND preOrderId = ?)
-  `).all(jurnal?.id || '', jurnal?.nomorRO || invData.nomorRO || '', po?.id || '');
-
-  const actualDeliveredVol = Number(sjList.reduce((sum, s) => sum + (Number(s.volumeAkhir) || 0), 0).toFixed(2));
-  const finalDelivered = actualDeliveredVol > 0 ? actualDeliveredVol : Number(jurnal?.totalVolume || po?.terkirim || 0);
-
-  if (targetVol <= 0 || finalDelivered < targetVol) {
+  if (!lockedJurnal) {
     return res.status(400).json({
       success: false,
-      message: `Gagal membuat Invoice: Order belum selesai dikirim. Realisasi pengiriman (${finalDelivered} m³) belum memenuhi target kuantitas pesanan (${targetVol} m³) berdasarkan data Rekapan Jurnal.`,
+      message: 'Gagal membuat Invoice: Belum ada Jurnal harian yang berstatus LOCKED untuk Order ini. Minimal harus ada 1 Jurnal berstatus LOCKED sebagai bukti progres fisik.',
     });
   }
 
-  // 3. CRITICAL BUSINESS RULE: Prevent duplicate Invoice creation
+  // 3. CRITICAL BUSINESS RULE: Prevent duplicate Invoice creation (1 RO = 1 Invoice)
   const refRo = jurnal?.nomorRO || invData.nomorRO || po?.nomorRO || null;
   const refJurnalId = jurnal?.id || invData.jurnalId || null;
   const refPoId = po?.id || invData.preOrderId || null;
@@ -3343,13 +4007,13 @@ app.post('/api/invoices', (req, res) => {
 
   const existingInv = db.prepare(`
     SELECT id, kodeTransaksi, status FROM invoices
-    WHERE ((jurnalId IS NOT NULL AND jurnalId != '' AND jurnalId = ?) 
-        OR (nomorRO IS NOT NULL AND nomorRO != '' AND nomorRO = ?) 
+    WHERE ((nomorRO IS NOT NULL AND nomorRO != '' AND nomorRO = ?) 
         OR (preOrderId IS NOT NULL AND preOrderId != '' AND preOrderId = ?)
-        OR (poNumber IS NOT NULL AND poNumber != '' AND poNumber != '-' AND poNumber = ?))
+        OR (jurnalId IS NOT NULL AND jurnalId != '' AND jurnalId = ?))
       AND status NOT IN ('REJECTED')
+      AND (isRevision = 0 OR isRevision IS NULL)
     LIMIT 1
-  `).get(refJurnalId || '', refRo || '', refPoId || '', refPoNumber || '');
+  `).get(refRo || '', refPoId || '', refJurnalId || '');
 
   if (existingInv) {
     return res.status(400).json({
@@ -3372,7 +4036,8 @@ app.post('/api/invoices', (req, res) => {
   const finalNpwp = customerRow?.npwp || invData.npwp || '';
 
   // 5. Volume, Unit Price, and Tax calculations
-  const finalVolume = Number(invData.volume) > 0 ? Number(invData.volume) : finalDelivered;
+  const fallbackInvVol = Number(po?.totalOrder || jurnal?.targetVolume || jurnal?.totalVolume || 0);
+  const finalVolume = Number(invData.volume) > 0 ? Number(invData.volume) : fallbackInvVol;
   const hargaJual = Number(invData.hargaSatuan) > 0 ? Number(invData.hargaSatuan) : Number(jurnal?.hargaJual || po?.hargaJual || 0);
   const subtotalJasa = Number(invData.subtotalJasa) > 0 ? Number(invData.subtotalJasa) : Math.round(finalVolume * hargaJual);
 
@@ -4417,8 +5082,8 @@ app.get('/api/reports/all-in-one', (req, res) => {
     return ' AND (' + customerTerms.map(() => `LOWER(${colName}) LIKE ?`).join(' OR ') + ')';
   };
 
-  // 2. Pre Orders (RO)
-  let poQuery = 'SELECT * FROM pre_orders WHERE 1=1';
+  // 2. Received Orders (RO)
+  let poQuery = 'SELECT * FROM received_order WHERE 1=1';
   const poParams = [];
   if (customerTerms.length > 0) {
     poQuery += custClause('customer');

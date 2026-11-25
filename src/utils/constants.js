@@ -16,14 +16,6 @@ export function determineRoleByEmail(email) {
   if (!email) return { role: 'admin', roleLabel: 'Admin' };
   const cleanEmail = email.trim().toLowerCase();
 
-  // rainorchesta@gmail.com explicitly has the Admin role
-  if (cleanEmail === 'rainorchesta@gmail.com') {
-    return {
-      role: 'admin',
-      roleLabel: 'Admin',
-    };
-  }
-
   const superAdminList = [
     'superadmin@ptbas.co.id',
     'direksi@ptbas.co.id',

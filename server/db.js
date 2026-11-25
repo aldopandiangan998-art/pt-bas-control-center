@@ -2,6 +2,7 @@ import { DatabaseSync } from 'node:sqlite';
 import path from 'node:path';
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { aggregateJournalWaybills } from './journalUtils.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -20,7 +21,8 @@ if (!fs.existsSync(invoiceUploadsDir)) {
   fs.mkdirSync(invoiceUploadsDir, { recursive: true });
 }
 
-const dbPath = path.join(dataDir, 'ptbas.db');
+const dbPath = process.env.PTBAS_DB_PATH ? path.resolve(process.env.PTBAS_DB_PATH) : path.join(dataDir, 'ptbas.db');
+fs.mkdirSync(path.dirname(dbPath), { recursive: true });
 const db = new DatabaseSync(dbPath);
 
 // Enable WAL mode for high performance concurrency
@@ -136,8 +138,6 @@ export function initDb() {
       poUpdatedBy TEXT,
       poUpdatedAt TEXT
     );
-
-    CREATE VIEW IF NOT EXISTS pre_orders AS SELECT * FROM received_order;
 
     CREATE TABLE IF NOT EXISTS surat_jalan (
       id BIGINT PRIMARY KEY,
@@ -405,6 +405,29 @@ export function initDb() {
       timestamp TEXT NOT NULL,
       created_at TEXT NOT NULL
     );
+
+    CREATE TABLE IF NOT EXISTS supplier_materials (
+      id TEXT PRIMARY KEY,
+      supplierId TEXT NOT NULL,
+      materialId TEXT NOT NULL,
+      hargaBeliDefault REAL DEFAULT 0,
+      aktif INTEGER DEFAULT 1,
+      created_at TEXT,
+      UNIQUE(supplierId, materialId)
+    );
+
+    CREATE TABLE IF NOT EXISTS jurnal_audit_logs (
+      id TEXT PRIMARY KEY,
+      jurnalId TEXT NOT NULL,
+      action TEXT NOT NULL,
+      actorId TEXT,
+      actorName TEXT NOT NULL,
+      actorRole TEXT NOT NULL,
+      reason TEXT,
+      details TEXT,
+      timestamp TEXT NOT NULL,
+      created_at TEXT NOT NULL
+    );
   `);
 
   // Safe migration for user profile & password reset fields
@@ -430,20 +453,9 @@ export function initDb() {
     console.warn('Migration users table error:', err);
   }
 
-  // Safe migration for received_order (renamed from pre_orders)
+  // Safe migration: unify legacy pre_orders table into received_order
   try {
-    const isPoTable = db.prepare("SELECT type, name FROM sqlite_master WHERE type='table' AND name='pre_orders'").get();
-    if (isPoTable) {
-      db.exec('ALTER TABLE pre_orders RENAME TO received_order;');
-    }
-    db.exec(`
-      CREATE VIEW IF NOT EXISTS pre_orders AS SELECT * FROM received_order;
-      CREATE INDEX IF NOT EXISTS idx_received_order_nomor_ro ON received_order (nomorRO);
-      CREATE INDEX IF NOT EXISTS idx_received_order_nomor_po ON received_order (nomorPo);
-      CREATE INDEX IF NOT EXISTS idx_received_order_customer ON received_order (customer);
-    `);
-
-    const poCols = db.prepare('PRAGMA table_info(received_order)').all().map((c) => c.name);
+    const roCols = db.prepare('PRAGMA table_info(received_order)').all().map((c) => c.name);
     const newPoCols = [
       ['items', 'TEXT'],
       ['nomorRO', 'TEXT'],
@@ -460,10 +472,33 @@ export function initDb() {
       ['poUpdatedAt', 'TEXT'],
     ];
     for (const [col, colType] of newPoCols) {
-      if (!poCols.includes(col)) {
+      if (!roCols.includes(col)) {
         db.exec(`ALTER TABLE received_order ADD COLUMN ${col} ${colType};`);
       }
     }
+
+    const isPoTable = db.prepare("SELECT type, name FROM sqlite_master WHERE type='table' AND name='pre_orders'").get();
+    if (isPoTable) {
+      const targetCols = db.prepare('PRAGMA table_info(received_order)').all().map((c) => c.name);
+      const sourceCols = db.prepare('PRAGMA table_info(pre_orders)').all().map((c) => c.name);
+      const sharedCols = sourceCols.filter((c) => targetCols.includes(c));
+      if (sharedCols.length > 0) {
+        const colList = sharedCols.join(', ');
+        db.exec(`INSERT OR IGNORE INTO received_order (${colList}) SELECT ${colList} FROM pre_orders;`);
+      }
+      db.exec(`
+        DROP INDEX IF EXISTS idx_preorders_customer;
+        DROP INDEX IF EXISTS idx_preorders_ro;
+        DROP TABLE pre_orders;
+      `);
+    }
+
+    db.exec(`
+      CREATE VIEW IF NOT EXISTS pre_orders AS SELECT * FROM received_order;
+      CREATE INDEX IF NOT EXISTS idx_received_order_nomor_ro ON received_order (nomorRO);
+      CREATE INDEX IF NOT EXISTS idx_received_order_nomor_po ON received_order (nomorPo);
+      CREATE INDEX IF NOT EXISTS idx_received_order_customer ON received_order (customer);
+    `);
   } catch (err) {
     console.warn('Migration received_order table error:', err);
   }
@@ -512,95 +547,8 @@ export function initDb() {
     console.warn('Migration surat_jalan table error:', err);
   }
 
-  // Safe migration for pre_orders and surat_jalan BIGINT id
+  // Safe migration for surat_jalan BIGINT id
   try {
-    const poInfo = db.prepare('PRAGMA table_info(pre_orders)').all();
-    const poIdCol = poInfo.find((c) => c.name === 'id');
-    if (poIdCol && poIdCol.type !== 'BIGINT') {
-      const idMap = new Map();
-      const oldPos = db.prepare('SELECT * FROM pre_orders').all();
-      for (const po of oldPos) {
-        let newId;
-        if (typeof po.id === 'string' && po.id.startsWith('PO-DRAFT-')) {
-          newId = Number(po.id.replace('PO-DRAFT-', ''));
-        } else if (!isNaN(Number(po.id))) {
-          newId = Number(po.id);
-        } else if (po.id === 'RO-PEN-2026-001') {
-          newId = 1795062000001;
-        } else {
-          newId = Date.now();
-        }
-        idMap.set(String(po.id), newId);
-      }
-
-      db.exec(`
-        CREATE TABLE pre_orders_migrated (
-          id BIGINT PRIMARY KEY,
-          nomorPo TEXT,
-          customer TEXT,
-          customerAddress TEXT,
-          customerId TEXT,
-          supplierId TEXT,
-          materialId TEXT,
-          materialName TEXT,
-          materialCategory TEXT,
-          pphRate REAL,
-          satuan TEXT,
-          totalOrder REAL,
-          terkirim REAL DEFAULT 0,
-          hargaJual REAL,
-          hargaBeli REAL,
-          tanggal TEXT,
-          top TEXT,
-          status TEXT DEFAULT 'MENUNGGU_APPROVAL',
-          createdBy TEXT,
-          approvedBy TEXT,
-          approvedAt TEXT,
-          rejectionReason TEXT,
-          items TEXT,
-          nomorRO TEXT,
-          jenisRO TEXT,
-          jenis TEXT,
-          mataUang TEXT,
-          jenisWajibPajak TEXT,
-          nomorPoCustomer TEXT,
-          hubungkanNomorPoMaterial TEXT,
-          satuanJasaAngkut TEXT
-        );
-      `);
-
-      for (const po of oldPos) {
-        const newId = idMap.get(String(po.id));
-        db.prepare(`
-          INSERT INTO pre_orders_migrated (
-            id, nomorPo, customer, customerAddress, customerId, supplierId, materialId, materialName,
-            materialCategory, pphRate, satuan, totalOrder, terkirim, hargaJual, hargaBeli, tanggal, top,
-            status, createdBy, approvedBy, approvedAt, rejectionReason, items, nomorRO, jenisRO, jenis,
-            mataUang, jenisWajibPajak, nomorPoCustomer, hubungkanNomorPoMaterial, satuanJasaAngkut
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `).run(
-          newId, po.nomorPo, po.customer, po.customerAddress, po.customerId, po.supplierId, po.materialId, po.materialName,
-          po.materialCategory, po.pphRate, po.satuan, po.totalOrder, po.terkirim, po.hargaJual, po.hargaBeli, po.tanggal, po.top,
-          po.status, po.createdBy, po.approvedBy, po.approvedAt, po.rejectionReason, po.items, po.nomorRO, po.jenisRO, po.jenis,
-          po.mataUang, po.jenisWajibPajak, po.nomorPoCustomer, po.hubungkanNomorPoMaterial, po.satuanJasaAngkut
-        );
-      }
-
-      db.exec('DROP TABLE pre_orders;');
-      db.exec('ALTER TABLE pre_orders_migrated RENAME TO pre_orders;');
-      db.exec(`
-        CREATE INDEX IF NOT EXISTS idx_preorders_customer ON pre_orders(customer);
-        CREATE INDEX IF NOT EXISTS idx_preorders_ro ON pre_orders(nomorRO);
-      `);
-
-      for (const [oldId, newId] of idMap.entries()) {
-        db.prepare('UPDATE surat_jalan SET preOrderId = ? WHERE preOrderId = ?').run(newId, oldId);
-        db.prepare('UPDATE jurnal_gi SET preOrderId = ? WHERE preOrderId = ?').run(newId, oldId);
-        db.prepare('UPDATE bkk SET preOrderId = ? WHERE preOrderId = ?').run(newId, oldId);
-        db.prepare('UPDATE invoices SET preOrderId = ? WHERE preOrderId = ?').run(newId, oldId);
-      }
-    }
-
     const sjInfo = db.prepare('PRAGMA table_info(surat_jalan)').all();
     const sjIdCol = sjInfo.find((c) => c.name === 'id');
     const sjRoCol = sjInfo.find((c) => c.name === 'nomorRO');
@@ -770,6 +718,96 @@ export function initDb() {
     console.warn('Migration invoices table error:', err);
   }
 
+  // Safe migration for supplier_materials
+  try {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS supplier_materials (
+        id TEXT PRIMARY KEY,
+        supplierId TEXT NOT NULL,
+        materialId TEXT NOT NULL,
+        hargaBeliDefault REAL DEFAULT 0,
+        aktif INTEGER DEFAULT 1,
+        created_at TEXT,
+        UNIQUE(supplierId, materialId)
+      );
+      CREATE INDEX IF NOT EXISTS idx_supplier_materials_supplier ON supplier_materials(supplierId);
+      CREATE INDEX IF NOT EXISTS idx_supplier_materials_material ON supplier_materials(materialId);
+    `);
+  } catch (err) {
+    console.warn('Migration supplier_materials error:', err);
+  }
+
+  // Safe migration for jurnal_gi (statusLock, itemsSummary) & jurnal_audit_logs
+  try {
+    const jrnCols = db.prepare('PRAGMA table_info(jurnal_gi)').all().map((c) => c.name);
+    if (!jrnCols.includes('statusLock')) {
+      db.exec("ALTER TABLE jurnal_gi ADD COLUMN statusLock TEXT DEFAULT 'OPEN';");
+    }
+    if (!jrnCols.includes('itemsSummary')) {
+      db.exec("ALTER TABLE jurnal_gi ADD COLUMN itemsSummary TEXT DEFAULT '[]';");
+    }
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS jurnal_audit_logs (
+        id TEXT PRIMARY KEY,
+        jurnalId TEXT NOT NULL,
+        action TEXT NOT NULL,
+        actorId TEXT,
+        actorName TEXT NOT NULL,
+        actorRole TEXT NOT NULL,
+        reason TEXT,
+        details TEXT,
+        timestamp TEXT NOT NULL,
+        created_at TEXT NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_jurnal_audit_logs_jurnalId ON jurnal_audit_logs(jurnalId);
+      CREATE INDEX IF NOT EXISTS idx_jurnal_gi_ro_tgl ON jurnal_gi (preOrderId, tanggal);
+    `);
+  } catch (err) {
+    console.warn('Migration jurnal_gi lock/audit error:', err);
+  }
+
+  // Safe migration for surat_jalan dates (tanggalDibuat, tanggalJadwal)
+  try {
+    const sjCols = db.prepare('PRAGMA table_info(surat_jalan)').all().map((c) => c.name);
+    if (!sjCols.includes('tanggalDibuat')) {
+      db.exec('ALTER TABLE surat_jalan ADD COLUMN tanggalDibuat TEXT;');
+      db.exec('UPDATE surat_jalan SET tanggalDibuat = tanggal WHERE tanggalDibuat IS NULL;');
+    }
+    if (!sjCols.includes('tanggalJadwal')) {
+      db.exec('ALTER TABLE surat_jalan ADD COLUMN tanggalJadwal TEXT;');
+      db.exec('UPDATE surat_jalan SET tanggalJadwal = tanggal WHERE tanggalJadwal IS NULL;');
+    }
+  } catch (err) {
+    console.warn('Migration surat_jalan dates error:', err);
+  }
+
+  // Safe migration for bkk and invoices versioning (V2 support)
+  try {
+    const bkkCols = db.prepare('PRAGMA table_info(bkk)').all().map((c) => c.name);
+    if (!bkkCols.includes('version')) {
+      db.exec('ALTER TABLE bkk ADD COLUMN version INTEGER DEFAULT 1;');
+    }
+    if (!bkkCols.includes('parentDocId')) {
+      db.exec('ALTER TABLE bkk ADD COLUMN parentDocId TEXT;');
+    }
+    if (!bkkCols.includes('isRevision')) {
+      db.exec('ALTER TABLE bkk ADD COLUMN isRevision INTEGER DEFAULT 0;');
+    }
+
+    const invCols = db.prepare('PRAGMA table_info(invoices)').all().map((c) => c.name);
+    if (!invCols.includes('version')) {
+      db.exec('ALTER TABLE invoices ADD COLUMN version INTEGER DEFAULT 1;');
+    }
+    if (!invCols.includes('parentDocId')) {
+      db.exec('ALTER TABLE invoices ADD COLUMN parentDocId TEXT;');
+    }
+    if (!invCols.includes('isRevision')) {
+      db.exec('ALTER TABLE invoices ADD COLUMN isRevision INTEGER DEFAULT 0;');
+    }
+  } catch (err) {
+    console.warn('Migration bkk/invoices versioning error:', err);
+  }
+
   // Create table indexes safely after schema migrations
   try {
     db.exec(`
@@ -798,20 +836,16 @@ export function initDb() {
   // Auto-link relations between transactions and master tables
   try {
     db.exec(`
-      UPDATE pre_orders
-      SET customerId = (SELECT id FROM customers WHERE customers.name = pre_orders.customer LIMIT 1)
+      UPDATE received_order
+      SET customerId = (SELECT id FROM customers WHERE customers.name = received_order.customer LIMIT 1)
       WHERE customerId IS NULL AND customer IS NOT NULL;
-
-      UPDATE pre_orders
-      SET supplierId = (SELECT id FROM suppliers WHERE aktif = 1 ORDER BY id ASC LIMIT 1)
-      WHERE supplierId IS NULL;
 
       UPDATE bkk
       SET supplierId = (SELECT id FROM suppliers WHERE suppliers.name = bkk.perusahaan LIMIT 1)
       WHERE supplierId IS NULL AND perusahaan IS NOT NULL;
 
       UPDATE bkk
-      SET customerId = (SELECT customerId FROM pre_orders WHERE pre_orders.id = bkk.preOrderId OR (bkk.nomorRO IS NOT NULL AND pre_orders.nomorRO = bkk.nomorRO) LIMIT 1)
+      SET customerId = (SELECT customerId FROM received_order WHERE received_order.id = bkk.preOrderId OR (bkk.nomorRO IS NOT NULL AND received_order.nomorRO = bkk.nomorRO) LIMIT 1)
       WHERE customerId IS NULL;
 
       UPDATE invoices
@@ -886,7 +920,7 @@ function generateNomorRO(custNameOrObj, date = new Date()) {
   const prefix = getCustomerPrefix(custNameOrObj);
 
   const rows = db.prepare(`
-    SELECT nomorRO FROM pre_orders WHERE nomorRO IS NOT NULL
+    SELECT nomorRO FROM received_order WHERE nomorRO IS NOT NULL
     UNION
     SELECT nomorRO FROM surat_jalan WHERE nomorRO IS NOT NULL
     UNION
@@ -919,9 +953,9 @@ export function generatePoNumber(custNameOrObj, date = new Date()) {
   const prefix = getCustomerPrefix(custNameOrObj);
 
   const rows = db.prepare(`
-    SELECT nomorPo as poNum FROM pre_orders WHERE nomorPo IS NOT NULL
+    SELECT nomorPo as poNum FROM received_order WHERE nomorPo IS NOT NULL
     UNION
-    SELECT nomorPoCustomer as poNum FROM pre_orders WHERE nomorPoCustomer IS NOT NULL
+    SELECT nomorPoCustomer as poNum FROM received_order WHERE nomorPoCustomer IS NOT NULL
     UNION
     SELECT poNumber as poNum FROM surat_jalan WHERE poNumber IS NOT NULL
     UNION
@@ -948,111 +982,65 @@ export function generatePoNumber(custNameOrObj, date = new Date()) {
 
 export function syncJournalsAndWaybills() {
   try {
-    // 0. PURGE ORPHAN DATA: Delete any journal summaries or waybills not tied to real Pre Orders
+    // 0. PURGE ORPHAN DATA & EMPTY PLACEHOLDER JOURNALS (journals are created on 1st SJ, not on RO approval)
     db.exec(`
       DELETE FROM jurnal_gi
-      WHERE (preOrderId IS NOT NULL AND preOrderId NOT IN (SELECT id FROM pre_orders))
-         OR (preOrderId IS NULL AND (nomorRO IS NULL OR nomorRO NOT IN (SELECT nomorRO FROM pre_orders WHERE nomorRO IS NOT NULL)))
+      WHERE (preOrderId IS NOT NULL AND preOrderId NOT IN (SELECT id FROM received_order))
+         OR (preOrderId IS NULL AND (nomorRO IS NULL OR nomorRO NOT IN (SELECT nomorRO FROM received_order WHERE nomorRO IS NOT NULL)))
          OR id IN ('REK-202611-0001', 'REK-202611-0002')
-         OR poNumber IN ('PO-LW-2026-089', 'PO-SI-2026-014', 'PO-DRAFT-01', 'PO-DRAFT-02');
+         OR poNumber IN ('PO-LW-2026-089', 'PO-SI-2026-014', 'PO-DRAFT-01', 'PO-DRAFT-02')
+         OR (
+           totalSj = 0
+           AND status = 'Siap Kirim'
+           AND COALESCE(statusLock, 'OPEN') = 'OPEN'
+           AND NOT EXISTS (SELECT 1 FROM surat_jalan sj WHERE sj.jurnalId = jurnal_gi.id)
+         );
 
       DELETE FROM surat_jalan
-      WHERE (preOrderId IS NOT NULL AND preOrderId NOT IN (SELECT id FROM pre_orders))
-         OR (preOrderId IS NULL AND (nomorRO IS NULL OR nomorRO NOT IN (SELECT nomorRO FROM pre_orders WHERE nomorRO IS NOT NULL)))
+      WHERE (preOrderId IS NOT NULL AND preOrderId NOT IN (SELECT id FROM received_order))
+         OR (preOrderId IS NULL AND (nomorRO IS NULL OR nomorRO NOT IN (SELECT nomorRO FROM received_order WHERE nomorRO IS NOT NULL)))
          OR id IN ('SJ-202611-0089', 'SJ-202611-0090', 'SJ-202611-0091')
          OR poNumber IN ('PO-LW-2026-089', 'PO-SI-2026-014', 'PO-DRAFT-01', 'PO-DRAFT-02');
     `);
 
-    // 1. Ensure all APPROVED Pre Orders have a nomorRO and an active Jurnal GI summary record
-    const approvedPos = db.prepare("SELECT * FROM pre_orders WHERE status = 'APPROVED'").all();
-    for (const po of approvedPos) {
-      let nomorRO = po.nomorRO;
-      if (!nomorRO) {
-        nomorRO = generateNomorRO(po.customer, po.tanggal ? new Date(po.tanggal) : new Date());
-        db.prepare('UPDATE pre_orders SET nomorRO = ? WHERE id = ?').run(nomorRO, po.id);
-        po.nomorRO = nomorRO;
-      }
-
-      let jurnal = db.prepare('SELECT * FROM jurnal_gi WHERE preOrderId = ? OR nomorRO = ?').get(po.id, nomorRO);
-      if (!jurnal) {
-        const jrnId = `REK-${new Date().toISOString().slice(0, 7).replace('-', '')}-${String(Date.now()).slice(-4)}`;
-        let parsedItems = [];
-        if (po.items) {
-          try { parsedItems = JSON.parse(po.items); } catch (e) { parsedItems = []; }
-        }
-        const firstItem = parsedItems[0] || {};
-        const matName = po.materialName || firstItem.nama || 'SIRTU';
-        const targetVol = Number(po.totalOrder || firstItem.kuantitas || 0);
-        const hBeli = Number(po.hargaBeli || firstItem.hargaBeli || 0);
-        const hJual = Number(po.hargaJual || firstItem.hargaJual || 0);
-        const isPpn = po.jenisWajibPajak === 'PKP' ? 1 : 0;
-        const targetTrips = po.satuan === 'rit' ? Math.max(1, targetVol) : 0;
-        const nowIso = new Date().toISOString();
-
-        db.prepare(`
-          INSERT INTO jurnal_gi (
-            id, nomorRO, preOrderId, poNumber, customer, customerAddress,
-            material, isPpn, tanggal, totalSj, targetRitase, totalVolume,
-            targetVolume, satuan, hargaBeli, hargaJual, nominalBeli,
-            nominalJual, status, suratJalanDetails, created_at, updated_at
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `).run(
-          jrnId,
-          nomorRO,
-          po.id,
-          po.nomorPo || 'MENUNGGU SURAT JALAN PERTAMA',
-          po.customer,
-          po.customerAddress || '',
-          matName,
-          isPpn,
-          po.tanggal || nowIso.split('T')[0],
-          0,
-          targetTrips,
-          0,
-          targetVol,
-          po.satuan || 'm3',
-          hBeli,
-          hJual,
-          0,
-          0,
-          'Siap Kirim',
-          JSON.stringify([]),
-          nowIso,
-          nowIso
-        );
+    // 1. Ensure all APPROVED/SELESAI_KIRIM Received Orders have a valid nomorRO
+    const activePos = db.prepare("SELECT * FROM received_order WHERE status IN ('APPROVED', 'SELESAI_KIRIM')").all();
+    for (const po of activePos) {
+      if (!po.nomorRO) {
+        const nomorRO = generateNomorRO(po.customer, po.tanggal ? new Date(po.tanggal) : new Date());
+        db.prepare('UPDATE received_order SET nomorRO = ? WHERE id = ?').run(nomorRO, po.id);
       }
     }
 
-    // 2. Synchronize waybills (surat_jalan) to their respective Jurnal GI summaries
+    // 2. Link orphan surat_jalan pointers to matching daily jurnal_gi without bypassing OPEN unsealed state
     const allSj = db.prepare('SELECT * FROM surat_jalan').all();
+    const allMaterials = db.prepare('SELECT * FROM materials').all();
     for (const sj of allSj) {
       let po = null;
       if (sj.preOrderId) {
-        po = db.prepare('SELECT * FROM pre_orders WHERE id = ?').get(sj.preOrderId);
+        po = db.prepare('SELECT * FROM received_order WHERE CAST(id AS TEXT) = CAST(? AS TEXT)').get(String(sj.preOrderId));
       }
       if (!po && sj.poNumber) {
-        po = db.prepare('SELECT * FROM pre_orders WHERE nomorPo = ? OR id = ?').get(sj.poNumber, sj.poNumber);
+        po = db.prepare('SELECT * FROM received_order WHERE nomorPo = ? OR CAST(id AS TEXT) = CAST(? AS TEXT)').get(sj.poNumber, String(sj.poNumber));
       }
       if (!po && sj.nomorRO) {
-        po = db.prepare('SELECT * FROM pre_orders WHERE nomorRO = ?').get(sj.nomorRO);
+        po = db.prepare('SELECT * FROM received_order WHERE nomorRO = ?').get(sj.nomorRO);
       }
 
+      const sjInputDate = sj.tanggalDibuat || sj.tanggal;
       let jurnal = null;
       if (sj.jurnalId) {
         jurnal = db.prepare('SELECT * FROM jurnal_gi WHERE id = ?').get(sj.jurnalId);
       }
-      if (!jurnal && po) {
-        jurnal = db.prepare('SELECT * FROM jurnal_gi WHERE preOrderId = ? OR (nomorRO IS NOT NULL AND nomorRO = ?)').get(po.id, po.nomorRO || '');
-      }
-      if (!jurnal && sj.nomorRO) {
-        jurnal = db.prepare('SELECT * FROM jurnal_gi WHERE nomorRO = ?').get(sj.nomorRO);
-      }
-      if (!jurnal && sj.poNumber) {
-        jurnal = db.prepare('SELECT * FROM jurnal_gi WHERE poNumber = ?').get(sj.poNumber);
+      if (!jurnal && po && sjInputDate) {
+        jurnal = db.prepare('SELECT * FROM jurnal_gi WHERE (CAST(preOrderId AS TEXT) = CAST(? AS TEXT) OR (nomorRO IS NOT NULL AND nomorRO = ?)) AND tanggal = ?').get(
+          String(po.id),
+          po.nomorRO || '',
+          sjInputDate
+        );
       }
 
       if (jurnal) {
-        // Ensure relational pointers on surat_jalan
         if (!sj.jurnalId || !sj.nomorRO || !sj.preOrderId) {
           db.prepare('UPDATE surat_jalan SET nomorRO = ?, jurnalId = ?, preOrderId = ? WHERE id = ?').run(
             jurnal.nomorRO,
@@ -1062,64 +1050,69 @@ export function syncJournalsAndWaybills() {
           );
         }
 
-        // Parse details and append if missing
-        let details = [];
-        try {
-          details = typeof jurnal.suratJalanDetails === 'string' ? JSON.parse(jurnal.suratJalanDetails) : (jurnal.suratJalanDetails || []);
-        } catch (e) {
-          details = [];
-        }
+        // Only reconcile details automatically for LOCKED journals; OPEN journals wait for manual Lock
+        if (jurnal.statusLock === 'LOCKED') {
+          let details = [];
+          try {
+            details = typeof jurnal.suratJalanDetails === 'string' ? JSON.parse(jurnal.suratJalanDetails) : (jurnal.suratJalanDetails || []);
+          } catch (e) {
+            details = [];
+          }
 
-        const exists = details.some((d) => d.id === sj.id);
-        if (!exists) {
-          const sjDesc = {
-            id: sj.id,
-            poNumber: sj.poNumber || jurnal.poNumber,
-            nomorRO: jurnal.nomorRO,
-            customer: sj.customer || jurnal.customer,
-            material: sj.material || jurnal.material,
-            nopol: sj.nopol || 'W 9821 UB',
-            driver: sj.driver || 'Supir Armada Terjadwal',
-            tanggal: sj.tanggal,
-            waktu: sj.waktu,
-            nomorNota: sj.nomorNota || '',
-            panjangCm: sj.panjangCm || 0,
-            lebarCm: sj.lebarCm || 0,
-            tinggiCm: sj.tinggiCm || 0,
-            koreksiTinggiCm: sj.koreksiTinggiCm || 0,
-            volumeAkhir: Number(sj.volumeAkhir) || 0,
-            status: sj.status || 'Selesai',
-          };
-          details.push(sjDesc);
+          if (!details.some((d) => d.id === sj.id)) {
+            const jrnSjs = db.prepare(`
+              SELECT * FROM surat_jalan
+              WHERE jurnalId = ?
+                 OR (
+                   (CAST(preOrderId AS TEXT) = CAST(? AS TEXT) OR (nomorRO IS NOT NULL AND nomorRO != '' AND nomorRO = ?))
+                   AND COALESCE(tanggalDibuat, tanggal) = ?
+                 )
+              ORDER BY COALESCE(tanggalDibuat, tanggal) ASC, waktu ASC, id ASC
+            `).all(jurnal.id, String(jurnal.preOrderId || ''), jurnal.nomorRO || '', jurnal.tanggal || '');
 
-          const totalSj = details.length;
-          const totalVolume = Number(details.reduce((sum, d) => sum + (Number(d.volumeAkhir) || 0), 0).toFixed(2));
-          const nominalBeli = Math.round(totalVolume * (Number(jurnal.hargaBeli) || 0));
-          const nominalJual = Math.round(totalVolume * (Number(jurnal.hargaJual) || 0));
-          const targetVol = Number(jurnal.targetVolume) || 0;
-          const isVolumeMet = targetVol > 0 && totalVolume >= targetVol;
-          const status = isVolumeMet ? 'Selesai Kirim' : 'Dalam Pengiriman';
+            const cumRow = db.prepare(`
+              SELECT COALESCE(SUM(volumeAkhir), 0) as cumVol
+              FROM surat_jalan
+              WHERE CAST(preOrderId AS TEXT) = CAST(? AS TEXT) OR (nomorRO IS NOT NULL AND nomorRO != '' AND nomorRO = ?)
+            `).get(String(jurnal.preOrderId || po?.id || ''), jurnal.nomorRO || '');
+            const cumulativeVol = Number((cumRow?.cumVol || 0).toFixed(2));
 
-          db.prepare(`
-            UPDATE jurnal_gi
-            SET totalSj = ?, totalVolume = ?, nominalBeli = ?, nominalJual = ?,
-                status = ?, suratJalanDetails = ?, updated_at = ?
-            WHERE id = ?
-          `).run(
-            totalSj,
-            totalVolume,
-            nominalBeli,
-            nominalJual,
-            status,
-            JSON.stringify(details),
-            new Date().toISOString(),
-            jurnal.id
-          );
+            const agg = aggregateJournalWaybills({
+              sjs: jrnSjs,
+              jurnal,
+              po,
+              materialsList: allMaterials,
+              cumulativeVol,
+            });
 
-          if (po) {
-            db.prepare('UPDATE pre_orders SET terkirim = ? WHERE id = ?').run(totalVolume, po.id);
+            db.prepare(`
+              UPDATE jurnal_gi
+              SET material = ?, totalSj = ?, totalVolume = ?, nominalBeli = ?, nominalJual = ?,
+                  status = ?, itemsSummary = ?, suratJalanDetails = ?, updated_at = ?
+              WHERE id = ?
+            `).run(
+              agg.materialLabel,
+              agg.totalSj,
+              agg.totalVolume,
+              agg.nominalBeli,
+              agg.nominalJual,
+              agg.status,
+              JSON.stringify(agg.itemsSummary),
+              JSON.stringify(agg.suratJalanDetails),
+              new Date().toISOString(),
+              jurnal.id
+            );
           }
         }
+      }
+    }
+
+    // 3. Recompute received_order.terkirim from actual surat_jalan records
+    for (const po of activePos) {
+      const row = db.prepare('SELECT COALESCE(SUM(volumeAkhir), 0) as totalVol FROM surat_jalan WHERE CAST(preOrderId AS TEXT) = CAST(? AS TEXT) OR (nomorRO IS NOT NULL AND nomorRO = ?)').get(String(po.id), po.nomorRO || '');
+      const actualVol = Number((row?.totalVol || 0).toFixed(2));
+      if (Number(po.terkirim || 0) !== actualVol) {
+        db.prepare('UPDATE received_order SET terkirim = ? WHERE id = ?').run(actualVol, po.id);
       }
     }
   } catch (err) {
@@ -1142,13 +1135,13 @@ export function syncBkkAndInvoices() {
       DELETE FROM bkk
       WHERE id IN ('bkk-1', 'bkk-2', 'bkk-3', 'co-1', 'co-2', 'co-3', 'co-4', 'co-5', 'bkk-0')
          OR kodeTransaksi IN ('TRX-202611-001', 'TRX-202611-002', 'TRX-202611-003')
-         OR (preOrderId IS NOT NULL AND preOrderId NOT IN (SELECT id FROM pre_orders))
-         OR (preOrderId IS NULL AND (nomorRO IS NULL OR nomorRO NOT IN (SELECT nomorRO FROM pre_orders WHERE nomorRO IS NOT NULL)));
+         OR (preOrderId IS NOT NULL AND preOrderId NOT IN (SELECT id FROM received_order))
+         OR (preOrderId IS NULL AND (nomorRO IS NULL OR nomorRO NOT IN (SELECT nomorRO FROM received_order WHERE nomorRO IS NOT NULL)));
 
       DELETE FROM invoices
       WHERE id IN ('inv-1', 'inv-2', 'inv-3', 'inv-4', 'inv-5', 'inv-6')
-         OR (preOrderId IS NOT NULL AND preOrderId NOT IN (SELECT id FROM pre_orders))
-         OR (preOrderId IS NULL AND (nomorRO IS NULL OR nomorRO NOT IN (SELECT nomorRO FROM pre_orders WHERE nomorRO IS NOT NULL)));
+         OR (preOrderId IS NOT NULL AND preOrderId NOT IN (SELECT id FROM received_order))
+         OR (preOrderId IS NULL AND (nomorRO IS NULL OR nomorRO NOT IN (SELECT nomorRO FROM received_order WHERE nomorRO IS NOT NULL)));
     `);
 
     // 1. Ensure active BKK and Invoices for each Jurnal GI entry
@@ -1177,10 +1170,10 @@ export function syncBkkAndInvoices() {
         : `Periode: [${minDate}]`;
       const timestampStr = `${maxDate} 10:00:00`;
 
-      // Resolve accurate PO Number from pre_orders if jurnal had draft/placeholder
+      // Resolve accurate PO Number from received_order if jurnal had draft/placeholder
       let resolvedPo = jrn.poNumber;
       if (!resolvedPo || resolvedPo === 'MENUNGGU SURAT JALAN PERTAMA' || resolvedPo.startsWith('PO-DRAFT-')) {
-        const poRow = db.prepare('SELECT nomorPo FROM pre_orders WHERE id = ? OR (nomorRO IS NOT NULL AND nomorRO = ?)').get(jrn.preOrderId, jrn.nomorRO);
+        const poRow = db.prepare('SELECT nomorPo FROM received_order WHERE id = ? OR (nomorRO IS NOT NULL AND nomorRO = ?)').get(jrn.preOrderId, jrn.nomorRO);
         if (poRow?.nomorPo && poRow.nomorPo !== 'MENUNGGU SURAT JALAN PERTAMA') {
           resolvedPo = poRow.nomorPo;
           db.prepare('UPDATE jurnal_gi SET poNumber = ? WHERE id = ?').run(resolvedPo, jrn.id);
@@ -1217,17 +1210,10 @@ export function syncBkkAndInvoices() {
       if (existingInv) {
         db.prepare(`
           UPDATE invoices
-          SET volume = ?, hargaSatuan = ?, subtotalJasa = ?, ppnNominal = ?, pphNominal = ?,
-              amount = ?, customerId = COALESCE(customerId, ?), poNumber = COALESCE(poNumber, ?),
+          SET customerId = COALESCE(customerId, ?), poNumber = COALESCE(poNumber, ?),
               periode = COALESCE(periode, ?), updated_at = ?
           WHERE id = ?
         `).run(
-          invVolume,
-          Number(jrn.hargaJual) || 0,
-          invAmount,
-          ppnNom,
-          pphNom,
-          totalBersih > 0 ? totalBersih : invAmount,
           custId,
           effectivePoNum,
           periodeStr,
@@ -1283,8 +1269,11 @@ function seedInitialData() {
   try {
     db.prepare("DELETE FROM users WHERE id IN ('usr-2', 'usr-3') OR LOWER(email) IN ('admin@ptbas.co.id', 'admin.dummy@ptbas.co.id')").run();
     db.prepare("UPDATE users SET branch = 'Hub Gresik' WHERE branch LIKE '%Site [%' OR branch LIKE '%// Tgl:%'").run();
-    // Ensure rainorchesta@gmail.com has the Admin role
-    db.prepare("UPDATE users SET role = 'admin', roleLabel = 'Admin' WHERE LOWER(email) = 'rainorchesta@gmail.com'").run();
+  } catch (e) { }
+
+  // Purge any legacy hardcoded dummy RO records if previously seeded
+  try {
+    db.prepare("DELETE FROM received_order WHERE id IN (1795062000001, 1795062166339, 1795062530575, 1795073959896, 'RO-LW-655-4590011130', 'RO-WS-576-4510010537', 'RO-KIAS-004-POS-2608-000224', 'RO-SAS-965-4500005548')").run();
   } catch (e) { }
 
   const insertUser = db.prepare(`
@@ -1361,6 +1350,27 @@ function seedInitialData() {
     insertSup.run('sup-4', 'PAK TEGUH (BARU)', 'SUP-004', 'EKO WAHYUDI PRAYOGO', '0857-1122-3344', 0, 'BCA', '7415250533', 'EKO WAHYUDI PRAYOGO');
     insertSup.run('sup-5', 'PAK TEGUH', 'SUP-005', 'EKO WAHYUDI PRAYOGO', '0857-1122-3345', 0, 'BCA', '7415094256', 'EKO WAHYUDI PRAYOGO');
     insertSup.run('sup-8', 'ADITA JUSTIA SAPUTRA', 'SUP-008', 'PAK ADIT', '0822-6655-4433', 0, 'BCA', '7415428618', 'ADITA JUSTIA SAPUTRA');
+  }
+
+  // Seed supplier_materials if empty
+  try {
+    const smCount = db.prepare('SELECT COUNT(*) as count FROM supplier_materials').get().count;
+    if (smCount === 0) {
+      const allSups = db.prepare('SELECT id FROM suppliers WHERE aktif = 1').all();
+      const allMats = db.prepare('SELECT id, beli FROM materials WHERE aktif = 1').all();
+      const insertSM = db.prepare(`
+        INSERT OR IGNORE INTO supplier_materials (id, supplierId, materialId, hargaBeliDefault, aktif, created_at)
+        VALUES (?, ?, ?, ?, 1, ?)
+      `);
+      const now = new Date().toISOString();
+      for (const s of allSups) {
+        for (const m of allMats) {
+          insertSM.run(`sm-${s.id}-${m.id}`, s.id, m.id, m.beli || 0, now);
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('Seed supplier_materials error:', err);
   }
 
   // Seed armada if empty
@@ -1494,625 +1504,6 @@ function seedInitialData() {
       JSON.stringify(['Pengadaan Suku Cadang Alat']),
       0
     );
-  }
-
-  // Seed pre_orders if empty
-  const poCount = db.prepare('SELECT COUNT(*) as count FROM pre_orders').get().count;
-  if (poCount === 0) {
-    const insertPo = db.prepare(`
-      INSERT INTO pre_orders (
-        id, nomorPo, customer, customerAddress, materialId, materialName, materialCategory,
-        pphRate, satuan, totalOrder, terkirim, hargaJual, hargaBeli, tanggal, top,
-        status, createdBy, approvedBy, approvedAt, rejectionReason, items,
-        nomorRO, jenisRO, jenis, mataUang, jenisWajibPajak, nomorPoCustomer, hubungkanNomorPoMaterial
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `);
-
-    const initialROs = [
-      {
-        id: 1795062000001,
-        nomorRO: 'RO-LW-112026-001',
-        nomorPo: 'PO-LW-112026-001',
-        customer: 'PT LION WINGS',
-        customerAddress: 'Kawasan Industri Gresik Blok C-12',
-        materialId: 'mat-8',
-        materialName: 'SIRTU',
-        materialCategory: 'Curah',
-        pphRate: 2.0,
-        satuan: 'm³',
-        totalOrder: 2278.00,
-        terkirim: 69.88,
-        hargaJual: 85000,
-        hargaBeli: 50765,
-        tanggal: '2026-11-19',
-        top: '14 hari',
-        status: 'APPROVED',
-        createdBy: 'Admin Hub Gresik',
-        approvedBy: 'David Rusiah (Super Admin)',
-        approvedAt: '2026-11-19 10:00:00',
-        items: JSON.stringify([{ id: 'it-1', nama: 'SIRTU', kuantitas: 2278, satuan: 'm³', hargaBeli: 50765, hargaJual: 85000 }]),
-        jenisRO: 'JASA ANGKUT + MATERIAL',
-        jenis: 'CURAH',
-        mataUang: 'IDR',
-        jenisWajibPajak: 'PKP',
-        nomorPoCustomer: 'PO-LW-112026-001',
-        hubungkanNomorPoMaterial: 'PO-LW-112026-001'
-      },
-      {
-        id: 1795062166339,
-        nomorRO: 'RO-WS-112026-002',
-        nomorPo: 'PO-WS-112026-002',
-        customer: 'PT WINGS SURYA',
-        customerAddress: 'Jl. Rungkut Industri III, Surabaya',
-        materialId: 'mat-8',
-        materialName: 'BASE COURSE',
-        materialCategory: 'Padat',
-        pphRate: 2.0,
-        satuan: 'm³',
-        totalOrder: 485.00,
-        terkirim: 32.5,
-        hargaJual: 54500,
-        hargaBeli: 40000,
-        tanggal: '2026-11-19',
-        top: '14 hari',
-        status: 'APPROVED',
-        createdBy: 'David Rusiah',
-        approvedBy: 'David Rusiah (Super Admin)',
-        approvedAt: '2026-11-19 11:30:00',
-        items: JSON.stringify([{ id: 'it-2', nama: 'BASE COURSE', kuantitas: 485, satuan: 'm³', hargaBeli: 40000, hargaJual: 54500 }]),
-        jenisRO: 'JASA ANGKUT + MATERIAL',
-        jenis: 'PADAT',
-        mataUang: 'IDR',
-        jenisWajibPajak: 'PKP',
-        nomorPoCustomer: 'PO-WS-112026-002',
-        hubungkanNomorPoMaterial: 'PO-WS-112026-002'
-      },
-      {
-        id: 1795062530575,
-        nomorRO: 'RO-WS-112026-003',
-        nomorPo: 'PO-WS-112026-003',
-        customer: 'PT WINGS SURYA',
-        customerAddress: 'Jl. Raya Manyar Km. 11, Gresik',
-        materialId: 'mat-8',
-        materialName: 'BASE COURSE',
-        materialCategory: 'Padat',
-        pphRate: 2.0,
-        satuan: 'm³',
-        totalOrder: 100.00,
-        terkirim: 32.5,
-        hargaJual: 40330,
-        hargaBeli: 25000,
-        tanggal: '2026-11-19',
-        top: '14 hari',
-        status: 'APPROVED',
-        createdBy: 'Testing',
-        approvedBy: 'David Rusiah (Super Admin)',
-        approvedAt: '2026-11-19 09:15:00',
-        items: JSON.stringify([{ id: 'it-3', nama: 'BASE COURSE', kuantitas: 100, satuan: 'm³', hargaBeli: 25000, hargaJual: 40330 }]),
-        jenisRO: 'JASA ANGKUT + MATERIAL',
-        jenis: 'PADAT',
-        mataUang: 'IDR',
-        jenisWajibPajak: 'PKP',
-        nomorPoCustomer: 'PO-WS-112026-003',
-        hubungkanNomorPoMaterial: 'PO-WS-112026-003'
-      },
-      {
-        id: 1795073959896,
-        nomorRO: 'RO-WS-112026-004',
-        nomorPo: 'PO-WS-112026-004',
-        customer: 'PT WINGS SURYA',
-        customerAddress: 'Kawasan Industri Gresik Kav. 8-10',
-        materialId: 'mat-8',
-        materialName: 'LIMESTONE',
-        materialCategory: 'Curah',
-        pphRate: 2.0,
-        satuan: 'm³',
-        totalOrder: 200.00,
-        terkirim: 97.5,
-        hargaJual: 41999.87,
-        hargaBeli: 39000,
-        tanggal: '2026-11-19',
-        top: '14 hari',
-        status: 'APPROVED',
-        createdBy: 'David Rusiah',
-        approvedBy: 'David Rusiah (Super Admin)',
-        approvedAt: '2026-11-19 14:20:00',
-        items: JSON.stringify([{ id: 'it-4', nama: 'LIMESTONE', kuantitas: 200, satuan: 'm³', hargaBeli: 39000, hargaJual: 41999.87 }]),
-        jenisRO: 'JASA ANGKUT + MATERIAL',
-        jenis: 'CURAH',
-        mataUang: 'IDR',
-        jenisWajibPajak: 'PKP',
-        nomorPoCustomer: 'PO-WS-112026-004',
-        hubungkanNomorPoMaterial: 'PO-WS-112026-004'
-      }
-    ];
-
-    for (const r of initialROs) {
-      insertPo.run(
-        r.id,
-        r.nomorPo,
-        r.customer,
-        r.customerAddress,
-        r.materialId,
-        r.materialName,
-        r.materialCategory,
-        r.pphRate,
-        r.satuan,
-        r.totalOrder,
-        r.terkirim,
-        r.hargaJual,
-        r.hargaBeli,
-        r.tanggal,
-        r.top,
-        r.status,
-        r.createdBy,
-        r.approvedBy,
-        r.approvedAt,
-        null,
-        r.items,
-        r.nomorRO,
-        r.jenisRO,
-        r.jenis,
-        r.mataUang,
-        r.jenisWajibPajak,
-        r.nomorPoCustomer,
-        r.hubungkanNomorPoMaterial
-      );
-    }
-  }
-
-  // Seed invoices if empty
-  const invCount = db.prepare('SELECT COUNT(*) as count FROM invoices').get().count;
-  if (invCount === 0) {
-    const insertInv = db.prepare(`
-      INSERT INTO invoices (
-        id, kodeTransaksi, nomorInvoice, nomorFakturPajak, tanggal,
-        customer, perusahaan, customerId, npwp, material, materialType,
-        volume, satuan, hargaSatuan, dpp, tarifPpn, ppn,
-        tarifPph, pph, amount, statusBayar, statusFaktur,
-        poNumber, nomorRO, periode, created_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `);
-
-    const initialInvoices = [
-      {
-        id: 'PPN-202611-001',
-        kodeTransaksi: 'INV/BAS/2026/11/001',
-        nomorInvoice: 'INV/BAS/2026/11/001',
-        nomorFakturPajak: '010.002-26.00000089',
-        tanggal: '2026-11-12',
-        customer: 'PT CHIYODA INTERNATIONAL INDONESIA',
-        customerId: 'cust-chiyoda',
-        npwp: '01.345.678.9-054.000',
-        material: 'Batu Split 1-2 (Proyek Smelter Freeport)',
-        materialType: 'Padat',
-        volume: 250,
-        satuan: 'm3',
-        hargaSatuan: 170000,
-        dpp: 42500000,
-        tarifPpn: 11,
-        ppn: 4675000,
-        tarifPph: 2.65,
-        pph: 1126250,
-        amount: 47175000,
-        statusBayar: 'Lunas',
-        statusFaktur: 'APPROVED DJP',
-        poNumber: 'PO-CH-112026-001',
-        nomorRO: 'RO-CH-112026-001',
-        periode: 'November 2026',
-        created_at: '2026-11-12 10:00:00'
-      },
-      {
-        id: 'PPN-202611-002',
-        kodeTransaksi: 'INV/BAS/2026/11/002',
-        nomorInvoice: 'INV/BAS/2026/11/002',
-        nomorFakturPajak: '010.002-26.00000090',
-        tanggal: '2026-11-10',
-        customer: 'PT WASKITA BETON PRECAST TBK',
-        customerId: 'cust-waskita',
-        npwp: '01.889.123.4-051.000',
-        material: 'Sirtu Urug Pilihan (Tol KLBM Ruas Bunder)',
-        materialType: 'Curah',
-        volume: 380,
-        satuan: 'm3',
-        hargaSatuan: 100000,
-        dpp: 38000000,
-        tarifPpn: 11,
-        ppn: 4180000,
-        tarifPph: 2.0,
-        pph: 760000,
-        amount: 42180000,
-        statusBayar: 'Belum Dibayar',
-        statusFaktur: 'APPROVED DJP',
-        poNumber: 'PO-WB-112026-002',
-        nomorRO: 'RO-WB-112026-002',
-        periode: 'November 2026',
-        created_at: '2026-11-10 14:30:00'
-      },
-      {
-        id: 'PPN-202611-003',
-        kodeTransaksi: 'INV/BAS/2026/11/003',
-        nomorInvoice: 'INV/BAS/2026/11/003',
-        nomorFakturPajak: '010.002-26.00000091',
-        tanggal: '2026-11-08',
-        customer: 'PT SEMEN INDONESIA (PERSERO) TBK',
-        customerId: 'cust-si',
-        npwp: '01.001.654.2-052.000',
-        material: 'Limestone Super Cor (Tuban Hub)',
-        materialType: 'Padat',
-        volume: 245,
-        satuan: 'm3',
-        hargaSatuan: 100000,
-        dpp: 24500000,
-        tarifPpn: 11,
-        ppn: 2695000,
-        tarifPph: 2.65,
-        pph: 649250,
-        amount: 27195000,
-        statusBayar: 'Lunas',
-        statusFaktur: 'APPROVED DJP',
-        poNumber: 'PO-SI-112026-003',
-        nomorRO: 'RO-SI-112026-003',
-        periode: 'November 2026',
-        created_at: '2026-11-08 09:15:00'
-      }
-    ];
-
-    for (const inv of initialInvoices) {
-      insertInv.run(
-        inv.id, inv.kodeTransaksi, inv.nomorInvoice, inv.nomorFakturPajak, inv.tanggal,
-        inv.customer, inv.customer, inv.customerId, inv.npwp, inv.material, inv.materialType,
-        inv.volume, inv.satuan, inv.hargaSatuan, inv.dpp, inv.tarifPpn, inv.ppn,
-        inv.tarifPph, inv.pph, inv.amount, inv.statusBayar, inv.statusFaktur,
-        inv.poNumber, inv.nomorRO, inv.periode, inv.created_at
-      );
-    }
-  }
-
-  // Seed pph23_records if empty
-  const pphCount = db.prepare('SELECT COUNT(*) as count FROM pph23_records').get().count;
-  if (pphCount === 0) {
-    const insertPph = db.prepare(`
-      INSERT INTO pph23_records (
-        id, tanggal, noBuktiPotong, noBkk, bkkId, vendor, vendorId,
-        npwpNik, objekPajak, kategori, tarif, dpp, potonganPph, nettoBkk, statusBupot, created_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `);
-
-    const initialPph = [
-      {
-        id: 'PPH-202611-001',
-        tanggal: '2026-11-11',
-        noBuktiPotong: 'BUPOT-23/BAS/2026/11/001',
-        noBkk: 'BKK/2026/11/0042',
-        bkkId: 'bkk-1',
-        vendor: 'UKHY DIAN',
-        vendorId: 'sup-1',
-        npwpNik: '3525011204850003',
-        objekPajak: 'Jasa Angkut Material Tambang',
-        kategori: 'Jasa Angkut (2.0%)',
-        tarif: 2.0,
-        dpp: 15407100,
-        potonganPph: 308142,
-        nettoBkk: 15098958,
-        statusBupot: 'TERBIT',
-        created_at: '2026-11-11 10:00:00'
-      },
-      {
-        id: 'PPH-202611-002',
-        tanggal: '2026-11-09',
-        noBuktiPotong: 'BUPOT-23/BAS/2026/11/002',
-        noBkk: 'BKK/2026/11/0043',
-        bkkId: 'bkk-2',
-        vendor: 'PT. TENANG JAYA SEJAHTERA',
-        vendorId: 'sup-2',
-        npwpNik: '02.451.980.1-604.000',
-        objekPajak: 'Bahan Galian Non-Logam (Limestone Padat)',
-        kategori: 'Galian Tambang Padat (2.65%)',
-        tarif: 2.65,
-        dpp: 22800000,
-        potonganPph: 604200,
-        nettoBkk: 22195800,
-        statusBupot: 'TERBIT',
-        created_at: '2026-11-09 11:30:00'
-      },
-      {
-        id: 'PPH-202611-003',
-        tanggal: '2026-11-07',
-        noBuktiPotong: 'BUPOT-23/BAS/2026/11/003',
-        noBkk: 'BKK/2026/11/0044',
-        bkkId: 'bkk-3',
-        vendor: 'PT SOYO APIK',
-        vendorId: 'sup-3',
-        npwpNik: '03.112.445.6-601.000',
-        objekPajak: 'Jasa Angkut Sirtu Gresik-Manyar',
-        kategori: 'Jasa Angkut (2.0%)',
-        tarif: 2.0,
-        dpp: 18416450,
-        potonganPph: 368329,
-        nettoBkk: 18048121,
-        statusBupot: 'TERBIT',
-        created_at: '2026-11-07 14:15:00'
-      },
-      {
-        id: 'PPH-202611-004',
-        tanggal: '2026-11-05',
-        noBuktiPotong: 'BUPOT-23/BAS/2026/11/004',
-        noBkk: 'BKK/2026/11/0045',
-        bkkId: 'bkk-4',
-        vendor: 'PAK TEGUH (BARU)',
-        vendorId: 'sup-4',
-        npwpNik: '01.992.331.0-602.000',
-        objekPajak: 'Batu Boulder Pondasi (Tambang Padat)',
-        kategori: 'Galian Tambang Padat (2.65%)',
-        tarif: 2.65,
-        dpp: 12500000,
-        potonganPph: 331250,
-        nettoBkk: 12168750,
-        statusBupot: 'TERBIT',
-        created_at: '2026-11-05 16:00:00'
-      },
-      {
-        id: 'PPH-202611-005',
-        tanggal: '2026-11-02',
-        noBuktiPotong: 'BUPOT-23/BAS/2026/11/005',
-        noBkk: 'BKK/2026/11/0046',
-        bkkId: 'bkk-5',
-        vendor: 'UKHY DIAN',
-        vendorId: 'sup-1',
-        npwpNik: '3525041008800002',
-        objekPajak: 'Jasa Angkut Abu Batu Tuban-Gresik',
-        kategori: 'Jasa Angkut (2.0%)',
-        tarif: 2.0,
-        dpp: 7800000,
-        potonganPph: 156000,
-        nettoBkk: 7644000,
-        statusBupot: 'TERBIT',
-        created_at: '2026-11-02 09:40:00'
-      },
-      {
-        id: 'PPH-202610-006',
-        tanggal: '2026-10-25',
-        noBuktiPotong: 'BUPOT-23/BAS/2026/10/012',
-        noBkk: 'BKK/2026/10/0038',
-        bkkId: 'bkk-6',
-        vendor: 'PAK TEGUH',
-        vendorId: 'sup-5',
-        npwpNik: '01.992.331.0-602.000',
-        objekPajak: 'Sirtu Urug (Galian Curah)',
-        kategori: 'Galian Tambang Curah (2.0%)',
-        tarif: 2.0,
-        dpp: 16200000,
-        potonganPph: 324000,
-        nettoBkk: 15876000,
-        statusBupot: 'TERBIT',
-        created_at: '2026-10-25 13:10:00'
-      }
-    ];
-
-    for (const p of initialPph) {
-      insertPph.run(
-        p.id, p.tanggal, p.noBuktiPotong, p.noBkk, p.bkkId, p.vendor, p.vendorId,
-        p.npwpNik, p.objekPajak, p.kategori, p.tarif, p.dpp, p.potonganPph, p.nettoBkk, p.statusBupot, p.created_at
-      );
-    }
-  }
-
-  // Seed pph21_records if empty
-  const pph21Count = db.prepare('SELECT COUNT(*) as count FROM pph21_records').get().count;
-  if (pph21Count === 0) {
-    const insertPph21 = db.prepare(`
-      INSERT INTO pph21_records (
-        id, tanggal, noBuktiPotong, noBkk, bkkId, vendor, vendorId,
-        npwpNik, objekPajak, kategori, tarif, dpp, potonganPph, nettoBkk, statusBupot, created_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `);
-
-    const initialPph21 = [
-      {
-        id: 'PPH21-202611-001',
-        tanggal: '2026-11-12',
-        noBuktiPotong: 'BUPOT-21/BAS/2026/11/001',
-        noBkk: 'BKK/2026/11/0042',
-        bkkId: 'bkk-1',
-        vendor: 'SUMARNO (Driver Tronton Hino)',
-        vendorId: 'driver-1',
-        npwpNik: '3525041008800002',
-        objekPajak: 'Upah Driver Ritase Material Tambang',
-        kategori: 'Pegawai Tidak Tetap / Tenaga Lepas',
-        tarif: 2.5,
-        dpp: 8500000,
-        potonganPph: 212500,
-        nettoBkk: 8287500,
-        statusBupot: 'TERBIT',
-        created_at: '2026-11-12 10:00:00'
-      },
-      {
-        id: 'PPH21-202611-002',
-        tanggal: '2026-11-10',
-        noBuktiPotong: 'BUPOT-21/BAS/2026/11/002',
-        noBkk: 'BKK/2026/11/0043',
-        bkkId: 'bkk-2',
-        vendor: 'UKHY DIAN (Driver Armada Tambang)',
-        vendorId: 'driver-2',
-        npwpNik: '3525011204850003',
-        objekPajak: 'Upah Pengemudi Tambang Limestone',
-        kategori: 'Pegawai Tidak Tetap / Tenaga Lepas',
-        tarif: 2.5,
-        dpp: 12400000,
-        potonganPph: 310000,
-        nettoBkk: 12090000,
-        statusBupot: 'TERBIT',
-        created_at: '2026-11-10 11:30:00'
-      },
-      {
-        id: 'PPH21-202611-003',
-        tanggal: '2026-11-08',
-        noBuktiPotong: 'BUPOT-21/BAS/2026/11/003',
-        noBkk: 'BKK/2026/11/0044',
-        bkkId: 'bkk-3',
-        vendor: 'BAMBANG HERMANTO (Mekanik Alat Berat)',
-        vendorId: 'mech-1',
-        npwpNik: '3525081405820001',
-        objekPajak: 'Jasa Tenaga Lepas Perawatan Dump Truck',
-        kategori: 'Tenaga Ahli / Jasa Lepas',
-        tarif: 5.0,
-        dpp: 6500000,
-        potonganPph: 325000,
-        nettoBkk: 6175000,
-        statusBupot: 'TERBIT',
-        created_at: '2026-11-08 14:15:00'
-      },
-      {
-        id: 'PPH21-202611-004',
-        tanggal: '2026-11-05',
-        noBuktiPotong: 'BUPOT-21/BAS/2026/11/004',
-        noBkk: 'BKK/2026/11/0045',
-        bkkId: 'bkk-4',
-        vendor: 'SUWANDI (Checker Quarry Manyar)',
-        vendorId: 'checker-1',
-        npwpNik: '3525021907860004',
-        objekPajak: 'Honorarium Pengawas & Checker Quarry',
-        kategori: 'Pegawai Tidak Tetap / Tenaga Lepas',
-        tarif: 2.5,
-        dpp: 4800000,
-        potonganPph: 120000,
-        nettoBkk: 4680000,
-        statusBupot: 'TERBIT',
-        created_at: '2026-11-05 16:00:00'
-      },
-      {
-        id: 'PPH21-202611-005',
-        tanggal: '2026-11-02',
-        noBuktiPotong: 'BUPOT-21/BAS/2026/11/005',
-        noBkk: 'BKK/2026/11/0046',
-        bkkId: 'bkk-5',
-        vendor: 'AGUS PRASETYO (Driver Dump Truck)',
-        vendorId: 'driver-3',
-        npwpNik: '3525032109880005',
-        objekPajak: 'Upah Pengemudi Angkut Sirtu Urug',
-        kategori: 'Pegawai Tidak Tetap / Tenaga Lepas',
-        tarif: 2.5,
-        dpp: 7200000,
-        potonganPph: 180000,
-        nettoBkk: 7020000,
-        statusBupot: 'TERBIT',
-        created_at: '2026-11-02 09:40:00'
-      }
-    ];
-
-    for (const p of initialPph21) {
-      insertPph21.run(
-        p.id, p.tanggal, p.noBuktiPotong, p.noBkk, p.bkkId, p.vendor, p.vendorId,
-        p.npwpNik, p.objekPajak, p.kategori, p.tarif, p.dpp, p.potonganPph, p.nettoBkk, p.statusBupot, p.created_at
-      );
-    }
-  }
-
-  // Ensure BKK has additional supplier records for supplier reporting
-  const moreBkk = [
-    {
-      id: 'bkk-4',
-      kodeTransaksi: 'TRX-202611-004',
-      tanggal: '2026-11-05',
-      perusahaan: 'UKHY DIAN',
-      material: 'SIRTU (Curah)',
-      ritaseCount: 2,
-      kubikasi: 58.4,
-      hargaSatuan: 50765,
-      amount: 2964676,
-      statusBayar: 'Lunas',
-      tanggalBayar: '2026-11-06',
-      rekeningTujuan: 'BCA 6150832452',
-      penerima: 'UKHY DIAN'
-    },
-    {
-      id: 'bkk-5',
-      kodeTransaksi: 'TRX-202611-005',
-      tanggal: '2026-11-09',
-      perusahaan: 'PT. TENANG JAYA SEJAHTERA',
-      material: 'LIMESTONE (Padat)',
-      ritaseCount: 3,
-      kubikasi: 85.0,
-      hargaSatuan: 38991,
-      amount: 3314235,
-      statusBayar: 'Lunas',
-      tanggalBayar: '2026-11-10',
-      rekeningTujuan: 'BCA 0503800800',
-      penerima: 'ARIF NURCAHYADI'
-    },
-    {
-      id: 'bkk-6',
-      kodeTransaksi: 'TRX-202611-006',
-      tanggal: '2026-11-11',
-      perusahaan: 'PT SOYO APIK',
-      material: 'SIRTU (Curah)',
-      ritaseCount: 2,
-      kubikasi: 60.12,
-      hargaSatuan: 50765,
-      amount: 3051992,
-      statusBayar: 'Belum Dibayar',
-      tanggalBayar: null,
-      rekeningTujuan: 'BCA 829-189-1888',
-      penerima: 'PT SOYO APIK'
-    },
-    {
-      id: 'bkk-7',
-      kodeTransaksi: 'TRX-202610-007',
-      tanggal: '2026-10-25',
-      perusahaan: 'PAK TEGUH',
-      material: 'BASE COURSE (Padat)',
-      ritaseCount: 4,
-      kubikasi: 110.5,
-      hargaSatuan: 40000,
-      amount: 4420000,
-      statusBayar: 'Lunas',
-      tanggalBayar: '2026-10-26',
-      rekeningTujuan: 'BCA 7415094256',
-      penerima: 'EKO WAHYUDI PRAYOGO'
-    },
-    {
-      id: 'bkk-lionwings-1',
-      kodeTransaksi: '2026-11-16 - RCP - 39ZN5',
-      tanggal: '2026-11-16',
-      perusahaan: 'LION WINGS, PT',
-      material: 'SIRTU',
-      ritaseCount: 5,
-      kubikasi: 105.64,
-      hargaSatuan: 120000,
-      amount: 12676800.00,
-      statusBayar: 'Belum Dibayar',
-      tanggalBayar: null,
-      rekeningTujuan: 'BCA - 7415428618',
-      penerima: 'PAK ADIT'
-    },
-    {
-      id: 'bkk-8',
-      kodeTransaksi: 'TRX-202611-008',
-      tanggal: '2026-11-14',
-      perusahaan: 'PAK TEGUH (BARU)',
-      material: 'BATU BOULDER (Padat)',
-      ritaseCount: 2,
-      kubikasi: 64.2,
-      hargaSatuan: 32580,
-      amount: 2091636,
-      statusBayar: 'Belum Dibayar',
-      tanggalBayar: null,
-      rekeningTujuan: 'BCA 7415250533',
-      penerima: 'EKO WAHYUDI PRAYOGO'
-    }
-  ];
-
-  const insertBkkStmt = db.prepare(`
-    INSERT INTO bkk (id, kodeTransaksi, tanggal, perusahaan, material, ritaseCount, kubikasi, hargaSatuan, amount, statusBayar, tanggalBayar, rekeningTujuan, penerima)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `);
-
-  for (const b of moreBkk) {
-    const exists = db.prepare('SELECT id FROM bkk WHERE id = ?').get(b.id);
-    if (!exists) {
-      insertBkkStmt.run(b.id, b.kodeTransaksi, b.tanggal, b.perusahaan, b.material, b.ritaseCount, b.kubikasi, b.hargaSatuan, b.amount, b.statusBayar, b.tanggalBayar, b.rekeningTujuan, b.penerima);
-    }
   }
 }
 

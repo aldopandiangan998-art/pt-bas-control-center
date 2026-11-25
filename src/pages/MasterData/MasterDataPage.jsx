@@ -34,6 +34,7 @@ import {
   TrendingUp,
   Layers,
   Box,
+  Package,
   Shield,
   MapPin,
   Sparkles,
@@ -188,27 +189,6 @@ export default function MasterDataPage() {
   } = useAuth();
   const { addToast } = useToast();
 
-  // Guard: Data Master hanya dapat diakses oleh Super Admin
-  if (!isSuperAdmin) {
-    return (
-      <div className="p-8 text-center font-mono space-y-4">
-        <div className="p-6 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-300 max-w-md mx-auto">
-          <Shield className="w-8 h-8 text-rose-400 mx-auto mb-3" />
-          <h2 className="text-base font-bold text-white mb-2">Akses Dibatasi</h2>
-          <p className="text-xs text-neutral-300">
-            Fitur Data Master hanya dapat diakses dan dikelola oleh Super Admin.
-          </p>
-          <button
-            onClick={() => navigate('/')}
-            className="mt-4 px-4 py-2 rounded-lg bg-[#F4511E] text-white text-xs font-bold cursor-pointer hover:bg-[#D84315] transition-colors"
-          >
-            Kembali ke Dashboard
-          </button>
-        </div>
-      </div>
-    );
-  }
-
   const {
     materials,
     suppliers,
@@ -226,6 +206,8 @@ export default function MasterDataPage() {
     addSupplier,
     updateSupplier,
     deleteSupplier,
+    fetchSupplierMaterials,
+    saveSupplierMaterials,
     toggleCustomerStatus,
     addCustomer,
     updateCustomer,
@@ -269,6 +251,7 @@ export default function MasterDataPage() {
     bank: 'BCA - BANK CENTRAL ASIA',
     noRekening: '',
     rekeningAtasNama: '',
+    materialIds: [],
   });
 
   const [selectedSupplier, setSelectedSupplier] = useState(null);
@@ -284,6 +267,32 @@ export default function MasterDataPage() {
     noRekening: '',
     rekeningAtasNama: '',
   });
+
+  const [supplierMaterialModalOpen, setSupplierMaterialModalOpen] = useState(false);
+  const [selectedSupplierForMaterials, setSelectedSupplierForMaterials] = useState(null);
+  const [supplierMaterialsMap, setSupplierMaterialsMap] = useState({});
+  const [loadingSupplierMaterials, setLoadingSupplierMaterials] = useState(false);
+  const [savingSupplierMaterials, setSavingSupplierMaterials] = useState(false);
+
+  const catalogEligibleMaterials = useMemo(() => {
+    return (materials || []).filter((m) => {
+      const isAktif = m.aktif === true || m.aktif === 1;
+      const isJasa =
+        String(m.category || '').toLowerCase() === 'jasa' ||
+        String(m.itemType || '').toUpperCase() === 'JASA_ANGKUT' ||
+        String(m.name || '').toUpperCase().includes('JASA ANGKUT');
+      return isAktif && !isJasa;
+    });
+  }, [materials]);
+
+  useEffect(() => {
+    if (selectedSupplier?.id) {
+      const fresh = (suppliers || []).find((s) => s.id === selectedSupplier.id);
+      if (fresh && fresh !== selectedSupplier) {
+        setSelectedSupplier(fresh);
+      }
+    }
+  }, [suppliers, selectedSupplier]);
 
   const [materialForm, setMaterialForm] = useState({
     name: '',
@@ -872,6 +881,7 @@ export default function MasterDataPage() {
       bank: 'BCA - BANK CENTRAL ASIA',
       noRekening: '',
       rekeningAtasNama: '',
+      materialIds: [],
     });
     setModalOpen(false);
   };
@@ -929,6 +939,74 @@ export default function MasterDataPage() {
     });
     setEditSupplierModal(false);
     setSelectedSupplier(null);
+  };
+
+  const handleOpenSupplierMaterials = async (sup) => {
+    setSelectedSupplierForMaterials(sup);
+    setSupplierMaterialModalOpen(true);
+    setLoadingSupplierMaterials(true);
+    try {
+      const existing = await fetchSupplierMaterials(sup.id);
+      const map = {};
+      catalogEligibleMaterials.forEach((m) => {
+        const found = existing.find((item) => String(item.materialId) === String(m.id));
+        if (found) {
+          map[m.id] = {
+            selected: true,
+            hargaBeliDefault: found.hargaBeliDefault !== undefined && found.hargaBeliDefault !== null
+              ? found.hargaBeliDefault
+              : (m.beli ?? 0),
+          };
+        } else {
+          map[m.id] = { selected: false, hargaBeliDefault: m.beli ?? 0 };
+        }
+      });
+      setSupplierMaterialsMap(map);
+    } catch (err) {
+      console.error('Error fetching supplier materials:', err);
+    } finally {
+      setLoadingSupplierMaterials(false);
+    }
+  };
+
+  const handleToggleSupplierMaterial = (materialId) => {
+    setSupplierMaterialsMap((prev) => ({
+      ...prev,
+      [materialId]: {
+        ...prev[materialId],
+        selected: !prev[materialId]?.selected,
+      },
+    }));
+  };
+
+  const handleChangeSupplierMaterialPrice = (materialId, price) => {
+    setSupplierMaterialsMap((prev) => ({
+      ...prev,
+      [materialId]: {
+        ...prev[materialId],
+        hargaBeliDefault: price,
+      },
+    }));
+  };
+
+  const handleSaveSupplierMaterials = async () => {
+    if (!selectedSupplierForMaterials) return;
+    setSavingSupplierMaterials(true);
+    try {
+      const itemsToSave = Object.entries(supplierMaterialsMap)
+        .filter(([_, val]) => val.selected)
+        .map(([matId, val]) => ({
+          materialId: matId,
+          hargaBeliDefault: Number(val.hargaBeliDefault) || 0,
+        }));
+      await saveSupplierMaterials(selectedSupplierForMaterials.id, itemsToSave);
+      setSupplierMaterialModalOpen(false);
+      setSelectedSupplierForMaterials(null);
+    } catch (err) {
+      console.error('Error saving supplier materials:', err);
+    } finally {
+      setSavingSupplierMaterials(false);
+    }
   };
 
   const handleSubmitMaterial = (e) => {
@@ -1642,6 +1720,27 @@ export default function MasterDataPage() {
     addToast(`Berhasil mengekspor ${rows.length} data ke CSV!`, 'success');
   };
 
+  // Guard: Data Master hanya dapat diakses oleh Super Admin
+  if (!isSuperAdmin) {
+    return (
+      <div className="p-8 text-center font-mono space-y-4">
+        <div className="p-6 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-300 max-w-md mx-auto">
+          <Shield className="w-8 h-8 text-rose-400 mx-auto mb-3" />
+          <h2 className="text-base font-bold text-white mb-2">Akses Dibatasi</h2>
+          <p className="text-xs text-neutral-300">
+            Fitur Data Master hanya dapat diakses dan dikelola oleh Super Admin.
+          </p>
+          <button
+            onClick={() => navigate('/')}
+            className="mt-4 px-4 py-2 rounded-lg bg-[#F4511E] text-white text-xs font-bold cursor-pointer hover:bg-[#D84315] transition-colors"
+          >
+            Kembali ke Dashboard
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4 pb-20 relative min-h-screen">
       {/* 1. Unified Master Page Header (Section 4.1) */}
@@ -1914,8 +2013,9 @@ export default function MasterDataPage() {
                                 title="Pilih semua supplier"
                               />
                             </th>
-                            <SortHeader field="status" label="Status" currentField={sortField} currentOrder={sortOrder} onSort={handleToggleSort} className="w-28" />
+                            <SortHeader field="status" label="Status" currentField={sortField} currentOrder={sortOrder} onSort={handleToggleSort} className="w-24" />
                             <SortHeader field="name" label="Nama Supplier" currentField={sortField} currentOrder={sortOrder} onSort={handleToggleSort} />
+                            <th className="p-3 font-mono text-[11px] text-neutral-400">Material yang Disuplai</th>
                             <SortHeader field="bank" label="Bank & No. Rekening" currentField={sortField} currentOrder={sortOrder} onSort={handleToggleSort} />
                             <SortHeader field="penerima" label="Penerima (a/n)" currentField={sortField} currentOrder={sortOrder} onSort={handleToggleSort} />
                             <th className="p-3 w-20">PKP</th>
@@ -1962,6 +2062,38 @@ export default function MasterDataPage() {
                                   </span>
                                 </div>
                               </td>
+                              <td className="p-3">
+                                {sup.materials && sup.materials.length > 0 ? (
+                                  <div className="flex flex-wrap items-center gap-1 max-w-[240px]">
+                                    {sup.materials.slice(0, 3).map((m) => (
+                                      <span
+                                        key={m.id || m.materialId}
+                                        className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/25 uppercase font-mono"
+                                      >
+                                        {m.name}
+                                      </span>
+                                    ))}
+                                    {sup.materials.length > 3 && (
+                                      <button
+                                        type="button"
+                                        onClick={() => handleOpenSupplierMaterials(sup)}
+                                        className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono text-neutral-400 bg-neutral-800 border border-neutral-700 hover:text-white cursor-pointer"
+                                        title={sup.materials.slice(3).map((m) => m.name).join(', ')}
+                                      >
+                                        +{sup.materials.length - 3}
+                                      </button>
+                                    )}
+                                  </div>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleOpenSupplierMaterials(sup)}
+                                    className="text-[11px] text-amber-500/70 hover:text-amber-400 underline decoration-dashed cursor-pointer font-mono"
+                                  >
+                                    + Atur Material
+                                  </button>
+                                )}
+                              </td>
                               <td className="p-3 font-mono text-neutral-300">
                                 <div className="flex items-center gap-1.5">
                                   <span className="font-semibold text-white">{sup.bank}</span>
@@ -1995,6 +2127,14 @@ export default function MasterDataPage() {
                               </td>
                               <td className="p-3 text-center">
                                 <div className="flex items-center justify-center gap-1.5">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleOpenSupplierMaterials(sup)}
+                                    className="p-1.5 rounded-md bg-amber-500/10 hover:bg-amber-500 text-amber-400 hover:text-black transition-all cursor-pointer border border-amber-500/30"
+                                    title="Katalog Material Supplier"
+                                  >
+                                    <Layers className="w-3.5 h-3.5" />
+                                  </button>
                                   <button
                                     type="button"
                                     onClick={() => handleOpenEditSupplier(sup)}
@@ -2120,15 +2260,66 @@ export default function MasterDataPage() {
                             </div>
                           </div>
 
-                          <div className="mt-4 pt-2.5 border-t border-[#1F2937] flex items-center justify-between text-xs">
-                            <button
-                              type="button"
-                              onClick={() => handleOpenEditSupplier(sup)}
-                              className="inline-flex items-center gap-1.5 text-[11px] text-[#FF7043] hover:text-white transition-colors cursor-pointer font-medium"
-                            >
-                              <Edit2 className="w-3 h-3" />
-                              <span>Ubah Data</span>
-                            </button>
+                          {/* Material disuplai preview */}
+                          <div className="mt-3 pt-2.5 border-t border-neutral-800/80">
+                            <div className="text-[10px] font-mono text-neutral-400 mb-1.5 flex items-center justify-between">
+                              <span className="flex items-center gap-1">
+                                <Layers className="w-3 h-3 text-amber-400" /> Material Disuplai:
+                              </span>
+                              <span className="text-amber-400 font-bold font-mono">
+                                {sup.materials?.length || 0} jenis
+                              </span>
+                            </div>
+                            <div className="flex flex-wrap gap-1">
+                              {(sup.materials || []).slice(0, 3).map((m) => (
+                                <span
+                                  key={m.id || m.materialId}
+                                  className="text-[9px] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/25 uppercase font-bold font-mono"
+                                >
+                                  {m.name}
+                                </span>
+                              ))}
+                              {(sup.materials || []).length > 3 && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenSupplierMaterials(sup)}
+                                  className="text-[9px] px-1.5 py-0.5 rounded bg-neutral-800 text-neutral-400 border border-neutral-700 cursor-pointer hover:text-white"
+                                >
+                                  +{(sup.materials || []).length - 3}
+                                </button>
+                              )}
+                              {(!sup.materials || sup.materials.length === 0) && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenSupplierMaterials(sup)}
+                                  className="text-[10px] text-amber-500/70 hover:text-amber-400 underline decoration-dashed cursor-pointer font-mono"
+                                >
+                                  + Atur katalog material
+                                </button>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="mt-3 pt-2.5 border-t border-[#1F2937] flex items-center justify-between text-xs">
+                            <div className="flex items-center gap-3">
+                              <button
+                                type="button"
+                                onClick={() => handleOpenSupplierMaterials(sup)}
+                                className="inline-flex items-center gap-1.5 text-[11px] text-amber-400 hover:text-white transition-colors cursor-pointer font-medium"
+                                title="Katalog Material"
+                              >
+                                <Layers className="w-3 h-3" />
+                                <span>Katalog</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleOpenEditSupplier(sup)}
+                                className="inline-flex items-center gap-1.5 text-[11px] text-[#FF7043] hover:text-white transition-colors cursor-pointer font-medium"
+                              >
+                                <Edit2 className="w-3 h-3" />
+                                <span>Ubah Data</span>
+                              </button>
+                            </div>
                             <Button
                               size="xs"
                               variant="ghost"
@@ -2244,9 +2435,10 @@ export default function MasterDataPage() {
                                 title="Pilih semua material"
                               />
                             </th>
-                            <SortHeader field="status" label="Status" currentField={sortField} currentOrder={sortOrder} onSort={handleToggleSort} className="w-28" />
+                            <SortHeader field="status" label="Status" currentField={sortField} currentOrder={sortOrder} onSort={handleToggleSort} className="w-24" />
                             <SortHeader field="name" label="Nama Material" currentField={sortField} currentOrder={sortOrder} onSort={handleToggleSort} />
                             <SortHeader field="category" label="Kategori & Satuan" currentField={sortField} currentOrder={sortOrder} onSort={handleToggleSort} />
+                            <th className="p-3 font-mono text-[11px] text-neutral-400">Supplier Penyedia</th>
                             <SortHeader field="beli" label="Harga Beli" currentField={sortField} currentOrder={sortOrder} onSort={handleToggleSort} align="right" />
                             <SortHeader field="jual" label="Harga Jual" currentField={sortField} currentOrder={sortOrder} onSort={handleToggleSort} align="right" />
                             <th className="p-3 text-center">PPH Rate</th>
@@ -2303,11 +2495,35 @@ export default function MasterDataPage() {
                                   </Badge>
                                 </div>
                               </td>
+                              <td className="p-3">
+                                {mat.suppliers && mat.suppliers.length > 0 ? (
+                                  <div className="flex flex-wrap items-center gap-1 max-w-[220px]">
+                                    {mat.suppliers.slice(0, 2).map((s) => (
+                                      <span
+                                        key={s.id || s.supplierId}
+                                        className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-500/10 text-blue-400 border border-blue-500/25 uppercase font-mono"
+                                      >
+                                        {s.name}
+                                      </span>
+                                    ))}
+                                    {mat.suppliers.length > 2 && (
+                                      <span
+                                        className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono text-neutral-400 bg-neutral-800 border border-neutral-700"
+                                        title={mat.suppliers.slice(2).map((s) => s.name).join(', ')}
+                                      >
+                                        +{mat.suppliers.length - 2} vendor
+                                      </span>
+                                    )}
+                                  </div>
+                                ) : (
+                                  <span className="text-[11px] text-neutral-500 italic">Belum terhubung</span>
+                                )}
+                              </td>
                               <td className="p-3 text-right font-mono text-neutral-300">
-                                {mat.beli.toFixed(1)}
+                                {Number(mat.beli || 0).toFixed(1)}
                               </td>
                               <td className="p-3 text-right font-mono font-bold text-amber-400">
-                                {mat.jual.toFixed(1)}
+                                {Number(mat.jual || 0).toFixed(1)}
                               </td>
                               <td className="p-3 text-center">
                                 <span className="font-mono text-xs text-neutral-300">{mat.pphRate}%</span>
@@ -2406,11 +2622,11 @@ export default function MasterDataPage() {
                             <div className="mt-2.5 grid grid-cols-2 gap-2 p-2 rounded-lg bg-black/25 border border-white/5 text-xs font-mono">
                               <div>
                                 <span className="text-[10px] text-neutral-400 block uppercase">Harga Beli</span>
-                                <span className="text-white font-medium">{mat.beli.toFixed(1)}</span>
+                                <span className="text-white font-medium">{Number(mat.beli || 0).toFixed(1)}</span>
                               </div>
                               <div>
                                 <span className="text-[10px] text-neutral-400 block uppercase">Harga Jual</span>
-                                <span className="text-amber-400 font-bold">{mat.jual.toFixed(1)}</span>
+                                <span className="text-amber-400 font-bold">{Number(mat.jual || 0).toFixed(1)}</span>
                               </div>
                             </div>
 
@@ -2421,6 +2637,36 @@ export default function MasterDataPage() {
                               <Badge size="xs" variant="timber">
                                 {mat.satuan}
                               </Badge>
+                            </div>
+
+                            {/* Supplier list */}
+                            <div className="mt-2.5 pt-2 border-t border-white/5">
+                              <div className="text-[10px] text-neutral-400 mb-1 flex items-center gap-1 font-mono">
+                                <Truck className="w-3 h-3 text-sky-400" />
+                                <span>Supplier Penyedia ({mat.suppliers?.length || 0}):</span>
+                              </div>
+                              <div className="flex items-center gap-1 flex-wrap">
+                                {mat.suppliers && mat.suppliers.length > 0 ? (
+                                  <>
+                                    {mat.suppliers.slice(0, 3).map((s) => (
+                                      <span
+                                        key={s.id || s.supplierId}
+                                        className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-medium bg-sky-500/10 text-sky-300 border border-sky-500/20 truncate max-w-[120px]"
+                                        title={s.name}
+                                      >
+                                        {s.name}
+                                      </span>
+                                    ))}
+                                    {mat.suppliers.length > 3 && (
+                                      <span className="text-[9px] text-neutral-400 font-mono">
+                                        +{mat.suppliers.length - 3}
+                                      </span>
+                                    )}
+                                  </>
+                                ) : (
+                                  <span className="text-[10px] text-neutral-500 italic">Belum terhubung ke supplier</span>
+                                )}
+                              </div>
                             </div>
                           </div>
 
@@ -4553,6 +4799,49 @@ export default function MasterDataPage() {
             />
           </div>
 
+          <div className="space-y-2 pt-3 border-t border-[#24282C]">
+            <div className="flex items-center justify-between">
+              <div className="text-[11px] font-bold text-neutral-400 uppercase tracking-wider font-mono">
+                Material yang Disuplai (Opsional)
+              </div>
+              <span className="text-[10px] text-neutral-500 font-mono">
+                {supplierForm.materialIds?.length || 0} dipilih
+              </span>
+            </div>
+            <p className="text-[11px] text-neutral-400">
+              Pilih material tambang yang disuplai oleh vendor ini. Harga beli khusus dapat diatur lebih lanjut via Katalog Material.
+            </p>
+            <div className="grid grid-cols-2 gap-2 max-h-36 overflow-y-auto p-2 bg-[#12161A] border border-[#24282C] rounded-lg">
+              {catalogEligibleMaterials.map((m) => {
+                const isChecked = supplierForm.materialIds?.includes(m.id);
+                return (
+                  <label
+                    key={m.id}
+                    className={`flex items-center gap-2 p-1.5 rounded-md border text-xs cursor-pointer transition-colors ${
+                      isChecked
+                        ? 'bg-[#F4511E]/15 border-[#F4511E]/40 text-white'
+                        : 'bg-[#181B1E] border-white/5 text-neutral-300 hover:border-white/20'
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={!!isChecked}
+                      onChange={() => {
+                        const current = supplierForm.materialIds || [];
+                        const next = isChecked
+                          ? current.filter((id) => id !== m.id)
+                          : [...current, m.id];
+                        setSupplierForm({ ...supplierForm, materialIds: next });
+                      }}
+                      className="rounded border-[#2D3339] text-[#F4511E] focus:ring-0 cursor-pointer"
+                    />
+                    <span className="truncate font-medium">{m.name}</span>
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+
           <div className="pt-3 border-t border-[#24282C] flex justify-end gap-2">
             <Button variant="ghost" onClick={() => setModalOpen(false)}>
               Batal
@@ -4766,6 +5055,49 @@ export default function MasterDataPage() {
             />
           </div>
 
+          {/* Section: Material yang Disuplai */}
+          <div className="space-y-2 pt-3 border-t border-[#24282C]">
+            <div className="flex items-center justify-between">
+              <div className="text-[11px] font-bold text-neutral-400 uppercase tracking-wider font-mono">
+                Katalog Material Vendor
+              </div>
+              <Button
+                type="button"
+                size="xs"
+                variant="outline"
+                icon={Package}
+                onClick={() => {
+                  setEditSupplierModal(false);
+                  if (selectedSupplier) {
+                    handleOpenSupplierMaterials(selectedSupplier);
+                  }
+                }}
+                className="text-amber-400 border-amber-500/30 hover:bg-amber-500/10 cursor-pointer text-xs"
+              >
+                Kelola Katalog Material
+              </Button>
+            </div>
+            <div className="p-2.5 bg-[#12161A] border border-[#24282C] rounded-lg">
+              {selectedSupplier?.materials && selectedSupplier.materials.length > 0 ? (
+                <div className="flex flex-wrap gap-1.5">
+                  {selectedSupplier.materials.map((m) => (
+                    <span
+                      key={m.id || m.materialId}
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-mono font-medium bg-amber-500/15 text-amber-300 border border-amber-500/30"
+                    >
+                      <Package className="w-3 h-3 text-amber-400" />
+                      {m.name} {m.hargaBeliDefault ? `(Rp ${Number(m.hargaBeliDefault).toLocaleString('id-ID')})` : ''}
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs text-neutral-400 italic">
+                  Belum ada material yang dikaitkan ke vendor ini. Klik "Kelola Katalog Material" di atas untuk menghubungkan material.
+                </p>
+              )}
+            </div>
+          </div>
+
           <div className="pt-3 border-t border-[#24282C] flex justify-end gap-2">
             <Button
               variant="ghost"
@@ -4781,6 +5113,114 @@ export default function MasterDataPage() {
             </Button>
           </div>
         </form>
+      </Modal>
+
+      {/* ======================================================== */}
+      {/* MODAL: KATALOG MATERIAL SUPPLIER */}
+      {/* ======================================================== */}
+      <Modal
+        isOpen={supplierMaterialModalOpen}
+        onClose={() => {
+          setSupplierMaterialModalOpen(false);
+          setSelectedSupplierForMaterials(null);
+        }}
+        title={`Katalog Material - ${selectedSupplierForMaterials?.name || 'Supplier'}`}
+        subtitle="Pilih material tambang yang disuplai oleh vendor ini & tetapkan harga beli default"
+      >
+        <div className="p-4 space-y-4">
+          {loadingSupplierMaterials ? (
+            <div className="py-12 text-center text-neutral-400 font-mono text-xs">
+              Memuat data katalog material...
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <div className="text-xs text-neutral-400 bg-neutral-900/60 p-2.5 rounded-lg border border-neutral-800">
+                Pilih material yang disuplai oleh <strong className="text-white">{selectedSupplierForMaterials?.name}</strong>. Saat membuat RO baru, hanya material yang dicentang di sini yang dapat dipilih untuk supplier ini.
+              </div>
+
+              <div className="max-h-[50vh] overflow-y-auto space-y-2 pr-1">
+                {catalogEligibleMaterials.length === 0 ? (
+                  <div className="py-8 text-center text-neutral-400 font-mono text-xs border border-dashed border-neutral-800 rounded-lg">
+                    Belum ada material tambang aktif di Data Material.
+                  </div>
+                ) : (
+                  catalogEligibleMaterials.map((m) => {
+                    const state = supplierMaterialsMap[m.id] || { selected: false, hargaBeliDefault: m.beli ?? 0 };
+                    return (
+                      <div
+                        key={m.id}
+                        className={`p-3 rounded-lg border transition-all flex items-center justify-between gap-3 ${
+                          state.selected
+                            ? 'bg-amber-500/5 border-amber-500/30'
+                            : 'bg-neutral-900/30 border-neutral-800 opacity-60'
+                        }`}
+                      >
+                        <label className="flex items-center gap-3 cursor-pointer flex-1">
+                          <input
+                            type="checkbox"
+                            checked={state.selected}
+                            onChange={() => handleToggleSupplierMaterial(m.id)}
+                            className="w-4 h-4 rounded border-neutral-700 text-amber-500 focus:ring-amber-500 cursor-pointer"
+                          />
+                          <div>
+                            <div className="text-xs font-bold text-white uppercase">{m.name}</div>
+                            <div className="text-[10px] text-neutral-400 font-mono">
+                              Kategori: {m.category || 'Curah'} | Satuan: {m.satuan || m.defaultUnit || 'm3'}
+                            </div>
+                          </div>
+                        </label>
+
+                        {state.selected && (
+                          <div className="w-40 shrink-0">
+                            <label className="text-[10px] text-neutral-400 font-mono block mb-1">
+                              Harga Beli Default (Rp)
+                            </label>
+                            <input
+                              type="number"
+                              min="0"
+                              value={state.hargaBeliDefault}
+                              onChange={(e) => handleChangeSupplierMaterialPrice(m.id, e.target.value)}
+                              className="w-full bg-[#181B1E] border border-neutral-700 rounded px-2.5 py-1 text-xs text-white font-mono focus:border-amber-500 focus:outline-none"
+                              placeholder="Harga Beli"
+                            />
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+
+              <div className="pt-3 border-t border-[#24282C] flex items-center justify-between">
+                <div className="text-[11px] font-mono text-neutral-400">
+                  {Object.values(supplierMaterialsMap).filter((v) => v.selected).length} material terpilih
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setSupplierMaterialModalOpen(false);
+                      setSelectedSupplierForMaterials(null);
+                    }}
+                  >
+                    Batal
+                  </Button>
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    icon={Save}
+                    isLoading={savingSupplierMaterials}
+                    onClick={handleSaveSupplierMaterials}
+                    className="bg-amber-600 hover:bg-amber-700 text-white"
+                  >
+                    Simpan Katalog
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
       </Modal>
 
       {/* ======================================================== */}

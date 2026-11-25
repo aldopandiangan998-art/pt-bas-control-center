@@ -23,7 +23,7 @@ import { useData } from '../../context/DataContext';
 import { useToast } from '../../context/ToastContext';
 import { useApp } from '../../context/AppContext';
 import { calculateKubikasi, formatVolume } from '../../utils/formatters';
-import TruckVisualizer from '../../components/common/TruckVisualizer';
+import TruckVisualizer, { getTruckClassification } from '../../components/common/TruckVisualizer';
 import { Button, Badge, Card, Input, Select } from '../../components/ui';
 
 export default function SuratJalanPage() {
@@ -462,6 +462,11 @@ export default function SuratJalanPage() {
     );
   }, [formData.panjangCm, formData.lebarCm, formData.tinggiCm, formData.koreksiTinggiCm]);
 
+  // Default truck classification strictly derived from default dimensions (p, l, t); adjusting koreksiCm does not alter this
+  const selectedArmadaClassification = useMemo(() => {
+    return getTruckClassification(formData.panjangCm, formData.lebarCm, formData.tinggiCm);
+  }, [formData.panjangCm, formData.lebarCm, formData.tinggiCm]);
+
   const handleKoreksiChange = (delta) => {
     setFormData((prev) => ({
       ...prev,
@@ -470,6 +475,9 @@ export default function SuratJalanPage() {
   };
 
   const handleApplyPreset = (p, l, t) => {
+    // If a vehicle plate is selected, default classification cannot be changed manually
+    if (formData.nomorPolisi) return;
+
     setFormData((prev) => ({
       ...prev,
       panjangCm: p,
@@ -578,7 +586,9 @@ export default function SuratJalanPage() {
       nomorRO: finalRoNumber,
       preOrderId: currentPo?.id,
       material: selectedMat?.name || 'SIRTU',
+      volumeDefault: kubikasi.volumeDefault,
       volumeAkhir: kubikasi.volumeAkhir,
+      klasifikasiDefault: selectedArmadaClassification?.name || null,
       driver: 'Supir Armada Terjadwal',
     });
 
@@ -973,65 +983,120 @@ export default function SuratJalanPage() {
                 </div>
 
                 {/* 3 Dimension Inputs: P, L, T */}
+                {Boolean(formData.nomorPolisi) && (
+                  <div className={`flex items-center justify-between px-3 py-2 rounded-lg border text-xs font-mono transition-colors ${
+                    isDark ? 'bg-[#121417] border-[#252A30] text-neutral-300' : 'bg-slate-100 border-slate-200 text-slate-700'
+                  }`}>
+                    <div className="flex items-center gap-2">
+                      <Lock className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                      <span>
+                        Klasifikasi Default: <strong className={isDark ? 'text-white' : 'text-slate-900'}>{selectedArmadaClassification?.name || 'Armada Standar'}</strong>
+                      </span>
+                    </div>
+                    <span className="text-[10px] font-bold text-emerald-400 bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-800/50">
+                      Otomatis ({formData.nomorPolisi})
+                    </span>
+                  </div>
+                )}
+
                 <div className="grid grid-cols-3 gap-2">
-                  <div className="bg-[#181B1E] border border-[#2B3036] rounded-md p-2 text-center">
-                    <span className="block text-[10px] text-neutral-400 mb-0.5">Panjang (P) *</span>
+                  <div className={`border rounded-md p-2 text-center transition-colors ${
+                    formData.nomorPolisi
+                      ? isDark ? 'bg-[#141619] border-[#22262B]' : 'bg-slate-100 border-slate-200'
+                      : isDark ? 'bg-[#181B1E] border-[#2B3036]' : 'bg-white border-slate-300'
+                  }`}>
+                    <span className="block text-[10px] text-neutral-400 mb-0.5 flex items-center justify-center gap-1">
+                      <span>Panjang (P) *</span>
+                      {formData.nomorPolisi && <Lock className="w-2.5 h-2.5 text-amber-500/80" />}
+                    </span>
                     <div className="flex items-center justify-center gap-1 font-mono font-bold text-neutral-100 text-sm">
                       <input
                         type="number"
                         placeholder="0"
+                        readOnly={Boolean(formData.nomorPolisi)}
+                        disabled={Boolean(formData.nomorPolisi)}
                         value={formData.panjangCm === '' ? '' : formData.panjangCm}
                         onFocus={(e) => {
                           if (e.target.value === '0') e.target.select();
                         }}
                         onChange={(e) => {
+                          if (formData.nomorPolisi) return;
                           const raw = e.target.value;
                           const clean = raw === '' ? '' : raw.replace(/^0+(?=\d)/, '');
                           setFormData({ ...formData, panjangCm: clean });
                         }}
-                        className="w-16 bg-transparent text-center focus:outline-none border-b border-[#3E454D] focus:border-[#F4511E]"
+                        className={`w-16 bg-transparent text-center focus:outline-none border-b border-[#3E454D] ${
+                          formData.nomorPolisi ? 'cursor-not-allowed text-neutral-400 opacity-80' : 'focus:border-[#F4511E]'
+                        }`}
+                        title={formData.nomorPolisi ? 'Dimensi panjang bak otomatis diatur dari armada terdaftar' : 'Masukkan panjang bak (cm)'}
                       />
                       <span className="text-[10px] text-neutral-500 font-normal">cm</span>
                     </div>
                   </div>
 
-                  <div className="bg-[#181B1E] border border-[#2B3036] rounded-md p-2 text-center">
-                    <span className="block text-[10px] text-neutral-400 mb-0.5">Lebar (L) *</span>
+                  <div className={`border rounded-md p-2 text-center transition-colors ${
+                    formData.nomorPolisi
+                      ? isDark ? 'bg-[#141619] border-[#22262B]' : 'bg-slate-100 border-slate-200'
+                      : isDark ? 'bg-[#181B1E] border-[#2B3036]' : 'bg-white border-slate-300'
+                  }`}>
+                    <span className="block text-[10px] text-neutral-400 mb-0.5 flex items-center justify-center gap-1">
+                      <span>Lebar (L) *</span>
+                      {formData.nomorPolisi && <Lock className="w-2.5 h-2.5 text-amber-500/80" />}
+                    </span>
                     <div className="flex items-center justify-center gap-1 font-mono font-bold text-neutral-100 text-sm">
                       <input
                         type="number"
                         placeholder="0"
+                        readOnly={Boolean(formData.nomorPolisi)}
+                        disabled={Boolean(formData.nomorPolisi)}
                         value={formData.lebarCm === '' ? '' : formData.lebarCm}
                         onFocus={(e) => {
                           if (e.target.value === '0') e.target.select();
                         }}
                         onChange={(e) => {
+                          if (formData.nomorPolisi) return;
                           const raw = e.target.value;
                           const clean = raw === '' ? '' : raw.replace(/^0+(?=\d)/, '');
                           setFormData({ ...formData, lebarCm: clean });
                         }}
-                        className="w-16 bg-transparent text-center focus:outline-none border-b border-[#3E454D] focus:border-[#F4511E]"
+                        className={`w-16 bg-transparent text-center focus:outline-none border-b border-[#3E454D] ${
+                          formData.nomorPolisi ? 'cursor-not-allowed text-neutral-400 opacity-80' : 'focus:border-[#F4511E]'
+                        }`}
+                        title={formData.nomorPolisi ? 'Dimensi lebar bak otomatis diatur dari armada terdaftar' : 'Masukkan lebar bak (cm)'}
                       />
                       <span className="text-[10px] text-neutral-500 font-normal">cm</span>
                     </div>
                   </div>
 
-                  <div className="bg-[#181B1E] border border-[#2B3036] rounded-md p-2 text-center">
-                    <span className="block text-[10px] text-neutral-400 mb-0.5">Tinggi (T) *</span>
+                  <div className={`border rounded-md p-2 text-center transition-colors ${
+                    formData.nomorPolisi
+                      ? isDark ? 'bg-[#141619] border-[#22262B]' : 'bg-slate-100 border-slate-200'
+                      : isDark ? 'bg-[#181B1E] border-[#2B3036]' : 'bg-white border-slate-300'
+                  }`}>
+                    <span className="block text-[10px] text-neutral-400 mb-0.5 flex items-center justify-center gap-1">
+                      <span>Tinggi (T) *</span>
+                      {formData.nomorPolisi && <Lock className="w-2.5 h-2.5 text-amber-500/80" />}
+                    </span>
                     <div className="flex items-center justify-center gap-1 font-mono font-bold text-neutral-100 text-sm">
                       <input
                         type="number"
                         placeholder="0"
+                        readOnly={Boolean(formData.nomorPolisi)}
+                        disabled={Boolean(formData.nomorPolisi)}
                         value={formData.tinggiCm === '' ? '' : formData.tinggiCm}
                         onFocus={(e) => {
                           if (e.target.value === '0') e.target.select();
                         }}
                         onChange={(e) => {
+                          if (formData.nomorPolisi) return;
                           const raw = e.target.value;
                           const clean = raw === '' ? '' : raw.replace(/^0+(?=\d)/, '');
                           setFormData({ ...formData, tinggiCm: clean });
                         }}
-                        className="w-16 bg-transparent text-center focus:outline-none border-b border-[#3E454D] focus:border-[#F4511E]"
+                        className={`w-16 bg-transparent text-center focus:outline-none border-b border-[#3E454D] ${
+                          formData.nomorPolisi ? 'cursor-not-allowed text-neutral-400 opacity-80' : 'focus:border-[#F4511E]'
+                        }`}
+                        title={formData.nomorPolisi ? 'Dimensi tinggi bak otomatis diatur dari armada terdaftar' : 'Masukkan tinggi bak (cm)'}
                       />
                       <span className="text-[10px] text-neutral-500 font-normal">cm</span>
                     </div>
@@ -1042,18 +1107,38 @@ export default function SuratJalanPage() {
                 <div className="grid grid-cols-2 gap-2 pt-1">
                   <div className={`border rounded-md p-2.5 transition-colors ${isDark ? 'bg-[#181B1E] border-[#2B3036]' : 'bg-slate-50 border-slate-200'
                     }`}>
-                    <span className={`block text-[10px] mb-0.5 ${isDark ? 'text-neutral-400' : 'text-slate-500'}`}>Kubikasi Default</span>
+                    <div className="flex items-center justify-between mb-0.5">
+                      <span className={`block text-[10px] ${isDark ? 'text-neutral-400' : 'text-slate-500'}`}>Kubikasi Default</span>
+                      {selectedArmadaClassification && (
+                        <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-black/40 border border-[#2E3339] text-neutral-300">
+                          {selectedArmadaClassification.name}
+                        </span>
+                      )}
+                    </div>
                     <div className={`text-base font-bold font-mono ${isDark ? 'text-neutral-300' : 'text-slate-800'}`}>
                       {kubikasi.volumeDefault} <span className={`text-[10px] font-normal ${isDark ? 'text-neutral-500' : 'text-slate-500'}`}>m³</span>
                     </div>
+                    <span className="text-[10px] text-neutral-500 font-mono block mt-0.5">
+                      P &times; L &times; T (Tetap / Default)
+                    </span>
                   </div>
 
                   <div className={`border rounded-md p-2.5 transition-colors ${isDark ? 'bg-[#1C1511] border-[#F4511E]/40' : 'bg-orange-50/70 border-orange-200'
                     }`}>
-                    <span className={`block text-[10px] mb-0.5 font-medium ${isDark ? 'text-orange-400' : 'text-orange-600'}`}>Kubikasi Akhir</span>
+                    <div className="flex items-center justify-between mb-0.5">
+                      <span className={`block text-[10px] font-medium ${isDark ? 'text-orange-400' : 'text-orange-600'}`}>Kubikasi Akhir</span>
+                      {formData.koreksiTinggiCm !== 0 && (
+                        <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-[#F4511E]/20 text-[#F4511E] font-bold">
+                          K: {formData.koreksiTinggiCm > 0 ? `+${formData.koreksiTinggiCm}` : formData.koreksiTinggiCm} cm
+                        </span>
+                      )}
+                    </div>
                     <div className="text-base font-bold font-mono text-[#F4511E]">
                       {kubikasi.volumeAkhir} <span className={`text-[10px] font-normal ${isDark ? 'text-orange-400' : 'text-orange-600'}`}>m³</span>
                     </div>
+                    <span className="text-[10px] text-neutral-400 font-mono block mt-0.5">
+                      P &times; L &times; TK ({kubikasi.tinggiHasilKoreksi} cm)
+                    </span>
                   </div>
                 </div>
               </div>
@@ -1108,6 +1193,8 @@ export default function SuratJalanPage() {
               tinggiCm={Number(formData.tinggiCm) || 0}
               koreksiCm={formData.koreksiTinggiCm}
               onApplyPreset={handleApplyPreset}
+              isLocked={Boolean(formData.nomorPolisi)}
+              selectedNopol={formData.nomorPolisi}
             />
 
             <Card className={`p-4 space-y-3 shadow-md border transition-colors ${isDark ? 'bg-[#14171A] border-[#22262A]' : 'bg-white border-slate-200'
@@ -1129,6 +1216,13 @@ export default function SuratJalanPage() {
                   }`}>
                   <span className={isDark ? 'text-neutral-500' : 'text-slate-500'}>Nopol Armada:</span>
                   <span className={`font-bold ${isDark ? 'text-neutral-200' : 'text-slate-900'}`}>{formData.nomorPolisi || '-'}</span>
+                </div>
+                <div className={`flex justify-between py-1 border-b ${isDark ? 'border-[#202326]' : 'border-slate-200'
+                  }`}>
+                  <span className={isDark ? 'text-neutral-500' : 'text-slate-500'}>Klasifikasi Default:</span>
+                  <span className={`font-semibold font-mono ${isDark ? 'text-neutral-200' : 'text-slate-900'}`}>
+                    {selectedArmadaClassification?.name || '-'} ({kubikasi.volumeDefault} m³)
+                  </span>
                 </div>
                 <div className={`flex justify-between py-1 border-b ${isDark ? 'border-[#202326]' : 'border-slate-200'
                   }`}>

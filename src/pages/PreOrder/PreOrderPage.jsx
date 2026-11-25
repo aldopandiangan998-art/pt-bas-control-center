@@ -37,7 +37,7 @@ import {
   Edit3,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-import { useData, generateNomorRO } from '../../context/DataContext';
+import { useData, generateNomorRO as helperGenerateNomorRO } from '../../context/DataContext';
 import { useToast } from '../../context/ToastContext';
 import { useApp } from '../../context/AppContext';
 import { DEFAULT_MATERIALS } from '../../utils/constants';
@@ -98,7 +98,7 @@ export const SATUAN_OPTIONS = [
 
 /* ─────────────────────────── helpers ─────────────────────────── */
 function mkNomorRO(customer, existingRos = [], customers = []) {
-  return generateNomorRO(customer, existingRos, new Date(), customers);
+  return helperGenerateNomorRO(customer, existingRos, new Date(), customers);
 }
 
 function createItemFromMaterial(mat, existingId = null, defaultSatuan = 'm³') {
@@ -729,7 +729,7 @@ export default function PreOrderPage() {
         // Generated nomor RO if not explicitly stored
         const genNomorRO =
           !po.nomorRO && !po.nomorRo && generateNomorRO
-            ? generateNomorRO(po.customer, safePreOrders, po.tanggal, customers)
+            ? generateNomorRO(po.customer, po.tanggal)
             : '';
 
         // Status aliases in Indonesian and English
@@ -948,7 +948,8 @@ export default function PreOrderPage() {
     const list = [];
     // 1. Dari data PO / Received Order yang ada (PO material aktual)
     safePreOrders.forEach((po) => {
-      const labelPO = po.nomorPo || po.nomorRO || po.id;
+      const rawLabel = po.nomorPo || po.nomorRO || po.id || '';
+      const labelPO = String(rawLabel);
       const matName = po.materialName || po.items?.[0]?.nama || 'Material';
       const u = po.satuan || 'm³';
       list.push({
@@ -1260,7 +1261,7 @@ export default function PreOrderPage() {
         materialId: po.materialId,
         materialName: po.materialName,
         jenis: po.jenisRO || po.jenis || 'Jasa Angkut + Material',
-        nomorRo: po.nomorRO || po.nomorRo || (generateNomorRO ? generateNomorRO(po.customer, preOrders, po.tanggal, customers) : ''),
+        nomorRo: po.nomorRO || po.nomorRo || (generateNomorRO ? generateNomorRO(po.customer, po.tanggal) : ''),
         isPpn: po.jenisWajibPajak === 'PKP',
       },
     });
@@ -1371,36 +1372,16 @@ export default function PreOrderPage() {
               {/* Row 1: Search bar (prominent & primary) + Actions */}
               <div className="flex flex-col md:flex-row md:items-center gap-2.5">
                 {/* Search input — Dominant */}
-                <div className="relative flex-1">
-                  <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none" />
-                  <input
+                <div className="flex-1">
+                  <SearchBar
                     ref={searchInputRef}
-                    type="text"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Escape') setSearchQuery('');
-                    }}
+                    onClear={() => setSearchQuery('')}
                     placeholder="Cari nomor RO, PO customer, nama customer, material, status, tanggal..."
-                    className="w-full bg-[#1C1F24] border border-[#2B3037] focus:border-[#F4511E] focus:ring-1 focus:ring-[#F4511E]/30 rounded-xl pl-10 pr-28 py-2.5 text-xs text-white placeholder-neutral-500 focus:outline-none transition-all shadow-inner font-mono"
+                    shortcut="/"
+                    size="md"
                   />
-                  <div className="absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
-                    {searchQuery.trim() && (
-                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-[#F4511E]/10 text-[#F4511E] border border-[#F4511E]/30 hidden sm:inline">
-                        {filteredPreOrders.length} ditemukan
-                      </span>
-                    )}
-                    {searchQuery && (
-                      <button
-                        type="button"
-                        onClick={() => setSearchQuery('')}
-                        className="text-neutral-400 hover:text-white p-1 rounded-md hover:bg-white/10 transition-colors cursor-pointer"
-                        title="Hapus pencarian (Esc)"
-                      >
-                        <X className="w-3.5 h-3.5" />
-                      </button>
-                    )}
-                  </div>
                 </div>
 
                 {/* Quick Controls: Customer dropdown, Filter toggle, Date toggle, Refresh, View toggle */}
@@ -1468,23 +1449,13 @@ export default function PreOrderPage() {
               <div className="flex items-center justify-between text-xs text-neutral-400 pt-1 border-t border-[#1F2329] flex-wrap gap-2">
                 <div className="flex items-center gap-2">
                   {filteredPreOrders.length > 0 && (
-                    <button
-                      type="button"
-                      onClick={handleSelectAll}
-                      className={`w-4 h-4 rounded border flex items-center justify-center transition-colors cursor-pointer shrink-0 ${
-                        selectedIds.size > 0
-                          ? 'bg-[#F4511E] border-[#F4511E] text-white shadow-xs'
-                          : 'border-neutral-500 hover:border-neutral-300 bg-transparent'
-                      }`}
+                    <Checkbox
+                      checked={selectedIds.size === filteredPreOrders.length && filteredPreOrders.length > 0}
+                      indeterminate={selectedIds.size > 0 && selectedIds.size < filteredPreOrders.length}
+                      onChange={handleSelectAll}
                       title={selectedIds.size === filteredPreOrders.length ? 'Batal pilih semua' : 'Pilih semua'}
-                    >
-                      {selectedIds.size === filteredPreOrders.length && filteredPreOrders.length > 0 && (
-                        <Check className="w-2.5 h-2.5 stroke-[3]" />
-                      )}
-                      {selectedIds.size > 0 && selectedIds.size < filteredPreOrders.length && (
-                        <Minus className="w-2.5 h-2.5 stroke-[3]" />
-                      )}
-                    </button>
+                      size="sm"
+                    />
                   )}
                   <span>
                     Menampilkan <strong className="text-white">{filteredPreOrders.length}</strong> dari {safePreOrders.length} Received Order
@@ -1698,7 +1669,6 @@ export default function PreOrderPage() {
                       {/* ── Group Header Row ── */}
                       <div className="flex items-center gap-2 px-3 py-2.5 bg-[#14171B] border-b border-[#20242A]">
                         {/* Group select checkbox */}
-                        {/* Group select checkbox */}
                         <Checkbox
                           checked={allGroupSelected}
                           indeterminate={!allGroupSelected && someGroupSelected}
@@ -1797,11 +1767,11 @@ export default function PreOrderPage() {
                                   >
                                     {/* Checkbox */}
                                     <td className="px-3 py-2.5 text-center">
-                                      <input
-                                        type="checkbox"
+                                      <Checkbox
                                         checked={isSelected}
                                         onChange={() => toggleSelect(po.id)}
                                         title={isSelected ? 'Batalkan pilihan' : 'Pilih pesanan ini'}
+                                        size="sm"
                                       />
                                     </td>
 
@@ -1810,7 +1780,7 @@ export default function PreOrderPage() {
 
                                     {/* No. Dokumen */}
                                     <td className="px-3 py-2.5">
-                                      <div className="text-white font-semibold">{po.nomorRO || po.nomorRo || (generateNomorRO ? generateNomorRO(po.customer, preOrders, po.tanggal, customers) : '')}</div>
+                                      <div className="text-white font-semibold">{po.nomorRO || po.nomorRo || (generateNomorRO ? generateNomorRO(po.customer, po.tanggal) : '')}</div>
                                       {po.nomorPo ? (
                                         <div className="flex items-center gap-1.5 text-[10px]">
                                           <span className="text-neutral-400 font-mono">Po: {po.nomorPo}</span>
@@ -1956,11 +1926,11 @@ export default function PreOrderPage() {
                                 {po.status === 'MENUNGGU_APPROVAL' ? (language === 'en' ? 'PENDING APPROVAL' : 'MENUNGGU PERSETUJUAN') : po.status}
                               </span>
                             )}
-                            <input
-                              type="checkbox"
+                            <Checkbox
                               checked={isSelected}
                               onChange={() => toggleSelect(po.id)}
                               title={isSelected ? 'Batalkan pilihan' : 'Pilih pesanan ini'}
+                              size="sm"
                             />
                           </div>
                         </div>
@@ -2001,7 +1971,7 @@ export default function PreOrderPage() {
                         {/* RO & PO Numbers & Customer */}
                         <div className="space-y-1 text-xs pt-2 border-t border-[#1C2026]">
                           <div className="text-white font-semibold truncate text-[11px]">
-                            RO: {po.nomorRO || po.nomorRo || (generateNomorRO ? generateNomorRO(po.customer, preOrders, po.tanggal, customers) : '')}
+                            RO: {po.nomorRO || po.nomorRo || (generateNomorRO ? generateNomorRO(po.customer, po.tanggal) : '')}
                           </div>
                           <div className="text-neutral-300 truncate text-[11px] flex items-center justify-between">
                             <span className="truncate">{formatPoNumber(po.nomorPo)}</span>

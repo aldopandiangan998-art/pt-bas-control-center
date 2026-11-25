@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { Truck, Scale, Sparkles } from 'lucide-react';
+import { Truck, Scale, Sparkles, Lock } from 'lucide-react';
 import { calculateKubikasi } from '../../utils/formatters';
 import { useApp } from '../../context/AppContext';
 
@@ -10,12 +10,45 @@ export const TRUCK_PRESETS = [
   { name: 'Engkel Standar', p: 310, l: 160, t: 100, label: '5.0 m³' },
 ];
 
+/**
+ * Get default truck classification based on default dimensions (p, l, t).
+ * Important: This function uses the DEFAULT height (t), never the corrected height (tk),
+ * so adjusting the correction value does NOT change the default classification.
+ */
+export function getTruckClassification(panjangCm, lebarCm, tinggiCm) {
+  const p = Number(panjangCm) || 0;
+  const l = Number(lebarCm) || 0;
+  const t = Number(tinggiCm) || 0;
+  if (p === 0 || l === 0 || t === 0) return null;
+
+  // 1. Exact preset match
+  const exact = TRUCK_PRESETS.find(
+    (pr) => pr.p === p && pr.l === l && pr.t === t
+  );
+  if (exact) return exact;
+
+  // 2. Volume-based classification using default height
+  const vol = (p * l * t) / 1000000;
+  if (vol >= 28) {
+    return { name: 'Tronton 28', p, l, t, label: `${vol.toFixed(1)} m³` };
+  } else if (vol >= 16) {
+    return { name: 'Dump Index 24', p, l, t, label: `${vol.toFixed(1)} m³` };
+  } else if (vol >= 6.5) {
+    return { name: 'Colt Diesel (CDD)', p, l, t, label: `${vol.toFixed(1)} m³` };
+  } else if (vol > 0) {
+    return { name: 'Engkel Standar', p, l, t, label: `${vol.toFixed(1)} m³` };
+  }
+  return null;
+}
+
 export default function TruckVisualizer({
   panjangCm = 650,
   lebarCm = 250,
   tinggiCm = 200,
   koreksiCm = 0,
   onApplyPreset,
+  isLocked = false,
+  selectedNopol = '',
 }) {
   const { isDark } = useApp();
 
@@ -23,11 +56,9 @@ export default function TruckVisualizer({
     return calculateKubikasi(panjangCm, lebarCm, tinggiCm, koreksiCm);
   }, [panjangCm, lebarCm, tinggiCm, koreksiCm]);
 
-  // Determine active preset if dimensions match
+  // Determine active preset strictly from default dimensions (p, l, t), so koreksiCm does not alter classification
   const activePreset = useMemo(() => {
-    return TRUCK_PRESETS.find(
-      (pr) => pr.p === Number(panjangCm) && pr.l === Number(lebarCm) && pr.t === Number(tinggiCm)
-    );
+    return getTruckClassification(panjangCm, lebarCm, tinggiCm);
   }, [panjangCm, lebarCm, tinggiCm]);
 
   // Scaled dimensions for technical blueprint SVG
@@ -78,16 +109,27 @@ export default function TruckVisualizer({
         </div>
       </div>
 
-      {/* Preset Armada Buttons: Clean 2x2 Grid */}
-      <div className="space-y-1">
+      {/* Preset Armada Buttons / Klasifikasi Default Armada */}
+      <div className="space-y-1.5">
         <div className={`flex items-center justify-between text-[10px] font-mono uppercase tracking-wider ${
           isDark ? 'text-neutral-400' : 'text-slate-500'
         }`}>
-          <span>Preset Tipe Armada:</span>
-          {activePreset && (
-            <span className="text-[#F4511E] font-bold lowercase">{activePreset.name}</span>
-          )}
+          <span className="flex items-center gap-1">
+            {isLocked && <Lock className="w-3 h-3 text-amber-500" />}
+            <span>Klasifikasi Default Armada:</span>
+          </span>
+          <div className="flex items-center gap-1.5">
+            {activePreset && (
+              <span className="text-[#F4511E] font-bold">{activePreset.name}</span>
+            )}
+            {isLocked && (
+              <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-emerald-950/60 text-emerald-400 border border-emerald-800/50">
+                Otomatis ({selectedNopol || 'Terkunci'})
+              </span>
+            )}
+          </div>
         </div>
+
         <div className="grid grid-cols-2 gap-1.5">
           {TRUCK_PRESETS.map((preset) => {
             const isSelected = activePreset?.name === preset.name;
@@ -95,15 +137,28 @@ export default function TruckVisualizer({
               <button
                 key={preset.name}
                 type="button"
-                onClick={() => onApplyPreset && onApplyPreset(preset.p, preset.l, preset.t)}
-                className={`px-2 py-1.5 rounded-md text-[11px] transition-all font-mono flex items-center justify-between gap-1 cursor-pointer truncate ${
+                disabled={isLocked}
+                onClick={() => {
+                  if (!isLocked && onApplyPreset) {
+                    onApplyPreset(preset.p, preset.l, preset.t);
+                  }
+                }}
+                className={`px-2 py-1.5 rounded-md text-[11px] transition-all font-mono flex items-center justify-between gap-1 truncate ${
                   isSelected
                     ? 'bg-[#F4511E] text-white font-bold shadow-xs border border-[#F4511E]'
+                    : isLocked
+                    ? isDark
+                      ? 'bg-[#141619] border border-[#23272C] text-neutral-500 cursor-not-allowed opacity-60'
+                      : 'bg-slate-50 border border-slate-200 text-slate-400 cursor-not-allowed opacity-60'
                     : isDark
-                    ? 'bg-[#181B1E] hover:bg-[#202326] border border-[#2D3339] text-neutral-300 hover:text-white'
-                    : 'bg-slate-100 hover:bg-slate-200/80 border border-slate-300 text-slate-800 hover:text-slate-950 font-medium shadow-2xs'
+                    ? 'bg-[#181B1E] hover:bg-[#202326] border border-[#2D3339] text-neutral-300 hover:text-white cursor-pointer'
+                    : 'bg-slate-100 hover:bg-slate-200/80 border border-slate-300 text-slate-800 hover:text-slate-950 font-medium shadow-2xs cursor-pointer'
                 }`}
-                title={`${preset.name}: P=${preset.p} L=${preset.l} T=${preset.t} cm`}
+                title={
+                  isLocked
+                    ? `Klasifikasi default terkunci otomatis dari data armada ${selectedNopol}`
+                    : `${preset.name}: P=${preset.p} L=${preset.l} T=${preset.t} cm`
+                }
               >
                 <span className="truncate">{preset.name}</span>
                 <span className={isSelected ? 'text-white font-bold shrink-0' : 'text-[#F4511E] font-bold shrink-0'}>
@@ -113,6 +168,13 @@ export default function TruckVisualizer({
             );
           })}
         </div>
+
+        {isLocked && (
+          <div className="flex items-center gap-1.5 text-[10px] text-neutral-400 font-mono pt-0.5">
+            <Lock className="w-3 h-3 text-amber-500 shrink-0" />
+            <span>Klasifikasi default terkunci otomatis berdasarkan armada <strong>{selectedNopol}</strong>. Nilai koreksi muatan tidak mengubah klasifikasi default.</span>
+          </div>
+        )}
       </div>
 
       {/* CAD-Style Blueprint Schematic */}

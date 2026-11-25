@@ -491,82 +491,18 @@ export default function ProfilePage() {
           className={`rounded-2xl border p-5 sm:p-6 transition-colors shadow-sm ${isDark ? 'bg-[#14171A] border-[#22262A]' : 'bg-white border-slate-200'
             }`}
         >
-          <div className="mb-5 pb-3 border-b border-inherit flex items-center justify-between">
-            <div>
-              <h2 className={`text-sm font-bold uppercase tracking-wider font-mono ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                {language === 'en' ? 'Account Identity Information' : 'Informasi Identitas Akun'}
-              </h2>
-              <p className={`text-xs mt-0.5 ${isDark ? 'text-neutral-400' : 'text-slate-500'}`}>
-                {language === 'en'
-                  ? 'This data is used for signature identification on Delivery Orders, RO approvals, and BKK authorization.'
-                  : 'Data ini digunakan untuk identifikasi tanda tangan Surat Jalan, persetujuan RO, dan otorisasi BKK.'}
-              </p>
-            </div>
-            <Sparkles className="w-4 h-4 text-amber-500" />
+          <div className="mb-5 pb-3 border-b border-inherit">
+            <h2 className={`text-sm font-bold uppercase tracking-wider font-mono ${isDark ? 'text-white' : 'text-slate-900'}`}>
+              {language === 'en' ? 'Account Identity Information' : 'Informasi Identitas Akun'}
+            </h2>
+            <p className={`text-xs mt-0.5 ${isDark ? 'text-neutral-400' : 'text-slate-500'}`}>
+              {language === 'en'
+                ? 'This data is used for signature identification on Delivery Orders, RO approvals, and BKK authorization.'
+                : 'Data ini digunakan untuk identifikasi tanda tangan Surat Jalan, persetujuan RO, dan otorisasi BKK.'}
+            </p>
           </div>
 
           <form onSubmit={handleSaveProfile} className="space-y-4">
-            {/* Foto Profil Management Card */}
-            <div
-              className={`p-4 rounded-xl border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 transition-colors ${isDark ? 'bg-[#181B1E] border-[#22262A]' : 'bg-slate-50 border-slate-200'
-                }`}
-            >
-              <div className="flex items-center gap-3.5">
-                <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-[#F4511E] to-[#FF7043] text-white flex items-center justify-center font-bold text-base shrink-0 shadow-md overflow-hidden relative">
-                  {currentUser?.avatar ? (
-                    <img
-                      src={currentUser.avatar}
-                      alt={currentUser.name}
-                      className="w-full h-full object-cover rounded-xl"
-                    />
-                  ) : (
-                    userInitials
-                  )}
-                </div>
-                <div>
-                  <h3 className={`text-xs font-bold uppercase tracking-wider font-mono ${isDark ? 'text-neutral-200' : 'text-slate-800'}`}>
-                    {language === 'en' ? 'User Profile Photo' : 'Foto Profil Pengguna'}
-                  </h3>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2 w-full sm:w-auto">
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={avatarUploading}
-                  className={`px-3 py-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition-colors cursor-pointer flex-1 sm:flex-initial ${isDark
-                    ? 'bg-[#22262A] text-white hover:bg-[#2B3037] border border-[#333940]'
-                    : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-300 shadow-xs'
-                    }`}
-                >
-                  {avatarUploading ? (
-                    <Loader2 className="w-3.5 h-3.5 animate-spin text-[#F4511E]" />
-                  ) : (
-                    <Camera className="w-3.5 h-3.5 text-[#F4511E]" />
-                  )}
-                  <span>
-                    {currentUser?.avatar
-                      ? (language === 'en' ? 'Change Photo' : 'Ganti Foto')
-                      : (language === 'en' ? 'Upload Photo' : 'Unggah Foto')}
-                  </span>
-                </button>
-
-                {currentUser?.avatar && (
-                  <button
-                    type="button"
-                    onClick={handleRemoveAvatar}
-                    disabled={avatarUploading}
-                    className="px-3 py-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 border border-rose-500/30"
-                    title={language === 'en' ? 'Remove Profile Photo' : 'Hapus Foto Profil'}
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                    <span>{language === 'en' ? 'Remove' : 'Hapus'}</span>
-                  </button>
-                )}
-              </div>
-            </div>
-
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {/* 1. Nama Lengkap */}
               <div>
@@ -594,17 +530,12 @@ export default function ProfilePage() {
 
               {/* 2. Email (Read-only) */}
               <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <label
-                    className={`block text-xs font-bold uppercase tracking-wider font-mono ${isDark ? 'text-neutral-300' : 'text-slate-700'
-                      }`}
-                  >
-                    {language === 'en' ? 'Registered Gmail' : 'Email Gmail Terdaftar'}
-                  </label>
-                  <span className="text-[10px] text-emerald-500 font-mono font-semibold">
-                    {language === 'en' ? 'Account Verified' : 'Tervalidasi Akun'}
-                  </span>
-                </div>
+                <label
+                  className={`block text-xs font-bold uppercase tracking-wider mb-1.5 font-mono ${isDark ? 'text-neutral-300' : 'text-slate-700'
+                    }`}
+                >
+                  {language === 'en' ? 'Registered Gmail' : 'Email Gmail Terdaftar'}
+                </label>
                 <div className="relative">
                   <Mail className="w-4 h-4 absolute left-3 top-2.5 text-neutral-400 pointer-events-none" />
                   <input

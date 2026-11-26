@@ -992,7 +992,9 @@ export default function ApprovalRoPage() {
                     >
                       {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
                       <span>
-                        {isExpanded ? 'Sembunyikan' : 'Lihat'} rincian {po.items.length} item material
+                        {isExpanded
+                          ? (language === 'en' ? 'Hide details' : 'Sembunyikan rincian')
+                          : (language === 'en' ? 'View details' : 'Lihat rincian')}
                       </span>
                     </button>
 

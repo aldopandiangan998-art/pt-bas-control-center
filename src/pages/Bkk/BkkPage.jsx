@@ -32,7 +32,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useData } from '../../context/DataContext';
 import { useToast } from '../../context/ToastContext';
 import { formatCurrency } from '../../utils/formatters';
-import { Modal, Button, Card, Badge, SearchBar, Checkbox, IndeterminateCheckbox } from '../../components/ui';
+import { Modal, Button, Card, Badge, SearchBar, Checkbox, IndeterminateCheckbox, Select } from '../../components/ui';
 import BkkPrintModal from '../../components/bkk/BkkPrintModal';
 import BkkDetailWorkflowModal from '../../components/bkk/BkkDetailWorkflowModal';
 
@@ -1154,35 +1154,33 @@ export default function BkkPage() {
                   </span>
                 </div>
 
-                <div className="relative">
-                  <select
-                    value={formRoNumber}
-                    disabled={loadingOrders && availableOrders.length === 0}
-                    onChange={(e) => handleSelectCompletedOrder(e.target.value)}
-                    className="w-full bg-[#181B1E] text-white text-xs sm:text-sm font-medium rounded-xl px-3 py-2.5 border border-[#2B3037] focus:outline-none focus:border-[#F4511E] appearance-none pr-8 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                    required
-                  >
-                    <option value="" className="text-neutral-500">
-                      {loadingOrders && availableOrders.length === 0
-                        ? '— Sedang memeriksa database... —'
-                        : availableOrders.length === 0
-                          ? '— Tidak ada RO yang tersedia (Semua order telah memiliki BKK) —'
-                          : '— Pilih Nomor Received Order (RO) —'}
+                <Select
+                  value={formRoNumber}
+                  disabled={loadingOrders && availableOrders.length === 0}
+                  onChange={(e) => handleSelectCompletedOrder(e.target.value)}
+                  searchPlaceholder="Cari nomor RO, customer, volume, material..."
+                  className="rounded-xl text-xs sm:text-sm font-medium bg-[#181B1E] border-[#2B3037] text-white"
+                  required
+                >
+                  <option value="" className="text-neutral-500">
+                    {loadingOrders && availableOrders.length === 0
+                      ? '— Sedang memeriksa database... —'
+                      : availableOrders.length === 0
+                        ? '— Tidak ada RO yang tersedia (Semua order telah memiliki BKK) —'
+                        : '— Pilih Nomor Received Order (RO) —'}
+                  </option>
+                  {/* Fallback option if formRoNumber is selected but not currently in availableOrders list */}
+                  {formRoNumber && !availableOrders.some((o) => o.nomorRO === formRoNumber) && (
+                    <option value={formRoNumber}>
+                      {formRoNumber} • {currentMatchedJournal?.customer || selectedCustomer?.name || 'Customer'} ({formVolume || 0} m³ - {formMaterial || 'SIRTU'})
                     </option>
-                    {/* Fallback option if formRoNumber is selected but not currently in availableOrders list */}
-                    {formRoNumber && !availableOrders.some((o) => o.nomorRO === formRoNumber) && (
-                      <option value={formRoNumber} className="bg-[#181B1E]">
-                        {formRoNumber} &bull; {currentMatchedJournal?.customer || selectedCustomer?.name || 'Customer'} ({formVolume || 0} m³ - {formMaterial || 'SIRTU'})
-                      </option>
-                    )}
-                    {availableOrders.map((o) => (
-                      <option key={o.nomorRO || o.jurnalId} value={o.nomorRO} className="bg-[#181B1E]">
-                        {o.nomorRO} &bull; {o.customer} ({o.totalVolume} m³ - {o.material})
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronDown className="w-4 h-4 text-neutral-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-                </div>
+                  )}
+                  {availableOrders.map((o) => (
+                    <option key={o.nomorRO || o.jurnalId} value={o.nomorRO}>
+                      {o.nomorRO} • {o.customer} ({o.totalVolume} m³ - {o.material})
+                    </option>
+                  ))}
+                </Select>
 
                 {availableOrders.length === 0 && !loadingOrders && (
                   <div className="p-2.5 rounded-xl bg-neutral-900/60 border border-neutral-800 text-[11px] text-neutral-400 flex items-center gap-2">
@@ -1208,22 +1206,20 @@ export default function BkkPage() {
 
                 <div className="space-y-1">
                   <label className="text-[11px] font-medium text-neutral-400">Pelanggan (Customer)</label>
-                  <div className="relative">
-                    <select
-                      value={formCustomerId}
-                      onChange={(e) => setFormCustomerId(e.target.value)}
-                      className="w-full bg-[#181B1E] text-white text-xs font-medium rounded-xl px-3 py-2 border border-[#2B3037] focus:outline-none focus:border-[#F4511E] appearance-none pr-8 cursor-pointer truncate"
-                      required
-                    >
-                      <option value="" className="text-neutral-500">— Pilih Pelanggan —</option>
-                      {customers.filter((c) => c.aktif !== false).map((c) => (
-                        <option key={c.id} value={c.id} className="bg-[#181B1E]">
-                          {c.kodePrefix ? `${c.kodePrefix} - ${c.name}` : c.name}
-                        </option>
-                      ))}
-                    </select>
-                    <ChevronDown className="w-3.5 h-3.5 text-neutral-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-                  </div>
+                  <Select
+                    value={formCustomerId}
+                    onChange={(e) => setFormCustomerId(e.target.value)}
+                    searchPlaceholder="Cari customer..."
+                    className="rounded-xl text-xs font-medium bg-[#181B1E] border-[#2B3037] text-white"
+                    required
+                  >
+                    <option value="" className="text-neutral-500">— Pilih Pelanggan —</option>
+                    {customers.filter((c) => c.aktif !== false).map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.kodePrefix ? `${c.kodePrefix} - ${c.name}` : c.name}
+                      </option>
+                    ))}
+                  </Select>
                 </div>
               </div>
 
@@ -1231,22 +1227,20 @@ export default function BkkPage() {
               <div className="space-y-2 pt-1 border-t border-[#22262B]">
                 <div className="space-y-1">
                   <label className="text-[11px] font-medium text-neutral-400">Supplier Vendor</label>
-                  <div className="relative">
-                    <select
-                      value={formSupplierId}
-                      onChange={(e) => setFormSupplierId(e.target.value)}
-                      className="w-full bg-[#181B1E] text-white text-xs font-medium rounded-xl px-3 py-2 border border-[#2B3037] focus:outline-none focus:border-[#F4511E] appearance-none pr-8 cursor-pointer truncate"
-                      required
-                    >
-                      <option value="" className="text-neutral-500">— Pilih Supplier —</option>
-                      {suppliers.filter((s) => s.aktif !== false).map((s) => (
-                        <option key={s.id} value={s.id} className="bg-[#181B1E]">
-                          {s.name}
-                        </option>
-                      ))}
-                    </select>
-                    <ChevronDown className="w-3.5 h-3.5 text-neutral-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-                  </div>
+                  <Select
+                    value={formSupplierId}
+                    onChange={(e) => setFormSupplierId(e.target.value)}
+                    searchPlaceholder="Cari supplier..."
+                    className="rounded-xl text-xs font-medium bg-[#181B1E] border-[#2B3037] text-white"
+                    required
+                  >
+                    <option value="" className="text-neutral-500">— Pilih Supplier —</option>
+                    {suppliers.filter((s) => s.aktif !== false).map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.name}
+                      </option>
+                    ))}
+                  </Select>
                 </div>
 
                 {/* Info Rekening Bank & Penerima (Slim Readonly Card) */}

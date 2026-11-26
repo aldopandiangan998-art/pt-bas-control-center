@@ -27,7 +27,7 @@ import {
   ChevronDown,
   Receipt,
 } from 'lucide-react';
-import { Button } from '../../components/ui';
+import { Button, Select } from '../../components/ui';
 import InvoicePrintModal from '../../components/invoice/InvoicePrintModal';
 import InvoiceDetailWorkflowModal from '../../components/invoice/InvoiceDetailWorkflowModal';
 
@@ -1055,30 +1055,29 @@ export default function InvoicePage() {
                       <label className="text-[11px] font-medium text-neutral-400">
                         Pilih Pesanan Selesai
                       </label>
-                      <div className="relative">
-                        <select
-                          value={selectedOrder ? `${selectedOrder.jurnalId}|${selectedOrder.nomorRO}` : ''}
-                          disabled={isLoadingAvailable}
-                          onChange={(e) => {
-                            const val = e.target.value;
-                            if (!val) {
-                              setSelectedOrder(null);
-                              return;
-                            }
-                            const [jId, ro] = val.split('|');
-                            const found = availableOrders.find((o) => o.jurnalId === jId && o.nomorRO === ro);
-                            if (found) handleSelectOrder(found);
-                          }}
-                          className="w-full bg-[#181B1E] text-white text-xs font-medium rounded-xl px-3 py-2.5 border border-[#2B3037] focus:outline-none focus:border-[#F4511E] appearance-none pr-8 cursor-pointer truncate"
-                        >
-                          {availableOrders.map((ord) => (
-                            <option key={`${ord.jurnalId}-${ord.nomorRO}`} value={`${ord.jurnalId}|${ord.nomorRO}`}>
-                              {ord.nomorRO} • {ord.customerName} ({ord.totalVolume} m³)
-                            </option>
-                          ))}
-                        </select>
-                        <ChevronDown className="w-4 h-4 text-neutral-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-                      </div>
+                      <Select
+                        value={selectedOrder ? `${selectedOrder.jurnalId}|${selectedOrder.nomorRO}` : ''}
+                        disabled={isLoadingAvailable}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          if (!val) {
+                            setSelectedOrder(null);
+                            return;
+                          }
+                          const [jId, ro] = val.split('|');
+                          const found = availableOrders.find((o) => o.jurnalId === jId && o.nomorRO === ro);
+                          if (found) handleSelectOrder(found);
+                        }}
+                        searchPlaceholder="Cari nomor RO, customer, volume..."
+                        className="rounded-xl text-xs font-medium bg-[#181B1E] border-[#2B3037] text-white"
+                      >
+                        <option value="">-- Pilih Pesanan Selesai --</option>
+                        {availableOrders.map((ord) => (
+                          <option key={`${ord.jurnalId}-${ord.nomorRO}`} value={`${ord.jurnalId}|${ord.nomorRO}`}>
+                            {ord.nomorRO} • {ord.customerName} ({ord.totalVolume} m³)
+                          </option>
+                        ))}
+                      </Select>
 
                       {/* Quick Pills if multiple orders */}
                       {availableOrders.length > 1 && (

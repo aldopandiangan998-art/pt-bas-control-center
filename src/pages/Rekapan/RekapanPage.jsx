@@ -586,37 +586,35 @@ export default function RekapanPage() {
 
           {/* Quick Dropdowns & Buttons */}
           <div className="flex items-center gap-2 flex-wrap">
-            {/* Customer Filter */}
-            <div className="relative">
-              <select
-                value={customerFilter}
-                onChange={(e) => setCustomerFilter(e.target.value)}
-                className="bg-[#1C1F24] border border-[#2B3037] rounded-xl pl-3 pr-7 py-2 text-xs font-mono text-neutral-200 focus:outline-none focus:border-[#F4511E] appearance-none cursor-pointer hover:border-neutral-500 transition-colors"
-              >
-                <option value="ALL">Semua Pelanggan</option>
-                {(customers || []).map((c) => (
-                  <option key={c.id} value={c.name}>
-                    {c.name} {c.alias ? `(${c.alias})` : ''}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown className="w-3.5 h-3.5 text-neutral-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-            </div>
+            {/* Customer Filter with Search */}
+            <Select
+              containerClassName="min-w-[170px] sm:min-w-[190px]"
+              value={customerFilter}
+              onChange={(e) => setCustomerFilter(e.target.value)}
+              searchPlaceholder="Cari pelanggan..."
+              className="rounded-xl font-mono text-xs bg-[#1C1F24] border-[#2B3037] text-neutral-200"
+            >
+              <option value="ALL">Semua Pelanggan</option>
+              {(customers || []).map((c) => (
+                <option key={c.id} value={c.name}>
+                  {c.name} {c.alias ? `(${c.alias})` : ''}
+                </option>
+              ))}
+            </Select>
 
-            {/* Material Filter */}
-            <div className="relative">
-              <select
-                value={materialFilter}
-                onChange={(e) => setMaterialFilter(e.target.value)}
-                className="bg-[#1C1F24] border border-[#2B3037] rounded-xl pl-3 pr-7 py-2 text-xs font-mono text-neutral-200 focus:outline-none focus:border-[#F4511E] appearance-none cursor-pointer hover:border-neutral-500 transition-colors"
-              >
-                <option value="ALL">Semua Material</option>
-                {availableMaterialOptions.map((m) => (
-                  <option key={m} value={m}>{m}</option>
-                ))}
-              </select>
-              <ChevronDown className="w-3.5 h-3.5 text-neutral-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-            </div>
+            {/* Material Filter with Search */}
+            <Select
+              containerClassName="min-w-[150px] sm:min-w-[170px]"
+              value={materialFilter}
+              onChange={(e) => setMaterialFilter(e.target.value)}
+              searchPlaceholder="Cari material..."
+              className="rounded-xl font-mono text-xs bg-[#1C1F24] border-[#2B3037] text-neutral-200"
+            >
+              <option value="ALL">Semua Material</option>
+              {availableMaterialOptions.map((m) => (
+                <option key={m} value={m}>{m}</option>
+              ))}
+            </Select>
 
             {/* Filter Lanjutan Toggle (Status, PPN, Tanggal) */}
             <button

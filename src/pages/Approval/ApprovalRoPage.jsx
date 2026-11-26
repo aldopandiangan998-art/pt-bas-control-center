@@ -36,7 +36,7 @@ import { useData } from '../../context/DataContext';
 import { useToast } from '../../context/ToastContext';
 import { useApp } from '../../context/AppContext';
 import { formatCurrency, formatVolume, formatDate } from '../../utils/formatters';
-import { Button, Badge, Card, Modal, SearchBar, Checkbox } from '../../components/ui';
+import { Button, Badge, Card, Modal, SearchBar, Checkbox, Select } from '../../components/ui';
 
 export default function ApprovalRoPage() {
   const navigate = useNavigate();
@@ -521,7 +521,7 @@ export default function ApprovalRoPage() {
       </div>
 
       {/* ══════════ TABS & DEDICATED SEARCH/FILTER TOOLBAR ══════════ */}
-      <div className="bg-[#14171A] rounded-xl border border-[#22262A] shadow-sm overflow-hidden divide-y divide-[#22262A]">
+      <div className="bg-[#14171A] rounded-xl border border-[#22262A] shadow-sm divide-y divide-[#22262A]">
         {/* ROW 1: STATUS SEGMENTED TABS & CONTEXT SUMMARY */}
         <div className="p-3 sm:p-4 flex flex-col md:flex-row md:items-center justify-between gap-3">
           {/* Segmented Control for Status Tabs */}
@@ -655,40 +655,39 @@ export default function ApprovalRoPage() {
           />
 
           <div className="flex flex-wrap sm:flex-nowrap items-center gap-2">
-            {/* Filter Customer Dropdown */}
-            <div className="relative min-w-[170px] sm:min-w-[190px] flex-1 sm:flex-initial">
-              <Building2 className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none" />
-              <select
-                value={customerFilter}
-                onChange={(e) => setCustomerFilter(e.target.value)}
-                className="w-full bg-[#0E1012] border border-[#22262A] rounded-lg pl-8 pr-7 py-2 text-xs text-neutral-200 focus:outline-none focus:border-[#F4511E] font-mono appearance-none cursor-pointer"
-              >
-                <option value="ALL">Semua Customer</option>
-                {customerOptions.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown className="w-3.5 h-3.5 absolute right-2.5 top-1/2 -translate-y-1/2 text-neutral-500 pointer-events-none" />
-            </div>
+            {/* Filter Customer Dropdown with Search */}
+            <Select
+              containerClassName="min-w-[170px] sm:min-w-[210px] flex-1 sm:flex-initial"
+              icon={Building2}
+              value={customerFilter}
+              onChange={(e) => setCustomerFilter(e.target.value)}
+              searchPlaceholder={language === 'en' ? 'Search customer...' : 'Cari customer...'}
+              className="rounded-lg font-mono text-xs bg-[#0E1012] border-[#22262A] text-neutral-200"
+            >
+              <option value="ALL">Semua Customer</option>
+              {customerOptions.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </Select>
 
             {/* Sort Dropdown (Opsi Analisis Direksi) */}
-            <div className="relative min-w-[170px] sm:min-w-[200px] flex-1 sm:flex-initial">
-              <SlidersHorizontal className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none" />
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value)}
-                className="w-full bg-[#0E1012] border border-[#22262A] rounded-lg pl-8 pr-7 py-2 text-xs text-neutral-200 focus:outline-none focus:border-[#F4511E] font-mono appearance-none cursor-pointer"
-              >
-                <option value="NEWEST">Urutkan: Tanggal Terbaru</option>
-                <option value="MARGIN_ASC">Margin Terendah (Risiko)</option>
-                <option value="MARGIN_DESC">Margin Tertinggi</option>
-                <option value="VALUE_DESC">Nilai Kontrak Terbesar</option>
-                <option value="VOLUME_DESC">Volume Order Terbesar</option>
-              </select>
-              <ChevronDown className="w-3.5 h-3.5 absolute right-2.5 top-1/2 -translate-y-1/2 text-neutral-500 pointer-events-none" />
-            </div>
+            <Select
+              containerClassName="min-w-[170px] sm:min-w-[200px] flex-1 sm:flex-initial"
+              align="right"
+              searchable={false}
+              icon={SlidersHorizontal}
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              className="rounded-lg font-mono text-xs bg-[#0E1012] border-[#22262A] text-neutral-200"
+            >
+              <option value="NEWEST">Urutkan: Tanggal Terbaru</option>
+              <option value="MARGIN_ASC">Margin Terendah (Risiko)</option>
+              <option value="MARGIN_DESC">Margin Tertinggi</option>
+              <option value="VALUE_DESC">Nilai Kontrak Terbesar</option>
+              <option value="VOLUME_DESC">Volume Order Terbesar</option>
+            </Select>
           </div>
         </div>
 

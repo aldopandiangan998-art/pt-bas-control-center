@@ -43,7 +43,7 @@ import { useToast } from '../../context/ToastContext';
 import { useApp } from '../../context/AppContext';
 import { DEFAULT_MATERIALS } from '../../utils/constants';
 import { formatCurrency, formatVolume } from '../../utils/formatters';
-import { Button, Badge, Card, Modal, ViewToggle, SearchBar, Checkbox } from '../../components/ui';
+import { Button, Badge, Card, Modal, ViewToggle, SearchBar, Checkbox, Select } from '../../components/ui';
 import {
   RO_TYPES,
   ITEM_TYPES,
@@ -1448,20 +1448,19 @@ export default function PreOrderPage() {
 
                 {/* Quick Controls: Customer dropdown, Filter toggle, Date toggle, Refresh, View toggle */}
                 <div className="flex items-center gap-2 flex-wrap">
-                  {/* Customer Dropdown */}
-                  <div className="relative">
-                    <select
-                      value={customerFilter}
-                      onChange={(e) => setCustomerFilter(e.target.value)}
-                      className="bg-[#1C1F24] border border-[#2B3037] rounded-xl pl-3 pr-7 py-2 text-xs font-mono text-neutral-200 focus:outline-none focus:border-[#F4511E] appearance-none cursor-pointer hover:border-neutral-500 transition-colors"
-                    >
-                      <option value="ALL">Semua Perusahaan</option>
-                      {availableCustomerOptions.map((c) => (
-                        <option key={c} value={c}>{c}</option>
-                      ))}
-                    </select>
-                    <ChevronDown className="w-3.5 h-3.5 text-neutral-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-                  </div>
+                  {/* Customer Dropdown with Search */}
+                  <Select
+                    containerClassName="min-w-[170px] sm:min-w-[200px]"
+                    value={customerFilter}
+                    onChange={(e) => setCustomerFilter(e.target.value)}
+                    searchPlaceholder="Cari perusahaan..."
+                    className="rounded-xl font-mono text-xs bg-[#1C1F24] border-[#2B3037] text-neutral-200"
+                  >
+                    <option value="ALL">Semua Perusahaan</option>
+                    {availableCustomerOptions.map((c) => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
+                  </Select>
 
                   {/* Filter Lanjutan Button */}
                   <button
@@ -1628,40 +1627,43 @@ export default function PreOrderPage() {
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                  {/* Customer Filter */}
-                  <select
+                  {/* Customer Filter with Search */}
+                  <Select
                     value={customerFilter}
                     onChange={(e) => setCustomerFilter(e.target.value)}
-                    className="w-full bg-[#181B20] border border-[#262B33] rounded-lg px-3 py-2 text-xs text-neutral-200 focus:outline-none focus:border-[#F4511E]"
+                    searchPlaceholder="Cari customer..."
+                    className="w-full bg-[#181B20] border-[#262B33] rounded-lg text-xs text-neutral-200"
                   >
                     <option value="ALL">Semua Customer</option>
                     {availableCustomerOptions.map((c) => (
                       <option key={c} value={c}>{c}</option>
                     ))}
-                  </select>
+                  </Select>
 
-                  {/* Material Filter */}
-                  <select
+                  {/* Material Filter with Search */}
+                  <Select
                     value={materialFilter}
                     onChange={(e) => setMaterialFilter(e.target.value)}
-                    className="w-full bg-[#181B20] border border-[#262B33] rounded-lg px-3 py-2 text-xs text-neutral-200 focus:outline-none focus:border-[#F4511E]"
+                    searchPlaceholder="Cari material..."
+                    className="w-full bg-[#181B20] border-[#262B33] rounded-lg text-xs text-neutral-200"
                   >
                     <option value="ALL">Semua Material</option>
                     {availableMaterialOptions.map((m) => (
                       <option key={m} value={m}>{m}</option>
                     ))}
-                  </select>
+                  </Select>
 
                   {/* Sort */}
-                  <select
+                  <Select
+                    searchable={false}
                     value={sortBy}
                     onChange={(e) => setSortBy(e.target.value)}
-                    className="w-full bg-[#181B20] border border-[#262B33] rounded-lg px-3 py-2 text-xs text-neutral-200 focus:outline-none focus:border-[#F4511E]"
+                    className="w-full bg-[#181B20] border-[#262B33] rounded-lg text-xs text-neutral-200"
                   >
                     <option value="NEWEST">Terbaru</option>
                     <option value="OLDEST">Terlama</option>
                     <option value="VOLUME_DESC">Volume Terbesar</option>
-                  </select>
+                  </Select>
                 </div>
               </div>
             )}

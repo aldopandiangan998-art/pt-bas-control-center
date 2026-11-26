@@ -34,7 +34,7 @@ import { useData } from '../../context/DataContext';
 import { useToast } from '../../context/ToastContext';
 import { useApp } from '../../context/AppContext';
 import { formatCurrency, formatVolume, formatDate } from '../../utils/formatters';
-import { Button, Badge, Card, Modal } from '../../components/ui';
+import { Button, Badge, Card, Modal, Select } from '../../components/ui';
 import BkkPrintModal from '../../components/bkk/BkkPrintModal';
 import BkkDetailWorkflowModal from '../../components/bkk/BkkDetailWorkflowModal';
 
@@ -618,34 +618,35 @@ export default function ApprovalBkkPage() {
             )}
           </div>
 
-          {/* Supplier dropdown */}
-          <div className="w-full md:w-56 shrink-0">
-            <select
-              value={supplierFilter}
-              onChange={(e) => setSupplierFilter(e.target.value)}
-              className="w-full bg-[#181B1E] border border-[#282D34] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#F4511E] cursor-pointer"
-            >
-              <option value="ALL">Semua Supplier</option>
-              {supplierOptions.map((sup) => (
-                <option key={sup} value={sup}>
-                  {sup}
-                </option>
-              ))}
-            </select>
-          </div>
+          {/* Supplier dropdown with search */}
+          <Select
+            containerClassName="w-full md:w-56 shrink-0"
+            value={supplierFilter}
+            onChange={(e) => setSupplierFilter(e.target.value)}
+            searchPlaceholder="Cari supplier..."
+            className="rounded-xl text-xs bg-[#181B1E] border-[#282D34] text-white"
+          >
+            <option value="ALL">Semua Supplier</option>
+            {supplierOptions.map((sup) => (
+              <option key={sup} value={sup}>
+                {sup}
+              </option>
+            ))}
+          </Select>
 
           {/* Sort dropdown */}
-          <div className="w-full md:w-48 shrink-0">
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value)}
-              className="w-full bg-[#181B1E] border border-[#282D34] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#F4511E] cursor-pointer"
-            >
-              <option value="NEWEST">Terbaru</option>
-              <option value="VALUE_DESC">Nominal Tertinggi</option>
-              <option value="VOLUME_DESC">Volume Terbesar</option>
-            </select>
-          </div>
+          <Select
+            containerClassName="w-full md:w-48 shrink-0"
+            align="right"
+            searchable={false}
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value)}
+            className="rounded-xl text-xs bg-[#181B1E] border-[#282D34] text-white"
+          >
+            <option value="NEWEST">Terbaru</option>
+            <option value="VALUE_DESC">Nominal Tertinggi</option>
+            <option value="VOLUME_DESC">Volume Terbesar</option>
+          </Select>
         </div>
 
         {/* Batch Action Bar if items selected */}

@@ -36,7 +36,7 @@ import { useData } from '../../context/DataContext';
 import { useToast } from '../../context/ToastContext';
 import { useApp } from '../../context/AppContext';
 import { formatCurrency, formatVolume, formatDate } from '../../utils/formatters';
-import { Button, Badge, Card, Modal } from '../../components/ui';
+import { Button, Badge, Card, Modal, Select } from '../../components/ui';
 import InvoicePrintModal from '../../components/invoice/InvoicePrintModal';
 import InvoiceDetailWorkflowModal from '../../components/invoice/InvoiceDetailWorkflowModal';
 
@@ -584,10 +584,13 @@ export default function ApprovalInvoicePage() {
           </div>
 
           <div className="shrink-0 flex items-center gap-2">
-            <select
+            <Select
+              containerClassName="min-w-[170px] sm:min-w-[200px]"
+              size="sm"
               value={customerFilter}
               onChange={(e) => setCustomerFilter(e.target.value)}
-              className="bg-[#181B1E] border border-[#282C32] text-xs text-neutral-300 rounded-xl px-3 py-1.5 focus:outline-hidden focus:border-[#F4511E] font-mono cursor-pointer"
+              searchPlaceholder="Cari pelanggan..."
+              className="rounded-xl font-mono text-xs bg-[#181B1E] border-[#282C32] text-neutral-300"
             >
               <option value="ALL">Semua Pelanggan</option>
               {customerOptions.map((c) => (
@@ -595,17 +598,21 @@ export default function ApprovalInvoicePage() {
                   {c}
                 </option>
               ))}
-            </select>
+            </Select>
 
-            <select
+            <Select
+              containerClassName="w-36"
+              size="sm"
+              align="right"
+              searchable={false}
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
-              className="bg-[#181B1E] border border-[#282C32] text-xs text-neutral-300 rounded-xl px-3 py-1.5 focus:outline-hidden focus:border-[#F4511E] font-mono cursor-pointer"
+              className="rounded-xl font-mono text-xs bg-[#181B1E] border-[#282C32] text-neutral-300"
             >
               <option value="NEWEST">Terbaru</option>
               <option value="VALUE_DESC">Nilai Tertinggi</option>
               <option value="VOLUME_DESC">Volume Terbesar</option>
-            </select>
+            </Select>
           </div>
         </div>
 

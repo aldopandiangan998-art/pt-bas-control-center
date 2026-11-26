@@ -63,6 +63,9 @@ const Select = forwardRef(function Select(
     icon: Icon,
     required = false,
     className = '',
+    containerClassName = '',
+    size = 'md',
+    align = 'left',
     children,
     id,
     value,
@@ -236,7 +239,7 @@ const Select = forwardRef(function Select(
   };
 
   return (
-    <div ref={containerRef} className="w-full space-y-1 relative">
+    <div ref={containerRef} className={clsx('relative', label ? 'w-full space-y-1' : '', containerClassName)}>
       {label && (
         <label
           htmlFor={selectId}
@@ -295,7 +298,8 @@ const Select = forwardRef(function Select(
           aria-haspopup="listbox"
           aria-expanded={isOpen}
           className={clsx(
-            'w-full border rounded-md py-2 text-xs transition-colors appearance-none pr-8 text-left relative flex items-center',
+            'w-full border rounded-md transition-colors appearance-none pr-8 text-left relative flex items-center',
+            size === 'sm' ? 'py-1.5 text-xs' : size === 'lg' ? 'py-2.5 text-sm' : 'py-2 text-xs',
             isDark
               ? 'bg-[#14171A] text-neutral-100'
               : 'bg-white text-slate-900',
@@ -339,13 +343,14 @@ const Select = forwardRef(function Select(
         {isOpen && (
           <div
             className={clsx(
-              'absolute z-50 w-full shadow-2xl rounded-lg border overflow-hidden animate-in fade-in zoom-in-95 duration-100',
+              'absolute z-50 shadow-2xl rounded-lg border overflow-hidden animate-in fade-in zoom-in-95 duration-100',
+              align === 'right' ? 'right-0' : 'left-0',
               isDark
                 ? 'bg-[#14171A] border-[#2A2E35] text-neutral-100 shadow-black/60'
                 : 'bg-white border-slate-200 text-slate-900 shadow-slate-400/20',
               openUp ? 'bottom-full mb-1' : 'top-full mt-1'
             )}
-            style={{ maxHeight: '320px' }}
+            style={{ maxHeight: '320px', minWidth: 'max(100%, 220px)' }}
           >
             {/* Search Input Bar */}
             {searchable && (

@@ -329,15 +329,17 @@ const Select = forwardRef(function Select(
           </span>
         </button>
 
-        <div
-          className={clsx(
-            'absolute right-2.5 pointer-events-none flex items-center transition-transform duration-200',
-            isDark ? 'text-neutral-400' : 'text-slate-400',
-            isOpen && 'rotate-180 text-[#F4511E]'
-          )}
-        >
-          <ChevronDown className="w-3.5 h-3.5" />
-        </div>
+        {!disabled && (
+          <div
+            className={clsx(
+              'absolute right-2.5 pointer-events-none flex items-center transition-transform duration-200',
+              isDark ? 'text-neutral-400' : 'text-slate-400',
+              isOpen && 'rotate-180 text-[#F4511E]'
+            )}
+          >
+            <ChevronDown className="w-3.5 h-3.5" />
+          </div>
+        )}
 
         {/* Dropdown Popover */}
         {isOpen && (
